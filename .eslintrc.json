@@ -1,0 +1,7 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "@next/next/no-img-element": "off"
+  },
+  "ignorePatterns": ["src/lib/wallet-catalog.ts", "src/lib/pair-icons.ts", ".next", ".next-prod"]
+}

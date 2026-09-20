@@ -1,0 +1,5 @@
+# Arquivos gerados por script — não faz sentido lintar.
+src/lib/wallet-catalog.ts
+src/lib/pair-icons.ts
+.next
+.next-prod

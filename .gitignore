@@ -1,0 +1,18 @@
+node_modules
+.next
+out
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.data/
+.next-prod
+
+# Artefatos da cadeia on-chain
+target/
+.anchor/
+test-ledger/
+# Chaves de carteira NUNCA entram no histórico: quem tem o arquivo tem o dinheiro.
+*.json.key
+keypairs/

@@ -1,0 +1,82 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+/** 0.0000123 -> "0.0₄123" (estilo Dexscreener para preços de meme coin) */
+export function formatPrice(value: number, maxSig = 4): string {
+  if (!Number.isFinite(value) || value === 0) return "0";
+  if (value >= 1) return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  const exp = Math.floor(Math.log10(value));
+  const zeros = Math.abs(exp) - 1;
+  if (zeros >= 4) {
+    const digits = value.toFixed(zeros + maxSig).slice(2 + zeros);
+    const sub = String(zeros)
+      .split("")
+      .map((d) => "₀₁₂₃₄₅₆₇₈₉"[Number(d)])
+      .join("");
+    return `0.0${sub}${digits}`;
+  }
+  return value.toFixed(Math.min(8, zeros + maxSig));
+}
+
+export function formatUsd(value: number): string {
+  if (!Number.isFinite(value)) return "$0";
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
+  if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  return `$${value.toFixed(2)}`;
+}
+
+export function formatPct(value: number): string {
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+export function shortenAddress(address: string, chars = 4): string {
+  if (!address) return "";
+  if (address.length <= chars * 2 + 2) return address;
+  return `${address.slice(0, chars)}…${address.slice(-chars)}`;
+}
+
+export function timeAgo(timestamp: number): string {
+  const diff = Math.max(0, Date.now() - timestamp);
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
+/** Heurística simples: endereço base58 (Solana) x hex 0x (EVM). */
+export function detectChainFromAddress(address: string): "solana" | "evm" | "unknown" {
+  if (/^0x[a-fA-F0-9]{40}$/.test(address)) return "evm";
+  if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) return "solana";
+  return "unknown";
+}
+
+/**
+ * Converte "1.25" em unidades brutas (ex.: lamports) sem passar por float.
+ *
+ * `Number("0.1") * 1e9` dá 100000000.00000001 — em dinheiro isso vira bug.
+ * Trabalhar com a string e BigInt evita o problema inteiro.
+ */
+export function parseUnits(value: string, decimals: number): bigint {
+  const clean = value.trim();
+  if (!clean || !/^\d*\.?\d*$/.test(clean)) return 0n;
+
+  const [whole = "0", fraction = ""] = clean.split(".");
+  const padded = (fraction + "0".repeat(decimals)).slice(0, decimals);
+  return BigInt(whole || "0") * 10n ** BigInt(decimals) + BigInt(padded || "0");
+}
+
+/** Caminho inverso: unidades brutas para número legível. */
+export function formatUnits(value: bigint, decimals: number): number {
+  const divisor = 10 ** decimals;
+  return Number(value) / divisor;
+}

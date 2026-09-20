@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+html,
+body {
+  @apply bg-ink-950 text-zinc-200 antialiased;
+}
+
+/* Fundo da aplicação: preto profundo + grid quase invisível + um halo de luz */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: theme("backgroundImage.grid-faint");
+  background-size: theme("backgroundSize.grid");
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 75%);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: -20% -10% auto -10%;
+  height: 420px;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(139, 92, 246, 0.14),
+    rgba(34, 211, 238, 0.06) 40%,
+    transparent 70%
+  );
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+@layer components {
+  /* Cartão de vidro: base escura + borda com refração sutil */
+  .glass {
+    @apply relative rounded-2xl border border-white/[0.06] bg-ink-900/70 shadow-glass backdrop-blur-xl;
+  }
+  /*
+   * Menu flutuante. O .glass normal é translúcido demais quando fica por cima
+   * de texto — o conteúdo da página aparece atrás e vira uma sopa ilegível.
+   * Aqui o fundo é quase opaco, mantendo só um toque do vidro.
+   */
+  .panel {
+    /*
+     * Opaco de verdade. A 97% ainda dava pra ler o texto da página por trás —
+     * num título grande e branco, 3% de vazamento já polui. A sensação de
+     * camada vem da borda e da sombra, não da transparência.
+     */
+    @apply rounded-2xl border border-white/[0.08] bg-ink-900 shadow-glass;
+  }
+
+  /* Borda cromática: só aparece de verdade no hover */
+  .glass-edge::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300;
+    padding: 1px;
+    background-image: theme("backgroundImage.chroma-edge");
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  .glass-edge:hover::before {
+    @apply opacity-100;
+  }
+
+  .text-chroma {
+    @apply bg-chroma-gradient bg-clip-text text-transparent;
+    background-size: 200% 200%;
+  }
+
+  .hairline {
+    @apply border-white/[0.06];
+  }
+
+  /* Números de preço/valores: tabular pra não "dançar" quando atualiza */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    @apply font-mono;
+  }
+}
+
+/* Scrollbar discreta */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-ink-700;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-ink-600;
+}
+
+/* Botão do wallet-adapter do Solana herdando o tema Chroma */
+.wallet-adapter-button {
+  height: 38px !important;
+  border-radius: 10px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.2s ease !important;
+}
+.wallet-adapter-button:not([disabled]):hover {
+  background: rgba(139, 92, 246, 0.14) !important;
+  border-color: rgba(139, 92, 246, 0.45) !important;
+}
+.wallet-adapter-modal-wrapper {
+  background: #0a0c11 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+}
