@@ -167,7 +167,111 @@ function criarTabelas(banco: DatabaseSync) {
       chave TEXT PRIMARY KEY,
       valor TEXT NOT NULL
     );
+
+    /*
+     * As moedas lançadas AQUI.
+     *
+     * -------------------------------------------------------------------
+     * POR QUE ESTA TABELA PRECISA EXISTIR
+     * -------------------------------------------------------------------
+     * A vitrine da home é montada a partir de fontes de mercado — e uma moeda
+     * que acabou de nascer na nossa curva ainda não tem par em DEX nenhuma.
+     * Resultado: ela não aparecia em canto nenhum do site até encher a curva
+     * e migrar pra Raydium.
+     *
+     * Ou seja: a launchpad lançava a moeda e a moeda sumia da própria
+     * vitrine, justo na hora em que ela mais precisa de gente olhando. É o
+     * contrário do que uma launchpad faz.
+     *
+     * Aqui fica só o que a rede NÃO responde: nome de exibição, arte e quem
+     * criou. Preço, progresso da curva e volume continuam vindo da rede a
+     * cada leitura — número de mercado guardado em banco envelhece sem
+     * ninguém perceber.
+     */
+    CREATE TABLE IF NOT EXISTS moedas (
+      endereco   TEXT PRIMARY KEY,
+      rede       TEXT NOT NULL,
+      nome       TEXT NOT NULL,
+      simbolo    TEXT NOT NULL,
+      descricao  TEXT,
+      imagem     TEXT,
+      criador    TEXT NOT NULL,
+      assinatura TEXT,
+      criada_em  INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_moedas_criada ON moedas(criada_em DESC);
+    CREATE INDEX IF NOT EXISTS idx_moedas_criador ON moedas(criador);
   `);
+}
+
+/* ------------------------------------------------------------------ */
+/* Moedas lançadas na Chroma                                           */
+/* ------------------------------------------------------------------ */
+
+export interface MoedaRegistrada {
+  endereco: string;
+  rede: string;
+  nome: string;
+  simbolo: string;
+  descricao: string | null;
+  imagem: string | null;
+  criador: string;
+  assinatura: string | null;
+  criadaEm: number;
+}
+
+/**
+ * Registra uma moeda recém-lançada.
+ *
+ * `INSERT OR IGNORE`: a página de criação pode chamar duas vezes se a pessoa
+ * recarregar, e o segundo registro não pode sobrescrever o primeiro — é o
+ * primeiro que carrega a assinatura da transação que de fato criou a moeda.
+ *
+ * ATENÇÃO: esta função NÃO verifica nada. Quem chama é responsável por provar
+ * que a moeda é mesmo da nossa curva — ver `POST /api/moedas`, que confere na
+ * rede antes de chegar aqui.
+ */
+export function registrarMoeda(m: MoedaRegistrada): void {
+  db()
+    .prepare(
+      `INSERT OR IGNORE INTO moedas
+         (endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      m.endereco,
+      m.rede,
+      m.nome,
+      m.simbolo,
+      m.descricao,
+      m.imagem,
+      m.criador,
+      m.assinatura,
+      m.criadaEm,
+    );
+}
+
+/** As últimas moedas lançadas na Chroma, da mais nova pra mais velha. */
+export function listarMoedasDaChroma(limite = 60): MoedaRegistrada[] {
+  const linhas = db()
+    .prepare(
+      `SELECT endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em
+         FROM moedas ORDER BY criada_em DESC LIMIT ?`,
+    )
+    .all(limite) as Record<string, unknown>[];
+
+  return linhas.map((l) => ({
+    endereco: String(l.endereco),
+    rede: String(l.rede),
+    nome: String(l.nome),
+    simbolo: String(l.simbolo),
+    descricao: l.descricao == null ? null : String(l.descricao),
+    imagem: l.imagem == null ? null : String(l.imagem),
+    criador: String(l.criador),
+    assinatura: l.assinatura == null ? null : String(l.assinatura),
+    criadaEm: Number(l.criada_em),
+  }));
 }
 
 /* ------------------------------------------------------------------ */

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { fetchToken, fetchTokenList } from "./market";
+import { fetchPoolFeed, fetchToken, fetchTokenList } from "./market";
+import { moedasDaChroma } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
 import type { ChainId, TokenSummary } from "./types";
@@ -92,11 +93,90 @@ function sortTokens(list: TokenSummary[], sort: SortKey): TokenSummary[] {
  * junto leva a pessoa a clicar numa moeda que ela não consegue comprar com a
  * carteira que tem conectada.
  */
+/**
+ * O universo de moedas da vitrine, juntando as fontes gratuitas.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE SÃO VÁRIAS FONTES, E NÃO A MELHOR DELAS
+ * ---------------------------------------------------------------------------
+ * Porque nenhuma sozinha cobre o que a home precisa:
+ *
+ * - Os feeds da GeckoTerminal trazem o fluxo de verdade — pool recém-criada,
+ *   pool em alta, pool grande — mas NÃO cobrem a Robinhood Chain, que sequer
+ *   aparece no catálogo de redes deles.
+ * - A lista da Dexscreener é pequena e enviesada (só quem foi lá cadastrar o
+ *   perfil), mas indexa a Robinhood e traz descrição escrita pelo projeto.
+ *
+ * Somadas, uma tapa o buraco da outra. Empatando no mesmo endereço, os números
+ * vêm de quem apurou mais liquidez, e os campos que só uma das fontes tem
+ * (imagem, descrição) são preservados dos dois lados.
+ */
+async function universo(): Promise<TokenSummary[]> {
+  const [novas, emAlta, grandes, perfis, daCasa] = await Promise.all([
+    fetchPoolFeed("solana", "new_pools"),
+    fetchPoolFeed("solana", "trending_pools"),
+    fetchPoolFeed("solana", "pools"),
+    fetchTokenList(),
+    moedasDaChroma(),
+  ]);
+
+  const porEndereco = new Map<string, TokenSummary>();
+
+  for (const t of [...grandes, ...emAlta, ...novas, ...perfis]) {
+    const chave = `${t.chain}:${t.address.toLowerCase()}`;
+    const anterior = porEndereco.get(chave);
+
+    if (!anterior) {
+      porEndereco.set(chave, t);
+      continue;
+    }
+
+    const melhor = t.liquidityUsd > anterior.liquidityUsd ? t : anterior;
+    porEndereco.set(chave, {
+      ...melhor,
+      imageUrl: melhor.imageUrl ?? anterior.imageUrl ?? t.imageUrl,
+      description: melhor.description ?? anterior.description ?? t.description,
+      holders: Math.max(melhor.holders, anterior.holders, t.holders),
+    });
+  }
+
+  /*
+   * Piso de liquidez.
+   *
+   * O feed de pool nova traz MUITA pool natimorta — criada, um swap de um
+   * centavo, abandonada. Sem piso, a vitrine vira uma parede de moeda que
+   * ninguém consegue vender depois de comprar, o que é pior do que uma vitrine
+   * curta. Mil dólares é o mesmo corte que a lista antiga já aplicava.
+   */
+  const deMercado = [...porEndereco.values()].filter((t) => t.liquidityUsd >= 1_000);
+
+  /*
+   * As nossas entram DEPOIS do filtro, e por cima.
+   *
+   * Duas razões, as duas importantes:
+   *
+   * 1. **O piso de mil dólares não vale pra elas.** Uma moeda que nasceu há
+   *    dois minutos na curva tem quase nada de liquidez — é assim que começa.
+   *    Aplicar o corte de mercado esconderia justamente o que a launchpad
+   *    acabou de lançar, que é o problema que este código veio resolver.
+   *
+   * 2. **A nossa versão é a boa.** Se a moeda já migrou e aparece nas duas
+   *    listas, o registro daqui traz a arte e o texto que o criador escreveu,
+   *    além do progresso da curva. Sobrescrever é o resultado certo.
+   */
+  const porChave = new Map(deMercado.map((t) => [`${t.chain}:${t.address.toLowerCase()}`, t]));
+  for (const t of daCasa) {
+    porChave.set(`${t.chain}:${t.address.toLowerCase()}`, t);
+  }
+
+  return [...porChave.values()];
+}
+
 export async function listTokens(
   sort: SortKey = "new",
   chain?: ChainId | null,
 ): Promise<{ tokens: TokenSummary[]; isDemo: boolean }> {
-  const real = await fetchTokenList();
+  const real = await universo();
   const base = real.length ? real : FALLBACK;
   const isDemo = real.length === 0;
 

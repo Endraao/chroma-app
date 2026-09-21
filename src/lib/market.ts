@@ -316,6 +316,206 @@ export async function fetchCandles(address: string, interval: string, limit = 30
 }
 
 /* ------------------------------------------------------------------ */
+/* Vitrine ampla: os feeds de pool da GeckoTerminal                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * As três listas de pool que a GeckoTerminal serve de graça.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE ISTO EXISTE
+ * ---------------------------------------------------------------------------
+ * A vitrine vinha inteira do `token-profiles/latest/v1` da Dexscreener, que
+ * NÃO é uma lista de lançamentos — é a lista de quem foi lá preencher o perfil
+ * do projeto. Dava treze moedas, e treze era o teto: não ia crescer com o
+ * tráfego do site porque o limite era da fonte, não da nossa audiência.
+ *
+ * Estes três endpoints são o fluxo de verdade, sem chave e sem assinatura:
+ * pool recém-criada, pool em alta e pool grande. Paginando, saem uns 120 pools
+ * por rede em vez de treze.
+ *
+ * ---------------------------------------------------------------------------
+ * O QUE ELES NÃO COBREM
+ * ---------------------------------------------------------------------------
+ * A Robinhood Chain devolve lista VAZIA nos três — ela nem aparece no catálogo
+ * de redes da GeckoTerminal, embora responda normalmente quando se pede um
+ * pool específico (é assim que o gráfico dela funciona). Então a descoberta na
+ * Robinhood continua vindo da Dexscreener, que indexa a rede. As duas fontes
+ * se somam em `tokens.ts`.
+ */
+export type FeedDePool = "new_pools" | "trending_pools" | "pools";
+
+/**
+ * Quantas páginas puxar de cada feed.
+ *
+ * Cada página é UMA requisição, e o limite gratuito é de ~30 por minuto pelo
+ * IP do servidor — compartilhado por todos os visitantes ao mesmo tempo. Três
+ * feeds × 2 páginas = 6 requisições por atualização, e o cache de 60s faz uma
+ * atualização servir todo mundo. Subir isto pra 5 páginas triplicaria o gasto
+ * pra trazer a cauda da lista, que é justamente a parte que ninguém olha.
+ */
+const PAGINAS_POR_FEED = 2;
+
+/**
+ * Moedas de cotação: quando uma delas é o token "base" do pool, os lados estão
+ * invertidos e quem interessa é o outro.
+ *
+ * É o mesmo cuidado que a leitura de negócios já toma. Sem ele, um par onde o
+ * SOL é o base entraria na vitrine como se o SOL fosse a meme coin — com o
+ * preço, a variação e a capitalização do SOL.
+ */
+const COTACOES = new Set(
+  [
+    "So11111111111111111111111111111111111111112", // SOL
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
+    "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v", // jupSOL
+    "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So", // mSOL
+  ].map((m) => m.toLowerCase()),
+);
+
+interface PoolGecko {
+  attributes: {
+    address: string;
+    name: string;
+    pool_created_at: string;
+    base_token_price_usd: string | null;
+    quote_token_price_usd: string | null;
+    fdv_usd: string | null;
+    market_cap_usd: string | null;
+    reserve_in_usd: string | null;
+    price_change_percentage: Record<string, string | null>;
+    volume_usd: Record<string, string | null>;
+  };
+  relationships: {
+    base_token: { data: { id: string } };
+    quote_token: { data: { id: string } };
+    dex?: { data: { id: string } };
+  };
+}
+
+interface TokenGecko {
+  id: string;
+  attributes: { address: string; name: string; symbol: string; image_url: string | null };
+}
+
+export async function fetchPoolFeed(chain: ChainId, feed: FeedDePool): Promise<TokenSummary[]> {
+  const network = CHAIN_TO_GECKO[chain];
+  if (!network) return [];
+
+  const key = `feed:${network}:${feed}`;
+
+  try {
+    return await cached(key, TTL.list, async () => {
+      const paginas = await Promise.all(
+        Array.from({ length: PAGINAS_POR_FEED }, (_, i) =>
+          getJson<{ data: PoolGecko[]; included?: TokenGecko[] }>(
+            `${GECKOTERMINAL}/networks/${network}/${feed}` +
+              `?include=base_token,quote_token&page=${i + 1}`,
+            60,
+          ).catch(() => ({ data: [] as PoolGecko[], included: [] as TokenGecko[] })),
+        ),
+      );
+
+      /* Os tokens vêm num bloco separado do JSON, referenciados por id. */
+      const porId = new Map<string, TokenGecko["attributes"]>();
+      for (const p of paginas) {
+        for (const t of p.included ?? []) porId.set(t.id, t.attributes);
+      }
+
+      const saida: TokenSummary[] = [];
+      for (const p of paginas) {
+        for (const pool of p.data) {
+          const resumo = poolParaResumo(pool, porId, chain);
+          if (resumo) saida.push(resumo);
+        }
+      }
+      return saida;
+    });
+  } catch (error) {
+    console.warn(`[market] feed ${feed} de ${network} falhou:`, error);
+    return [];
+  }
+}
+
+function poolParaResumo(
+  pool: PoolGecko,
+  porId: Map<string, TokenGecko["attributes"]>,
+  chain: ChainId,
+): TokenSummary | null {
+  const a = pool.attributes;
+
+  const idBase = pool.relationships?.base_token?.data?.id;
+  const idCotacao = pool.relationships?.quote_token?.data?.id;
+  if (!idBase || !idCotacao) return null;
+
+  const base = porId.get(idBase);
+  const cotacao = porId.get(idCotacao);
+  if (!base) return null;
+
+  /* Se o "base" for uma moeda de cotação, os lados estão trocados. */
+  const invertido = COTACOES.has(base.address.toLowerCase());
+  const moeda = invertido ? cotacao : base;
+  const outro = invertido ? base : cotacao;
+  if (!moeda) return null;
+
+  /*
+   * Par de cotação contra cotação não entra na vitrine.
+   *
+   * O feed das maiores pools é liderado por SOL/USDC, e ali os DOIS lados são
+   * moeda de cotação — a regra de cima trocava os lados e a USDC subia pra
+   * vitrine como se fosse um lançamento, com $1,47 bilhão de capitalização, em
+   * primeiro lugar na lista de "quentes". Numa launchpad de meme coin isso não
+   * é só fora de contexto: é a única linha da tela que um iniciante lê como
+   * "olha o que dá pra ganhar aqui".
+   */
+  if (COTACOES.has(moeda.address.toLowerCase())) return null;
+
+  const preco = Number(invertido ? a.quote_token_price_usd : a.base_token_price_usd);
+  if (!Number.isFinite(preco) || preco <= 0) return null;
+
+  const precoDoOutro = Number(invertido ? a.base_token_price_usd : a.quote_token_price_usd);
+
+  /*
+   * Capitalização: `market_cap_usd` costuma vir nulo em moeda nova, porque
+   * ninguém apurou o fornecimento circulante ainda. O FDV é o substituto
+   * honesto — supõe tudo em circulação, que numa meme coin é quase sempre o
+   * caso, e é o mesmo número que a Dexscreener entrega no lugar.
+   */
+  const capitalizacao = Number(a.market_cap_usd) || Number(a.fdv_usd) || 0;
+
+  const pct = (janela: string) => {
+    const v = Number(a.price_change_percentage?.[janela]);
+    return Number.isFinite(v) ? v : 0;
+  };
+
+  return {
+    address: moeda.address,
+    chain,
+    name: moeda.name || moeda.symbol,
+    symbol: moeda.symbol,
+    imageUrl: moeda.image_url ?? undefined,
+    description: undefined,
+    priceUsd: preco,
+    change24h: pct("h24"),
+    priceChanges: { m5: pct("m5"), h1: pct("h1"), h6: pct("h6"), h24: pct("h24") },
+    marketCapUsd: capitalizacao,
+    liquidityUsd: Number(a.reserve_in_usd) || 0,
+    volume24hUsd: Number(a.volume_usd?.h24) || 0,
+    holders: 0,
+    createdAt: Date.parse(a.pool_created_at) || Date.now(),
+    /* Veio de uma DEX: já está fora de qualquer curva. */
+    bondingProgress: null,
+    creator: "",
+    pairAddress: a.address,
+    dexId: pool.relationships?.dex?.data?.id,
+    quoteAddress: outro?.address,
+    quoteSymbol: outro?.symbol,
+    quotePriceUsd: Number.isFinite(precoDoOutro) && precoDoOutro > 0 ? precoDoOutro : undefined,
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Negócios do pool                                                    */
 /* ------------------------------------------------------------------ */
 

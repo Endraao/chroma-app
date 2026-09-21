@@ -181,6 +181,35 @@ export function useLancarToken() {
           throw new Error("a rede recusou a transação");
         }
 
+        /* --- 5. pôr na vitrine ------------------------------------ */
+        /*
+         * A moeda acabou de nascer e ainda não existe par em DEX nenhuma —
+         * então nenhuma fonte de mercado sabe dela. Sem este registro ela só
+         * apareceria na home depois de encher a curva e migrar, que é o
+         * contrário do que uma launchpad faz.
+         *
+         * Falhar aqui NÃO derruba o lançamento. A moeda já está na rede e é da
+         * pessoa; um erro nosso de catálogo não pode virar um "deu errado"
+         * depois de ela ter pago a taxa e assinado. O registro é idempotente e
+         * dá pra refazer — ver `POST /api/moedas`.
+         */
+        try {
+          await fetch("/api/moedas", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              mint: mint.publicKey.toBase58(),
+              nome: dados.nome,
+              simbolo: dados.simbolo,
+              descricao: dados.descricao,
+              imagem: publicado.imageUrl,
+              assinatura,
+            }),
+          });
+        } catch (erroDeCatalogo) {
+          console.warn("[lancamento] moeda criada, mas não entrou no catálogo:", erroDeCatalogo);
+        }
+
         setEtapa("pronto");
         return { mint: mint.publicKey.toBase58(), assinatura };
       } catch (e) {
