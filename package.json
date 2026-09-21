@@ -17,7 +17,9 @@
     "test:multichain": "node scripts/test-multichain.mjs",
     "test:token-media": "node scripts/test-token-media.mjs",
     "test:curve": "node scripts/test-curve-math.mjs",
-    "lint:strict": "eslint src --max-warnings=0"
+    "lint:strict": "eslint src --max-warnings=0",
+    "test:programa": "node scripts/test-programa.mjs",
+    "localnet": "wsl -d Ubuntu -e bash /mnt/c/Users/User/AppData/Local/Temp/claude/C--Users-User-Desktop-Bot-de-disparo-ofertas/ee550764-46ec-49d6-aeeb-45352deffa8a/scratchpad/wsl/validador.sh"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.15",
