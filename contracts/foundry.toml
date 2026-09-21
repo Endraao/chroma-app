@@ -1,0 +1,29 @@
+# Contratos da Chroma na Robinhood Chain.
+#
+# Fica separado do resto do projeto de propósito: o ciclo do Solidity (compilar,
+# testar, publicar, verificar) não tem nada a ver com o do Next, e misturar os
+# dois faria cada `npm install` mexer em coisa que segura dinheiro.
+
+[profile.default]
+src = "src"
+test = "test"
+out = "out"
+libs = ["lib"]
+
+solc = "0.8.30"
+
+# O otimizador não é enfeite aqui: o router roda em CADA operação de cada
+# usuário, e o que ele economiza de gás sai do bolso de quem negocia.
+optimizer = true
+optimizer_runs = 1_000_000
+
+# Erros de compilação viram erro, não aviso. Num contrato que move dinheiro,
+# "é só um aviso" é como se perde fundo.
+deny = "warnings"
+
+[rpc_endpoints]
+robinhood = "https://rpc.mainnet.chain.robinhood.com"
+
+[fmt]
+line_length = 100
+tab_width = 4

@@ -36,7 +36,7 @@ Abre em http://localhost:3000. Copie `.env.example` para `.env.local`.
 | Rede | Chain ID | Gás | Swap | Auditoria de contrato |
 | --- | --- | --- | --- | --- |
 | Solana | — | SOL | ✅ Jupiter | ✅ GoPlus |
-| Robinhood Chain | 4663 | ETH | ❌ falta router | ❌ nenhum provedor cobre ainda |
+| Robinhood Chain | 4663 | ETH | ⚠️ contrato pronto, falta ligar | ❌ nenhum provedor cobre ainda |
 
 A Robinhood Chain é uma L2 Arbitrum sobre Ethereum, definida em `src/lib/web3.ts` porque ainda não
 vem no `viem/chains`.
@@ -226,10 +226,36 @@ idempotente da conta de destino (o aluguel, ~0,002 SOL, sai do usuário).
 Código: `src/lib/solana-swap.ts`. **Não usamos o `platformFeeBps` da Jupiter** porque exigiria
 conta no programa de referral dela e entregaria o valor num endereço só, sem como dividir.
 
-### Robinhood Chain — ainda não
+### Robinhood Chain — o contrato existe, a ligação não
 
-Em EVM não dá pra anexar uma transferência a uma transação de swap. Precisa de um contrato *router*
-da Chroma, ou do parâmetro de afiliado de um agregador. A interface diz isso na tela.
+Em EVM não dá pra anexar uma transferência a uma transação de swap: uma transação chama UM
+contrato. Por isso existe o `ChromaRouter` (`contracts/src/ChromaRouter.sol`), que desconta a taxa,
+reparte entre plataforma, criador e afiliado, e repassa o resto pro roteador da Uniswap — tudo na
+mesma transação.
+
+**O contrato não guarda nada.** Entra e sai na mesma transação, nenhuma aprovação fica de pé, não
+existe função de saque nem pra quem administra, e o destino das chamadas é fixo no construtor.
+Não há fundos parados pra alguém levar.
+
+**A rota chega pronta e o contrato não a interpreta.** O roteador da Uniswap nesta rede é um fork
+com um campo a mais na estrutura de swap; montar a chamada aqui dentro seria depender de um
+formato que já divergiu uma vez. Em vez disso o contrato confere o RESULTADO — quanto de fato
+chegou na carteira de quem pediu. É isso que torna seguro não entender a rota.
+
+Endereços verificados on-chain na rede 4663 (`eth_getCode` devolveu bytecode nos cinco):
+
+| Contrato | Endereço |
+| --- | --- |
+| UniversalRouter | `0x06AfBA43Fd06227fA663b0DAecF536f6EaA6bf99` |
+| PoolManager | `0x8366a39CC670B4001A1121B8F6A443A643e40951` |
+| Quoter | `0x8Dc178eFB8111BB0973Dd9d722ebeFF267c98F94` |
+| StateView | `0xF3334192D15450CdD385c8B70e03f9A6bD9E673b` |
+| Permit2 | `0x000000000022D473030F116dDEE9F6B43aC78BA3` |
+
+`npm run contracts:test` — 19 testes, incluindo fuzz da divisão da taxa.
+
+**Ainda falta, e a interface continua dizendo "em breve" até lá:** montar a rota do fork na tela,
+publicar o contrato, e uma auditoria externa antes de qualquer dinheiro de verdade passar por ele.
 
 ---
 
