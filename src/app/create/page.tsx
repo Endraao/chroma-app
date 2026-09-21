@@ -7,7 +7,10 @@ import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { MediaDropzone, MediaSpecList, type MediaSpec, type SelectedMedia } from "@/components/ui/MediaDropzone";
+import { useRouter } from "next/navigation";
+
 import { useChromaAccount } from "@/hooks/useChromaAccount";
+import { TEXTO_DA_ETAPA, useLancarToken } from "@/hooks/useLancarToken";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 import { DEFAULT_PAIR, LIQUIDITY_PAIRS, pairLogo } from "@/lib/pairs";
 import {
@@ -47,6 +50,8 @@ const BANNER_MEDIA: MediaSpec = {
 
 export default function CreateTokenPage() {
   const account = useChromaAccount();
+  const router = useRouter();
+  const lancamento = useLancarToken();
 
   const [chain, setChain] = useState<ChainId>("solana");
   const [pair, setPair] = useState(DEFAULT_PAIR.solana);
@@ -420,35 +425,57 @@ export default function CreateTokenPage() {
         </CardBody>
       </Card>
 
+      {lancamento.erro && (
+        <div className="rounded-xl border border-bear/30 bg-bear/[0.07] px-4 py-3 text-[12px] leading-relaxed text-bear">
+          {lancamento.erro}
+        </div>
+      )}
+
       <Button
         variant="chroma"
         size="lg"
         className="w-full"
-        disabled={!ready}
-        onClick={() =>
-          alert(
-            [
-              "Deploy ainda não implementado.",
-              "",
-              `Rede: ${meta.label}`,
-              `Par: ${pair}`,
-              `Taxa de criador: ${(creatorTaxBps / 100).toFixed(2)}%`,
-              `Recompensas: ${rewards === "creator" ? "criador" : "detentores"}`,
-              `Mídia: ${media?.file.name} (${media?.width}x${media?.height})`,
-              `Banner: ${banner?.file.name ?? "nenhum"}`,
-              "",
-              "Falta o programa de bonding curve on-chain — ver README.md.",
-            ].join("\n"),
-          )
+        disabled={
+          !ready ||
+          lancamento.ocupado ||
+          chain !== "solana" ||
+          !lancamento.carteiraConectada
         }
+        onClick={async () => {
+          if (!media) return;
+
+          const resultado = await lancamento.lancar({
+            nome: form.name.trim(),
+            simbolo: form.symbol.trim(),
+            descricao: form.description.trim() || undefined,
+            site: form.website.trim() || undefined,
+            twitter: form.twitter.trim() || undefined,
+            telegram: form.telegram.trim() || undefined,
+            arte: media.file,
+            banner: banner?.file ?? null,
+          });
+
+          /*
+           * Vai direto pra página da moeda. A pessoa acabou de criar algo e
+           * quer VER — deixá-la no formulário preenchido, sem saber se deu
+           * certo, é o pior desfecho possível.
+           */
+          if (resultado) router.push(`/token/${resultado.mint}`);
+        }}
       >
-        {!account.isSignedIn
-          ? "Faça login para criar"
-          : !media
-            ? "Envie a imagem ou o vídeo"
-            : !ready
-              ? "Preencha nome e símbolo"
-              : "Criar e abrir a curva"}
+        {lancamento.ocupado
+          ? TEXTO_DA_ETAPA[lancamento.etapa]
+          : chain !== "solana"
+            ? `Lançar na ${meta.label} ainda não está ligado`
+            : !account.isSignedIn
+              ? "Faça login para criar"
+              : !lancamento.carteiraConectada
+                ? "Conecte sua carteira Solana"
+                : !media
+                  ? "Envie a imagem ou o vídeo"
+                  : !ready
+                    ? "Preencha nome e símbolo"
+                    : "Criar e abrir a curva"}
       </Button>
 
       <p className="pb-4 text-center text-[11px] leading-relaxed text-zinc-600">

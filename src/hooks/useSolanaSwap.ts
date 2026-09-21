@@ -28,6 +28,12 @@ interface Options {
   affiliate: string | null;
   /** o que estava no link (apelido) — junta clique e trade da mesma pessoa */
   affiliateRef: string | null;
+  /*
+   * false quando a moeda está na curva da Chroma e quem negocia é o nosso
+   * programa. Nesse caso a Jupiter não tem rota nenhuma — a moeda não está em
+   * DEX alguma ainda — e cotar seria gastar requisição pra receber erro.
+   */
+  enabled?: boolean;
 }
 
 export type SwapPhase = "idle" | "quoting" | "ready" | "executing" | "done" | "error";
@@ -40,6 +46,7 @@ export function useSolanaSwap({
   slippageBps,
   affiliate,
   affiliateRef,
+  enabled = true,
 }: Options) {
   const { connection } = useConnection();
   const { publicKey, signTransaction, connected } = useWallet();
@@ -61,7 +68,7 @@ export function useSolanaSwap({
 
   /* --- Decimais e token program ------------------------------------ */
   useEffect(() => {
-    if (!tokenMint) return;
+    if (!tokenMint || !enabled) return;
 
     const hit = metaCache.get(tokenMint);
     if (hit) {
@@ -97,11 +104,11 @@ export function useSolanaSwap({
     return () => {
       cancelled = true;
     };
-  }, [tokenMint]);
+  }, [tokenMint, enabled]);
 
   /* --- Saldo da carteira ------------------------------------------ */
   useEffect(() => {
-    if (!publicKey) {
+    if (!publicKey || !enabled) {
       setBalance(null);
       return;
     }
@@ -131,7 +138,7 @@ export function useSolanaSwap({
     return () => {
       cancelled = true;
     };
-  }, [publicKey, connection, isBuy, tokenMint, tokenDecimals, signature]);
+  }, [publicKey, connection, isBuy, tokenMint, tokenDecimals, signature, enabled]);
 
   /* --- Contas da taxa --------------------------------------------- */
   /*
@@ -152,7 +159,7 @@ export function useSolanaSwap({
   const requestRef = useRef(0);
 
   useEffect(() => {
-    if (!tokenMint || inputDecimals === null || fees.netAmount <= 0n) {
+    if (!enabled || !tokenMint || inputDecimals === null || fees.netAmount <= 0n) {
       setQuote(null);
       setPhase("idle");
       return;
@@ -186,7 +193,7 @@ export function useSolanaSwap({
     }, QUOTE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [tokenMint, inputMint, outputMint, fees.netAmount, slippageBps, inputDecimals]);
+  }, [tokenMint, inputMint, outputMint, fees.netAmount, slippageBps, inputDecimals, enabled]);
 
   /* --- Valores derivados pra interface ----------------------------- */
   const outAmount = useMemo(() => {
@@ -271,6 +278,15 @@ export function useSolanaSwap({
     error,
     signature,
     execute,
-    canSwap: connected && Boolean(quote) && phase === "ready" && Boolean(signTransaction),
+    canSwap:
+      enabled && connected && Boolean(quote) && phase === "ready" && Boolean(signTransaction),
+    /*
+     * Em que unidade a taxa está. Aqui é sempre a moeda de ENTRADA, porque a
+     * taxa é descontada antes do swap. No caminho da curva não é assim, e a
+     * tela precisa saber a diferença pra não formatar SOL com os decimais do
+     * token.
+     */
+    feeDecimals: inputDecimals,
+    motivoTravado: null as string | null,
   };
 }

@@ -8,6 +8,7 @@ use anchor_spl::token::spl_token::instruction::AuthorityType;
 
 pub mod curva;
 pub mod errors;
+pub mod metadados;
 pub mod state;
 
 use curva::Curva;
@@ -102,8 +103,16 @@ pub mod chroma_curve {
         Ok(())
     }
 
-    /// Lança uma moeda: cria o token, emite tudo pra curva e abre mão do mint.
-    pub fn create(ctx: Context<Criar>) -> Result<()> {
+    /// Lança uma moeda: cria o token, dá nome a ele, emite tudo pra curva e
+    /// abre mão da emissão.
+    ///
+    /// A ordem importa e não pode mudar: dar nome exige a autoridade de
+    /// emissão, e a renúncia a ela é o último passo. Ver `metadados.rs`.
+    ///
+    /// @param uri endereço do JSON com nome, imagem e redes sociais. É gravado
+    /// de forma imutável — se apontar pro vazio, a moeda fica sem imagem pra
+    /// sempre. Por isso o site publica o arquivo ANTES de mandar a transação.
+    pub fn create(ctx: Context<Criar>, nome: String, simbolo: String, uri: String) -> Result<()> {
         let config = &ctx.accounts.config;
         require!(!config.paused, ErroDaCurva::Pausado);
 
@@ -123,6 +132,20 @@ pub mod chroma_curve {
             ),
             config.total_supply,
         )?;
+
+        // Nome, símbolo e imagem — enquanto a curva ainda pode emitir.
+        metadados::criar(metadados::CriarMetadados {
+            metadados: &ctx.accounts.metadados,
+            mint: &ctx.accounts.mint.to_account_info(),
+            curva: &ctx.accounts.curva.to_account_info(),
+            pagador: &ctx.accounts.criador.to_account_info(),
+            system_program: &ctx.accounts.system_program.to_account_info(),
+            programa_de_metadados: &ctx.accounts.programa_de_metadados,
+            sementes,
+            nome: &nome,
+            simbolo: &simbolo,
+            uri: &uri,
+        })?;
 
         /*
          * Renúncia ao mint, no MESMO lançamento.
@@ -172,6 +195,7 @@ pub mod chroma_curve {
 
         emit!(MoedaCriada {
             mint,
+            uri,
             criador: curva.creator,
             virtual_sol: curva.virtual_sol_reserves,
             virtual_token: curva.virtual_token_reserves,
@@ -613,6 +637,27 @@ pub struct Criar<'info> {
     )]
     pub carteira_plataforma: UncheckedAccount<'info>,
 
+    /*
+     * A conta de metadados. O endereço é derivado — não escolhido — e a
+     * derivação é conferida aqui, com as sementes do programa da Metaplex.
+     *
+     * Sem esta checagem, quem chamasse poderia passar qualquer conta no lugar;
+     * a Metaplex recusaria, mas a mensagem de erro sairia de lá e não daqui,
+     * dificultando entender o que houve.
+     */
+    /// CHECK: endereço validado pelas sementes abaixo e pela própria Metaplex.
+    #[account(
+        mut,
+        seeds = [b"metadata", metadados::PROGRAMA_DE_METADADOS.as_ref(), mint.key().as_ref()],
+        bump,
+        seeds::program = metadados::PROGRAMA_DE_METADADOS,
+    )]
+    pub metadados: UncheckedAccount<'info>,
+
+    /// CHECK: conferido contra o endereço fixo do programa da Metaplex.
+    #[account(address = metadados::PROGRAMA_DE_METADADOS)]
+    pub programa_de_metadados: UncheckedAccount<'info>,
+
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -683,6 +728,8 @@ pub struct Negociar<'info> {
 #[event]
 pub struct MoedaCriada {
     pub mint: Pubkey,
+    /// Onde estão nome e imagem — o indexador precisa disto.
+    pub uri: String,
     pub criador: Pubkey,
     pub virtual_sol: u64,
     pub virtual_token: u64,

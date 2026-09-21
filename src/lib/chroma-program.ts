@@ -29,6 +29,19 @@ export const SEMENTE_CONFIG = Buffer.from("config");
 export const SEMENTE_CURVA = Buffer.from("curve");
 
 export const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+
+/** Programa de metadados da Metaplex. O mesmo endereço em todas as redes. */
+export const METAPLEX_PROGRAM_ID = new PublicKey(
+  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+);
+
+/**
+ * Limites do formato ON-CHAIN. Não são preferência nossa.
+ *
+ * Passar deles não fica feio: a rede recusa a transação e quem lançou paga a
+ * taxa à toa. A tela precisa barrar antes.
+ */
+export const LIMITES_DO_TOKEN = { nome: 32, simbolo: 10, uri: 200 } as const;
 export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
 );
@@ -47,6 +60,14 @@ export function enderecoDaCurva(mint: PublicKey): PublicKey {
   return PublicKey.findProgramAddressSync(
     [SEMENTE_CURVA, mint.toBuffer()],
     CHROMA_PROGRAM_ID,
+  )[0];
+}
+
+/** Onde a Metaplex guarda nome, símbolo e imagem de um token. */
+export function enderecoDosMetadados(mint: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("metadata"), METAPLEX_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    METAPLEX_PROGRAM_ID,
   )[0];
 }
 
@@ -112,6 +133,17 @@ function inteiro(valor: bigint | number, bytes: number): Buffer {
 
 const u16 = (v: number) => inteiro(v, 2);
 const u64 = (v: bigint | number) => inteiro(v, 8);
+
+/**
+ * Texto em Borsh: 4 bytes de tamanho, little-endian, e os bytes do texto.
+ *
+ * O tamanho é em BYTES, não em letras. "Gatão" tem 5 letras e 6 bytes — usar a
+ * contagem de caracteres deixaria passar um nome que a rede recusa.
+ */
+function texto(valor: string): Buffer {
+  const bytes = Buffer.from(valor, "utf8");
+  return Buffer.concat([inteiro(bytes.length, 4), bytes]);
+}
 
 /* ------------------------------------------------------------------ */
 /* Parâmetros da configuração                                          */
@@ -180,11 +212,20 @@ export function ixCriarConfig(
   });
 }
 
-/** Lança uma moeda. O `mint` precisa assinar: a conta dele nasce aqui. */
+/**
+ * Lança uma moeda. O `mint` precisa assinar: a conta dele nasce aqui.
+ *
+ * @param uri endereço do JSON com nome, imagem e redes sociais. Vai gravado de
+ * forma IMUTÁVEL — publique o arquivo antes de mandar isto, senão a moeda fica
+ * sem imagem pra sempre.
+ */
 export function ixLancar(params: {
   criador: PublicKey;
   mint: PublicKey;
   carteiraDaPlataforma: PublicKey;
+  nome: string;
+  simbolo: string;
+  uri: string;
 }): TransactionInstruction {
   const curva = enderecoDaCurva(params.mint);
 
@@ -197,12 +238,39 @@ export function ixLancar(params: {
       escreve(curva),
       escreve(contaDeToken(curva, params.mint)),
       escreve(params.carteiraDaPlataforma),
+      escreve(enderecoDosMetadados(params.mint)),
+      le(METAPLEX_PROGRAM_ID),
       le(SystemProgram.programId),
       le(TOKEN_PROGRAM_ID),
       le(ASSOCIATED_TOKEN_PROGRAM_ID),
     ],
-    data: identificador("create"),
+    data: Buffer.concat([
+      identificador("create"),
+      texto(params.nome),
+      texto(params.simbolo),
+      texto(params.uri),
+    ]),
   });
+}
+
+/** Recusa o que a rede recusaria, com o motivo em português. */
+export function recusarDadosDoToken(p: {
+  nome: string;
+  simbolo: string;
+  uri: string;
+}): string | null {
+  const bytes = (t: string) => Buffer.from(t, "utf8").length;
+
+  if (bytes(p.nome) > LIMITES_DO_TOKEN.nome) {
+    return `O nome passa de ${LIMITES_DO_TOKEN.nome} bytes (acentos contam por 2).`;
+  }
+  if (bytes(p.simbolo) > LIMITES_DO_TOKEN.simbolo) {
+    return `O símbolo passa de ${LIMITES_DO_TOKEN.simbolo} bytes.`;
+  }
+  if (bytes(p.uri) > LIMITES_DO_TOKEN.uri) {
+    return `O endereço dos metadados passa de ${LIMITES_DO_TOKEN.uri} bytes.`;
+  }
+  return null;
 }
 
 interface ContasDeNegocio {
@@ -330,6 +398,142 @@ export function lerCurva(dados: Buffer): EstadoDaCurva {
     volumeAcumulado,
     concluida,
   };
+}
+
+export interface EstadoDaConfig {
+  autoridade: PublicKey;
+  carteiraDaPlataforma: PublicKey;
+  taxaTotalBps: number;
+  taxaAfiliadoBps: number;
+  pisoPlataformaBps: number;
+  limitesDasFaixas: bigint[];
+  faixasDoCriadorBps: number[];
+  solVirtualInicial: bigint;
+  tokenVirtualInicial: bigint;
+  tokenAVendaInicial: bigint;
+  emissaoTotal: bigint;
+  taxaDeLancamento: bigint;
+  pausado: boolean;
+}
+
+/**
+ * Decodifica a configuração global.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE ISTO PRECISA SER LIDO, E NÃO CHUTADO
+ * ---------------------------------------------------------------------------
+ * A taxa que a tela mostra tem que ser a MESMA que o programa cobra. Se o site
+ * assumisse 1,25% fixo e a configuração na rede fosse outra, a cotação sairia
+ * errada — e a proteção de preço que a própria tela calcula recusaria compras
+ * legítimas, ou pior, deixaria passar o que não deveria.
+ *
+ * Vale o mesmo pra `pausado`: a trava é decidida na rede, não aqui.
+ */
+export function lerConfig(dados: Buffer): EstadoDaConfig {
+  let em = 8;
+  const pubkey = () => {
+    const p = new PublicKey(dados.subarray(em, em + 32));
+    em += 32;
+    return p;
+  };
+  const u16Em = () => {
+    const v = dados.readUInt16LE(em);
+    em += 2;
+    return v;
+  };
+  const u64Em = () => {
+    const v = lerU64(dados, em);
+    em += 8;
+    return v;
+  };
+
+  const autoridade = pubkey();
+  const carteiraDaPlataforma = pubkey();
+  const taxaTotalBps = u16Em();
+  const taxaAfiliadoBps = u16Em();
+  const pisoPlataformaBps = u16Em();
+  const limitesDasFaixas = [u64Em(), u64Em(), u64Em(), u64Em()];
+  const faixasDoCriadorBps = [u16Em(), u16Em(), u16Em(), u16Em()];
+  const solVirtualInicial = u64Em();
+  const tokenVirtualInicial = u64Em();
+  const tokenAVendaInicial = u64Em();
+  const emissaoTotal = u64Em();
+  const taxaDeLancamento = u64Em();
+  const pausado = dados[em] === 1;
+
+  return {
+    autoridade,
+    carteiraDaPlataforma,
+    taxaTotalBps,
+    taxaAfiliadoBps,
+    pisoPlataformaBps,
+    limitesDasFaixas,
+    faixasDoCriadorBps,
+    solVirtualInicial,
+    tokenVirtualInicial,
+    tokenAVendaInicial,
+    emissaoTotal,
+    taxaDeLancamento,
+    pausado,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Divisão da taxa                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Qual fatia o criador leva no volume acumulado atual.
+ *
+ * A faixa é escolhida de trás pra frente: vale a mais alta que o volume já
+ * alcançou. Percorrer de frente pararia na primeira e ignoraria o resto.
+ */
+export function faixaDoCriadorBps(
+  config: Pick<EstadoDaConfig, "limitesDasFaixas" | "faixasDoCriadorBps">,
+  volumeAcumulado: bigint,
+): number {
+  for (let i = config.limitesDasFaixas.length - 1; i >= 0; i--) {
+    if (volumeAcumulado >= config.limitesDasFaixas[i]) {
+      return config.faixasDoCriadorBps[i];
+    }
+  }
+  return config.faixasDoCriadorBps[0];
+}
+
+export interface DivisaoDaTaxa {
+  total: bigint;
+  criador: bigint;
+  afiliado: bigint;
+  plataforma: bigint;
+}
+
+/**
+ * Como a taxa se reparte — o mesmo cálculo de `dividir_taxa` no programa.
+ *
+ * A fatia da plataforma é o RESTO, nunca uma conta à parte. É assim no Rust
+ * pelo mesmo motivo: somar as três pontas separadamente deixaria sobrar ou
+ * faltar um lamport por arredondamento, e um lamport por operação, repetido,
+ * é dinheiro que some sem dono.
+ *
+ * Existe aqui pra tela poder mostrar quanto vai pra cada ponta ANTES de a
+ * pessoa assinar, com os mesmos números que a rede vai gravar.
+ */
+export function dividirTaxa(
+  config: Pick<
+    EstadoDaConfig,
+    "taxaTotalBps" | "taxaAfiliadoBps" | "limitesDasFaixas" | "faixasDoCriadorBps"
+  >,
+  base: bigint,
+  volumeAcumulado: bigint,
+  temAfiliado: boolean,
+): DivisaoDaTaxa {
+  const porBps = (bps: number) => (base * BigInt(bps)) / 10_000n;
+
+  const total = porBps(config.taxaTotalBps);
+  const criador = porBps(faixaDoCriadorBps(config, volumeAcumulado));
+  const afiliado = temAfiliado ? porBps(config.taxaAfiliadoBps) : 0n;
+
+  return { total, criador, afiliado, plataforma: total - criador - afiliado };
 }
 
 /* ------------------------------------------------------------------ */

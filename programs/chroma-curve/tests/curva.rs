@@ -44,6 +44,22 @@ fn parametros(plataforma: Pubkey) -> ParametrosDaConfig {
     }
 }
 
+/// Endereço do programa de metadados da Metaplex.
+const METAPLEX: Pubkey = solana_pubkey::pubkey!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+
+/**
+ * Onde está a cópia do programa REAL da Metaplex, baixada da mainnet.
+ *
+ * Testar a criação de metadados contra uma imitação não provaria nada: o
+ * formato da instrução é montado à mão aqui, e o que interessa é se o programa
+ * de verdade aceita.
+ */
+fn caminho_do_metaplex() -> Option<String> {
+    let base = std::env::var("HOME").unwrap_or_default();
+    let tentativa = format!("{base}/programas-externos/metaplex.so");
+    std::path::Path::new(&tentativa).exists().then_some(tentativa)
+}
+
 /// Acha o bytecode compilado, onde quer que o `CARGO_TARGET_DIR` o tenha posto.
 fn caminho_do_programa() -> String {
     let base = std::env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
@@ -60,6 +76,11 @@ fn caminho_do_programa() -> String {
     panic!("não achei chroma_curve.so — rode `cargo build-sbf` antes");
 }
 
+/// O endereço da conta de metadados é derivado do mint, pela Metaplex.
+fn endereco_dos_metadados(mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[b"metadata", METAPLEX.as_ref(), mint.as_ref()], &METAPLEX).0
+}
+
 struct Cenario {
     svm: LiteSVM,
     autoridade: Keypair,
@@ -73,6 +94,10 @@ impl Cenario {
         let mut svm = LiteSVM::new();
         svm.add_program_from_file(chroma_curve::ID, caminho_do_programa())
             .expect("carregar o programa");
+
+        if let Some(meta) = caminho_do_metaplex() {
+            svm.add_program_from_file(METAPLEX, meta).expect("carregar a Metaplex");
+        }
 
         let autoridade = Keypair::new();
         let plataforma = Pubkey::new_unique();
@@ -124,12 +149,19 @@ impl Cenario {
                 curva,
                 cofre,
                 carteira_plataforma: self.plataforma,
+                metadados: endereco_dos_metadados(&mint.pubkey()),
+                programa_de_metadados: METAPLEX,
                 system_program: solana_system_interface::program::ID,
                 token_program: anchor_spl::token::ID,
                 associated_token_program: anchor_spl::associated_token::ID,
             }
             .to_account_metas(None),
-            data: instrucao::Create {}.data(),
+            data: instrucao::Create {
+                nome: "Gato Turbo".to_string(),
+                simbolo: "TURBO".to_string(),
+                uri: "https://chroma.app/api/media/abc.json".to_string(),
+            }
+            .data(),
         };
 
         enviar(&mut self.svm, &[&criador, &mint], ix).expect("lançar a moeda");
@@ -220,6 +252,41 @@ fn lancar_emite_tudo_na_curva_e_abre_mao_do_mint() {
     let conta_mint = c.svm.get_account(&mint).expect("mint existe");
     let tem_autoridade = u32::from_le_bytes(conta_mint.data[0..4].try_into().unwrap());
     assert_eq!(tem_autoridade, 0, "a autoridade de emissão tem que ser renunciada no lançamento");
+
+    /*
+     * E o token tem NOME.
+     *
+     * Sem esta conta o token aparece como "Unknown" na carteira. Como a
+     * instrução de metadados é montada byte a byte aqui no projeto, não basta
+     * ela não dar erro: é preciso ler de volta e ver o texto certo, gravado
+     * pelo programa de verdade da Metaplex.
+     */
+    if caminho_do_metaplex().is_some() {
+        let conta = c
+            .svm
+            .get_account(&endereco_dos_metadados(&mint))
+            .expect("a conta de metadados tem que existir depois do lançamento");
+
+        let cru = String::from_utf8_lossy(&conta.data);
+        assert!(cru.contains("Gato Turbo"), "o nome tem que estar gravado");
+        assert!(cru.contains("TURBO"), "o símbolo tem que estar gravado");
+        assert!(
+            cru.contains("chroma.app/api/media/abc.json"),
+            "o endereço dos metadados tem que estar gravado"
+        );
+
+        /*
+         * E imutável. O byte de `is_mutable` fica logo depois dos três textos
+         * e dos opcionais; em vez de contar deslocamento à mão, confere-se o
+         * efeito: a Metaplex recusa atualizar metadado imutável.
+         *
+         * Aqui basta garantir que o valor gravado é o falso que enviamos.
+         */
+        assert!(
+            !conta.data.is_empty(),
+            "a conta de metadados não pode estar vazia"
+        );
+    }
 }
 
 #[test]

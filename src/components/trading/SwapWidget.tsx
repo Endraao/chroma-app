@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
-import { useSolanaSwap } from "@/hooks/useSolanaSwap";
+import { useTradeSolana } from "@/hooks/useTradeSolana";
 import { AFFILIATE_FEE_BPS, feeLabel, feeLabelFor, formatBps, swapFeeBps } from "@/lib/fees";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPrice, formatUnits, shortenAddress } from "@/lib/utils";
@@ -90,7 +90,7 @@ function SolanaSwap(props: SolanaSwapProps) {
   } = props;
   const { connected, publicKey } = useWallet();
 
-  const swap = useSolanaSwap({
+  const swap = useTradeSolana({
     tokenMint: tokenAddress,
     tokenSymbol: symbol,
     side,
@@ -105,14 +105,23 @@ function SolanaSwap(props: SolanaSwapProps) {
   const outputSymbol = isBuy ? symbol : "SOL";
   const inputDecimals = isBuy ? 9 : swap.tokenDecimals;
 
+  /*
+   * A unidade da taxa vem do hook, não da moeda de entrada.
+   *
+   * Pela Jupiter a taxa sai da entrada, então as duas coincidem. Pela curva
+   * ela é sempre em SOL — inclusive na venda, onde a entrada está em tokens.
+   * Formatar SOL com os decimais do token daria um número de outro planeta.
+   */
+  const feeSymbol = swap.naCurva ? "SOL" : inputSymbol;
+
   const fee = useMemo(() => {
-    if (inputDecimals === null) return { total: 0, platform: 0, affiliate: 0 };
+    if (swap.feeDecimals === null) return { total: 0, platform: 0, affiliate: 0 };
     return {
-      total: formatUnits(swap.fees.totalFee, inputDecimals),
-      platform: formatUnits(swap.fees.platformFee, inputDecimals),
-      affiliate: formatUnits(swap.fees.affiliateFee, inputDecimals),
+      total: formatUnits(swap.fees.totalFee, swap.feeDecimals),
+      platform: formatUnits(swap.fees.platformFee, swap.feeDecimals),
+      affiliate: formatUnits(swap.fees.affiliateFee, swap.feeDecimals),
     };
-  }, [swap.fees, inputDecimals]);
+  }, [swap.fees, swap.feeDecimals]);
 
   function applyPreset(value: number) {
     if (isBuy) {
@@ -238,8 +247,14 @@ function SolanaSwap(props: SolanaSwapProps) {
           affiliateCut={fee.affiliate}
           affiliate={affiliate}
           affiliateLabel={affiliateLabel}
-          symbol={inputSymbol}
+          symbol={feeSymbol}
         />
+
+        {swap.motivoTravado && (
+          <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
+            {swap.motivoTravado}
+          </p>
+        )}
 
         {swap.error && (
           <p className="rounded-lg border border-bear/25 bg-bear/[0.06] px-3 py-2 text-[11px] leading-snug text-bear">
@@ -283,7 +298,8 @@ function SolanaSwap(props: SolanaSwapProps) {
 
         {connected && publicKey && (
           <p className="text-center text-[11px] text-zinc-600">
-            {shortenAddress(publicKey.toBase58(), 6)} · rota via Jupiter
+            {shortenAddress(publicKey.toBase58(), 6)} ·{" "}
+            {swap.carregandoRota ? "procurando rota…" : swap.naCurva ? "direto na curva da Chroma" : "rota via Jupiter"}
           </p>
         )}
       </div>

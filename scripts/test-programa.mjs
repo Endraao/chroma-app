@@ -39,6 +39,11 @@ import {
   ixLancar,
   ixVender,
   lerCurva,
+  enderecoDosMetadados,
+  lerConfig,
+  dividirTaxa,
+  faixaDoCriadorBps,
+  recusarDadosDoToken,
 } from "../src/lib/chroma-program.ts";
 
 const RPC = process.env.RPC_LOCAL || "http://127.0.0.1:8899";
@@ -76,6 +81,31 @@ for (const [nome, gravado] of Object.entries(IDENTIFICADORES)) {
   ok(
     new RegExp(`pub fn ${nome}\\b`).test(fonteRust),
     `${nome}: existe no programa`,
+  );
+}
+
+console.log();
+console.log("--- limites que vêm da rede, não de nós ---");
+{
+  const base = { nome: "Gato", simbolo: "GATO", uri: "https://x.com/a.json" };
+
+  ok(recusarDadosDoToken(base) === null, "nome e símbolo normais passam");
+  ok(Boolean(recusarDadosDoToken({ ...base, nome: "a".repeat(33) })), "nome de 33 bytes é barrado");
+  ok(
+    Boolean(recusarDadosDoToken({ ...base, simbolo: "A".repeat(11) })),
+    "símbolo de 11 bytes é barrado",
+  );
+  /*
+   * O limite é em BYTES. "ã" ocupa 2 — um nome de 17 letras acentuadas passa
+   * de 32 bytes e a rede recusa, mesmo parecendo curto na tela.
+   */
+  ok(
+    Boolean(recusarDadosDoToken({ ...base, nome: "ã".repeat(17) })),
+    "17 letras acentuadas passam de 32 bytes e são barradas",
+  );
+  ok(
+    recusarDadosDoToken({ ...base, nome: "ã".repeat(16) }) === null,
+    "16 acentuadas cabem exatas",
   );
 }
 
@@ -162,9 +192,41 @@ if (!noAr) {
       ok(true, "configuração criada na rede");
     } else {
       // A rede já tinha configuração: reaproveita a carteira gravada nela.
-      carteiraDaPlataforma = new PublicKey(jaExiste.data.subarray(8 + 32, 8 + 64));
+      carteiraDaPlataforma = lerConfig(jaExiste.data).carteiraDaPlataforma;
       ok(true, "configuração já existia — reaproveitando");
     }
+
+    /* --- a configuração lida de volta ------------------------------ */
+    /*
+     * O site inteiro passou a confiar em `lerConfig` pra saber quanto é a
+     * taxa e pra onde ela vai. Um deslocamento errado aqui não quebra nada de
+     * forma visível — produz um número plausível e errado, que é o pior tipo
+     * de erro quando se trata de dinheiro.
+     */
+    const configLida = lerConfig((await conexao.getAccountInfo(config)).data);
+
+    ok(
+      configLida.carteiraDaPlataforma.equals(carteiraDaPlataforma),
+      "lerConfig achou a carteira da plataforma",
+    );
+    ok(configLida.taxaTotalBps === 125, `taxa total: ${configLida.taxaTotalBps} bps`);
+    ok(configLida.taxaAfiliadoBps === 30, `taxa do afiliado: ${configLida.taxaAfiliadoBps} bps`);
+    ok(configLida.pisoPlataformaBps === 20, `piso da plataforma: ${configLida.pisoPlataformaBps} bps`);
+    ok(
+      configLida.emissaoTotal === 1_000_000_000n * 1_000_000n,
+      "a emissão total sobreviveu à ida e volta",
+    );
+    ok(configLida.pausado === false, "a plataforma não está pausada");
+
+    /*
+     * A faixa é escolhida de trás pra frente. Percorrer de frente pararia na
+     * primeira e o criador ficaria preso na fatia menor pra sempre.
+     */
+    ok(faixaDoCriadorBps(configLida, 0n) === 30, "volume zero cai na primeira faixa");
+    ok(
+      faixaDoCriadorBps(configLida, 20_000n * BigInt(LAMPORTS_PER_SOL)) === 75,
+      "volume alto cai na última faixa",
+    );
 
     /* --- lançamento --- */
     const criador = Keypair.generate();
@@ -177,6 +239,9 @@ if (!noAr) {
         criador: criador.publicKey,
         mint: mint.publicKey,
         carteiraDaPlataforma,
+        nome: "Gato Turbo",
+        simbolo: "TURBO",
+        uri: "http://localhost:3000/api/media/teste.json",
       }),
     );
 
@@ -187,6 +252,20 @@ if (!noAr) {
     ok(estado.criador.equals(criador.publicKey), "e guarda quem lançou");
     ok(estado.tokenReal === 793_100_000n * 1_000_000n, `${estado.tokenReal / 1_000_000n} tokens à venda`);
     ok(estado.solReal === 0n, "a curva começa sem SOL");
+
+    /*
+     * O token tem NOME. Sem esta conta ele aparece como "Unknown" na carteira.
+     * A instrução é montada byte a byte no cliente, então não basta não dar
+     * erro: é preciso ler de volta do programa real da Metaplex.
+     */
+    const contaMeta = await conexao.getAccountInfo(enderecoDosMetadados(mint.publicKey));
+    if (contaMeta) {
+      const cru = contaMeta.data.toString("utf8");
+      ok(cru.includes("Gato Turbo"), "o nome ficou gravado na rede");
+      ok(cru.includes("TURBO"), "e o símbolo também");
+    } else {
+      ok(false, "a conta de metadados não foi criada");
+    }
 
     /* --- compra, com a cotação da tela --- */
     const trader = Keypair.generate();
@@ -234,18 +313,43 @@ if (!noAr) {
     const depoisCriador = await conexao.getBalance(criador.publicKey);
     const depoisPlataforma = await conexao.getBalance(carteiraDaPlataforma);
 
-    const taxaCriador = Number((gasto * 30n) / 10_000n);
-    const taxaTotal = Number((gasto * 125n) / 10_000n);
-    const taxaAfiliado = Number((gasto * 30n) / 10_000n);
+    /*
+     * A divisão esperada sai de `dividirTaxa`, o espelho em JS de
+     * `dividir_taxa` no Rust — e não de números escritos à mão aqui.
+     *
+     * A diferença importa: com números fixos, este teste provaria que o
+     * programa faz o que eu digitei no teste. Com o espelho, ele prova que a
+     * conta que a TELA mostra antes de a pessoa assinar é a mesma que a rede
+     * executa. Era a segunda coisa que faltava provar.
+     *
+     * O volume acumulado é zero porque esta é a primeira operação da curva.
+     */
+    const divisao = dividirTaxa(configLida, gasto, 0n, true);
 
-    ok(depoisCriador - antesCriador === taxaCriador, `criador recebeu ${taxaCriador} lamports`);
     ok(
-      depoisPlataforma - antesPlataforma === taxaTotal - taxaCriador - taxaAfiliado,
-      "plataforma ficou com o resto",
+      depoisCriador - antesCriador === Number(divisao.criador),
+      `criador recebeu ${divisao.criador} lamports, como o cliente previu`,
     );
     ok(
-      (await conexao.getBalance(afiliado)) === taxaAfiliado,
-      `afiliado recebeu ${taxaAfiliado} lamports`,
+      depoisPlataforma - antesPlataforma === Number(divisao.plataforma),
+      `plataforma recebeu ${divisao.plataforma} lamports — o resto, como previsto`,
+    );
+    ok(
+      (await conexao.getBalance(afiliado)) === Number(divisao.afiliado),
+      `afiliado recebeu ${divisao.afiliado} lamports, como o cliente previu`,
+    );
+
+    /*
+     * E o que sobra não some. Se as três pontas não fecharem o total, existe
+     * um lamport sem dono por operação — que repetido é dinheiro sumindo.
+     */
+    ok(
+      divisao.criador + divisao.afiliado + divisao.plataforma === divisao.total,
+      "as três fatias fecham o total exatamente",
+    );
+    ok(
+      divisao.plataforma >= (gasto * BigInt(configLida.pisoPlataformaBps)) / 10_000n,
+      "a plataforma ficou acima do piso",
     );
 
     /* --- venda --- */
