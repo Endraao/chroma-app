@@ -23,6 +23,8 @@ import {
   type KLineData,
 } from "klinecharts";
 
+import { BarraDeDesenho } from "./BarraDeDesenho";
+import { registrarRegua } from "./regua";
 import { cn } from "@/lib/utils";
 import type { EscalaDoGrafico } from "@/lib/chart-scale";
 import type { Candle } from "@/lib/types";
@@ -57,20 +59,6 @@ import type { Candle } from "@/lib/types";
  * VOLTA sozinho — quem tivesse dado zoom ou arrastado perdia a posição a cada
  * minuto. Era isso que fazia o gráfico parecer duro.
  */
-
-/** Ferramentas de desenho, na ordem da barra lateral. */
-const FERRAMENTAS: { id: string; nome: string; icone: React.ReactNode }[] = [
-  { id: "segment", nome: "Linha de tendência", icone: <IconeTendencia /> },
-  { id: "horizontalStraightLine", nome: "Linha horizontal", icone: <IconeHorizontal /> },
-  { id: "verticalStraightLine", nome: "Linha vertical", icone: <IconeVertical /> },
-  { id: "rayLine", nome: "Raio", icone: <IconeRaio /> },
-  { id: "priceLine", nome: "Linha de preço", icone: <IconePreco /> },
-  { id: "fibonacciLine", nome: "Retração de Fibonacci", icone: <IconeFibonacci /> },
-  { id: "parallelStraightLine", nome: "Canal paralelo", icone: <IconeCanal /> },
-  { id: "priceChannelLine", nome: "Canal de preço", icone: <IconeCanalPreco /> },
-  { id: "rect", nome: "Retângulo", icone: <IconeRetangulo /> },
-  { id: "simpleAnnotation", nome: "Anotação", icone: <IconeNota /> },
-];
 
 /** Indicadores desenhados POR CIMA das velas. */
 export const INDICADORES_PRINCIPAIS = ["MA", "EMA", "BOLL", "SAR"] as const;
@@ -112,6 +100,8 @@ const EIXO_COMPACTO = "chroma-compacto";
  * razão. Trocar um campo dentro de um efeito é outra história.
  */
 const pontePraEixo = { formatar: (v: number) => String(v) };
+
+registrarRegua();
 
 registerYAxis({
   name: EIXO_COMPACTO,
@@ -431,6 +421,20 @@ export function TradingChart({
     [ima],
   );
 
+  /**
+   * Aproxima um passo, no centro da tela.
+   *
+   * A lupa do TradingView faz isso: aproxima onde a pessoa está olhando, não
+   * na vela mais recente. Aproximar no fim jogaria a vista pra outro lugar.
+   */
+  const aproximar = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const largura = chart.getSize("candle_pane", DomPosition.Main)?.width ?? 0;
+    chart.zoomAtCoordinate(1.3, { x: largura / 2, y: 0 }, 120);
+  }, []);
+
   const limpar = useCallback(() => {
     chartRef.current?.removeOverlay();
     desenhosRef.current = [];
@@ -444,70 +448,27 @@ export function TradingChart({
 
   return (
     <div className="flex" style={{ height: altura, background: FUNDO }}>
-      {/* Ferramentas de desenho, à esquerda como nos terminais de análise */}
-      <div
-        className={cn(
-          "flex shrink-0 flex-col items-center gap-px border-r py-1.5 transition-[width]",
-          barraAberta ? "w-[42px]" : "w-[24px]",
-        )}
-        style={{ borderColor: LINHA, background: FUNDO }}
-      >
-        {barraAberta && (
-          <>
-            <BotaoFerramenta
-              nome="Cursor"
-              ativo={ferramenta === null}
-              onClick={() => setFerramenta(null)}
-            >
-              <IconeCursor />
-            </BotaoFerramenta>
-
-            <Divisor />
-
-            {FERRAMENTAS.map((f) => (
-              <BotaoFerramenta
-                key={f.id}
-                nome={f.nome}
-                ativo={ferramenta === f.id}
-                onClick={() => desenhar(f.id)}
-              >
-                {f.icone}
-              </BotaoFerramenta>
-            ))}
-
-            <Divisor />
-
-            <BotaoFerramenta
-              nome={ima ? "Ímã ligado: pontos grudam nas velas" : "Ímã desligado"}
-              ativo={ima}
-              onClick={() => setIma((v) => !v)}
-            >
-              <IconeIma />
-            </BotaoFerramenta>
-
-            <BotaoFerramenta nome="Apagar desenhos" ativo={false} onClick={limpar}>
-              <IconeLixeira />
-            </BotaoFerramenta>
-          </>
-        )}
-
-        {/*
-          Recolher a barra, como no terminal de referência: quem não está
-          desenhando ganha a largura de volta pro gráfico, que é o que
-          interessa na tela.
-        */}
-        <button
-          type="button"
-          title={barraAberta ? "Recolher ferramentas" : "Mostrar ferramentas"}
-          onClick={() => setBarraAberta((v) => !v)}
-          className="mt-auto grid h-6 w-full place-items-center text-[#868993] transition-colors hover:text-[#d1d4dc]"
-        >
-          <svg viewBox="0 0 24 24" className="size-3" {...traco}>
-            <path d={barraAberta ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7"} />
-          </svg>
-        </button>
-      </div>
-
+      {/*
+        A barra de desenho mora em arquivo próprio porque ela é um componente
+        de verdade — grupos, listas que abrem ao lado, memória da última
+        ferramenta usada. Misturada aqui, escondia tudo isso no meio da lógica
+        do gráfico.
+      */}
+      <BarraDeDesenho
+        ferramenta={ferramenta}
+        aoEscolher={(id) => (id === null ? setFerramenta(null) : desenhar(id))}
+        ima={ima}
+        aoTrocarIma={() => setIma((v) => !v)}
+        aoLimpar={limpar}
+        aoAproximar={aproximar}
+        cores={{
+          borda: LINHA,
+          fundo: FUNDO,
+          texto: TEXTO,
+          apagado: TEXTO_FRACO,
+          ativo: "#2962ff",
+        }}
+      />
       <div className="relative min-w-0 flex-1">
         {/*
           A legenda fica DENTRO do gráfico, no canto, e não numa faixa acima.
