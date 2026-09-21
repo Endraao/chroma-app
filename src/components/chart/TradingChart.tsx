@@ -1,12 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
+import {
+  ActionType,
+  CandleType,
+  DomPosition,
   LineType,
   OverlayMode,
   TooltipShowRule,
+  YAxisType,
   dispose,
   init,
+  registerYAxis,
   type Chart,
   type KLineData,
 } from "klinecharts";
@@ -74,12 +86,84 @@ const ehPrincipal = (nome: string) =>
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * Eixo de preço que escreve "$1.2M" em vez de "1,200,000.00".
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE PRECISOU DE UM EIXO PRÓPRIO
+ * ---------------------------------------------------------------------------
+ * A biblioteca não expõe formatador pro texto do eixo: ela escreve o número
+ * cru, com separador de milhar e duas casas. Num gráfico de market cap isso
+ * vira "1,200,000.00" repetido oito vezes na lateral — ilegível e ocupando o
+ * dobro da largura.
+ *
+ * O que existe é o registro de um eixo próprio, e ele RECEBE os marcadores que
+ * a biblioteca já calculou. Então nada de recalcular posição: só o texto é
+ * reescrito, e toda a matemática de escala continua sendo dela.
+ */
+const EIXO_COMPACTO = "chroma-compacto";
+
+/**
+ * A ponte entre o componente e o eixo registrado.
+ *
+ * Precisa ser de módulo porque a biblioteca chama o eixo sem passar nada do
+ * React. É um OBJETO, não uma variável solta: reatribuir variável de módulo
+ * durante o render é efeito colateral, e o compilador do React recusa — com
+ * razão. Trocar um campo dentro de um efeito é outra história.
+ */
+const pontePraEixo = { formatar: (v: number) => String(v) };
+
+registerYAxis({
+  name: EIXO_COMPACTO,
+  createTicks: ({ defaultTicks }) =>
+    defaultTicks.map((t) => ({ ...t, text: pontePraEixo.formatar(Number(t.value)) })),
+});
+/* ------------------------------------------------------------------ */
+
+/**
+ * O que a barra de ferramentas consegue pedir ao gráfico.
+ *
+ * Existe porque os botões moram no painel, um nível acima, e o gráfico é quem
+ * tem o objeto da biblioteca. Sem isto, ou os botões desciam pra cá — e a barra
+ * deixava de ser uma peça só — ou o objeto subia pro painel, e aí duas partes
+ * mexeriam no mesmo gráfico.
+ */
+export interface ComandosDoGrafico {
+  /** Escala do eixo: normal, porcentagem ou logarítmica. */
+  escalaDoEixo: (tipo: "normal" | "percentage" | "log") => void;
+  /** Volta pra vela mais recente, com animação. */
+  voltarAoAgora: () => void;
+  /** Quantas velas cabem na tela — é o que os botões 1D/1W/1M fazem. */
+  mostrarUltimas: (quantas: number) => void;
+  /** Tipo de desenho das velas. */
+  tipoDeVela: (tipo: CandleType) => void;
+  /** Baixa o gráfico como imagem. */
+  baixarImagem: (nome: string) => void;
+  /** Apaga o último desenho / apaga todos. */
+  desfazerDesenho: () => void;
+  limparDesenhos: () => void;
+}
+
+/** O que a legenda mostra: a vela sob o cursor, ou a última. */
+export interface VelaEmFoco {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+/* ------------------------------------------------------------------ */
+
 export function TradingChart({
   candles,
   escala,
   serie,
   indicadores,
   altura = 560,
+  comandos,
+  rotulo,
+  formatar = (v) => String(v),
 }: {
   candles: Candle[];
   escala: EscalaDoGrafico;
@@ -88,12 +172,20 @@ export function TradingChart({
   indicadores: Indicador[];
   /** altura em px; o gráfico é a peça principal da página, então é generosa */
   altura?: number;
+  /** por onde a barra de ferramentas manda no gráfico */
+  comandos?: Ref<ComandosDoGrafico>;
+  /** nome e tempo gráfico que aparecem na legenda, dentro do gráfico */
+  rotulo?: { simbolo: string; intervalo: string };
+  /** formata um valor do jeito que o eixo formata */
+  formatar?: (v: number) => string;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<Chart | null>(null);
   const serieAplicadaRef = useRef<string>("");
   const ultimoTsRef = useRef<number>(0);
   const painelPorIndicadorRef = useRef<Map<string, string>>(new Map());
+  /** ids dos desenhos, na ordem em que nasceram — é a pilha do desfazer */
+  const desenhosRef = useRef<string[]>([]);
 
   const [ferramenta, setFerramenta] = useState<string | null>(null);
   /*
@@ -119,6 +211,8 @@ export function TradingChart({
     });
     if (!chart) return;
 
+    chart.setPaneOptions({ id: "candle_pane", axisOptions: { name: EIXO_COMPACTO } });
+
     chartRef.current = chart;
     setPronto(true);
 
@@ -131,6 +225,17 @@ export function TradingChart({
       setPronto(false);
     };
   }, []);
+
+  /*
+   * O formatador do eixo acompanha a escala.
+   *
+   * Em efeito, não no render: a atribuição é efeito colateral. O gráfico
+   * redesenha a cada vela, então o eixo pega o formatador novo sozinho, sem
+   * precisar forçar nada.
+   */
+  useEffect(() => {
+    pontePraEixo.formatar = formatar;
+  }, [formatar]);
 
   /* --- Dados ------------------------------------------------------- */
   useEffect(() => {
@@ -189,12 +294,117 @@ export function TradingChart({
 
     for (const nome of desejados) {
       if (mapa.has(nome)) continue;
-      const painel = ehPrincipal(nome)
+      /*
+       * O VOLUME é caso à parte: ele fica DENTRO do painel das velas, como
+       * barrinhas no rodapé, e não num painel próprio.
+       *
+       * Num painel separado ele rouba altura das velas e vem acompanhado de
+       * uma legenda com três médias móveis que ninguém pediu. No terminal de
+       * referência o volume é só o histograma, dividindo espaço com o preço —
+       * é informação de apoio, não um gráfico à parte.
+       */
+      const dentroDasVelas = ehPrincipal(nome) || nome === "VOL";
+
+      const painel = dentroDasVelas
         ? chart.createIndicator(nome, true, { id: "candle_pane" })
         : chart.createIndicator(nome, false, { height: 80 });
-      if (painel) mapa.set(nome, painel);
+
+      if (painel) {
+        mapa.set(nome, painel);
+
+        /*
+         * Sem as médias móveis do volume. A biblioteca calcula MA5/MA10/MA20
+         * por padrão e escreve as três na legenda; num gráfico de meme coin de
+         * minuto isso é ruído sobre ruído.
+         */
+        if (nome === "VOL") chart.overrideIndicator({ name: "VOL", calcParams: [] }, painel);
+      }
     }
   }, [indicadores, pronto]);
+
+  /* --- A vela que a legenda mostra --------------------------------- */
+  /*
+   * Sob o cursor, ou a última quando o mouse está fora. É o comportamento do
+   * terminal de referência: a legenda nunca fica vazia, e ela responde ao
+   * cursor em vez de exigir um tooltip flutuante por cima das velas.
+   */
+  const [emFoco, setEmFoco] = useState<VelaEmFoco | null>(null);
+  const [legendaAberta, setLegendaAberta] = useState(true);
+  const [barraAberta, setBarraAberta] = useState(true);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !pronto) return;
+
+    const aoMover = (dados: unknown) => {
+      const k = (dados as { kLineData?: VelaEmFoco })?.kLineData;
+      setEmFoco(k ?? null);
+    };
+
+    chart.subscribeAction(ActionType.OnCrosshairChange, aoMover);
+    return () => chart.unsubscribeAction(ActionType.OnCrosshairChange, aoMover);
+  }, [pronto]);
+
+  /* --- Os comandos que a barra de ferramentas usa ------------------- */
+  useImperativeHandle(
+    comandos,
+    () => ({
+      escalaDoEixo: (tipo) => {
+        chartRef.current?.setStyles({
+          yAxis: {
+            type:
+              tipo === "log"
+                ? YAxisType.Log
+                : tipo === "percentage"
+                  ? YAxisType.Percentage
+                  : YAxisType.Normal,
+          },
+        });
+      },
+      voltarAoAgora: () => chartRef.current?.scrollToRealTime(240),
+      mostrarUltimas: (quantas) => {
+        const chart = chartRef.current;
+        if (!chart) return;
+
+        /*
+         * O espaço por vela é o que define o zoom. A largura é lida na hora
+         * porque o painel muda de tamanho com a janela — usar um valor fixo
+         * deixaria "1 dia" mostrando mais ou menos conforme a tela.
+         */
+        const largura = chart.getSize("candle_pane", DomPosition.Main)?.width ?? 800;
+        chart.setBarSpace(Math.max(0.6, largura / quantas));
+        chart.scrollToRealTime(0);
+      },
+      tipoDeVela: (tipo) => {
+        chartRef.current?.setStyles({ candle: { type: tipo } });
+      },
+      baixarImagem: (nome) => {
+        const chart = chartRef.current;
+        if (!chart) return;
+
+        const url = chart.getConvertPictureUrl(true, "png", FUNDO);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${nome}.png`;
+        link.click();
+      },
+      desfazerDesenho: () => {
+        /*
+         * A biblioteca não guarda pilha de desfazer; o que existe é remover
+         * por id. Guardamos a ordem em que os desenhos nasceram e tiramos o
+         * último — que é o que "desfazer" significa pra quem desenhou.
+         */
+        const ultimo = desenhosRef.current.pop();
+        if (ultimo) chartRef.current?.removeOverlay(ultimo);
+      },
+      limparDesenhos: () => {
+        chartRef.current?.removeOverlay();
+        desenhosRef.current = [];
+        setFerramenta(null);
+      },
+    }),
+    [comandos],
+  );
 
   /* --- Ferramenta de desenho --------------------------------------- */
   const desenhar = useCallback(
@@ -210,10 +420,11 @@ export function TradingChart({
          * tendência e vê-la aparecer dentro do MACD não é o que ninguém
          * espera.
          */
-        chart.createOverlay(
+        const criado = chart.createOverlay(
           { name: id, mode: ima ? OverlayMode.WeakMagnet : OverlayMode.Normal },
           "candle_pane",
         );
+        if (typeof criado === "string") desenhosRef.current.push(criado);
         return id;
       });
     },
@@ -222,52 +433,183 @@ export function TradingChart({
 
   const limpar = useCallback(() => {
     chartRef.current?.removeOverlay();
+    desenhosRef.current = [];
     setFerramenta(null);
   }, []);
 
+  const vela = emFoco ?? ultimaVela(candles);
+  const variacao = vela ? vela.close - vela.open : 0;
+  const variacaoPct = vela && vela.open > 0 ? (variacao / vela.open) * 100 : 0;
+  const subindo = variacao >= 0;
+
   return (
-    <div className="flex" style={{ height: altura }}>
-      {/* Barra de ferramentas, à esquerda como nos terminais de análise */}
-      <div className="flex w-[38px] shrink-0 flex-col items-center gap-px border-r border-white/[0.06] bg-white/[0.015] py-1.5">
-        <BotaoFerramenta
-          nome="Cursor"
-          ativo={ferramenta === null}
-          onClick={() => setFerramenta(null)}
+    <div className="flex" style={{ height: altura, background: FUNDO }}>
+      {/* Ferramentas de desenho, à esquerda como nos terminais de análise */}
+      <div
+        className={cn(
+          "flex shrink-0 flex-col items-center gap-px border-r py-1.5 transition-[width]",
+          barraAberta ? "w-[42px]" : "w-[24px]",
+        )}
+        style={{ borderColor: LINHA, background: FUNDO }}
+      >
+        {barraAberta && (
+          <>
+            <BotaoFerramenta
+              nome="Cursor"
+              ativo={ferramenta === null}
+              onClick={() => setFerramenta(null)}
+            >
+              <IconeCursor />
+            </BotaoFerramenta>
+
+            <Divisor />
+
+            {FERRAMENTAS.map((f) => (
+              <BotaoFerramenta
+                key={f.id}
+                nome={f.nome}
+                ativo={ferramenta === f.id}
+                onClick={() => desenhar(f.id)}
+              >
+                {f.icone}
+              </BotaoFerramenta>
+            ))}
+
+            <Divisor />
+
+            <BotaoFerramenta
+              nome={ima ? "Ímã ligado: pontos grudam nas velas" : "Ímã desligado"}
+              ativo={ima}
+              onClick={() => setIma((v) => !v)}
+            >
+              <IconeIma />
+            </BotaoFerramenta>
+
+            <BotaoFerramenta nome="Apagar desenhos" ativo={false} onClick={limpar}>
+              <IconeLixeira />
+            </BotaoFerramenta>
+          </>
+        )}
+
+        {/*
+          Recolher a barra, como no terminal de referência: quem não está
+          desenhando ganha a largura de volta pro gráfico, que é o que
+          interessa na tela.
+        */}
+        <button
+          type="button"
+          title={barraAberta ? "Recolher ferramentas" : "Mostrar ferramentas"}
+          onClick={() => setBarraAberta((v) => !v)}
+          className="mt-auto grid h-6 w-full place-items-center text-[#868993] transition-colors hover:text-[#d1d4dc]"
         >
-          <IconeCursor />
-        </BotaoFerramenta>
-
-        <div className="my-1 h-px w-4 bg-white/[0.08]" />
-
-        {FERRAMENTAS.map((f) => (
-          <BotaoFerramenta
-            key={f.id}
-            nome={f.nome}
-            ativo={ferramenta === f.id}
-            onClick={() => desenhar(f.id)}
-          >
-            {f.icone}
-          </BotaoFerramenta>
-        ))}
-
-        <div className="my-1 h-px w-4 bg-white/[0.08]" />
-
-        <BotaoFerramenta
-          nome={ima ? "Ímã ligado: pontos grudam nas velas" : "Ímã desligado"}
-          ativo={ima}
-          onClick={() => setIma((v) => !v)}
-        >
-          <IconeIma />
-        </BotaoFerramenta>
-
-        <BotaoFerramenta nome="Apagar desenhos" ativo={false} onClick={limpar}>
-          <IconeLixeira />
-        </BotaoFerramenta>
+          <svg viewBox="0 0 24 24" className="size-3" {...traco}>
+            <path d={barraAberta ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7"} />
+          </svg>
+        </button>
       </div>
 
-      <div ref={boxRef} className="min-w-0 flex-1" />
+      <div className="relative min-w-0 flex-1">
+        {/*
+          A legenda fica DENTRO do gráfico, no canto, e não numa faixa acima.
+          É onde quem negocia procura: o olho já está no gráfico, e uma faixa
+          separada custaria altura de vela — que é o que a tela tem de mais
+          valioso.
+        */}
+        <div className="pointer-events-none absolute left-2.5 top-2 z-10 select-none">
+          <div className="pointer-events-auto flex items-center gap-1.5 text-[12px] font-medium text-[#d1d4dc]">
+            <span>{rotulo?.simbolo ?? ""}</span>
+            <span className="text-[#868993]">·</span>
+            <span>{rotulo?.intervalo ?? ""}</span>
+            <span className="text-[#868993]">·</span>
+            <span className="text-[#868993]">chroma</span>
+          </div>
+
+          {legendaAberta && vela && (
+            <>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px]">
+                <Valor rotulo="Abr" valor={formatar(vela.open)} subindo={subindo} />
+                <Valor rotulo="Máx" valor={formatar(vela.high)} subindo={subindo} />
+                <Valor rotulo="Mín" valor={formatar(vela.low)} subindo={subindo} />
+                <Valor rotulo="Fch" valor={formatar(vela.close)} subindo={subindo} />
+                {/*
+                  * O sinal vai DENTRO do número ("$-19K"), não antes do
+                  * cifrão. É como o terminal de referência escreve, e evita a
+                  * leitura estranha de "−$19K" com dois símbolos seguidos.
+                  */}
+                <span className="tnum" style={{ color: subindo ? VERDE : VERMELHO }}>
+                  {formatar(variacao)} ({variacaoPct.toFixed(2).replace(".", ",")}%)
+                </span>
+              </div>
+
+              <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
+                <span className="text-[#868993]">Volume</span>
+                <span className="tnum" style={{ color: subindo ? VERDE : VERMELHO }}>
+                  {compacto(vela.volume)}
+                </span>
+              </div>
+            </>
+          )}
+
+          <button
+            type="button"
+            title={legendaAberta ? "Recolher valores" : "Mostrar valores"}
+            onClick={() => setLegendaAberta((v) => !v)}
+            className="pointer-events-auto mt-1 grid size-4 place-items-center rounded border border-[#2a2e39] bg-[#1e222d] text-[#868993] transition-colors hover:text-[#d1d4dc]"
+          >
+            <svg viewBox="0 0 24 24" className="size-2.5" {...traco}>
+              <path d={legendaAberta ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} />
+            </svg>
+          </button>
+        </div>
+
+        <div ref={boxRef} className="size-full" />
+      </div>
     </div>
   );
+}
+
+/** Um par rótulo/valor da legenda, no formato do terminal de referência. */
+function Valor({
+  rotulo,
+  valor,
+  subindo,
+}: {
+  rotulo: string;
+  valor: string;
+  subindo: boolean;
+}) {
+  return (
+    <span className="whitespace-nowrap">
+      <span className="text-[#868993]">{rotulo}</span>
+      <span className="tnum" style={{ color: subindo ? VERDE : VERMELHO }}>
+        {valor}
+      </span>
+    </span>
+  );
+}
+
+function Divisor() {
+  return <div className="my-1 h-px w-5" style={{ background: LINHA }} />;
+}
+
+/** A última vela com dados — é o que a legenda mostra fora do cursor. */
+function ultimaVela(candles: Candle[]): VelaEmFoco | null {
+  const c = candles[candles.length - 1];
+  return c
+    ? { open: c.open, high: c.high, low: c.low, close: c.close, volume: c.volume }
+    : null;
+}
+
+/** 7940 vira "7,94 K". Volume inteiro não cabe e não informa. */
+function compacto(n: number): string {
+  const abs = Math.abs(n);
+  const fmt = (v: number, s: string) =>
+    `${v.toFixed(2).replace(".", ",")} ${s}`.replace(",00 ", " ");
+
+  if (abs >= 1e9) return fmt(n / 1e9, "B");
+  if (abs >= 1e6) return fmt(n / 1e6, "M");
+  if (abs >= 1e3) return fmt(n / 1e3, "K");
+  return n.toFixed(2).replace(".", ",");
 }
 
 /* ------------------------------------------------------------------ */
@@ -291,10 +633,10 @@ function BotaoFerramenta({
       aria-pressed={ativo}
       onClick={onClick}
       className={cn(
-        "grid size-[30px] place-items-center rounded-md transition-colors",
+        "grid size-[32px] place-items-center rounded transition-colors",
         ativo
-          ? "bg-chroma-violet/20 text-chroma-violet"
-          : "text-zinc-600 hover:bg-white/5 hover:text-zinc-300",
+          ? "bg-[#2962ff]/20 text-[#2962ff]"
+          : "text-[#868993] hover:bg-white/5 hover:text-[#d1d4dc]",
       )}
     >
       {children}
@@ -308,84 +650,112 @@ function BotaoFerramenta({
  * Fora do componente: o objeto é constante, e recriá-lo a cada render faria a
  * biblioteca recalcular estilo à toa no caminho mais quente da tela.
  */
+/*
+ * As cores do tema ESCURO PADRÃO do TradingView, não uma aproximação.
+ *
+ * O verde e o vermelho são os mesmos que eles usam hoje (#089981 e #F23645),
+ * o fundo é o #131722 clássico e as linhas de grade o #1e222d. Foi pedido
+ * assim de propósito: quem negocia reconhece esse conjunto de olho fechado, e
+ * uma paleta "parecida" só faz o gráfico parecer imitação.
+ */
+const VERDE = "#089981";
+const VERMELHO = "#F23645";
+const FUNDO = "#131722";
+const LINHA = "#2a2e39";
+const TEXTO = "#d1d4dc";
+const TEXTO_FRACO = "#868993";
+
 const ESTILO_ESCURO = {
   grid: {
-    horizontal: { color: "rgba(255,255,255,0.035)" },
-    vertical: { color: "rgba(255,255,255,0.035)" },
+    horizontal: { color: "#1e222d" },
+    vertical: { color: "#1e222d" },
   },
   candle: {
     bar: {
-      upColor: "#22c55e",
-      downColor: "#ef4444",
-      noChangeColor: "#71717a",
-      upBorderColor: "#22c55e",
-      downBorderColor: "#ef4444",
-      upWickColor: "rgba(34,197,94,.7)",
-      downWickColor: "rgba(239,68,68,.7)",
+      upColor: VERDE,
+      downColor: VERMELHO,
+      noChangeColor: "#787b86",
+      upBorderColor: VERDE,
+      downBorderColor: VERMELHO,
+      upWickColor: VERDE,
+      downWickColor: VERMELHO,
     },
     priceMark: {
       last: {
-        upColor: "#22c55e",
-        downColor: "#ef4444",
-        line: { style: LineType.Dashed },
-        text: { borderRadius: 3 },
+        upColor: VERDE,
+        downColor: VERMELHO,
+        line: { style: LineType.Dashed, size: 1 },
+        text: { borderRadius: 2, paddingLeft: 4, paddingRight: 4, size: 11 },
       },
-      high: { color: "#71717a" },
-      low: { color: "#71717a" },
+      high: { color: "#787b86" },
+      low: { color: "#787b86" },
     },
     /*
-     * Sem a régua de valores no topo. A biblioteca desenha sempre uma linha
-     * com hora/abertura/máxima/mínima/fechamento por cima das velas; ela
-     * repete o que já está no cabeçalho do painel e no rodapé, e come espaço
-     * do gráfico. Os mesmos números aparecem no eixo e ao passar o mouse.
+     * A régua de valores da biblioteca fica DESLIGADA porque nós desenhamos a
+     * nossa por cima (ver `Legenda`). A dela não deixa escolher o formato dos
+     * rótulos nem a ordem, e o que a gente precisa é "Abr/Máx/Mín/Fch" com o
+     * valor da variação ao lado — exatamente como no terminal de referência.
      */
     tooltip: {
       showRule: TooltipShowRule.None,
-      text: { color: "#d4d4d8", size: 11 },
+      text: { color: TEXTO, size: 11 },
       rect: {
-        color: "rgba(10,10,15,.92)",
-        borderColor: "rgba(255,255,255,.1)",
-        borderRadius: 8,
+        color: "rgba(30,34,45,.95)",
+        borderColor: "#363a45",
+        borderRadius: 4,
       },
     },
   },
   indicator: {
-    tooltip: { text: { color: "#a1a1aa", size: 11 } },
+    /*
+     * A régua de indicador fica desligada porque a nossa legenda já mostra o
+     * volume, e o texto dela ficava POR CIMA das velas no canto de cima.
+     */
+    tooltip: { showRule: TooltipShowRule.None, text: { color: TEXTO_FRACO, size: 11 } },
     bars: [
       {
-        upColor: "rgba(34,197,94,.45)",
-        downColor: "rgba(239,68,68,.45)",
-        noChangeColor: "rgba(113,113,122,.45)",
+        upColor: "rgba(8,153,129,.5)",
+        downColor: "rgba(242,54,69,.5)",
+        noChangeColor: "rgba(120,123,134,.5)",
       },
     ],
+    /*
+     * O selo do último volume FICA. No terminal de referência ele aparece no
+     * rodapé do eixo, e é por ele que se lê o volume da vela atual sem tirar o
+     * olho do preço.
+     */
+    lastValueMark: {
+      show: true,
+      text: { show: true, borderRadius: 2, size: 11 },
+    },
   },
   xAxis: {
-    axisLine: { color: "rgba(255,255,255,0.06)" },
-    tickText: { color: "#71717a", size: 10 },
-    tickLine: { color: "rgba(255,255,255,0.06)" },
+    axisLine: { color: LINHA },
+    tickText: { color: TEXTO_FRACO, size: 11 },
+    tickLine: { color: LINHA },
   },
   yAxis: {
-    axisLine: { color: "rgba(255,255,255,0.06)" },
-    tickText: { color: "#71717a", size: 10 },
-    tickLine: { color: "rgba(255,255,255,0.06)" },
+    axisLine: { color: LINHA },
+    tickText: { color: TEXTO_FRACO, size: 11 },
+    tickLine: { color: LINHA },
   },
   crosshair: {
     horizontal: {
-      line: { color: "rgba(139,92,246,.5)" },
-      text: { backgroundColor: "#8b5cf6", borderRadius: 3 },
+      line: { color: "#9598a1", style: LineType.Dashed },
+      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11 },
     },
     vertical: {
-      line: { color: "rgba(139,92,246,.5)" },
-      text: { backgroundColor: "#8b5cf6", borderRadius: 3 },
+      line: { color: "#9598a1", style: LineType.Dashed },
+      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11 },
     },
   },
   overlay: {
-    line: { color: "#8b5cf6" },
-    point: { color: "#8b5cf6", borderColor: "rgba(139,92,246,.35)" },
-    polygon: { color: "rgba(139,92,246,.15)", borderColor: "#8b5cf6" },
-    text: { color: "#e4e4e7" },
+    line: { color: "#2962ff" },
+    point: { color: "#2962ff", borderColor: "rgba(41,98,255,.35)" },
+    polygon: { color: "rgba(41,98,255,.15)", borderColor: "#2962ff" },
+    text: { color: TEXTO },
   },
-  separator: { color: "rgba(255,255,255,0.06)" },
+  separator: { color: LINHA },
 };
 
 /* ------------------------------------------------------------------ */

@@ -281,9 +281,18 @@ export async function fetchCandles(address: string, interval: string, limit = 30
 
   const key = `candles:${network}:${token.pairAddress}:${interval}`;
   return cached(key, TTL.candles, async () => {
+    /*
+     * `token=<endereço>` diz QUAL lado do par queremos precificar.
+     *
+     * Sem isso a GeckoTerminal escolhe sozinha, e ela escolhe o "base" do
+     * pool — que muitas vezes é o OUTRO token. O gráfico do Gamestonk vinha
+     * mostrando $22,85 por token, que é o preço do GMEx do outro lado do par,
+     * enquanto o preço real era $0,0₅3027. As velas e o cabeçalho discordavam
+     * por um fator de milhões e nada acusava.
+     */
     const url =
       `${GECKOTERMINAL}/networks/${network}/pools/${token.pairAddress}/ohlcv/${tf.path}` +
-      `?aggregate=${tf.aggregate}&limit=${limit}&currency=usd`;
+      `?aggregate=${tf.aggregate}&limit=${limit}&currency=usd&token=${address}`;
 
     const data = await getJson<{
       data: { attributes: { ohlcv_list: [number, number, number, number, number, number][] } };
