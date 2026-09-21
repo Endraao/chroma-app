@@ -187,12 +187,40 @@ function montarAlertas(
 
   for (const c of report.checks) {
     /*
-     * "unknown" nunca vira alerta. Não ter conseguido verificar não é defeito
-     * do token — é limitação nossa, e ela é dita em outro lugar, sem alarme.
+     * SÓ "danger" vira alerta. Nem "warn", nem "unknown".
+     *
+     * Esta é a segunda correção do mesmo problema, e o erro das duas vezes foi
+     * o mesmo: deixar entrar o que é só DIGNO DE NOTA. "Metadata mutável" é o
+     * caso exemplar — trocar o nome da moeda depois é sacanagem, mas não
+     * impede ninguém de vender nem tira dinheiro de carteira nenhuma. Ele
+     * estava abrindo um aviso vermelho em quase toda moeda.
+     *
+     * A régua continua a mesma: só é alerta o que (a) impede de VENDER ou (b)
+     * deixa alguém TIRAR O DINHEIRO. Na prática isso são a autoridade de
+     * emissão, a de congelar, o gancho de transferência, a conta fechável e a
+     * ausência de pool — todos já marcados como "danger".
+     *
+     * O que é "warn" não some: continua na lista de verificações, logo abaixo,
+     * onde quem quer olhar olha. Só para de virar alarme.
      */
-    if (c.level === "danger" || c.level === "warn") {
-      alertas.push({ id: c.id, titulo: c.label, detalhe: c.description, nivel: c.level });
-    }
+    if (c.level !== "danger") continue;
+
+    /*
+     * AUSÊNCIA DE DADO NÃO É PROVA DE PERIGO.
+     *
+     * O serviço de auditoria marca "nenhuma pool" quando não CONHECE o par —
+     * e ele não conhece a maioria das moedas novas, que é justamente o que se
+     * negocia aqui. O resultado era um alerta vermelho de "não dá pra vender"
+     * em moeda que estava negociando na mesma tela, com a liquidez impressa
+     * três centímetros acima.
+     *
+     * Quando os nossos próprios dados de mercado mostram liquidez, quem está
+     * errado é a auditoria. O caso de não haver pool DE VERDADE continua
+     * coberto: aí a liquidez que lemos é zero e o alerta passa.
+     */
+    if (c.id === "liquidity" && (mercado.liquidityUsd ?? 0) > 0) continue;
+
+    alertas.push({ id: c.id, titulo: c.label, detalhe: c.description, nivel: c.level });
   }
 
   /*

@@ -285,19 +285,25 @@ export function TradingChart({
     for (const nome of desejados) {
       if (mapa.has(nome)) continue;
       /*
-       * O VOLUME é caso à parte: ele fica DENTRO do painel das velas, como
-       * barrinhas no rodapé, e não num painel próprio.
+       * O VOLUME fica numa FAIXA PRÓPRIA, baixa, colada embaixo do preço.
        *
-       * Num painel separado ele rouba altura das velas e vem acompanhado de
-       * uma legenda com três médias móveis que ninguém pediu. No terminal de
-       * referência o volume é só o histograma, dividindo espaço com o preço —
-       * é informação de apoio, não um gráfico à parte.
+       * Tentei pô-lo dentro do painel das velas pra imitar o terminal de
+       * referência, e isso introduziu um bug feio: os dois passam a dividir o
+       * mesmo eixo. Em market cap o preço é ~3.000 contra volume ~12 e não se
+       * nota; em preço por token é 0,000003 contra 12 — o volume vira uma
+       * parede de barras e as velas somem numa linha no rodapé.
+       *
+       * Numa faixa própria as escalas são independentes, então nenhuma moeda
+       * quebra o gráfico. Visualmente dá no mesmo: a faixa é curta e o selo do
+       * último volume continua aparecendo na coluna do eixo.
        */
-      const dentroDasVelas = ehPrincipal(nome) || nome === "VOL";
-
-      const painel = dentroDasVelas
+      const painel = ehPrincipal(nome)
         ? chart.createIndicator(nome, true, { id: "candle_pane" })
-        : chart.createIndicator(nome, false, { height: 80 });
+        : chart.createIndicator(nome, false, {
+            height: nome === "VOL" ? 64 : 80,
+            /* A faixa do volume não se arrasta: ela é apoio, não um gráfico. */
+            dragEnabled: nome !== "VOL",
+          });
 
       if (painel) {
         mapa.set(nome, painel);

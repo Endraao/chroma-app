@@ -7,7 +7,6 @@ import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { CHAIN_IDS } from "@/lib/web3";
 import type { ChainId } from "@/lib/types";
-import { feeLabel, feeLabelFor } from "@/lib/fees";
 import { formatUsd } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -78,22 +77,27 @@ export default async function HomePage({
             vai pro afiliado — e ela cabe na mesma frase.
           */}
           <h1 className="mt-1.5 text-[22px] font-bold leading-tight tracking-tight text-zinc-50 sm:text-[26px]">
-            Lance, negocie e ganhe indicando.
+            Lance, ganhe indicando e negocie com as melhores taxas.
           </h1>
 
+          {/*
+            * Sem número de taxa aqui.
+            *
+            * A promessa é qualitativa e a conta fica na aba Taxas, aberta pra
+            * quem quiser conferir. Repetir a porcentagem em toda tela dava ao
+            * custo mais destaque do que ao produto — e quem decide por preço
+            * vai comparar de qualquer jeito, no lugar certo.
+            */}
           <p className="mt-1 text-[13px] leading-relaxed text-zinc-400">
             Terminal não-custodial, gráfico ao vivo e auditoria na mesma tela.{" "}
-            <strong className="font-semibold text-marca">
-              {feeLabel.affiliate} de cada swap
-            </strong>{" "}
-            vai direto pra carteira de quem indicou, na mesma transação.
+            <strong className="font-semibold text-marca">Quem indica recebe</strong> em cada
+            swap, direto na carteira e na mesma transação.
           </p>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Numero rotulo="Tokens" valor={String(tokens.length)} />
           <Numero rotulo="Volume 24h" valor={formatUsd(totalVolume)} />
-          <Numero rotulo="Taxa" valor={feeLabelFor("solana").swap} />
 
           <Link href="/create">
             <Button variant="chroma" size="md">

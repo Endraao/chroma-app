@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/Badge";
 import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { useTradeSolana } from "@/hooks/useTradeSolana";
-import { AFFILIATE_FEE_BPS, feeLabel, feeLabelFor, formatBps, swapFeeBps } from "@/lib/fees";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPrice, formatUnits, shortenAddress } from "@/lib/utils";
 import type { ChainId, TradeSide } from "@/lib/types";
@@ -240,15 +239,17 @@ function SolanaSwap(props: SolanaSwapProps) {
           </div>
         </div>
 
-        <FeeBreakdownRows
-          chain={props.chain}
-          total={fee.total}
-          platform={fee.platform}
-          affiliateCut={fee.affiliate}
-          affiliate={affiliate}
-          affiliateLabel={affiliateLabel}
-          symbol={feeSymbol}
-        />
+        {/*
+          * A divisão da taxa NÃO aparece na hora de negociar.
+          *
+          * Eram três linhas — Chroma, plataforma, afiliado — ocupando o lugar
+          * mais nobre do painel pra responder uma pergunta que quase ninguém
+          * faz naquele instante. Quem quer saber quanto a plataforma cobra
+          * abre a aba Taxas, onde está tudo aberto, e decide com calma.
+          *
+          * O que fica aqui é o que muda a DECISÃO do trade: o mínimo
+          * garantido e o impacto no preço.
+          */}
 
         {swap.motivoTravado && (
           <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
@@ -326,16 +327,6 @@ function EvmSwapPlaceholder({ symbol, chain }: { symbol: string; chain: ChainId 
           taxa vira transação&quot;.
         </div>
 
-        <div className="space-y-1.5 rounded-xl border border-white/[0.06] bg-ink-950/60 p-3 text-[11px] text-zinc-500">
-          <div className="flex justify-between">
-            <span>Taxa prevista</span>
-            <span className="tnum text-zinc-300">{feeLabelFor(chain).curveTotal}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Divisão com afiliado</span>
-            <span className="tnum text-zinc-300">{feeLabel.affiliate}</span>
-          </div>
-        </div>
 
         <RequireChainWallet chain={chain}>
           <Button variant="outline" size="lg" className="w-full" disabled>
@@ -377,54 +368,6 @@ function SideTabs({
           {s === "buy" ? "Comprar" : "Vender"}
         </button>
       ))}
-    </div>
-  );
-}
-
-function FeeBreakdownRows({
-  total,
-  platform,
-  affiliateCut,
-  affiliate,
-  affiliateLabel,
-  symbol,
-  chain,
-}: {
-  chain: ChainId;
-  total: number;
-  platform: number;
-  affiliateCut: number;
-  affiliate: string | null;
-  affiliateLabel: string | null;
-  symbol: string;
-}) {
-  const fmt = (n: number) => (n > 0 ? formatPrice(n, 6) : "0");
-  const labels = feeLabelFor(chain);
-
-  // Sem indicação a plataforma leva a taxa inteira; com indicação, o que sobra.
-  const platformBps = swapFeeBps(chain) - (affiliate ? AFFILIATE_FEE_BPS : 0);
-
-  return (
-    <div className="space-y-1.5 rounded-xl border border-white/[0.06] bg-ink-950/60 p-3 text-[11px]">
-      <Row label={`Taxa Chroma (${labels.swap})`} value={`${fmt(total)} ${symbol}`} strong />
-      <Row label={`Plataforma (${formatBps(platformBps)})`} value={`${fmt(platform)} ${symbol}`} />
-      <Row
-        label={`Afiliado (${feeLabel.affiliate})`}
-        value={affiliate ? `${fmt(affiliateCut)} ${symbol}` : "—"}
-        muted={!affiliate}
-      />
-
-      {affiliate ? (
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-white/[0.06] pt-2">
-          <Badge tone="chroma">ref</Badge>
-          <span className="text-zinc-500">{affiliateLabel ?? shortenAddress(affiliate, 6)}</span>
-          <span className="text-zinc-600">recebe na mesma transação</span>
-        </div>
-      ) : (
-        <p className="border-t border-white/[0.06] pt-2 text-zinc-600">
-          Sem link de indicação: a plataforma retém o 1% inteiro.
-        </p>
-      )}
     </div>
   );
 }
