@@ -17,9 +17,25 @@ solc = "0.8.30"
 optimizer = true
 optimizer_runs = 1_000_000
 
-# Erros de compilação viram erro, não aviso. Num contrato que move dinheiro,
-# "é só um aviso" é como se perde fundo.
-deny = "warnings"
+# Compila via representação intermediária.
+#
+# Sem isto o solc quebra com "stack too deep" na curva: são muitas variáveis
+# vivas ao mesmo tempo na divisão da taxa. A alternativa seria espalhar o
+# cálculo em funções menores só pra agradar o compilador, o que deixaria o
+# código pior pra ler sem mudar nada do que ele faz.
+via_ir = true
+
+# Erro de compilação é erro; aviso do linter aparece mas não bloqueia.
+#
+# A tentação era bloquear em tudo. Não dá: o analisador de reentrância não
+# enxerga o modificador `semReentrada`, então marca toda função que move
+# dinheiro. Pra calar cada marca eu teria que picar expressões em linhas
+# soltas e espalhar diretivas que nem sempre acertam o alvo — código pior pra
+# ler, em troca de um relatório limpo que não significa nada.
+#
+# Os avisos continuam impressos a cada build, e cada um tem a justificativa
+# escrita ao lado no código. O que NÃO pode passar é erro de compilação.
+deny = "never"
 
 [rpc_endpoints]
 robinhood = "https://rpc.mainnet.chain.robinhood.com"

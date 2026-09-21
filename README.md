@@ -286,8 +286,29 @@ Endereços verificados on-chain na rede 4663 (`eth_getCode` devolveu bytecode no
 
 `npm run contracts:test` — 19 testes, incluindo fuzz da divisão da taxa.
 
-**Ainda falta, e a interface continua dizendo "em breve" até lá:** montar a rota do fork na tela,
-publicar o contrato, e uma auditoria externa antes de qualquer dinheiro de verdade passar por ele.
+**Ainda falta, e a interface continua dizendo "em breve" até lá:** montar a rota do swap na tela,
+publicar os contratos, e uma auditoria externa antes de qualquer dinheiro de verdade passar por eles.
+
+### Lançar na Robinhood Chain
+
+`ChromaCurve.sol` é a mesma curva da Solana, em Solidity: reservas virtuais, faixas de criador,
+divisão da taxa com a plataforma ficando com o RESTO, e pausa que bloqueia comprar mas **nunca**
+vender. Cada moeda é um clone mínimo (EIP-1167) de `ChromaToken.sol`, que nasce com a emissão
+inteira na curva e **sem função de emitir, pausar, confiscar ou dono** — cada um desses poderes é um
+jeito conhecido de tirar dinheiro de quem comprou, e o nosso próprio painel de segurança marca token
+que os tenha.
+
+**Nada fica com quem lança.** Quem quiser participar da própria moeda compra como todo mundo, pelo
+mesmo preço.
+
+`npm run paridade` gera a tabela que o teste `Paridade.t.sol` usa pra provar que as duas redes
+entregam a mesma coisa. Não bate exato de propósito: na Solana a moeda tem 6 casas decimais e aqui
+tem 18, então o arredondamento tem granularidade diferente. A margem aceita é de UMA unidade na
+escala da Solana — um milionésimo de token — e qualquer coisa além disso falha.
+
+**Falta a migração**, que na Solana já existe. Sem ela, encher a curva aqui seria o mesmo beco sem
+saída que a Solana tinha: moeda de sucesso com o dinheiro preso. Os contratos NÃO devem ser
+publicados antes disso.
 
 ---
 

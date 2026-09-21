@@ -25,7 +25,8 @@
     "contracts:test": "wsl -d Ubuntu -e bash -lc \"export PATH=$PATH:/home/chroma/.foundry/bin && cd /mnt/c/Users/User/Desktop/chroma-app/contracts && forge test -vv\"",
     "rust:test": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$PATH && export CARGO_TARGET_DIR=$HOME/chroma-target && cd /mnt/c/Users/User/Desktop/chroma-app && cargo test -p chroma-curve\"",
     "rust:build": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$PATH && export CARGO_TARGET_DIR=$HOME/chroma-target && cd /mnt/c/Users/User/Desktop/chroma-app && cargo check -p chroma-curve\"",
-    "test:migracao": "node scripts/test-migracao.mjs"
+    "test:migracao": "node scripts/test-migracao.mjs",
+    "paridade": "node scripts/gerar-paridade.mjs"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.15",
