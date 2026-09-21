@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { fetchToken } from "@/lib/market";
+import { getToken } from "@/lib/tokens";
 
 /**
  * GET /api/token-stats?address=… → os números de mercado do token.
@@ -23,7 +23,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "parâmetro 'address' é obrigatório" }, { status: 400 });
   }
 
-  const token = await fetchToken(address);
+  /*
+   * `getToken`, e não `fetchToken`.
+   *
+   * A Dexscreener não expõe número de portadores — devolve zero sempre. Como
+   * esta rota é repescada de dez em dez segundos, ela ATROPELAVA o valor certo
+   * que a página tinha recebido do servidor na primeira renderização: o
+   * cabeçalho abria com o número da Jupiter e, dez segundos depois, virava
+   * traço. No EMBER eram 21.176 portadores apagados a cada ciclo.
+   *
+   * `getToken` é a camada que já junta as duas fontes. Custa uma consulta a
+   * mais, com cache de cinco minutos.
+   */
+  const { token } = await getToken(address);
   if (!token) {
     return NextResponse.json({ error: "token indisponível" }, { status: 502 });
   }

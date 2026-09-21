@@ -328,18 +328,94 @@ export function TradingChart({
   const [legendaAberta, setLegendaAberta] = useState(true);
   const [barraAberta, setBarraAberta] = useState(true);
 
+  /* --- As etiquetas de preço, que são nossas ------------------------ */
+  /*
+   * Ver o comentário em `priceMark`, no estilo: a biblioteca não deixa formatar
+   * o texto dessas etiquetas, então o dela fica desligado e nós desenhamos as
+   * nossas por cima.
+   *
+   * As duas guardam posição E valor já resolvidos. A conversão de pixel pra
+   * valor precisa do objeto do gráfico, que mora num ref — e ref não se lê
+   * durante o render. Resolvendo dentro do efeito, o render só usa números.
+   */
+  const [etiquetaDoCursor, setEtiquetaDoCursor] = useState<{
+    y: number;
+    valor: number;
+  } | null>(null);
+  const [yDoUltimo, setYDoUltimo] = useState<number | null>(null);
+
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart || !pronto) return;
 
     const aoMover = (dados: unknown) => {
-      const k = (dados as { kLineData?: VelaEmFoco })?.kLineData;
-      setEmFoco(k ?? null);
+      const c = dados as { kLineData?: VelaEmFoco; y?: number; paneId?: string };
+      setEmFoco(c?.kLineData ?? null);
+
+      /*
+       * A etiqueta do cursor só existe no painel das velas.
+       *
+       * No painel de volume o valor sob o cursor é uma quantidade negociada, e
+       * o formatador daqui é o de PREÇO — escreveria "$1,2M" onde estão 1,2
+       * milhão de tokens. Melhor não mostrar nada.
+       */
+      if (typeof c?.y !== "number" || c.paneId !== "candle_pane") {
+        setEtiquetaDoCursor(null);
+        return;
+      }
+
+      try {
+        const v = chart.convertFromPixel([{ y: c.y }], {
+          paneId: "candle_pane",
+          absolute: true,
+        }) as Array<{ value?: number }>;
+        const valor = v?.[0]?.value;
+        setEtiquetaDoCursor(
+          typeof valor === "number" && Number.isFinite(valor) ? { y: c.y, valor } : null,
+        );
+      } catch {
+        setEtiquetaDoCursor(null);
+      }
     };
 
     chart.subscribeAction(ActionType.OnCrosshairChange, aoMover);
     return () => chart.unsubscribeAction(ActionType.OnCrosshairChange, aoMover);
   }, [pronto]);
+
+  /*
+   * A posição do último preço é lida de tempos em tempos, e não por evento,
+   * porque ela muda com tudo: vela nova, zoom, arraste, janela
+   * redimensionada, troca de escala. Assinar cada um desses seria cinco
+   * assinaturas pra manter em dia; uma leitura a cada 120ms é uma chamada
+   * barata e não tem como ficar dessincronizada.
+   */
+  const ultima = candles.length ? candles[candles.length - 1] : null;
+  /* `subindo` sem sufixo já é a da legenda, que é a vela EM FOCO — esta é
+     sempre a última, e as duas divergem quando o cursor está sobre o gráfico. */
+  const ultimaSubindo = ultima ? ultima.close >= ultima.open : true;
+
+  useEffect(() => {
+    if (!pronto || !ultima) return;
+
+    const ler = () => {
+      const chart = chartRef.current;
+      if (!chart) return;
+      try {
+        const p = chart.convertToPixel(
+          { value: ultima.close },
+          { paneId: "candle_pane", absolute: true },
+        ) as { y?: number };
+        setYDoUltimo(typeof p?.y === "number" && Number.isFinite(p.y) ? p.y : null);
+      } catch {
+        setYDoUltimo(null);
+      }
+    };
+
+    ler();
+    const timer = window.setInterval(ler, 120);
+    return () => window.clearInterval(timer);
+  }, [pronto, ultima]);
+
 
   /* --- Os comandos que a barra de ferramentas usa ------------------- */
   useImperativeHandle(
@@ -530,6 +606,36 @@ export function TradingChart({
         </div>
 
         <div ref={boxRef} className="size-full" />
+
+        {/*
+          As etiquetas do eixo, compactas.
+
+          Encostadas na direita, por cima da faixa do eixo — é onde as da
+          biblioteca ficavam. `pointer-events-none` porque ali por baixo está a
+          área de arrastar a escala, e uma etiqueta capturando o clique
+          quebraria o gesto.
+        */}
+        {yDoUltimo !== null && ultima && (
+          <div
+            className="pointer-events-none absolute right-0 z-10 rounded-[2px] px-1.5 py-[2px] text-[11px] font-semibold leading-none text-ink-950"
+            style={{
+              top: yDoUltimo - 8,
+              backgroundColor: ultimaSubindo ? VERDE : VERMELHO,
+              fontFamily: FONTE_TV,
+            }}
+          >
+            {formatar(ultima.close)}
+          </div>
+        )}
+
+        {etiquetaDoCursor && (
+          <div
+            className="pointer-events-none absolute right-0 z-10 rounded-[2px] bg-[#363a45] px-1.5 py-[2px] text-[11px] leading-none text-white"
+            style={{ top: etiquetaDoCursor.y - 8, fontFamily: FONTE_TV }}
+          >
+            {formatar(etiquetaDoCursor.valor)}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -658,15 +764,33 @@ const ESTILO_ESCURO = {
       upWickColor: VERDE,
       downWickColor: VERMELHO,
     },
+    /*
+     * -------------------------------------------------------------------
+     * OS RÓTULOS DE PREÇO SÃO NOSSOS
+     * -------------------------------------------------------------------
+     * A biblioteca escreve o valor por extenso — "43,936,934.65" — e não há
+     * como mudar: ela formata internamente com `formatPrecision` e não expõe
+     * formatador nenhum pra esses rótulos (só pros marcadores do eixo, que é o
+     * que o eixo registrado já aproveita). Em modo capitalização, onde os
+     * números são de milhões, isso enche a lateral de dígito.
+     *
+     * Então a MARCA continua sendo dela — a linha tracejada, na posição certa
+     * — e o TEXTO é desligado. O rótulo compacto é desenhado por cima, em
+     * HTML, pela `EtiquetaDePreco`, usando o MESMO formatador do eixo; assim
+     * os dois nunca discordam.
+     *
+     * Máxima e mínima saem de vez: o TradingView não mostra essas marcas por
+     * padrão, e eram elas as duas etiquetas soltas no meio do gráfico.
+     */
     priceMark: {
       last: {
         upColor: VERDE,
         downColor: VERMELHO,
         line: { style: LineType.Dashed, size: 1 },
-        text: { borderRadius: 2, paddingLeft: 4, paddingRight: 4, size: 11, family: FONTE_TV },
+        text: { show: false },
       },
-      high: { color: "#787b86" },
-      low: { color: "#787b86" },
+      high: { show: false },
+      low: { show: false },
     },
     /*
      * A régua de valores da biblioteca fica DESLIGADA porque nós desenhamos a
@@ -723,7 +847,8 @@ const ESTILO_ESCURO = {
   crosshair: {
     horizontal: {
       line: { color: "#9598a1", style: LineType.Dashed },
-      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11, family: FONTE_TV },
+      /* Mesmo motivo da marca de último preço: o texto é nosso. */
+      text: { show: false },
     },
     vertical: {
       line: { color: "#9598a1", style: LineType.Dashed },

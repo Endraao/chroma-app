@@ -36,6 +36,17 @@ import { SOLANA_RPC } from "@/lib/web3";
 
 const WSOL = "So11111111111111111111111111111111111111112";
 
+/**
+ * Quanto esperar pelo outro lado do swap.
+ *
+ * Os dois cofres são notificados em mensagens separadas, com poucos
+ * milissegundos entre elas. Curto demais e os lados nunca se encontram — o
+ * preço simplesmente para de atualizar. Longo demais e duas negociações
+ * seguidas se misturam numa conta só, o que dá um preço médio que não foi o de
+ * nenhuma das duas.
+ */
+const JANELA_DO_SWAP_MS = 120;
+
 /*
  * Os DOIS programas de token da Solana.
  *
@@ -124,31 +135,69 @@ export function usePoolTicker({
 
     setEstado("conectando");
 
-    /** Última reserva de cotação vista, pra medir o tamanho do negócio. */
-    let cotacaoAnterior: number | null = null;
+    /*
+     * -----------------------------------------------------------------
+     * O PREÇO VEM DO NEGÓCIO, NÃO DO TAMANHO DAS RESERVAS
+     * -----------------------------------------------------------------
+     * A primeira versão fazia `reservaDaCotacao / reservaDoToken`. Essa é a
+     * fórmula de uma AMM de PRODUTO CONSTANTE, e só dela.
+     *
+     * Em pool de liquidez concentrada — Meteora DLMM, Raydium CLMM, Orca
+     * Whirlpool — o preço é o bin ativo, e os cofres guardam o que sobrou das
+     * faixas, que não tem relação nenhuma com ele. Medido no EMBER, a razão
+     * deu $0,04104 contra $0,01344 de verdade: TRÊS VEZES errado. Na tela isso
+     * virava uma vela gigante saindo de $13M pra $44M de capitalização, e nada
+     * acusava — o número era plausível, só não era o preço.
+     *
+     * O que vale em QUALQUER AMM é o negócio em si: todo swap tira de um cofre
+     * e põe no outro, e a razão entre as duas VARIAÇÕES é o preço de execução.
+     * Bin, tick, curva ou produto constante — a conta é a mesma, porque mede
+     * só a troca que de fato aconteceu.
+     *
+     * O SINAL separa negócio de liquidez: num swap os dois cofres andam em
+     * direções OPOSTAS. Depósito faz os dois subirem, saque faz os dois
+     * descerem — aí a razão é a composição da pool, não um preço, e publicá-la
+     * traria de volta exatamente o erro que estamos consertando.
+     */
+    let pendenteBase = 0;
+    let pendenteCotacao = 0;
+    let janela: number | null = null;
 
-    /** Recalcula e publica sempre que uma reserva muda. */
-    const publicar = () => {
-      const reservas = [...reservasRef.current.values()];
-      if (reservas.length < 2) return;
+    /**
+     * Fecha a janela e publica, se o que chegou for mesmo um negócio.
+     *
+     * A janela existe porque os dois lados do swap chegam em notificações
+     * separadas. Sem esperar, cada uma seria lida como movimento de um lado só
+     * — e nunca haveria par pra dividir.
+     */
+    const fecharJanela = () => {
+      janela = null;
 
-      const base = reservas.find((r) => r.mint === tokenMint);
-      const cotacao = reservas.find((r) => r.mint !== tokenMint);
-      if (!base || !cotacao || base.quantidade <= 0) return;
+      const base = pendenteBase;
+      const cotacao = pendenteCotacao;
+      pendenteBase = 0;
+      pendenteCotacao = 0;
 
-      const precoEmCotacao = cotacao.quantidade / base.quantidade;
+      if (base === 0 || cotacao === 0) return;
+      if (Math.sign(base) === Math.sign(cotacao)) return;
+
+      const precoEmCotacao = Math.abs(cotacao) / Math.abs(base);
       const precoUsd = precoEmCotacao * precoDaCotacaoRef.current;
       if (!Number.isFinite(precoUsd) || precoUsd <= 0) return;
 
-      const variacao =
-        cotacaoAnterior === null ? 0 : Math.abs(cotacao.quantidade - cotacaoAnterior);
-      cotacaoAnterior = cotacao.quantidade;
-
       setTick({
         precoUsd,
-        volumeUsd: variacao * precoDaCotacaoRef.current,
+        volumeUsd: Math.abs(cotacao) * precoDaCotacaoRef.current,
         em: Date.now(),
       });
+    };
+
+    /** Registra a variação de um cofre e agenda o fechamento da janela. */
+    const acumular = (ehToken: boolean, variacao: number) => {
+      if (variacao === 0) return;
+      if (ehToken) pendenteBase += variacao;
+      else pendenteCotacao += variacao;
+      if (janela === null) janela = window.setTimeout(fecharJanela, JANELA_DO_SWAP_MS);
     };
 
     (async () => {
@@ -221,7 +270,16 @@ export function usePoolTicker({
             quantidade: cofre.quantidade,
           });
         }
-        publicar();
+
+        /*
+         * Nada é publicado na abertura, de propósito.
+         *
+         * O ticker só sabe dizer preço a partir de um NEGÓCIO, e na primeira
+         * leitura ainda não houve nenhum — só o retrato das reservas, que é
+         * justamente o número que não serve. O preço inicial da tela vem do
+         * servidor, que calculou pelo modelo certo de cada pool; daqui em
+         * diante o ticker só corrige quando alguém negocia de verdade.
+         */
 
         for (const cofre of cofres) {
           const id = conexao.onAccountChange(
@@ -236,11 +294,11 @@ export function usePoolTicker({
               const anterior = reservasRef.current.get(cofre.conta);
               if (!anterior || info.data.length < 72) return;
 
-              reservasRef.current.set(cofre.conta, {
-                mint: anterior.mint,
-                quantidade: Number(saldoDoCofre(info.data)) / 10 ** cofre.casas,
-              });
-              publicar();
+              const nova = Number(saldoDoCofre(info.data)) / 10 ** cofre.casas;
+              const variacao = nova - anterior.quantidade;
+
+              reservasRef.current.set(cofre.conta, { mint: anterior.mint, quantidade: nova });
+              acumular(anterior.mint === tokenMint, variacao);
             },
             "processed",
           );
@@ -257,6 +315,9 @@ export function usePoolTicker({
 
     return () => {
       cancelado = true;
+      /* A janela pendente fica pra trás: ela publicaria o preço da pool velha
+         em cima do gráfico da moeda nova. */
+      if (janela !== null) window.clearTimeout(janela);
       for (const id of inscricoes) {
         void conexao.removeAccountChangeListener(id).catch(() => {});
       }

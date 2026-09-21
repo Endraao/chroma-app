@@ -21,6 +21,22 @@ const INTERVAL_SECONDS: Record<Interval, number> = {
 
 /** De quanto em quanto tempo o preço é repescado. O cache do servidor é de 3s. */
 const PRICE_POLL_MS = 3_000;
+
+/**
+ * De quanto em quanto tempo o preço do servidor é relido como âncora.
+ *
+ * Não é pra desenhar — é só pra ter com o que comparar o preço que chega da
+ * rede. Vinte segundos é folgado porque a âncora não precisa ser instantânea:
+ * precisa estar na ordem de grandeza certa.
+ */
+const REFERENCIA_MS = 20_000;
+
+/**
+ * Quanto o preço ao vivo pode se afastar da âncora antes de ser descartado.
+ *
+ * Três vezes. Abaixo disso é mercado; acima é defeito nosso.
+ */
+const FATOR_MAXIMO = 3;
 /** De quanto em quanto tempo as velas fechadas são recarregadas. */
 const CANDLE_REFRESH_MS = 60_000;
 
@@ -268,8 +284,67 @@ export function useLiveChartData({
   /** Volume ainda não somado à tela, no mesmo ritmo do preço. */
   const volumePendenteRef = useRef(0);
 
+  /**
+   * O último preço que o servidor confirmou, como âncora de sanidade.
+   *
+   * Existe por causa de um bug que chegou até a tela: o preço ao vivo vinha da
+   * razão entre as reservas da pool, o que é errado em pool de liquidez
+   * concentrada, e o gráfico desenhou uma vela de $13M pra $44M de
+   * capitalização. O cálculo foi consertado no ticker — mas erro de MODELO não
+   * levanta exceção e não parece defeito: entrega um número plausível. Por
+   * isso nenhum preço vindo da rede entra na tela sem passar por aqui.
+   */
+  const referenciaRef = useRef(0);
+
+  useEffect(() => {
+    if (!address) return;
+    let cancelado = false;
+
+    const ler = async () => {
+      try {
+        const res = await fetch(`/api/price?address=${address}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const { priceUsd } = (await res.json()) as { priceUsd: number };
+        if (!cancelado && Number.isFinite(priceUsd) && priceUsd > 0) {
+          referenciaRef.current = priceUsd;
+        }
+      } catch {
+        /* sem âncora nova: continua valendo a anterior */
+      }
+    };
+
+    void ler();
+    const timer = window.setInterval(() => void ler(), REFERENCIA_MS);
+    return () => {
+      cancelado = true;
+      window.clearInterval(timer);
+    };
+  }, [address]);
+
   useEffect(() => {
     if (!tickDaPool) return;
+
+    /*
+     * A faixa é larga de propósito.
+     *
+     * Meme coin dobra de preço em um minuto, e isso é normal — faixa apertada
+     * estaria brigando com o produto, barrando movimento de verdade. O que ela
+     * precisa pegar é a outra ordem de grandeza: erro de modelo não erra por
+     * 30%, erra por 3 vezes, que foi exatamente o caso. Fora da faixa o preço
+     * é descartado e a âncora do servidor continua valendo.
+     */
+    const referencia = referenciaRef.current;
+    if (referencia > 0) {
+      const fator = tickDaPool.precoUsd / referencia;
+      if (fator > FATOR_MAXIMO || fator < 1 / FATOR_MAXIMO) {
+        console.warn(
+          `[grafico] preço ao vivo descartado: ${tickDaPool.precoUsd} contra ` +
+            `${referencia} confirmados pelo servidor (${fator.toFixed(2)}x)`,
+        );
+        return;
+      }
+    }
+
     precoPendenteRef.current = tickDaPool.precoUsd;
     volumePendenteRef.current += tickDaPool.volumeUsd;
   }, [tickDaPool]);
