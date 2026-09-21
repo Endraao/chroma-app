@@ -326,15 +326,29 @@ backend precisa repetir todas as checagens.
 
 ## Persistência
 
-Dois arquivos JSONL em `.data/`, append puro:
+**SQLite**, em `.data/chroma.db`, pela biblioteca embutida do Node (`node:sqlite`) — sem instalar
+nada. As alternativas populares compilam na instalação, e este projeto mantém `ignore-scripts=true`
+de propósito: script rodando em `npm install` é o vetor clássico de ataque de cadeia de suprimentos.
 
-- `accounts.jsonl` — apelidos e carteiras
-- `affiliate-events.jsonl` — cliques e conversões
+Saiu de dois arquivos JSONL em 21/09/2026. Os três motivos, em ordem de gravidade:
 
-Escolha consciente: o MVP roda numa máquina só e não obriga ninguém a instalar Postgres pra testar.
-Limites (uma instância, leitura carrega tudo em memória, sem índice) estão documentados em
-`src/lib/accounts.ts` e `src/lib/affiliate-store.ts`. Trocar por banco significa mexer só nesses
-dois arquivos.
+1. **Escrita concorrente corrompia linha.** O código lidava com isso ignorando a linha quebrada —
+   ou seja, perdia o registro em silêncio. Se fosse a vinculação de carteira de alguém, a comissão
+   dele passaria a cair na plataforma sem ninguém perceber.
+2. **Toda consulta lia o arquivo inteiro** e filtrava na memória, a cada visita ao painel.
+3. **"Uma carteira pertence a uma conta só" era uma checagem em JavaScript** que duas requisições
+   simultâneas atravessavam juntas. Virou chave primária.
+
+A importação dos arquivos antigos roda sozinha na primeira abertura e revelou um bug que estava
+ativo: dos 136 registros de conversão, só **6 eram transações distintas** — o painel do promotor
+vinha contando o mesmo swap até 23 vezes. Um índice único por transação fechou isso.
+
+Os `.jsonl` originais não são apagados: viram `.importado`. São dados de usuários reais e o
+original precisa continuar existindo pra conferência.
+
+**Apelido tem tabela própria, com histórico.** Renomear não apaga o nome antigo: quem imprimiu
+`?ref=fulano` num panfleto não reimprime porque a pessoa trocou de nome, e apelido largado que
+volta pro mercado é convite pra alguém se passar por quem o usava antes.
 
 **Isso não afeta o pagamento**: se os arquivos sumirem, ninguém deixa de receber — o pagamento é
 on-chain. O que se perde é o histórico do painel e os apelidos registrados.
@@ -367,8 +381,8 @@ Em ordem de peso, não de importância.
    graça (não varre o mercado), e o perfil não tem histórico de operações do usuário — por isso não
    há PnL nem "top trades" como nos concorrentes.
 
-7. **Banco de dados.** Apelidos e eventos de indicação estão em JSONL em `.data/`. Funciona numa
-   máquina só. Trocar significa mexer em `accounts.ts` e `affiliate-store.ts`, e nada mais.
+7. **Banco em um arquivo.** SQLite resolve concorrência e índice, mas continua sendo um arquivo
+   numa máquina. Escalar pra mais de uma instância pede Postgres — e aí muda só `db.ts`.
 
 8. **Bubble Map e InsightX.** Continuam como espaços reservados no painel de segurança.
 

@@ -45,9 +45,8 @@
     "wagmi": "^3.7.7"
   },
   "devDependencies": {
-    "@rainbow-me/rainbowkit": "^2.2.11",
     "@solana/wallet-adapter-wallets": "^0.19.39",
-    "@types/node": "^20.16.11",
+    "@types/node": "^24.13.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.20",

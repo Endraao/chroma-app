@@ -1,9 +1,8 @@
 import "server-only";
 
-import { appendFile, mkdir, readFile } from "node:fs/promises";
-import path from "node:path";
 
 import type { ChainId } from "./types";
+import { chaveDoEndereco, db } from "./db";
 
 /**
  * Apelidos (nicknames) ligados a carteiras.
@@ -37,8 +36,6 @@ import type { ChainId } from "./types";
  * primeiro registro sem fricção.
  */
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.jsonl");
 
 export type WalletKind = "solana" | "evm";
 
@@ -135,61 +132,97 @@ export function validateNickname(raw: string): { ok: true; nickname: string } | 
 /* Armazenamento                                                       */
 /* ------------------------------------------------------------------ */
 
-let cache: { accounts: Account[]; loadedAt: number } | null = null;
-const CACHE_MS = 5_000;
+/*
+ * O chão mudou de arquivo JSONL pra SQLite; as assinaturas não mudaram, então o
+ * resto do site não sabe. O porquê da troca está em `db.ts`.
+ *
+ * As funções continuam `async` mesmo sendo síncronas por dentro: são chamadas
+ * de rotas que já esperam promessa, e SQLite local não bloqueia de forma
+ * perceptível.
+ */
 
-async function readAll(): Promise<Account[]> {
-  if (cache && Date.now() - cache.loadedAt < CACHE_MS) return cache.accounts;
+interface LinhaDaConta {
+  id: number;
+  apelido: string;
+  display_name: string;
+  wallet: string;
+  kind: string;
+  avatar: string | null;
+  cover: string | null;
+  created_at: number;
+}
 
-  try {
-    const raw = await readFile(ACCOUNTS_FILE, "utf8");
-    const accounts = raw
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        try {
-          return JSON.parse(line) as Account;
-        } catch {
-          return null;
-        }
-      })
-      .filter((a): a is Account => a !== null)
-      .map(normalizar);
+/** Monta a conta juntando as carteiras dela. */
+function montar(linha: LinhaDaConta): Account {
+  const carteiras = db()
+    .prepare("SELECT chain, endereco FROM carteiras WHERE conta = ?")
+    .all(linha.id) as unknown as { chain: string; endereco: string }[];
 
-    cache = { accounts, loadedAt: Date.now() };
-    return accounts;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
-  }
+  return {
+    nickname: linha.apelido,
+    displayName: linha.display_name,
+    wallet: linha.wallet,
+    kind: linha.kind as WalletKind,
+    carteiras: Object.fromEntries(
+      carteiras.map((c) => [c.chain, c.endereco]),
+    ) as Partial<Record<ChainId, string>>,
+    createdAt: linha.created_at,
+    avatar: linha.avatar ?? undefined,
+    cover: linha.cover ?? undefined,
+  };
+}
+
+function porId(id: number): Account | null {
+  const linha = db().prepare("SELECT * FROM contas WHERE id = ?").get(id) as
+    | unknown as LinhaDaConta
+    | undefined;
+  return linha ? montar(linha) : null;
 }
 
 /**
- * Acha a conta por QUALQUER uma das carteiras dela; o registro mais recente
- * vence. Tem que olhar todas, senão quem entrou pela MetaMask não encontraria
- * a própria conta criada com a Phantom.
+ * Acha a conta por QUALQUER uma das carteiras dela.
+ *
+ * Tem que olhar todas, senão quem entrou pela MetaMask não encontraria a
+ * própria conta criada com a Phantom. Antes era varredura do arquivo inteiro;
+ * agora é acerto de chave primária.
  */
 export async function findByWallet(wallet: string): Promise<Account | null> {
-  const all = await readAll();
-  return (
-    [...all]
-      .reverse()
-      .find((a) =>
-        Object.values(a.carteiras ?? {}).some((endereco) => mesmoEndereco(endereco, wallet)),
-      ) ?? null
-  );
+  const achou = db()
+    .prepare("SELECT conta FROM carteiras WHERE endereco = ?")
+    .get(chaveDoEndereco(wallet)) as { conta: number } | undefined;
+
+  return achou ? porId(achou.conta) : null;
 }
 
+/**
+ * Acha a conta por um apelido — inclusive um que a pessoa já largou.
+ *
+ * O apelido antigo continua resolvendo de propósito: quem imprimiu
+ * `?ref=fulano` num panfleto não reimprime porque a pessoa trocou de nome. O
+ * que volta é a conta ATUAL, com o apelido de hoje.
+ */
 export async function findByNickname(nickname: string): Promise<Account | null> {
   const key = nickname.trim().toLowerCase().replace(/^@/, "");
-  const all = await readAll();
-  return [...all].reverse().find((a) => a.nickname === key) ?? null;
+  const achou = db()
+    .prepare("SELECT conta FROM apelidos WHERE nickname = ?")
+    .get(key) as { conta: number } | undefined;
+
+  return achou ? porId(achou.conta) : null;
 }
 
+/**
+ * O apelido está tomado por outra pessoa?
+ *
+ * Apelido largado continua tomado. Devolvê-lo ao mercado seria convite pra
+ * alguém assumir o nome de quem o usava antes.
+ */
 export async function isNicknameTaken(nickname: string, byWallet?: string): Promise<boolean> {
   const existing = await findByNickname(nickname);
   if (!existing) return false;
-  return existing.wallet !== byWallet;
+  if (!byWallet) return true;
+
+  // Livre pra quem já é dono — por qualquer uma das carteiras da conta.
+  return !Object.values(existing.carteiras ?? {}).some((e) => mesmoEndereco(e, byWallet));
 }
 
 export type ClaimResult =
@@ -205,36 +238,71 @@ export async function claimNickname(params: {
   if (!validation.ok) return { ok: false, error: validation.error, status: 400 };
   const nickname = validation.nickname;
 
-  // Já registrado por OUTRA carteira? Então não é desta pessoa.
   if (await isNicknameTaken(nickname, params.wallet)) {
     return { ok: false, error: "Esse apelido já está em uso.", status: 409 };
   }
 
+  const banco = db();
+  const chain = REDE_DO_KIND[params.kind];
+  const agora = Date.now();
+
+  const existente = banco
+    .prepare("SELECT conta FROM carteiras WHERE endereco = ?")
+    .get(chaveDoEndereco(params.wallet)) as { conta: number } | undefined;
+
   /*
-   * Se a carteira já tem conta, isto é troca de apelido, não conta nova: as
-   * carteiras das outras redes têm que vir junto. Sem isso, trocar de nome
-   * desvincularia a segunda rede em silêncio.
+   * Tudo numa transação. Uma troca de apelido mexe em duas tabelas; parar no
+   * meio deixaria a conta com o nome novo e sem o apontamento, ou o contrário.
    */
-  const anterior = await findByWallet(params.wallet);
+  banco.exec("BEGIN IMMEDIATE");
+  try {
+    let id: number;
 
-  const account: Account = {
-    ...(anterior ?? {}),
-    nickname,
-    displayName: params.nickname.trim().replace(/^@/, ""),
-    wallet: params.wallet,
-    kind: params.kind,
-    carteiras: {
-      ...(anterior?.carteiras ?? {}),
-      [REDE_DO_KIND[params.kind]]: params.wallet,
-    },
-    createdAt: Date.now(),
-  };
+    if (existente) {
+      // Troca de apelido: a conta é a mesma, o nome de exibição muda.
+      id = existente.conta;
+      banco
+        .prepare("UPDATE contas SET apelido = ?, display_name = ?, kind = ? WHERE id = ?")
+        .run(nickname, params.nickname.trim().replace(/^@/, ""), params.kind, id);
+    } else {
+      const r = banco
+        .prepare(
+          `INSERT INTO contas (apelido, display_name, wallet, kind, created_at)
+           VALUES (?, ?, ?, ?, ?)`,
+        )
+        .run(nickname, params.nickname.trim().replace(/^@/, ""), params.wallet, params.kind, agora);
+      id = Number(r.lastInsertRowid);
+    }
 
-  await mkdir(DATA_DIR, { recursive: true });
-  await appendFile(ACCOUNTS_FILE, JSON.stringify(account) + "\n", "utf8");
-  cache = null;
+    /*
+     * O apelido é REGISTRADO, nunca substituído. Os antigos ficam apontando pra
+     * mesma conta — é isso que mantém link velho funcionando e impede que
+     * alguém assuma um nome largado.
+     */
+    banco
+      .prepare(
+        `INSERT INTO apelidos (nickname, conta, desde) VALUES (?, ?, ?)
+         ON CONFLICT(nickname) DO NOTHING`,
+      )
+      .run(nickname, id, agora);
 
-  return { ok: true, account };
+    banco
+      .prepare(
+        `INSERT INTO carteiras (endereco, conta, chain) VALUES (?, ?, ?)
+         ON CONFLICT(endereco) DO UPDATE SET conta = excluded.conta, chain = excluded.chain`,
+      )
+      .run(chaveDoEndereco(params.wallet), id, chain);
+
+    banco.exec("COMMIT");
+
+    const account = porId(id);
+    return account
+      ? { ok: true, account }
+      : { ok: false, error: "não consegui gravar a conta", status: 500 };
+  } catch (erro) {
+    banco.exec("ROLLBACK");
+    throw erro;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -248,36 +316,34 @@ export type MediaResult =
 /**
  * Troca a foto de perfil e/ou a de capa.
  *
- * Grava um registro NOVO em vez de reescrever o antigo, igual ao resto deste
- * arquivo: o histórico fica e não existe um instante em que o arquivo está
- * pela metade se a máquina cair no meio da escrita.
- *
- * Os campos não enviados são copiados do registro atual — senão trocar a capa
- * apagaria a foto de perfil.
+ * Os campos não enviados ficam como estavam — senão trocar a capa apagaria a
+ * foto de perfil.
  */
 export async function saveProfileMedia(params: {
   wallet: string;
   avatar?: string;
   cover?: string;
 }): Promise<MediaResult> {
-  const atual = await findByWallet(params.wallet);
-  if (!atual) {
+  const achou = db()
+    .prepare("SELECT conta FROM carteiras WHERE endereco = ?")
+    .get(chaveDoEndereco(params.wallet)) as { conta: number } | undefined;
+
+  if (!achou) {
     return { ok: false, error: "Escolha um apelido antes de trocar as fotos.", status: 404 };
   }
 
-  const account: Account = {
-    ...atual,
-    avatar: params.avatar ?? atual.avatar,
-    cover: params.cover ?? atual.cover,
-    createdAt: Date.now(),
-  };
+  db()
+    .prepare(
+      `UPDATE contas SET avatar = COALESCE(?, avatar), cover = COALESCE(?, cover) WHERE id = ?`,
+    )
+    .run(params.avatar ?? null, params.cover ?? null, achou.conta);
 
-  await mkdir(DATA_DIR, { recursive: true });
-  await appendFile(ACCOUNTS_FILE, JSON.stringify(account) + "\n", "utf8");
-  cache = null;
-
-  return { ok: true, account };
+  const account = porId(achou.conta);
+  return account
+    ? { ok: true, account }
+    : { ok: false, error: "não consegui gravar as fotos", status: 500 };
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Vincular a segunda rede                                             */
@@ -326,15 +392,28 @@ export async function linkWallet(params: {
     return { ok: false, error: "Essa carteira já está em outra conta.", status: 409 };
   }
 
-  const account: Account = {
-    ...conta,
-    carteiras: { ...(conta.carteiras ?? {}), [params.chain]: params.endereco },
-    createdAt: Date.now(),
-  };
+  /*
+   * A chave primária da tabela de carteiras fecha a corrida que a checagem
+   * acima não fecha sozinha: duas requisições simultâneas passariam as duas
+   * pelo if e as duas gravariam. Aqui a segunda esbarra no banco.
+   */
+  const alvo = db()
+    .prepare("SELECT conta FROM apelidos WHERE nickname = ?")
+    .get(conta.nickname) as { conta: number } | undefined;
 
-  await mkdir(DATA_DIR, { recursive: true });
-  await appendFile(ACCOUNTS_FILE, JSON.stringify(account) + "\n", "utf8");
-  cache = null;
+  if (!alvo) {
+    return { ok: false, error: "não achei a conta pra vincular", status: 500 };
+  }
 
-  return { ok: true, account };
+  db()
+    .prepare(
+      `INSERT INTO carteiras (endereco, conta, chain) VALUES (?, ?, ?)
+       ON CONFLICT(endereco) DO UPDATE SET conta = excluded.conta, chain = excluded.chain`,
+    )
+    .run(chaveDoEndereco(params.endereco), alvo.conta, params.chain);
+
+  const account = await findByNickname(conta.nickname);
+  return account
+    ? { ok: true, account }
+    : { ok: false, error: "não consegui vincular a carteira", status: 500 };
 }

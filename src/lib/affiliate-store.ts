@@ -1,12 +1,11 @@
 import "server-only";
 
-import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { AFFILIATE_FEE_BPS } from "./fees";
 import type { ChainId } from "./types";
+import { db } from "./db";
 import { MOEDA_DA_REDE, type AffiliateSummary, type GanhosDaRede } from "./affiliate-types";
 
 export type { AffiliateSummary, GanhosDaRede };
-import path from "node:path";
 
 /**
  * Persistência dos eventos de afiliado.
@@ -28,8 +27,6 @@ import path from "node:path";
  * Nada disso afeta o pagamento do afiliado, que acontece on-chain.
  */
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const EVENTS_FILE = path.join(DATA_DIR, "affiliate-events.jsonl");
 
 export type AffiliateEvent = "click" | "trade";
 
@@ -67,40 +64,125 @@ export interface AffiliateRecord {
   txHash?: string;
 }
 
-/** Cache de leitura: evita reler o arquivo a cada request do dashboard. */
-let cache: { records: AffiliateRecord[]; loadedAt: number } | null = null;
-const CACHE_MS = 5_000;
+/*
+ * Daqui pra baixo o armazenamento é SQLite, não mais um arquivo JSONL. O porquê
+ * da troca está em `db.ts`. Duas coisas melhoraram além da velocidade:
+ *
+ *   - **O mesmo swap não conta duas vezes.** Um reenvio do registro de
+ *     conversão — banal quando a rede demora e a tela tenta de novo — somava a
+ *     comissão de novo no painel. Agora o índice único da transação barra.
+ *
+ *   - **O painel lê só o que é da pessoa.** Antes carregava o arquivo inteiro e
+ *     filtrava na memória, a cada visita.
+ */
 
+/** Grava o evento. Reenvio do mesmo swap é ignorado, não somado. */
 export async function recordEvent(record: AffiliateRecord): Promise<void> {
-  await mkdir(DATA_DIR, { recursive: true });
-  await appendFile(EVENTS_FILE, JSON.stringify(record) + "\n", "utf8");
-  cache = null; // invalida, senão o painel mostraria número velho
+  db()
+    .prepare(
+      `INSERT OR IGNORE INTO eventos_de_afiliado
+         (wallet, conta, event, at, chain, landed_on, volume_usd, volume_native,
+          commission_native, token_address, token_symbol, tx_hash)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      record.wallet,
+      record.conta ?? null,
+      record.event,
+      record.at,
+      record.chain ?? null,
+      record.landedOn ?? null,
+      record.volumeUsd ?? null,
+      record.volumeNative ?? null,
+      record.commissionNative ?? null,
+      record.tokenAddress ?? null,
+      record.tokenSymbol ?? null,
+      record.txHash ?? null,
+    );
 }
 
-export async function readEvents(): Promise<AffiliateRecord[]> {
-  if (cache && Date.now() - cache.loadedAt < CACHE_MS) return cache.records;
+interface LinhaDeEvento {
+  wallet: string;
+  conta: string | null;
+  event: string;
+  at: number;
+  chain: string | null;
+  landed_on: string | null;
+  volume_usd: number | null;
+  volume_native: number | null;
+  commission_native: number | null;
+  token_address: string | null;
+  token_symbol: string | null;
+  tx_hash: string | null;
+}
 
-  try {
-    const raw = await readFile(EVENTS_FILE, "utf8");
-    const records = raw
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        try {
-          return JSON.parse(line) as AffiliateRecord;
-        } catch {
-          return null; // linha truncada por um crash: ignora em vez de derrubar
-        }
-      })
-      .filter((r): r is AffiliateRecord => r !== null);
+function paraRegistro(l: LinhaDeEvento): AffiliateRecord {
+  return {
+    wallet: l.wallet,
+    conta: l.conta ?? undefined,
+    event: l.event as AffiliateEvent,
+    at: l.at,
+    chain: (l.chain ?? undefined) as ChainId | undefined,
+    landedOn: l.landed_on ?? undefined,
+    volumeUsd: l.volume_usd ?? undefined,
+    volumeNative: l.volume_native ?? undefined,
+    commissionNative: l.commission_native ?? undefined,
+    tokenAddress: l.token_address ?? undefined,
+    tokenSymbol: l.token_symbol ?? undefined,
+    txHash: l.tx_hash ?? undefined,
+  };
+}
 
-    cache = { records, loadedAt: Date.now() };
-    return records;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
+/**
+ * Os eventos de UMA pessoa, mesmo espalhados por várias carteiras.
+ *
+ * Casa por apelido OU por qualquer endereço da conta. O apelido sozinho não
+ * basta porque eventos antigos não o têm; os endereços sozinhos não bastam
+ * porque a pessoa pode vincular uma carteira depois de já ter recebido nela.
+ */
+function eventosDe(quem: IdentidadeDoPromotor): AffiliateRecord[] {
+  const enderecos = quem.wallets.filter(Boolean);
+
+  /*
+   * O `IN` é montado com um `?` por endereço. São no máximo duas ou três
+   * carteiras — uma por rede — então a lista é curtíssima, e os valores
+   * continuam indo como parâmetro, nunca concatenados na consulta.
+   */
+  const espacos = enderecos.map(() => "?").join(", ");
+
+  const condicoes: string[] = [];
+  const valores: (string | null)[] = [];
+
+  if (quem.nickname) {
+    condicoes.push("conta = ?");
+    valores.push(quem.nickname);
   }
+  if (enderecos.length > 0) {
+    /*
+     * Duas comparações: a exata e a em minúsculas. Endereço EVM é insensível
+     * a maiúsculas — a mesma carteira pode ter sido gravada em grafias
+     * diferentes — e o da Solana é sensível, então a exata precisa continuar
+     * existindo. O filtro fino vem depois, em `summarize`.
+     */
+    condicoes.push(`wallet IN (${espacos})`);
+    valores.push(...enderecos);
+    condicoes.push(`lower(wallet) IN (${espacos})`);
+    valores.push(...enderecos.map((e) => e.toLowerCase()));
+  }
+
+  if (condicoes.length === 0) return [];
+
+  const linhas = db()
+    .prepare(
+      `SELECT * FROM eventos_de_afiliado
+       WHERE ${condicoes.join(" OR ")}
+       ORDER BY at ASC`,
+    )
+    .all(...valores) as unknown as LinhaDeEvento[];
+
+  return linhas.map(paraRegistro);
 }
+
 
 /** Chave YYYY-MM-DD no fuso local — é o "dia" que o promotor enxerga. */
 function diaDe(ts: number): string {
@@ -192,14 +274,17 @@ export interface IdentidadeDoPromotor {
  * porque a pessoa pode vincular uma carteira depois de já ter recebido nela.
  */
 export async function summarize(quem: IdentidadeDoPromotor): Promise<AffiliateSummary> {
-  const all = await readEvents();
-
   const meusEnderecos = new Set(quem.wallets.map(chaveDeEndereco));
   const eDele = (r: AffiliateRecord) =>
     (quem.nickname != null && r.conta === quem.nickname) ||
     (Boolean(r.wallet) && meusEnderecos.has(chaveDeEndereco(r.wallet)));
 
-  const mine = all.filter(eDele);
+  /*
+   * O banco traz os candidatos; este filtro confirma. A consulta compara
+   * endereço de duas formas pra não perder grafia de EVM, e isso pode trazer
+   * algo a mais — o que entra na conta é o que passa aqui.
+   */
+  const mine = eventosDe(quem).filter(eDele);
   const trades = mine.filter((r) => r.event === "trade");
 
   /*

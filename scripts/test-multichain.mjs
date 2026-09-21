@@ -20,6 +20,7 @@ import { createPrivateKey, sign as assinarEd25519 } from "node:crypto";
 import { Keypair } from "@solana/web3.js";
 import { privateKeyToAccount, generatePrivateKey } from "viem/accounts";
 
+const RODADA = Date.now().toString(36);
 const BASE = "http://localhost:3000";
 
 let falhas = 0;
@@ -274,7 +275,8 @@ if (!online) {
     tokenSymbol: "POPCAT",
     volumeNative: 2,
     commissionNative: 0.006,
-    txHash: "tx_sol_multi",
+    // Único por rodada: o banco recusa o mesmo hash duas vezes, de propósito.
+    txHash: `tx_sol_multi_${RODADA}`,
   });
   await postar("/api/affiliate", {
     event: "trade",
@@ -284,7 +286,7 @@ if (!online) {
     tokenSymbol: "HOODCAT",
     volumeNative: 0.5,
     commissionNative: 0.0015,
-    txHash: "0xtx_eth_multi",
+    txHash: `0xtx_eth_multi_${RODADA}`,
   });
 
   for (const [rotulo, endereco] of [

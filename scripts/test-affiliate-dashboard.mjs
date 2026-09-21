@@ -29,6 +29,16 @@ const CARTEIRA = Array.from(
   () => BASE58[Math.floor(Math.random() * BASE58.length)],
 ).join("");
 
+/*
+ * Cada rodada usa hashes próprios.
+ *
+ * O banco recusa gravar o mesmo hash duas vezes — um swap só conta uma vez, e
+ * essa trava existe porque um reenvio do registro de conversão somaria
+ * comissão que nunca foi paga. Com hash fixo no teste, a segunda rodada seria
+ * silenciosamente ignorada e o resumo viria vazio.
+ */
+const RODADA = Date.now().toString(36);
+
 let falhas = 0;
 const ok = (cond, msg) => {
   console.log(`${cond ? "  ok  " : " FALHA"}  ${msg}`);
@@ -44,10 +54,10 @@ const registrar = (dados) =>
 
 console.log("\n--- gravando conversões de teste ---");
 const conversoes = [
-  { chain: "solana", tokenSymbol: "POPCAT", tokenAddress: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", volumeNative: 2.5, commissionNative: 0.0075, txHash: "tx_popcat_1" },
-  { chain: "solana", tokenSymbol: "POPCAT", tokenAddress: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", volumeNative: 1.0, commissionNative: 0.003, txHash: "tx_popcat_2" },
-  { chain: "solana", tokenSymbol: "WIFCASH", tokenAddress: "5cQVo6tpumpAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", volumeNative: 4.0, commissionNative: 0.012, txHash: "tx_wif_1" },
-  { chain: "robinhood", tokenSymbol: "HOODCAT", tokenAddress: "0x1111111111111111111111111111111111111111", volumeNative: 0.5, commissionNative: 0.0015, txHash: "0xtx_hoodcat_1" },
+  { chain: "solana", tokenSymbol: "POPCAT", tokenAddress: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", volumeNative: 2.5, commissionNative: 0.0075, txHash: `tx_popcat_1_${RODADA}` },
+  { chain: "solana", tokenSymbol: "POPCAT", tokenAddress: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", volumeNative: 1.0, commissionNative: 0.003, txHash: `tx_popcat_2_${RODADA}` },
+  { chain: "solana", tokenSymbol: "WIFCASH", tokenAddress: "5cQVo6tpumpAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", volumeNative: 4.0, commissionNative: 0.012, txHash: `tx_wif_1_${RODADA}` },
+  { chain: "robinhood", tokenSymbol: "HOODCAT", tokenAddress: "0x1111111111111111111111111111111111111111", volumeNative: 0.5, commissionNative: 0.0015, txHash: `0xtx_hoodcat_1_${RODADA}` },
 ];
 
 for (const c of conversoes) {
