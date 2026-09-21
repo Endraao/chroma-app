@@ -84,6 +84,13 @@ const config: Config = {
         // Gradiente de refração: logo e barra de progresso da curva, só.
         "chroma-gradient":
           "linear-gradient(100deg, #8b5cf6 0%, #6366f1 28%, #22d3ee 62%, #34d399 100%)",
+        /*
+         * O mesmo espectro na vertical, pra faixa que desce ao lado de uma
+         * lista ranqueada. Existe separado porque `rotate` num elemento de 1px
+         * de largura muda a caixa do layout e desalinha tudo em volta.
+         */
+        "chroma-vertical":
+          "linear-gradient(180deg, #8b5cf6 0%, #6366f1 28%, #22d3ee 62%, #34d399 100%)",
         "grid-faint":
           "linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px)",
       },
