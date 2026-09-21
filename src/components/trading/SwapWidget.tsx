@@ -1,54 +1,80 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
+import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
 import { useTradeSolana } from "@/hooks/useTradeSolana";
 import { CHAINS } from "@/lib/web3";
-import { cn, formatPrice, formatUnits, shortenAddress } from "@/lib/utils";
+import { cn, formatPrice, shortenAddress } from "@/lib/utils";
 import type { ChainId, TradeSide } from "@/lib/types";
 
+/**
+ * O painel de compra e venda.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE ELE MUDOU DE CARA
+ * ---------------------------------------------------------------------------
+ * A versão anterior era um formulário de DEX: campo "você paga", campo "você
+ * recebe", linha de slippage, linha de impacto, linha de rota. Seis coisas pra
+ * ler antes de apertar um botão.
+ *
+ * Numa meme coin a decisão não é essa. Quem chegou até aqui já decidiu que
+ * quer entrar, e a única pergunta que sobrou é QUANTO. Então sobrou uma coisa
+ * na tela: o valor, grande, no meio. O resto foi pra baixo da engrenagem.
+ *
+ * ---------------------------------------------------------------------------
+ * O SLIPPAGE SAIU DA TELA, MAS NÃO DA TRANSAÇÃO
+ * ---------------------------------------------------------------------------
+ * Isto é importante e vale dizer com todas as letras: o controle não aparece
+ * mais no painel, mas o LIMITE continua sendo enviado na ordem.
+ *
+ * Slippage é o que impede a sua compra de sair a qualquer preço. Sem limite
+ * nenhum, um bot vê a sua transação esperando na fila, compra na frente pra
+ * empurrar o preço, deixa você comprar caro e vende logo atrás — é o golpe
+ * mais comum de DEX, e chama sandwich. Tirar o campo da tela é decisão de
+ * interface; tirar o limite da ordem seria entregar quem usa o site.
+ *
+ * Então ele virou o que sempre foi na prática: uma configuração. Fica na
+ * engrenagem, com padrão seguro, pra quem sabe o que faz mexer.
+ */
+
+/** Valores em dólar, do jeito que se pensa em tamanho de ordem. */
+const ATALHOS_EM_DOLAR = [25, 100, 250];
+/** Porcentagens do saldo — de SOL na compra, do token na venda. */
+const ATALHOS_EM_PORCENTAGEM = [25, 50, 100];
+
 const SLIPPAGES = [1, 3, 5, 10];
-const BUY_PRESETS = [0.1, 0.5, 1, 5];
-const SELL_PRESETS = [25, 50, 75, 100];
+const SLIPPAGE_PADRAO = 3;
+
+/**
+ * Quanto de SOL fica de lado quando a pessoa manda "100%".
+ *
+ * Sem isso, gastar o saldo inteiro deixa a carteira sem como pagar a taxa de
+ * rede — e a transação falha DEPOIS de assinada, que é a pior hora possível.
+ */
+const RESERVA_DE_REDE_SOL = 0.02;
 
 export function SwapWidget({
   symbol,
   chain,
   tokenAddress,
+  priceUsd,
 }: {
   symbol: string;
   chain: ChainId;
   tokenAddress: string;
+  /** preço ao vivo, vindo do gráfico — a ponte entre token e dólar */
+  priceUsd: number;
 }) {
-  const [side, setSide] = useState<TradeSide>("buy");
-  const [amount, setAmount] = useState("");
-  const [slippage, setSlippage] = useState(3);
-
-  const { affiliate, affiliateLabel, affiliateRef } = useAffiliateTracking(chain);
   const meta = CHAINS[chain];
-  const isSolana = meta.kind === "solana";
 
-  return isSolana ? (
-    <SolanaSwap
-      symbol={symbol}
-      chain={chain}
-      tokenAddress={tokenAddress}
-      side={side}
-      setSide={setSide}
-      amount={amount}
-      setAmount={setAmount}
-      slippage={slippage}
-      setSlippage={setSlippage}
-      affiliate={affiliate}
-      affiliateRef={affiliateRef}
-      affiliateLabel={affiliateLabel}
-    />
+  return meta.kind === "solana" ? (
+    <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} />
   ) : (
     <EvmSwapPlaceholder symbol={symbol} chain={chain} />
   );
@@ -58,36 +84,47 @@ export function SwapWidget({
 /* Solana — implementado de ponta a ponta                              */
 /* ------------------------------------------------------------------ */
 
-interface SolanaSwapProps {
+function SolanaSwap({
+  symbol,
+  chain,
+  tokenAddress,
+  priceUsd,
+}: {
   symbol: string;
   chain: ChainId;
   tokenAddress: string;
-  side: TradeSide;
-  setSide: (s: TradeSide) => void;
-  amount: string;
-  setAmount: (v: string) => void;
-  slippage: number;
-  setSlippage: (v: number) => void;
-  affiliate: string | null;
-  affiliateRef: string | null;
-  affiliateLabel: string | null;
-}
+  priceUsd: number;
+}) {
+  const [side, setSide] = useState<TradeSide>("buy");
+  const [digitado, setDigitado] = useState("");
+  const [slippage, setSlippage] = useState(SLIPPAGE_PADRAO);
 
-function SolanaSwap(props: SolanaSwapProps) {
-  const {
-    symbol,
-    tokenAddress,
-    side,
-    setSide,
-    amount,
-    setAmount,
-    slippage,
-    setSlippage,
-    affiliate,
-    affiliateRef,
-    affiliateLabel,
-  } = props;
+  const { affiliate, affiliateRef } = useAffiliateTracking(chain);
   const { connected, publicKey } = useWallet();
+  const precoDoSol = usePrecoDoSol();
+
+  const comprando = side === "buy";
+
+  /*
+   * A unidade do campo grande.
+   *
+   * Comprando, a pessoa pensa em dólar — mas a transação é em SOL, e sem a
+   * cotação não dá pra converter. Nesse caso o campo passa a pedir SOL e diz
+   * isso na tela, em vez de inventar um câmbio.
+   */
+  const emDolar = comprando && precoDoSol !== null;
+  const digitadoNum = Number(digitado) || 0;
+
+  /*
+   * O valor que vai pra ordem, DERIVADO do campo — não é um segundo estado.
+   *
+   * Guardar os dois e sincronizar com efeito é como isso costuma ser feito, e
+   * é justamente onde nasce o bug clássico do painel de swap: o número da tela
+   * e o número da transação ficam um render fora de passo, e a pessoa assina
+   * um valor diferente do que leu.
+   */
+  const amount =
+    digitadoNum > 0 ? String(emDolar ? digitadoNum / precoDoSol : digitadoNum) : "";
 
   const swap = useTradeSolana({
     tokenMint: tokenAddress,
@@ -99,212 +136,470 @@ function SolanaSwap(props: SolanaSwapProps) {
     affiliateRef,
   });
 
-  const isBuy = side === "buy";
-  const inputSymbol = isBuy ? "SOL" : symbol;
-  const outputSymbol = isBuy ? symbol : "SOL";
-  const inputDecimals = isBuy ? 9 : swap.tokenDecimals;
-
-  /*
-   * A unidade da taxa vem do hook, não da moeda de entrada.
-   *
-   * Pela Jupiter a taxa sai da entrada, então as duas coincidem. Pela curva
-   * ela é sempre em SOL — inclusive na venda, onde a entrada está em tokens.
-   * Formatar SOL com os decimais do token daria um número de outro planeta.
-   */
-  const feeSymbol = swap.naCurva ? "SOL" : inputSymbol;
-
-  const fee = useMemo(() => {
-    if (swap.feeDecimals === null) return { total: 0, platform: 0, affiliate: 0 };
-    return {
-      total: formatUnits(swap.fees.totalFee, swap.feeDecimals),
-      platform: formatUnits(swap.fees.platformFee, swap.feeDecimals),
-      affiliate: formatUnits(swap.fees.affiliateFee, swap.feeDecimals),
-    };
-  }, [swap.fees, swap.feeDecimals]);
-
-  function applyPreset(value: number) {
-    if (isBuy) {
-      setAmount(String(value));
-      return;
-    }
-    // Na venda os presets são percentuais do saldo.
-    if (swap.balance === null) return;
-    const portion = (swap.balance * value) / 100;
-    setAmount(portion > 0 ? portion.toFixed(Math.min(9, swap.tokenDecimals ?? 6)) : "");
+  /* Trocar de lado zera o campo: 50 dólares e 50 milhões de tokens não são a
+     mesma ordem, e reaproveitar o número faria alguém vender sem querer. */
+  function trocarLado(s: TradeSide) {
+    if (s === side) return;
+    setSide(s);
+    setDigitado("");
   }
 
-  const presets = isBuy ? BUY_PRESETS : SELL_PRESETS;
-  const impactTone =
-    swap.priceImpactPct > 5 ? "text-bear" : swap.priceImpactPct > 1 ? "text-warn" : "text-zinc-400";
+  function atalhoEmDolar(usd: number) {
+    if (comprando) {
+      if (emDolar) setDigitado(String(usd));
+      return;
+    }
+    if (priceUsd <= 0) return;
+    setDigitado(arredondar(usd / priceUsd, swap.tokenDecimals ?? 6));
+  }
+
+  function atalhoEmPorcentagem(pct: number) {
+    if (swap.balance === null) return;
+
+    if (comprando) {
+      /* No 100% sobra o troco da taxa de rede; nos parciais não precisa. */
+      const disponivel =
+        pct === 100 ? Math.max(0, swap.balance - RESERVA_DE_REDE_SOL) : swap.balance;
+      const parte = (disponivel * pct) / 100;
+      if (parte <= 0) return setDigitado("");
+      setDigitado(emDolar ? arredondar(parte * precoDoSol, 2) : arredondar(parte, 4));
+      return;
+    }
+
+    const parte = (swap.balance * pct) / 100;
+    setDigitado(parte > 0 ? arredondar(parte, swap.tokenDecimals ?? 6) : "");
+  }
+
+  const semValor = digitadoNum <= 0;
+  const atalhoDolarLigado = comprando ? emDolar : priceUsd > 0;
+  const atalhoPctLigado = swap.balance !== null && swap.balance > 0;
+
+  /*
+   * O impacto no preço só aparece quando é ALTO.
+   *
+   * Mostrado sempre, com 0,03% na maioria das ordens, vira um número que a
+   * pessoa aprende a ignorar — e aí não serve pra nada no dia em que estiver
+   * em 18%. Calado abaixo de 2%, ele volta a ser um aviso.
+   */
+  const impactoPerigoso = swap.quote !== null && swap.priceImpactPct >= 2;
 
   return (
     <Card className="overflow-hidden">
-      <SideTabs side={side} onChange={setSide} />
+      <AbasDeLado side={side} onChange={trocarLado} />
 
-      <div className="space-y-3 px-4 pb-4">
-        {/* Entrada */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-colors focus-within:border-marca/40">
-          <div className="flex items-center justify-between text-[11px] text-zinc-500">
-            <span>Você paga</span>
-            <span className="flex items-center gap-1.5">
-              {swap.balance !== null && (
-                <button
-                  onClick={() =>
-                    setAmount(
-                      isBuy
-                        ? Math.max(0, swap.balance! - 0.02).toFixed(4) // deixa SOL pra taxa de rede
-                        : String(swap.balance),
-                    )
-                  }
-                  className="rounded px-1 text-marca transition-colors hover:text-chroma-cyan"
-                  title={isBuy ? "Usa o saldo menos 0,02 SOL pra taxa de rede" : "Vende tudo"}
-                >
-                  máx
-                </button>
-              )}
-              <span className="tnum font-semibold text-zinc-400">
-                {swap.balance !== null ? `${formatPrice(swap.balance, 4)} ` : ""}
-                {inputSymbol}
-              </span>
-            </span>
-          </div>
+      <div className="px-4 pb-4">
+        {/* ------------- o valor, que é a única pergunta ---------------- */}
+        <CampoDeValor
+          valor={digitado}
+          onChange={setDigitado}
+          emDolar={emDolar}
+          comprando={comprando}
+          emSol={emDolar ? digitadoNum / precoDoSol : digitadoNum}
+          equivalenteUsd={comprando ? digitadoNum * (precoDoSol ?? 0) : digitadoNum * priceUsd}
+          simbolo={symbol}
+        />
 
-          <input
-            inputMode="decimal"
-            value={amount}
-            placeholder="0.00"
-            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-            className="tnum w-full bg-transparent py-1 text-2xl font-semibold text-zinc-100 outline-none placeholder:text-zinc-700"
+        {/* ------------- saldo à esquerda, ajustes à direita ------------ */}
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-[11px] text-zinc-600">
+            {swap.balance !== null && (
+              <>
+                saldo{" "}
+                <span className="tnum text-zinc-500">
+                  {formatPrice(swap.balance, comprando ? 4 : 2)} {comprando ? "SOL" : symbol}
+                </span>
+              </>
+            )}
+          </span>
+
+          <Engrenagem
+            slippage={slippage}
+            setSlippage={setSlippage}
+            minimoGarantido={
+              swap.quote
+                ? `${formatPrice(swap.minReceived, 6)} ${comprando ? symbol : "SOL"}`
+                : null
+            }
+            rota={swap.naCurva ? "curva da Chroma" : swap.route || null}
           />
-
-          <div className="flex gap-1.5">
-            {presets.map((p) => (
-              <button
-                key={p}
-                onClick={() => applyPreset(p)}
-                className="flex-1 rounded-lg border border-white/[0.06] py-1 text-[11px] font-semibold text-zinc-400 transition-colors hover:border-marca/40 hover:text-marca"
-              >
-                {isBuy ? `${p} SOL` : `${p}%`}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Saída */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-          <div className="flex items-center justify-between text-[11px] text-zinc-500">
-            <span>Você recebe</span>
-            <span className="font-semibold text-zinc-400">{outputSymbol}</span>
-          </div>
-          <div className="tnum py-1 text-2xl font-semibold text-zinc-100">
-            {swap.phase === "quoting" ? (
-              <span className="text-zinc-700">cotando…</span>
-            ) : swap.outAmount > 0 ? (
-              formatPrice(swap.outAmount, 6)
-            ) : (
-              "0.00"
-            )}
-          </div>
-          {swap.quote && (
-            <div className="tnum space-y-0.5 text-[11px] text-zinc-600">
-              <div>
-                Mínimo garantido: {formatPrice(swap.minReceived, 6)} {outputSymbol}
-              </div>
-              <div className="flex items-center justify-between">
-                <span>
-                  Impacto no preço: <span className={impactTone}>{swap.priceImpactPct.toFixed(2)}%</span>
-                </span>
-                {swap.route && <span className="truncate pl-2 text-right">{swap.route}</span>}
-              </div>
+        <div className="space-y-2 pt-3">
+          {/* ------------- avisos que mudam a decisão ------------------- */}
+          {impactoPerigoso && (
+            <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
+              Esta ordem move o preço em{" "}
+              <strong className="font-semibold">{swap.priceImpactPct.toFixed(1)}%</strong>. É
+              grande demais pra liquidez que existe — você compra caro e quem vender depois recebe
+              menos.
+            </p>
+          )}
+
+          {swap.motivoTravado && (
+            <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
+              {swap.motivoTravado}
+            </p>
+          )}
+
+          {swap.error && (
+            <p className="rounded-lg border border-bear/25 bg-bear/[0.06] px-3 py-2 text-[11px] leading-snug text-bear">
+              {swap.error}
+            </p>
+          )}
+
+          {swap.signature && (
+            <div className="rounded-lg border border-bull/25 bg-bull/[0.06] px-3 py-2 text-[11px] text-bull">
+              Confirmado!{" "}
+              <a
+                href={`https://solscan.io/tx/${swap.signature}`}
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-2"
+              >
+                ver no Solscan ↗
+              </a>
             </div>
           )}
-        </div>
 
-        {/* Slippage */}
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium text-zinc-500">Slippage</span>
-          <div className="flex gap-1">
+          {/* ------------- o botão -------------------------------------- */}
+          <RequireChainWallet chain="solana">
+            <Button
+              variant={comprando ? "buy" : "sell"}
+              size="lg"
+              className="h-12 w-full text-[15px]"
+              disabled={!swap.canSwap || swap.phase === "executing"}
+              onClick={swap.execute}
+            >
+              {swap.phase === "executing"
+                ? swap.step || "Processando…"
+                : semValor
+                  ? "Informe um valor"
+                  : swap.phase === "quoting"
+                    ? "Cotando…"
+                    : swap.phase === "error"
+                      ? "Tentar de novo"
+                      : `${comprando ? "Comprar" : "Vender"} ${symbol}`}
+            </Button>
+          </RequireChainWallet>
+
+          {/* ------------- atalhos -------------------------------------- */}
+          <div className="grid grid-cols-3 gap-2">
+            {ATALHOS_EM_DOLAR.map((v) => (
+              <Atalho
+                key={v}
+                rotulo={`$${v}`}
+                tom={comprando ? "buy" : "sell"}
+                ligado={atalhoDolarLigado}
+                onClick={() => atalhoEmDolar(v)}
+                titulo={
+                  atalhoDolarLigado ? undefined : "Precisa da cotação do SOL, que não carregou"
+                }
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {ATALHOS_EM_PORCENTAGEM.map((v) => (
+              <Atalho
+                key={v}
+                rotulo={`${v}%`}
+                tom={comprando ? "buy" : "sell"}
+                ligado={atalhoPctLigado}
+                onClick={() => atalhoEmPorcentagem(v)}
+                titulo={
+                  !atalhoPctLigado
+                    ? "Conecte a carteira pra usar porcentagem do saldo"
+                    : comprando && v === 100
+                      ? `Usa o saldo menos ${RESERVA_DE_REDE_SOL} SOL, pra sobrar taxa de rede`
+                      : undefined
+                }
+              />
+            ))}
+          </div>
+
+          {connected && publicKey && (
+            <p className="pt-0.5 text-center text-[11px] text-zinc-600">
+              {shortenAddress(publicKey.toBase58(), 6)} ·{" "}
+              {swap.carregandoRota
+                ? "procurando rota…"
+                : swap.naCurva
+                  ? "direto na curva da Chroma"
+                  : "rota via Jupiter"}
+            </p>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Peças                                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * O valor, grande, no meio do painel.
+ *
+ * É um `<input>` de verdade, não um display: clicar em qualquer ponto do
+ * número põe o cursor pra digitar. A largura acompanha o conteúdo pra ele
+ * ficar centrado JUNTO com o cifrão — senão o cifrão fica solto na esquerda e
+ * o número torto no meio.
+ */
+function CampoDeValor({
+  valor,
+  onChange,
+  emDolar,
+  comprando,
+  emSol,
+  equivalenteUsd,
+  simbolo,
+}: {
+  valor: string;
+  onChange: (v: string) => void;
+  emDolar: boolean;
+  comprando: boolean;
+  emSol: number;
+  equivalenteUsd: number;
+  simbolo: string;
+}) {
+  const campo = useRef<HTMLInputElement>(null);
+  const largura = Math.max(1, (valor || "0").length);
+
+  return (
+    <div
+      role="presentation"
+      onClick={() => campo.current?.focus()}
+      className="cursor-text pt-6 text-center"
+    >
+      <div className="flex items-end justify-center gap-1">
+        {emDolar && <span className="pb-0.5 text-[28px] font-bold leading-none text-zinc-600">$</span>}
+        <input
+          ref={campo}
+          inputMode="decimal"
+          value={valor}
+          placeholder="0"
+          size={largura}
+          onChange={(e) => onChange(saneia(e.target.value))}
+          className="tnum min-w-0 bg-transparent text-center text-[40px] font-bold leading-none text-zinc-100 outline-none placeholder:text-zinc-600"
+        />
+        {!emDolar && (
+          <span className="pb-1 text-[15px] font-bold leading-none text-zinc-600">
+            {comprando ? "SOL" : simbolo}
+          </span>
+        )}
+      </div>
+
+      {/*
+        A segunda unidade, embaixo e pequena.
+
+        Fica visível mesmo em zero. É o que garante que ninguém digite achando
+        que está mandando dólar quando está mandando SOL — ou o contrário, que
+        é cem vezes pior.
+      */}
+      <p className="tnum mt-2 min-h-[16px] text-[12px] text-zinc-600">
+        {comprando ? (
+          emDolar ? (
+            <>≈ {formatPrice(emSol, 4)} SOL</>
+          ) : (
+            <span className="text-warn/80">
+              cotação do SOL indisponível — o valor acima está em SOL
+            </span>
+          )
+        ) : (
+          <>≈ ${formatPrice(equivalenteUsd, 2)}</>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * As abas de comprar e vender.
+ *
+ * A ativa é CHAPADA, não um contorno aceso: em que lado você está é a
+ * informação mais cara do painel — apertar "vender" achando que está comprando
+ * custa dinheiro, e contorno não é diferença suficiente pra isso.
+ */
+function AbasDeLado({
+  side,
+  onChange,
+  disabled,
+}: {
+  side: TradeSide;
+  onChange: (s: TradeSide) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-1.5 p-1.5">
+      {(["buy", "sell"] as TradeSide[]).map((s) => {
+        const ativo = side === s;
+        return (
+          <button
+            key={s}
+            disabled={disabled}
+            onClick={() => onChange(s)}
+            className={cn(
+              "rounded-lg py-2.5 text-[14px] font-bold transition-colors disabled:opacity-40",
+              ativo
+                ? s === "buy"
+                  ? "bg-bull text-ink-950"
+                  : "bg-bear text-ink-950"
+                : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300",
+            )}
+          >
+            {s === "buy" ? "Comprar" : "Vender"}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Atalho({
+  rotulo,
+  tom,
+  ligado,
+  onClick,
+  titulo,
+}: {
+  rotulo: string;
+  tom: "buy" | "sell";
+  ligado: boolean;
+  onClick: () => void;
+  titulo?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!ligado}
+      title={titulo}
+      /* Sem isto o leitor de tela anuncia o `title` no lugar do rótulo, e o
+         botão "25%" passa a se chamar "Conecte a carteira…". */
+      aria-label={rotulo}
+      className={cn(
+        "rounded-lg border py-2 text-[13px] font-semibold transition-colors",
+        !ligado
+          ? "cursor-not-allowed border-ink-700 text-zinc-700"
+          : tom === "buy"
+            ? "border-bull/25 bg-bull/[0.08] text-bull hover:bg-bull/[0.16]"
+            : "border-bear/25 bg-bear/[0.08] text-bear hover:bg-bear/[0.16]",
+      )}
+    >
+      {rotulo}
+    </button>
+  );
+}
+
+/**
+ * A engrenagem: onde o slippage foi morar.
+ *
+ * Junto com ele ficam o mínimo garantido e a rota — os dois números que
+ * respondem "e se der errado?". Não somem do produto; só param de ocupar a
+ * tela de quem só quer apertar comprar.
+ */
+function Engrenagem({
+  slippage,
+  setSlippage,
+  minimoGarantido,
+  rota,
+}: {
+  slippage: number;
+  setSlippage: (v: number) => void;
+  minimoGarantido: string | null;
+  rota: string | null;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
+
+  /* Fecha ao clicar fora — senão o menu fica pendurado sobre o painel. */
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => {
+      if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  }, [aberto]);
+
+  return (
+    <div ref={caixa} className="relative">
+      <button
+        onClick={() => setAberto((v) => !v)}
+        aria-label="Ajustes da ordem"
+        aria-expanded={aberto}
+        className={cn(
+          "grid size-7 place-items-center rounded-lg transition-colors",
+          aberto ? "bg-white/[0.06] text-zinc-200" : "text-zinc-600 hover:text-zinc-300",
+        )}
+      >
+        <IconeDeEngrenagem />
+      </button>
+
+      {aberto && (
+        <div className="panel absolute right-0 top-9 z-30 w-[268px] p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] font-semibold text-zinc-200">Slippage máximo</span>
+            <span className="tnum text-[12px] font-bold text-marca">{slippage}%</span>
+          </div>
+
+          <div className="mt-2 grid grid-cols-4 gap-1.5">
             {SLIPPAGES.map((s) => (
               <button
                 key={s}
                 onClick={() => setSlippage(s)}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
-                  slippage === s ? "bg-marca/20 text-marca" : "text-zinc-500 hover:text-zinc-300",
+                  "rounded-md py-1.5 text-[12px] font-semibold transition-colors",
+                  slippage === s
+                    ? "bg-marca/20 text-marca"
+                    : "bg-white/[0.03] text-zinc-500 hover:text-zinc-300",
                 )}
               >
                 {s}%
               </button>
             ))}
           </div>
+
+          <p className="mt-2.5 text-[11px] leading-snug text-zinc-500">
+            O quanto o preço pode piorar entre você assinar e a ordem executar. Passando disso a
+            transação é <strong className="font-semibold text-zinc-400">cancelada</strong> em vez
+            de sair a qualquer preço — é o que te protege do bot que compra na sua frente.
+          </p>
+
+          {(minimoGarantido || rota) && (
+            <div className="mt-3 space-y-1 border-t border-ink-700 pt-2.5 text-[11px]">
+              {minimoGarantido && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="shrink-0 text-zinc-500">Mínimo garantido</span>
+                  <span className="tnum truncate font-semibold text-zinc-300">
+                    {minimoGarantido}
+                  </span>
+                </div>
+              )}
+              {rota && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="shrink-0 text-zinc-500">Rota</span>
+                  <span className="truncate text-zinc-400">{rota}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/*
-          * A divisão da taxa NÃO aparece na hora de negociar.
-          *
-          * Eram três linhas — Chroma, plataforma, afiliado — ocupando o lugar
-          * mais nobre do painel pra responder uma pergunta que quase ninguém
-          * faz naquele instante. Quem quer saber quanto a plataforma cobra
-          * abre a aba Taxas, onde está tudo aberto, e decide com calma.
-          *
-          * O que fica aqui é o que muda a DECISÃO do trade: o mínimo
-          * garantido e o impacto no preço.
-          */}
-
-        {swap.motivoTravado && (
-          <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
-            {swap.motivoTravado}
-          </p>
-        )}
-
-        {swap.error && (
-          <p className="rounded-lg border border-bear/25 bg-bear/[0.06] px-3 py-2 text-[11px] leading-snug text-bear">
-            {swap.error}
-          </p>
-        )}
-
-        {swap.signature && (
-          <div className="rounded-lg border border-bull/25 bg-bull/[0.06] px-3 py-2 text-[11px] text-bull">
-            Confirmado!{" "}
-            <a
-              href={`https://solscan.io/tx/${swap.signature}`}
-              target="_blank"
-              rel="noreferrer"
-              className="underline underline-offset-2"
-            >
-              ver no Solscan ↗
-            </a>
-          </div>
-        )}
-
-        <RequireChainWallet chain="solana">
-          <Button
-            variant={isBuy ? "buy" : "sell"}
-            size="lg"
-            className="w-full"
-            disabled={!swap.canSwap || swap.phase === "executing"}
-            onClick={swap.execute}
-          >
-            {swap.phase === "executing"
-              ? swap.step || "Processando…"
-              : !amount || Number(amount) <= 0
-                ? "Informe um valor"
-                : swap.phase === "quoting"
-                  ? "Cotando…"
-                  : swap.phase === "error"
-                    ? "Tentar de novo"
-                    : `${isBuy ? "Comprar" : "Vender"} ${symbol}`}
-          </Button>
-        </RequireChainWallet>
-
-        {connected && publicKey && (
-          <p className="text-center text-[11px] text-zinc-600">
-            {shortenAddress(publicKey.toBase58(), 6)} ·{" "}
-            {swap.carregandoRota ? "procurando rota…" : swap.naCurva ? "direto na curva da Chroma" : "rota via Jupiter"}
-          </p>
-        )}
-      </div>
-    </Card>
+function IconeDeEngrenagem() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="size-[17px]">
+      <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="M19.1 14.2a1.5 1.5 0 0 0 .3 1.65l.05.06a1.82 1.82 0 1 1-2.58 2.58l-.05-.06a1.5 1.5 0 0 0-1.66-.3 1.5 1.5 0 0 0-.91 1.38v.15a1.82 1.82 0 0 1-3.64 0v-.08a1.5 1.5 0 0 0-.98-1.37 1.5 1.5 0 0 0-1.65.3l-.06.06a1.82 1.82 0 1 1-2.58-2.58l.06-.06a1.5 1.5 0 0 0 .3-1.65 1.5 1.5 0 0 0-1.38-.92h-.15a1.82 1.82 0 1 1 0-3.64h.08a1.5 1.5 0 0 0 1.37-.98 1.5 1.5 0 0 0-.3-1.65l-.06-.06A1.82 1.82 0 1 1 7.84 4.4l.06.06a1.5 1.5 0 0 0 1.65.3h.07a1.5 1.5 0 0 0 .91-1.38v-.15a1.82 1.82 0 0 1 3.64 0v.08a1.5 1.5 0 0 0 .92 1.37 1.5 1.5 0 0 0 1.65-.3l.06-.06a1.82 1.82 0 1 1 2.58 2.58l-.06.06a1.5 1.5 0 0 0-.3 1.65v.07a1.5 1.5 0 0 0 1.38.91h.15a1.82 1.82 0 0 1 0 3.64h-.08a1.5 1.5 0 0 0-1.37.92Z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -317,16 +612,15 @@ function EvmSwapPlaceholder({ symbol, chain }: { symbol: string; chain: ChainId 
 
   return (
     <Card className="overflow-hidden">
-      <SideTabs side="buy" onChange={() => {}} disabled />
+      <AbasDeLado side="buy" onChange={() => {}} disabled />
 
       <div className="space-y-3 px-4 pb-4 pt-1">
         <div className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[12px] leading-relaxed text-warn">
           <div className="mb-1 font-semibold">Swap em {meta.label} ainda não está ligado.</div>
-          Em EVM não dá pra anexar a transferência do afiliado na mesma transação como na Solana — precisa de um
-          contrato router da Chroma, ou do parâmetro de afiliado de um agregador. Está no README, em &quot;Como a
-          taxa vira transação&quot;.
+          Em EVM não dá pra anexar a transferência do afiliado na mesma transação como na Solana —
+          precisa de um contrato router da Chroma, ou do parâmetro de afiliado de um agregador.
+          Está no README, em &quot;Como a taxa vira transação&quot;.
         </div>
-
 
         <RequireChainWallet chain={chain}>
           <Button variant="outline" size="lg" className="w-full" disabled>
@@ -340,53 +634,14 @@ function EvmSwapPlaceholder({ symbol, chain }: { symbol: string; chain: ChainId 
 
 /* ------------------------------------------------------------------ */
 
-function SideTabs({
-  side,
-  onChange,
-  disabled,
-}: {
-  side: TradeSide;
-  onChange: (s: TradeSide) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-1 p-1">
-      {(["buy", "sell"] as TradeSide[]).map((s) => (
-        <button
-          key={s}
-          disabled={disabled}
-          onClick={() => onChange(s)}
-          className={cn(
-            "rounded-xl py-2.5 text-sm font-bold transition-all duration-200 disabled:opacity-40",
-            side === s
-              ? s === "buy"
-                ? "bg-bull/15 text-bull shadow-glow-bull"
-                : "bg-bear/15 text-bear shadow-glow-bear"
-              : "text-zinc-500 hover:bg-white/[0.03] hover:text-zinc-300",
-          )}
-        >
-          {s === "buy" ? "Comprar" : "Vender"}
-        </button>
-      ))}
-    </div>
-  );
+/** Só dígito e um ponto — teclado de celular manda vírgula e letra. */
+function saneia(bruto: string): string {
+  const limpo = bruto.replace(",", ".").replace(/[^0-9.]/g, "");
+  const partes = limpo.split(".");
+  return partes.length <= 2 ? limpo : `${partes[0]}.${partes.slice(1).join("")}`;
 }
 
-function Row({
-  label,
-  value,
-  strong,
-  muted,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-  muted?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className={cn("text-zinc-500", strong && "font-semibold text-zinc-400")}>{label}</span>
-      <span className={cn("tnum text-zinc-300", strong && "font-semibold", muted && "text-zinc-600")}>{value}</span>
-    </div>
-  );
+/** Corta casas sem notação científica e sem zero à toa no fim. */
+function arredondar(n: number, casas: number): string {
+  return String(Number(n.toFixed(Math.min(9, Math.max(0, casas)))));
 }

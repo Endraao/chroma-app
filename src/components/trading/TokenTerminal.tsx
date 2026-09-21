@@ -7,6 +7,7 @@ import { SwapWidget } from "@/components/trading/SwapWidget";
 import { SecurityPanel } from "@/components/security/SecurityPanel";
 import { CurvaPanel } from "@/components/trading/CurvaPanel";
 import { CurvaProvider } from "@/components/trading/CurvaProvider";
+import { TabelaDeTraders } from "@/components/trading/TabelaDeTraders";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -158,7 +159,12 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
           <CurvaPanel />
 
           <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
-            <SwapWidget symbol={token.symbol} chain={token.chain} tokenAddress={token.address} />
+            <SwapWidget
+              symbol={token.symbol}
+              chain={token.chain}
+              tokenAddress={token.address}
+              priceUsd={price}
+            />
           </Suspense>
 
           <SecurityPanel
@@ -176,6 +182,16 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
           </Card>
         </div>
       </div>
+
+      {/*
+        A tabela de traders fica EMBAIXO e ocupando a largura toda.
+
+        Não cabe na coluna do swap: são cinco colunas de número por linha. E
+        não deve ficar em cima — ela é pra depois da decisão, quando a pessoa
+        quer saber quem mais está dentro e em que preço. Acima do gráfico, ela
+        empurraria pra baixo justamente as duas coisas que a pessoa veio ver.
+      */}
+      <TabelaDeTraders address={token.address} symbol={token.symbol} chain={token.chain} />
     </div>
     </CurvaProvider>
   );

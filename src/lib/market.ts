@@ -23,6 +23,14 @@ const TTL = {
   token: 10_000,
   list: 60_000,
   candles: 20_000,
+  /*
+   * Negócios: 30s.
+   *
+   * A tabela de traders recalcula posição e lucro de centenas de carteiras a
+   * cada leitura. Buscar de poucos em poucos segundos gastaria o limite da API
+   * pra mexer na terceira casa decimal de quem está em décimo lugar.
+   */
+  trades: 30_000,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -304,5 +312,107 @@ export async function fetchCandles(address: string, interval: string, limit = 30
     return list
       .map(([time, open, high, low, close, volume]) => ({ time, open, high, low, close, volume }))
       .sort((a, b) => a.time - b.time);
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Negócios do pool                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Um negócio cru, já normalizado do ponto de vista do NOSSO token. */
+export interface NegocioDoPool {
+  carteira: string;
+  /** do ponto de vista da carteira: ela recebeu ou entregou o token? */
+  lado: "compra" | "venda";
+  /** quantidade do NOSSO token que trocou de mão */
+  tokens: number;
+  /** o mesmo negócio em dólar */
+  usd: number;
+  em: number;
+  txHash: string;
+}
+
+/**
+ * Os últimos negócios do par, do ponto de vista do token pedido.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE NÃO USO O CAMPO `kind` DA API
+ * ---------------------------------------------------------------------------
+ * A GeckoTerminal manda `kind: "buy" | "sell"`, mas isso é relativo ao token
+ * BASE do pool — e em boa parte dos pares de meme coin o base é o outro lado
+ * (SOL, USDC). Confiar nesse campo inverteria comprador e vendedor justamente
+ * nos pares onde a tabela mais importa, e o erro não apareceria: a tela ficaria
+ * plausível, só que com os papéis trocados.
+ *
+ * Então o lado é decidido pelo ENDEREÇO: se o token saiu da carteira é venda,
+ * se entrou é compra. Não tem como interpretar errado.
+ *
+ * ---------------------------------------------------------------------------
+ * O QUE ESTA JANELA NÃO É
+ * ---------------------------------------------------------------------------
+ * São os últimos ~300 negócios do par, e só. Não é o histórico da moeda nem o
+ * saldo real das carteiras. Quem lê o resultado disso precisa dizer isso na
+ * tela — ver `agregarTraders`.
+ */
+export async function fetchTrades(address: string): Promise<NegocioDoPool[]> {
+  const token = await fetchToken(address);
+  if (!token?.pairAddress) return [];
+
+  const network = CHAIN_TO_GECKO[token.chain];
+  if (!network) return [];
+
+  const key = `trades:${network}:${token.pairAddress}:${address}`;
+  return cached(key, TTL.trades, async () => {
+    const url = `${GECKOTERMINAL}/networks/${network}/pools/${token.pairAddress}/trades`;
+
+    const data = await getJson<{
+      data: {
+        attributes: {
+          tx_hash: string;
+          tx_from_address: string;
+          block_timestamp: string;
+          from_token_address: string;
+          to_token_address: string;
+          from_token_amount: string;
+          to_token_amount: string;
+          volume_in_usd: string;
+        };
+      }[];
+    }>(url, 30);
+
+    /*
+     * Solana é sensível a maiúscula (base58) e EVM não (hex). Comparar tudo em
+     * minúscula resolve o EVM sem risco no Solana: duas chaves base58 que só
+     * diferem na caixa não existem na prática — seriam bytes diferentes.
+     */
+    const alvo = address.toLowerCase();
+
+    const negocios: NegocioDoPool[] = [];
+
+    for (const { attributes: a } of data.data ?? []) {
+      const entrou = a.to_token_address?.toLowerCase() === alvo;
+      const saiu = a.from_token_address?.toLowerCase() === alvo;
+      if (!entrou && !saiu) continue;
+
+      const tokens = Number(entrou ? a.to_token_amount : a.from_token_amount);
+      const usd = Number(a.volume_in_usd);
+      const em = Date.parse(a.block_timestamp);
+
+      if (!Number.isFinite(tokens) || tokens <= 0) continue;
+      if (!Number.isFinite(usd) || usd <= 0) continue;
+      if (!Number.isFinite(em)) continue;
+      if (!a.tx_from_address) continue;
+
+      negocios.push({
+        carteira: a.tx_from_address,
+        lado: entrou ? "compra" : "venda",
+        tokens,
+        usd,
+        em,
+        txHash: a.tx_hash,
+      });
+    }
+
+    return negocios;
   });
 }

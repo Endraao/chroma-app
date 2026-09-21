@@ -98,7 +98,6 @@ export function LinhaDeMoeda({
 
       <span className="relative size-8 shrink-0 overflow-hidden rounded bg-ink-800">
         {token.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={token.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
         ) : (
           <span className="grid size-full place-items-center text-[10px] font-bold text-zinc-600">

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { WalletProviders } from "@/components/web3/WalletProviders";
 import { Header } from "@/components/ui/Header";
+import { Moldura } from "@/components/ui/Moldura";
 import { AffiliateBanner } from "@/components/web3/AffiliateBanner";
 import { RpcNotice } from "@/components/web3/RpcNotice";
 
@@ -50,7 +51,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Suspense>
           <RpcNotice />
           <Header />
-          <main className="mx-auto w-full max-w-[1600px] px-4 pb-16 pt-6 lg:px-6">{children}</main>
+          {/*
+            Sem Suspense aqui de propósito.
+
+            A barra de categorias lê `useSearchParams`, que suspende — mas a
+            fronteira fica DENTRO da moldura, em volta só da barra. Envolvendo
+            a moldura inteira, a página ia junto pro `<div hidden>` que o React
+            usa enquanto espera, e o site abria com o cabeçalho e mais nada.
+          */}
+          <Moldura>{children}</Moldura>
         </WalletProviders>
       </body>
     </html>
