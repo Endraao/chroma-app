@@ -2,6 +2,8 @@
 pragma solidity 0.8.30;
 
 import {ChromaToken} from "./ChromaToken.sol";
+import {MatematicaDaPool} from "./MatematicaDaPool.sol";
+import {IPoolManager, ModifyLiquidityParams, PoolKey, Saldos} from "./UniswapV4.sol";
 
 /**
  * A curva de bonding da Chroma na Robinhood Chain.
@@ -55,6 +57,8 @@ contract ChromaCurve {
     error FalhaNoRepasse();
     error SaldoInsuficiente();
     error Reentrancia();
+    error CurvaNaoConcluida();
+    error JaMigrou();
 
     /* ---------------------------------------------------------------- */
     /* Constantes                                                       */
@@ -83,6 +87,15 @@ contract ChromaCurve {
 
     /** O molde do token. Cada lançamento clona este endereço. */
     address public immutable MOLDE_DO_TOKEN;
+
+    /**
+     * O gerente de pools da Uniswap v4 desta rede.
+     *
+     * Fixo no construtor, sem função pra trocar: é pra onde a liquidez de toda
+     * moeda que encher a curva vai parar, e um endereço trocável aqui seria um
+     * jeito de desviar tudo com uma transação só.
+     */
+    IPoolManager public immutable GERENTE_DA_POOL;
 
     /* ---------------------------------------------------------------- */
     /* Configuração                                                     */
@@ -115,6 +128,16 @@ contract ChromaCurve {
     uint256 public emissaoTotal;
     /** Cobrado de quem lança. */
     uint256 public taxaDeLancamento;
+
+    /**
+     * A faixa de taxa da pool que recebe a liquidez, e o espaçamento dela.
+     *
+     * Configurável porque é escolha de produto: taxa alta rende mais a quem
+     * provê liquidez e encarece quem negocia. O par tem que ser um que a v4
+     * aceite — taxa e espaçamento andam juntos.
+     */
+    uint24 public taxaDaPool;
+    int24 public espacamentoDaPool;
 
     /**
      * Trava de emergência.
@@ -170,6 +193,7 @@ contract ChromaCurve {
     );
 
     event CurvaEncheu(address indexed moeda, uint256 ethArrecadado);
+    event Migrou(address indexed moeda, uint256 eth, uint256 tokens);
     event ConfiguracaoAlterada(address carteiraDaPlataforma, uint16 taxaTotalBps);
     event PausaAlterada(bool pausado);
     event AutoridadeTransferida(address anterior, address nova);
@@ -206,11 +230,14 @@ contract ChromaCurve {
         uint256 tokenAVenda;
         uint256 emissaoTotal;
         uint256 taxaDeLancamento;
+        uint24 taxaDaPool;
+        int24 espacamentoDaPool;
     }
 
-    constructor(address autoridade_, Parametros memory p) {
-        if (autoridade_ == address(0)) revert EnderecoZero();
+    constructor(address autoridade_, address gerenteDaPool, Parametros memory p) {
+        if (autoridade_ == address(0) || gerenteDaPool == address(0)) revert EnderecoZero();
         autoridade = autoridade_;
+        GERENTE_DA_POOL = IPoolManager(gerenteDaPool);
 
         MOLDE_DO_TOKEN = address(new ChromaToken());
 
@@ -567,9 +594,168 @@ contract ChromaCurve {
         tokenAVenda = p.tokenAVenda;
         emissaoTotal = p.emissaoTotal;
         taxaDeLancamento = p.taxaDeLancamento;
+        taxaDaPool = p.taxaDaPool;
+        espacamentoDaPool = p.espacamentoDaPool;
 
         emit ConfiguracaoAlterada(p.carteiraDaPlataforma, p.taxaTotalBps);
     }
+
+
+    /* ---------------------------------------------------------------- */
+    /* Migração pra pool                                                 */
+    /* ---------------------------------------------------------------- */
+
+    /**
+     * Leva a liquidez da curva cheia pra uma pool da Uniswap v4.
+     *
+     * -------------------------------------------------------------------
+     * POR QUE ISTO PRECISA EXISTIR
+     * -------------------------------------------------------------------
+     * Sem esta etapa, encher a curva — que é o SUCESSO — vira o fim da moeda:
+     * comprar e vender ficam bloqueados, o ETH arrecadado fica parado e não há
+     * caminho pra fora. A moeda que der mais certo seria a que morre.
+     *
+     * -------------------------------------------------------------------
+     * POR QUE QUALQUER UM PODE CHAMAR
+     * -------------------------------------------------------------------
+     * Não há permissão aqui. Se a migração dependesse de nós, uma chave perdida
+     * ou um servidor fora do ar prenderiam dinheiro de terceiros sem prazo — e
+     * quem comprou não teria a quem recorrer.
+     *
+     * Quem chama não escolhe nada: as quantidades vêm do estado da curva, o
+     * preço vem delas, e a pool é a derivada dos dois ativos. Só paga o gás.
+     *
+     * -------------------------------------------------------------------
+     * POR QUE A LIQUIDEZ FICA TRAVADA PRA SEMPRE
+     * -------------------------------------------------------------------
+     * A posição nasce em nome DESTE contrato, e não existe função nenhuma aqui
+     * que a remova. Não é promessa: é ausência de código. Nem nós, nem quem
+     * lançou, nem quem migrou consegue esvaziar o par.
+     *
+     * É o mesmo efeito de queimar o LP na Solana — só que aqui a v4 nem tem
+     * token de LP pra queimar, então o jeito de travar é não ter como soltar.
+     */
+    function migrar(address moeda) external semReentrada {
+        Curva storage c = curvas[moeda];
+        if (c.criador == address(0)) revert MoedaDesconhecida();
+        if (!c.concluida) revert CurvaNaoConcluida();
+        if (c.migrada) revert JaMigrou();
+
+        uint256 ethParaPool = c.ethReal;
+        uint256 tokensParaPool = ChromaToken(moeda).balanceOf(address(this));
+
+        if (ethParaPool == 0 || tokensParaPool == 0) revert ValorZero();
+
+        /*
+         * Marcado ANTES de qualquer chamada externa. A trava de reentrância já
+         * cobriria, mas as duas juntas custam quase nada e fecham a porta duas
+         * vezes num lugar onde ela não pode abrir.
+         */
+        c.migrada = true;
+        c.ethReal = 0;
+
+        PoolKey memory chave = _chaveDaPool(moeda);
+
+        uint160 sqrtPreco = MatematicaDaPool.sqrtPrecoInicial(ethParaPool, tokensParaPool);
+        GERENTE_DA_POOL.initialize(chave, sqrtPreco);
+
+        GERENTE_DA_POOL.unlock(abi.encode(chave, sqrtPreco, ethParaPool, tokensParaPool));
+
+        emit Migrou(moeda, ethParaPool, tokensParaPool);
+    }
+
+    /**
+     * A janela em que a v4 deixa mexer na pool.
+     *
+     * Ela chama isto de volta durante o `unlock`. Só o gerente da pool pode
+     * entrar aqui: sem essa checagem, qualquer um chamaria esta função direto e
+     * faria o contrato depositar por conta própria.
+     */
+    function unlockCallback(bytes calldata dados) external returns (bytes memory) {
+        if (msg.sender != address(GERENTE_DA_POOL)) revert NaoAutorizado();
+
+        (PoolKey memory chave, uint160 sqrtPreco, uint256 quantidadeEth, uint256 quantidadeToken) =
+            abi.decode(dados, (PoolKey, uint160, uint256, uint256));
+
+        (int24 menor, int24 maior) = MatematicaDaPool.faixaCheia(chave.tickSpacing);
+
+        uint128 liquidez =
+            MatematicaDaPool.liquidezDeFaixaCheia(sqrtPreco, quantidadeEth, quantidadeToken);
+
+        (int256 saldos,) = GERENTE_DA_POOL.modifyLiquidity(
+            chave,
+            ModifyLiquidityParams({
+                tickLower: menor,
+                tickUpper: maior,
+                liquidityDelta: int256(uint256(liquidez)),
+                salt: bytes32(0)
+            }),
+            ""
+        );
+
+        _quitar(chave.currency0, Saldos.primeiro(saldos));
+        _quitar(chave.currency1, Saldos.segundo(saldos));
+
+        return "";
+    }
+
+    /**
+     * Paga o que devemos à pool, ou recolhe o que sobrou.
+     *
+     * A sobra existe porque a liquidez é um número inteiro: ela raramente
+     * consome as duas quantidades até o último wei. O que volta fica neste
+     * contrato — são centavos, e não há função de saque, então ficam travados
+     * junto com a liquidez em vez de irem parar na mão de alguém.
+     */
+    function _quitar(address ativo, int128 saldo) private {
+        uint256 devido = Saldos.divida(saldo);
+
+        if (devido > 0) {
+            if (ativo == address(0)) {
+                // Moeda nativa: o valor viaja junto com a quitação.
+                GERENTE_DA_POOL.settle{value: devido}();
+            } else {
+                /*
+                 * Token: a pool precisa saber quanto tinha antes de o nosso
+                 * depósito chegar, senão não reconhece o que foi mandado.
+                 */
+                GERENTE_DA_POOL.sync(ativo);
+                if (!ChromaToken(ativo).transfer(address(GERENTE_DA_POOL), devido)) {
+                    revert FalhaNoRepasse();
+                }
+                GERENTE_DA_POOL.settle();
+            }
+            return;
+        }
+
+        uint256 aReceber = Saldos.credito(saldo);
+        if (aReceber > 0) GERENTE_DA_POOL.take(ativo, address(this), aReceber);
+    }
+
+    /**
+     * A chave da pool desta moeda.
+     *
+     * A moeda nativa é o endereço zero e, sendo o menor endereço possível, fica
+     * sempre em primeiro. Inverter a ordem apontaria pra outra pool — sem erro
+     * nenhum, só no lugar errado, com o dinheiro dentro.
+     */
+    function _chaveDaPool(address moeda) private view returns (PoolKey memory) {
+        return PoolKey({
+            currency0: address(0),
+            currency1: moeda,
+            fee: taxaDaPool,
+            tickSpacing: espacamentoDaPool,
+            hooks: address(0)
+        });
+    }
+
+    /** Onde a liquidez desta moeda foi parar, pra tela poder apontar. */
+    function chaveDaPool(address moeda) external view returns (PoolKey memory) {
+        return _chaveDaPool(moeda);
+    }
+
+    /** A v4 devolve a sobra em moeda nativa direto pra cá. */
+    receive() external payable {}
 
     /* ---------------------------------------------------------------- */
     /* Ajudantes                                                        */

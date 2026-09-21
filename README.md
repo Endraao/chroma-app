@@ -36,7 +36,7 @@ Abre em http://localhost:3000. Copie `.env.example` para `.env.local`.
 | Rede | Chain ID | Gás | Swap | Auditoria de contrato |
 | --- | --- | --- | --- | --- |
 | Solana | — | SOL | ✅ Jupiter | ✅ GoPlus |
-| Robinhood Chain | 4663 | ETH | ⚠️ contrato pronto, falta ligar | ❌ nenhum provedor cobre ainda |
+| Robinhood Chain | 4663 | ETH | ⚠️ contratos prontos, falta ligar | ❌ nenhum provedor cobre ainda |
 
 A Robinhood Chain é uma L2 Arbitrum sobre Ethereum, definida em `src/lib/web3.ts` porque ainda não
 vem no `viem/chains`.
@@ -306,9 +306,35 @@ entregam a mesma coisa. Não bate exato de propósito: na Solana a moeda tem 6 c
 tem 18, então o arredondamento tem granularidade diferente. A margem aceita é de UMA unidade na
 escala da Solana — um milionésimo de token — e qualquer coisa além disso falha.
 
-**Falta a migração**, que na Solana já existe. Sem ela, encher a curva aqui seria o mesmo beco sem
-saída que a Solana tinha: moeda de sucesso com o dinheiro preso. Os contratos NÃO devem ser
-publicados antes disso.
+### Quando a curva enche, na Robinhood
+
+A liquidez vai pra uma pool da **Uniswap v4**, em par com ETH nativo. Uma instrução só, **aberta a
+qualquer carteira** pelo mesmo motivo da Solana: migração que depende da plataforma prende dinheiro
+de terceiros no dia em que a plataforma falha.
+
+**A v4 não tem token de LP pra queimar.** O jeito de travar a liquidez é a posição nascer em nome do
+contrato e não existir função nenhuma que a remova — nem pra autoridade. Não é promessa, é ausência
+de código.
+
+A posição é de **faixa cheia**. Faixa estreita renderia mais taxa, mas deixa de valer assim que o
+preço sai dela — e numa liquidez travada pra sempre, sem ninguém pra reposicionar, isso deixaria a
+moeda sem mercado justamente quando mais se negocia.
+
+Sobra um troco de alguns milhares de wei, porque a liquidez é um número inteiro e quase nunca
+consome as duas quantidades até o último wei. Fica travado junto com ela.
+
+**O teste roda contra o PoolManager de verdade**, num fork da Robinhood Chain
+(`contracts/test/Migracao.t.sol`). Uma imitação aceitaria exatamente o que eu escrevi, inclusive se
+estivesse errado.
+
+| Contrato | Endereço | Como foi confirmado |
+| --- | --- | --- |
+| PoolManager v4 | `0x8366a39CC670B4001A1121B8F6A443A643e40951` | 163 eventos `Initialize` e 2686 `ModifyLiquidity` com as assinaturas **padrão** da v4 em 5000 blocos — o fork desta rede mexeu no roteador, não no gerente de pools |
+| Factory v3 | `0x1f7d7550B1b028f7571E69A784071F0205FD2EfA` | `factory()` chamado numa pool que existe |
+
+**Cuidado com endereço canônico:** `0x1F98431c…`, que é a factory v3 da Uniswap na maioria das redes,
+tem OUTRO contrato nesta. Se a migração tivesse confiado nele, mandaria a liquidez pra um contrato
+aleatório. `contracts/test/Rede.t.sol` falha se isso mudar.
 
 ---
 

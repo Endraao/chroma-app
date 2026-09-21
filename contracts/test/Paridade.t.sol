@@ -45,6 +45,15 @@ contract ParidadeTest is Test {
     address internal plataforma = address(0xB2);
     address internal criador = address(0xC3);
     address internal trader = address(0xE5);
+    /**
+     * O gerente de pools da v4.
+     *
+     * Nestes testes é um endereço qualquer: a migração não é exercitada aqui,
+     * ela tem arquivo próprio que roda contra a rede de verdade
+     * (`Migracao.t.sol`). Fingir um PoolManager em memória provaria só que a
+     * minha imitação aceita o que eu escrevi.
+     */
+    address internal gerenteDaPool = address(0xBEEF);
 
     /** Uma unidade na escala da Solana, escrita na escala daqui. */
     uint256 internal constant UMA_UNIDADE_SOLANA = 1e12;
@@ -63,6 +72,7 @@ contract ParidadeTest is Test {
          */
         curva = new ChromaCurve(
             autoridade,
+            gerenteDaPool,
             ChromaCurve.Parametros({
                 carteiraDaPlataforma: plataforma,
                 taxaTotalBps: 125,
@@ -74,7 +84,10 @@ contract ParidadeTest is Test {
                 tokenVirtualInicial: 1_073_000_000 ether,
                 tokenAVenda: 793_100_000 ether,
                 emissaoTotal: 1_000_000_000 ether,
-                taxaDeLancamento: 0
+                taxaDeLancamento: 0,
+                // 1% de taxa e espaçamento 200: o par que a v4 usa pra moeda volátil.
+                taxaDaPool: 10_000,
+                espacamentoDaPool: 200
             })
         );
 

@@ -25,6 +25,15 @@ contract ChromaCurveTest is Test {
     address internal criador = address(0xC3);
     address internal afiliado = address(0xD4);
     address internal trader = address(0xE5);
+    /**
+     * O gerente de pools da v4.
+     *
+     * Nestes testes é um endereço qualquer: a migração não é exercitada aqui,
+     * ela tem arquivo próprio que roda contra a rede de verdade
+     * (`Migracao.t.sol`). Fingir um PoolManager em memória provaria só que a
+     * minha imitação aceita o que eu escrevi.
+     */
+    address internal gerenteDaPool = address(0xBEEF);
 
     // Os números da Robinhood Chain, iguais aos de `src/lib/fees.ts`.
     uint16 internal constant TOTAL = 120;
@@ -49,6 +58,7 @@ contract ChromaCurveTest is Test {
 
         curva = new ChromaCurve(
             autoridade,
+            gerenteDaPool,
             ChromaCurve.Parametros({
                 carteiraDaPlataforma: plataforma,
                 taxaTotalBps: TOTAL,
@@ -60,7 +70,10 @@ contract ChromaCurveTest is Test {
                 tokenVirtualInicial: TOKEN_VIRTUAL,
                 tokenAVenda: A_VENDA,
                 emissaoTotal: EMISSAO,
-                taxaDeLancamento: 0
+                taxaDeLancamento: 0,
+                // 1% de taxa e espaçamento 200: o par que a v4 usa pra moeda volátil.
+                taxaDaPool: 10_000,
+                espacamentoDaPool: 200
             })
         );
 
@@ -325,7 +338,10 @@ contract ChromaCurveTest is Test {
                 tokenVirtualInicial: TOKEN_VIRTUAL,
                 tokenAVenda: A_VENDA,
                 emissaoTotal: EMISSAO,
-                taxaDeLancamento: 0
+                taxaDeLancamento: 0,
+                // 1% de taxa e espaçamento 200: o par que a v4 usa pra moeda volátil.
+                taxaDaPool: 10_000,
+                espacamentoDaPool: 200
             })
         );
     }
@@ -349,7 +365,10 @@ contract ChromaCurveTest is Test {
                 tokenVirtualInicial: TOKEN_VIRTUAL,
                 tokenAVenda: A_VENDA,
                 emissaoTotal: EMISSAO,
-                taxaDeLancamento: 0
+                taxaDeLancamento: 0,
+                // 1% de taxa e espaçamento 200: o par que a v4 usa pra moeda volátil.
+                taxaDaPool: 10_000,
+                espacamentoDaPool: 200
             })
         );
     }
