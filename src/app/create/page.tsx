@@ -127,11 +127,11 @@ export default function CreateTokenPage() {
               className={cn(
                 "rounded-xl border px-3 py-3 text-left transition-all",
                 chain === id
-                  ? "border-chroma-violet/50 bg-chroma-violet/10"
+                  ? "border-marca/50 bg-marca/10"
                   : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.14]",
               )}
             >
-              <div className={cn("text-sm font-bold", chain === id ? "text-chroma-violet" : "text-zinc-300")}>
+              <div className={cn("text-sm font-bold", chain === id ? "text-marca" : "text-zinc-300")}>
                 {CHAINS[id].label}
               </div>
               <div className="text-[11px] text-zinc-600">gás em {CHAINS[id].nativeSymbol}</div>
@@ -154,7 +154,7 @@ export default function CreateTokenPage() {
               className={cn(
                 "flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-all",
                 pair === option.symbol
-                  ? "border-chroma-violet/50 bg-chroma-violet/[0.08]"
+                  ? "border-marca/50 bg-marca/[0.08]"
                   : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.14]",
               )}
             >
@@ -227,7 +227,7 @@ export default function CreateTokenPage() {
             <circle cx="8.5" cy="8.5" r="1.5" />
             <path d="m21 15-5-5L5 21" />
           </svg>
-          <span className="text-[13px] font-semibold text-chroma-violet">Adicionar banner</span>
+          <span className="text-[13px] font-semibold text-marca">Adicionar banner</span>
           <span className="text-[12px] text-zinc-600">(Opcional)</span>
           <span className={cn("ml-auto text-zinc-600 transition-transform", showBanner && "rotate-180")}>⌄</span>
         </button>
@@ -330,7 +330,7 @@ export default function CreateTokenPage() {
                 className={cn(
                   "flex-1 rounded-xl border py-2.5 text-sm font-bold transition-all",
                   creatorTaxBps === bps
-                    ? "border-chroma-violet/50 bg-chroma-violet/10 text-chroma-violet"
+                    ? "border-marca/50 bg-marca/10 text-marca"
                     : "border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:border-white/[0.14]",
                 )}
               >
@@ -347,7 +347,7 @@ export default function CreateTokenPage() {
               step={25}
               value={creatorTaxBps}
               onChange={(e) => setCreatorTaxBps(Number(e.target.value))}
-              className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-ink-700 accent-chroma-violet"
+              className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-ink-700 accent-marca"
             />
             <span className="tnum w-14 text-right text-sm font-bold text-zinc-100">
               {(creatorTaxBps / 100).toFixed(2).replace(".", ",")}%
@@ -374,7 +374,7 @@ export default function CreateTokenPage() {
             <span className="text-zinc-600">
               No {chainLabels.reference.name} o criador recebe {chainLabels.referenceCreator}.
             </span>{" "}
-            <Link href="/fees" className="text-chroma-violet hover:text-chroma-cyan">
+            <Link href="/fees" className="text-marca hover:text-chroma-cyan">
               ver as faixas
             </Link>
           </div>
@@ -488,7 +488,7 @@ export default function CreateTokenPage() {
           <>Lançar não tem taxa da Chroma — só a taxa de rede da {meta.label}, paga da sua carteira.</>
         )}{" "}
         Não há limite de quantos tokens você pode lançar.{" "}
-        <Link href="/fees" className="text-chroma-violet hover:text-chroma-cyan">
+        <Link href="/fees" className="text-marca hover:text-chroma-cyan">
           ver todas as taxas
         </Link>
       </p>
@@ -515,20 +515,20 @@ function RewardOption({
       className={cn(
         "flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-all",
         active
-          ? "border-chroma-violet/50 bg-chroma-violet/[0.08]"
+          ? "border-marca/50 bg-marca/[0.08]"
           : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.14]",
       )}
     >
       <span
         className={cn(
           "mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border-2 transition-colors",
-          active ? "border-chroma-violet" : "border-zinc-700",
+          active ? "border-marca" : "border-zinc-700",
         )}
       >
-        {active && <span className="size-1.5 rounded-full bg-chroma-violet" />}
+        {active && <span className="size-1.5 rounded-full bg-marca" />}
       </span>
       <span>
-        <span className={cn("block text-[13px] font-bold", active ? "text-chroma-violet" : "text-zinc-200")}>
+        <span className={cn("block text-[13px] font-bold", active ? "text-marca" : "text-zinc-200")}>
           {title}
         </span>
         <span className="mt-0.5 block text-[11px] leading-relaxed text-zinc-500">{description}</span>
@@ -553,7 +553,7 @@ function Field({
   maxLength?: number;
 }) {
   const className =
-    "w-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-700 focus:border-chroma-violet/40";
+    "w-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-700 focus:border-marca/40";
 
   return (
     <label className="block">

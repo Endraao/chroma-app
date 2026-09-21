@@ -77,7 +77,7 @@ export function Header() {
               onClick={() => setAberto((v) => !v)}
               aria-label="Abrir menu"
               aria-expanded={aberto}
-              className="grid size-[38px] place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-zinc-300 transition-colors hover:border-chroma-violet/40 hover:text-white"
+              className="grid size-[38px] place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-zinc-300 transition-colors hover:border-marca/40 hover:text-white"
             >
               <MenuIcon aberto={aberto} />
             </button>
@@ -91,7 +91,7 @@ export function Header() {
                     className={cn(
                       "block rounded-lg px-3 py-2.5 text-[14px] font-semibold transition-colors",
                       pathname === item.href
-                        ? "bg-chroma-violet/15 text-chroma-violet"
+                        ? "bg-marca/15 text-marca"
                         : "text-zinc-300 hover:bg-white/5 hover:text-white",
                     )}
                   >

@@ -84,7 +84,7 @@ export default function FeesPage() {
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
             <Legend color="bg-bull" label="Compra e queima a vencedora" value={feeLabel.poolBurn} />
             <Legend color="bg-chroma-cyan" label="Criador vencedor" value={feeLabel.poolCreator} />
-            <Legend color="bg-chroma-violet" label="Plataforma" value={feeLabel.poolPlatform} />
+            <Legend color="bg-marca" label="Plataforma" value={feeLabel.poolPlatform} />
           </div>
 
           <p className="mt-2 text-[11px] text-zinc-600">
@@ -204,7 +204,7 @@ function ChainFeeSection({ chain }: { chain: ChainId }) {
                   >
                     {formatBps(d.creatorBps)}
                   </td>
-                  <td className="tnum px-4 py-2.5 text-right text-chroma-violet">
+                  <td className="tnum px-4 py-2.5 text-right text-marca">
                     {formatBps(d.affiliateBps)}
                   </td>
                   <td className="tnum px-4 py-2.5 text-right text-zinc-400">
@@ -249,7 +249,7 @@ function WaterfallBar() {
   const slices = [
     { bps: POOL_SPLIT_BPS.burnWinner, color: "bg-bull" },
     { bps: POOL_SPLIT_BPS.winningCreator, color: "bg-chroma-cyan" },
-    { bps: POOL_SPLIT_BPS.platform, color: "bg-chroma-violet" },
+    { bps: POOL_SPLIT_BPS.platform, color: "bg-marca" },
   ];
 
   return (
@@ -296,7 +296,7 @@ function FeeCard({
   return (
     <Card
       interactive
-      className={cn("p-4", highlight && "border-chroma-violet/30 bg-chroma-violet/[0.04]")}
+      className={cn("p-4", highlight && "border-marca/30 bg-marca/[0.04]")}
     >
       <div className="flex items-center gap-2">
         <Icon name={icon} />

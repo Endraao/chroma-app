@@ -115,7 +115,7 @@ export default function AffiliatePage() {
           <Passo n={1} titulo="Você divulga a moeda">
             Abra a moeda e clique em <strong className="text-zinc-300">Compartilhar</strong>. Sai um
             link com o seu apelido. Qualquer página da Chroma aceita{" "}
-            <code className="text-chroma-violet">?ref=seuapelido</code>.
+            <code className="text-marca">?ref=seuapelido</code>.
           </Passo>
           <Passo n={2} titulo="A pessoa fica marcada por 30 dias">
             A atribuição fica no navegador dela e vale pra qualquer moeda que ela operar na janela.
@@ -129,7 +129,7 @@ export default function AffiliatePage() {
           <p className="border-t border-white/[0.06] pt-3 text-[12px] text-zinc-600">
             A sua fatia sai da parte da plataforma, não do bolso de quem compra: o trader paga o
             mesmo com ou sem indicação. Ver{" "}
-            <Link href="/fees" className="text-chroma-violet hover:text-chroma-cyan">
+            <Link href="/fees" className="text-marca hover:text-chroma-cyan">
               todas as taxas
             </Link>
             . Vale nas duas redes — {CHAINS.solana.label} e {CHAINS.robinhood.label}.
@@ -143,7 +143,7 @@ export default function AffiliatePage() {
 function Passo({ n, titulo, children }: { n: number; titulo: string; children: React.ReactNode }) {
   return (
     <div className="flex gap-3">
-      <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-chroma-violet/15 text-[11px] font-bold text-chroma-violet">
+      <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-marca/15 text-[11px] font-bold text-marca">
         {n}
       </span>
       <div>

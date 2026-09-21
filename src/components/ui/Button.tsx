@@ -5,29 +5,30 @@ import { cn } from "@/lib/utils";
 type Variant = "chroma" | "buy" | "sell" | "ghost" | "outline";
 type Size = "sm" | "md" | "lg";
 
+/*
+ * A ação principal é CHAPADA, não gradiente.
+ *
+ * O botão com gradiente e brilho embaixo é o elemento mais associado a página
+ * gerada — e, pior, ele compete com o gráfico e com os números de preço, que
+ * é o que a pessoa veio ver. Cor sólida da marca, borda de 1px, nada de
+ * sombra colorida: a ênfase vem do contraste com o fundo quase preto.
+ */
 const variants: Record<Variant, string> = {
-  // Único lugar onde o gradiente cromático aparece em área cheia
-  /*
-   * O gradiente sozinho lia como roxo chapado: com `background-size: 200%` e a
-   * posição inicial, só uma faixa da paleta aparecia. A borda interna clara
-   * desenha o contorno do botão contra o fundo escuro e o brilho baixo em
-   * repouso destaca a ação principal sem animar nada — animação constante na
-   * CTA cansa e concorre com o gráfico ao lado.
-   */
   chroma:
-    "bg-chroma-gradient bg-[length:200%_200%] bg-[position:25%_50%] text-white " +
-    "ring-1 ring-inset ring-white/25 shadow-[0_6px_20px_-8px_rgba(139,92,246,.75)] " +
-    "hover:animate-chroma-pan hover:ring-white/40 hover:shadow-glow-violet",
-  buy: "bg-bull/15 text-bull border border-bull/30 hover:bg-bull/25 hover:shadow-glow-bull",
-  sell: "bg-bear/15 text-bear border border-bear/30 hover:bg-bear/25 hover:shadow-glow-bear",
-  ghost: "text-zinc-400 hover:bg-white/5 hover:text-zinc-100",
-  outline: "border border-white/10 bg-white/[0.02] text-zinc-200 hover:border-chroma-violet/40 hover:bg-white/[0.05]",
+    "bg-marca text-ink-950 font-bold hover:bg-marca-forte " +
+    "active:translate-y-px",
+  buy: "bg-bull/12 text-bull border border-bull/35 hover:bg-bull/20",
+  sell: "bg-bear/12 text-bear border border-bear/35 hover:bg-bear/20",
+  ghost: "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100",
+  outline:
+    "border border-ink-600 bg-ink-800 text-zinc-200 hover:border-marca/50 hover:text-white",
 };
 
+/* Mais baixos que antes: altura de painel, não de folheto. */
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-xs",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-5 text-[15px]",
+  sm: "h-7 px-2.5 text-[12px]",
+  md: "h-9 px-3.5 text-[13px]",
+  lg: "h-10 px-4 text-[14px]",
 };
 
 export function Button({
@@ -39,9 +40,9 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex select-none items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chroma-violet/50",
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none",
+        "inline-flex select-none items-center justify-center gap-2 rounded font-semibold transition-colors duration-150",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca",
+        "disabled:cursor-not-allowed disabled:opacity-40",
         variants[variant],
         sizes[size],
         className,

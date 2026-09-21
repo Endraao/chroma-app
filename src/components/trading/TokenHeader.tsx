@@ -114,7 +114,7 @@ export function TokenHeader({
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-zinc-600">
             <button
               onClick={copyAddress}
-              className="tnum rounded-md border border-white/[0.06] px-2 py-0.5 transition-colors hover:border-chroma-violet/40 hover:text-chroma-violet"
+              className="tnum rounded-md border border-white/[0.06] px-2 py-0.5 transition-colors hover:border-marca/40 hover:text-marca"
             >
               {copied ? "copiado!" : shortenAddress(token.address, 6)}
             </button>

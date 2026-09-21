@@ -211,7 +211,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
                     <Link
                       key={t.address || t.symbol}
                       href={t.address ? `/token/${t.address}` : "#"}
-                      className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] transition-colors hover:border-chroma-violet/30"
+                      className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] transition-colors hover:border-marca/30"
                     >
                       <span className="font-semibold text-zinc-200">${t.symbol}</span>
                       <span className="tnum flex items-center gap-3">
@@ -255,7 +255,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
                             href={meta.explorer.replace("/token/", "/tx/") + t.txHash}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-chroma-violet transition-colors hover:text-chroma-cyan"
+                            className="text-marca transition-colors hover:text-chroma-cyan"
                           >
                             comprovante ↗
                           </a>
@@ -342,7 +342,7 @@ function Mini({
       className={cn(
         "rounded-xl border px-3 py-2.5",
         destaque
-          ? "border-chroma-violet/30 bg-chroma-violet/[0.06]"
+          ? "border-marca/30 bg-marca/[0.06]"
           : "border-white/[0.06] bg-white/[0.02]",
       )}
     >
@@ -350,7 +350,7 @@ function Mini({
       <div
         className={cn(
           "tnum mt-0.5 truncate text-sm font-bold",
-          destaque ? "text-chroma-violet" : "text-zinc-100",
+          destaque ? "text-marca" : "text-zinc-100",
         )}
       >
         {valor}

@@ -71,7 +71,7 @@ export function ShareToken({ token }: { token: TokenSummary }) {
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[12px] font-semibold text-zinc-200">Link desta moeda</span>
             {account.referralId && (
-              <span className="rounded-md bg-chroma-violet/15 px-1.5 py-0.5 text-[10px] font-bold text-chroma-violet">
+              <span className="rounded-md bg-marca/15 px-1.5 py-0.5 text-[10px] font-bold text-marca">
                 com sua indicação
               </span>
             )}
@@ -108,7 +108,7 @@ export function ShareToken({ token }: { token: TokenSummary }) {
             {account.referralId ? (
               <>
                 Quem comprar por este link te paga{" "}
-                <strong className="text-chroma-violet">{feeLabel.affiliate}</strong> de cada operação
+                <strong className="text-marca">{feeLabel.affiliate}</strong> de cada operação
                 — sai da nossa parte, não do bolso de quem compra.
               </>
             ) : (
@@ -133,7 +133,7 @@ function SocialLink({ label, href }: { label: string; href: string }) {
       className={cn(
         "flex-1 rounded-lg border border-white/[0.06] bg-white/[0.02] py-1.5 text-center",
         "text-[11px] font-semibold text-zinc-400 transition-colors",
-        "hover:border-chroma-violet/40 hover:text-chroma-violet",
+        "hover:border-marca/40 hover:text-marca",
       )}
     >
       {label}

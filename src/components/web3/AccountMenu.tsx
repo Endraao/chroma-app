@@ -84,7 +84,7 @@ export function AccountMenu() {
       <Link
         href="/create"
         title="Criar token"
-        className="grid size-[38px] place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-zinc-300 transition-colors hover:border-chroma-violet/40 hover:bg-chroma-violet/[0.08] hover:text-white"
+        className="grid size-[38px] place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-zinc-300 transition-colors hover:border-marca/40 hover:bg-marca/[0.08] hover:text-white"
       >
         <PlusIcon />
       </Link>
@@ -93,7 +93,7 @@ export function AccountMenu() {
       {usd !== null && (
         <Link
           href="/profile"
-          className="tnum hidden h-[38px] items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] font-bold text-zinc-100 transition-colors hover:border-chroma-violet/40 sm:flex"
+          className="tnum hidden h-[38px] items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] font-bold text-zinc-100 transition-colors hover:border-marca/40 sm:flex"
         >
           {saldoVisivel ? formatUsd(usd) : "••••"}
           <ChevronIcon />
@@ -104,7 +104,7 @@ export function AccountMenu() {
       <div className="relative">
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className="block rounded-full ring-2 ring-transparent transition-all hover:ring-chroma-violet/40"
+          className="block rounded-full ring-2 ring-transparent transition-all hover:ring-marca/40"
           aria-label="Abrir menu da conta"
         >
           <Avatar seed={account.wallet ?? "chroma"} src={account.account?.avatar} size={38} />
@@ -184,7 +184,7 @@ export function AccountMenu() {
                             setMenuOpen(false);
                             setModalOpen(true);
                           }}
-                          className="shrink-0 rounded-md border border-chroma-violet/30 px-1.5 py-0.5 text-[10px] font-bold text-chroma-violet transition-colors hover:bg-chroma-violet/10"
+                          className="shrink-0 rounded-md border border-marca/30 px-1.5 py-0.5 text-[10px] font-bold text-marca transition-colors hover:bg-marca/10"
                         >
                           conectar
                         </button>
@@ -281,7 +281,7 @@ function ChevronIcon() {
 
 function WalletIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="size-3.5 text-chroma-violet" {...traco}>
+    <svg viewBox="0 0 24 24" className="size-3.5 text-marca" {...traco}>
       <rect x="3" y="6" width="18" height="13" rx="2.5" />
       <path d="M3 10h18M17 14h.01" strokeLinecap="round" />
     </svg>

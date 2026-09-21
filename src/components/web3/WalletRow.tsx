@@ -40,7 +40,7 @@ export function WalletRow({ option, subtitle }: { option: WalletOption; subtitle
       onClick={option.onSelect}
       className={cn(
         "flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-all",
-        "hover:border-chroma-violet/30 hover:bg-chroma-violet/[0.07]",
+        "hover:border-marca/30 hover:bg-marca/[0.07]",
         !isInstalled && "opacity-70 hover:opacity-100",
       )}
     >

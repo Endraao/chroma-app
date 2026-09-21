@@ -1,13 +1,14 @@
 import { cn } from "@/lib/utils";
 import type { RiskLevel } from "@/lib/types";
 
+/* Fundo quase ausente e borda de 1px: selo de terminal, não etiqueta colorida. */
 const tones: Record<RiskLevel | "neutral" | "chroma", string> = {
-  safe: "bg-bull/10 text-bull ring-bull/25",
-  warn: "bg-warn/10 text-warn ring-warn/25",
-  danger: "bg-bear/10 text-bear ring-bear/25",
-  unknown: "bg-white/5 text-zinc-500 ring-white/10",
-  neutral: "bg-white/5 text-zinc-300 ring-white/10",
-  chroma: "bg-chroma-violet/10 text-chroma-violet ring-chroma-violet/25",
+  safe: "bg-bull/[0.08] text-bull ring-bull/30",
+  warn: "bg-warn/[0.08] text-warn ring-warn/30",
+  danger: "bg-bear/[0.08] text-bear ring-bear/30",
+  unknown: "bg-ink-800 text-zinc-500 ring-ink-600",
+  neutral: "bg-ink-800 text-zinc-300 ring-ink-600",
+  chroma: "bg-marca/[0.08] text-marca ring-marca/30",
 };
 
 export function Badge({
@@ -18,7 +19,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-rotulo ring-1 ring-inset",
         tones[tone],
         className,
       )}

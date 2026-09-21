@@ -22,7 +22,7 @@ export function TokenCard({ token }: { token: TokenSummary }) {
   return (
     <Link href={`/token/${token.address}`} className="group block">
       {/* Arte */}
-      <div className="relative aspect-square overflow-hidden rounded-xl border border-white/[0.06] bg-ink-900 transition-colors group-hover:border-chroma-violet/40">
+      <div className="relative aspect-square overflow-hidden rounded border border-ink-700 bg-ink-900 transition-colors group-hover:border-marca/50">
         {token.imageUrl ? (
           /*
            * next/image exigiria whitelist de domínio pra cada CDN de token, e
@@ -36,7 +36,7 @@ export function TokenCard({ token }: { token: TokenSummary }) {
             className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="grid size-full place-items-center bg-chroma-gradient bg-[length:200%_200%] text-3xl font-black text-white/90">
+          <div className="grid size-full place-items-center bg-ink-800 text-2xl font-bold text-zinc-600">
             {token.symbol.slice(0, 2)}
           </div>
         )}
@@ -52,8 +52,8 @@ export function TokenCard({ token }: { token: TokenSummary }) {
         {/* Variação 24h, canto superior */}
         <span
           className={cn(
-            "tnum absolute left-2 top-2 rounded-md px-1.5 py-0.5 text-[11px] font-bold backdrop-blur-sm",
-            up ? "bg-bull/20 text-bull" : "bg-bear/20 text-bear",
+            "tnum absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[11px] font-bold",
+            up ? "bg-black/70 text-bull" : "bg-black/70 text-bear",
           )}
         >
           {formatPct(token.change24h)}

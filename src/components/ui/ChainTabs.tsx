@@ -90,7 +90,7 @@ function Aba({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-colors",
         selecionada
-          ? "border-chroma-violet/40 bg-chroma-violet/15 text-chroma-violet"
+          ? "border-marca/40 bg-marca/15 text-marca"
           : "border-white/[0.06] bg-white/[0.02] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-200",
       )}
     >

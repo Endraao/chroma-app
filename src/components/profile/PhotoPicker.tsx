@@ -131,7 +131,7 @@ export function PhotoPicker({
         title={`${espec.rotulo} — ${resumoDaEspec(espec)}`}
         className={cn(
           "grid place-items-center rounded-full bg-ink-950/70 text-zinc-100 backdrop-blur-sm",
-          "border border-white/20 transition-colors hover:bg-ink-950/90 hover:border-chroma-violet/60",
+          "border border-white/20 transition-colors hover:bg-ink-950/90 hover:border-marca/60",
           "disabled:cursor-wait disabled:opacity-60",
           className,
         )}

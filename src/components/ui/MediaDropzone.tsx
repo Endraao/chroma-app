@@ -192,8 +192,8 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-8 text-center transition-all",
           dragging
-            ? "border-chroma-violet bg-chroma-violet/[0.08]"
-            : "border-white/[0.12] bg-white/[0.01] hover:border-chroma-violet/40 hover:bg-white/[0.03]",
+            ? "border-marca bg-marca/[0.08]"
+            : "border-white/[0.12] bg-white/[0.01] hover:border-marca/40 hover:bg-white/[0.03]",
           className,
         )}
       >

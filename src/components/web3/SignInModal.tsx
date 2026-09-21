@@ -261,7 +261,7 @@ function AllWalletsStep({ scope }: { scope: WalletNetwork }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 transition-colors focus-within:border-chroma-violet/40">
+      <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 transition-colors focus-within:border-marca/40">
         <SearchIcon />
         <input
           autoFocus
@@ -423,7 +423,7 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
           <button
             onClick={() => setNickname(suggestNickname())}
             title="Sortear outro"
-            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-white/5 hover:text-chroma-violet"
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-white/5 hover:text-marca"
           >
             sortear
           </button>
@@ -437,7 +437,7 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
         3 a 20 caracteres, só letras, números e <code>_</code>. Seu link fica{" "}
-        <span className="text-chroma-violet">/?ref={nickname || "seunome"}</span>. Dá pra trocar
+        <span className="text-marca">/?ref={nickname || "seunome"}</span>. Dá pra trocar
         depois no seu perfil — os links antigos continuam funcionando.
       </p>
 

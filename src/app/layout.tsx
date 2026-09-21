@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Suspense } from "react";
 
 import { WalletProviders } from "@/components/web3/WalletProviders";
@@ -9,7 +9,22 @@ import { RpcNotice } from "@/components/web3/RpcNotice";
 
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+/*
+ * Space Grotesk no lugar da Inter.
+ *
+ * A Inter é a fonte padrão de todo painel de SaaS — é o que faz uma tela
+ * parecer "gerada", porque é literalmente a mesma de milhares delas. A Space
+ * Grotesk tem desenho próprio (o "g" de perna aberta, as curvas quadradas) e
+ * é a que o meio cripto usa: lê como produto de gente que trabalha com rede,
+ * não como apresentação de startup.
+ */
+const display = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+/** Números, endereços e tudo que precisa alinhar coluna. */
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -27,7 +42,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className="dark">
-      <body className={`${inter.variable} ${mono.variable} min-h-screen font-sans`}>
+      <body className={`${display.variable} ${mono.variable} min-h-screen font-sans`}>
         <WalletProviders>
           {/* useSearchParams precisa de um limite de Suspense no App Router. */}
           <Suspense fallback={null}>

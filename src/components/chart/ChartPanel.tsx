@@ -802,13 +802,13 @@ function ItemIndicador({
       onClick={onClick}
       className={cn(
         "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors",
-        ativo ? "bg-chroma-violet/10" : "hover:bg-white/5",
+        ativo ? "bg-marca/10" : "hover:bg-white/5",
       )}
     >
       <span
         className={cn(
           "grid size-4 shrink-0 place-items-center rounded border",
-          ativo ? "border-chroma-violet bg-chroma-violet text-white" : "border-white/15",
+          ativo ? "border-marca bg-marca text-white" : "border-white/15",
         )}
       >
         {ativo && (
@@ -827,7 +827,7 @@ function ItemIndicador({
         <span
           className={cn(
             "block text-[12px] font-bold",
-            ativo ? "text-chroma-violet" : "text-zinc-200",
+            ativo ? "text-marca" : "text-zinc-200",
           )}
         >
           {nome}

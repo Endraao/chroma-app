@@ -192,7 +192,7 @@ export default function ProfilePage() {
             className={cn(
               "rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition-colors",
               aba === id
-                ? "bg-chroma-violet/20 text-chroma-violet"
+                ? "bg-marca/20 text-marca"
                 : "text-zinc-500 hover:bg-white/5 hover:text-zinc-200",
             )}
           >
@@ -322,7 +322,7 @@ function ContaTab({ account }: { account: ReturnType<typeof useChromaAccount> })
                 {!checking && status?.available && <span className="shrink-0 text-bull">✓</span>}
                 <button
                   onClick={() => setNickname(suggestNickname())}
-                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-white/5 hover:text-chroma-violet"
+                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-white/5 hover:text-marca"
                 >
                   sortear
                 </button>

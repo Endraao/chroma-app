@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "Space Grotesk", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   color-scheme: dark;
 }
@@ -23,26 +23,24 @@ body::before {
   background-size: theme("backgroundSize.grid");
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 75%);
 }
-body::after {
-  content: "";
-  position: fixed;
-  inset: -20% -10% auto -10%;
-  height: 420px;
-  z-index: -1;
-  background: radial-gradient(
-    ellipse at 50% 0%,
-    rgba(139, 92, 246, 0.14),
-    rgba(34, 211, 238, 0.06) 40%,
-    transparent 70%
-  );
-  filter: blur(40px);
-  pointer-events: none;
-}
+/*
+ * O halo violeta no topo foi removido.
+ *
+ * Era a luz difusa atrás do título — o efeito mais associado a página de
+ * apresentação gerada. Num terminal, o topo da tela é onde mora informação,
+ * não iluminação.
+ */
 
 @layer components {
-  /* Cartão de vidro: base escura + borda com refração sutil */
+  /*
+   * Superfície sólida, não vidro.
+   *
+   * O `backdrop-blur` custa caro em tela cheia de cartão e, pior, deixa tudo
+   * com o mesmo cinza leitoso — o que some com a hierarquia. Aqui a camada
+   * vem da BORDA, que é o jeito de um terminal separar as coisas.
+   */
   .glass {
-    @apply relative rounded-2xl border border-white/[0.06] bg-ink-900/70 shadow-glass backdrop-blur-xl;
+    @apply relative rounded-lg border border-ink-700 bg-ink-900;
   }
   /*
    * Menu flutuante. O .glass normal é translúcido demais quando fica por cima
@@ -55,30 +53,28 @@ body::after {
      * num título grande e branco, 3% de vazamento já polui. A sensação de
      * camada vem da borda e da sombra, não da transparência.
      */
-    @apply rounded-2xl border border-white/[0.08] bg-ink-900 shadow-glass;
+    @apply rounded-lg border border-ink-600 bg-ink-800 shadow-painel;
   }
 
-  /* Borda cromática: só aparece de verdade no hover */
-  .glass-edge::before {
-    content: "";
-    @apply pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300;
-    padding: 1px;
-    background-image: theme("backgroundImage.chroma-edge");
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-  }
-  .glass-edge:hover::before {
-    @apply opacity-100;
-  }
-
+  /*
+   * Texto com o espectro da marca — reservado pra LOGO.
+   *
+   * Aplicado numa palavra do título, era o tique mais reconhecível de página
+   * gerada. Numa marca chamada Chroma o espectro tem que existir; só não no
+   * lugar onde todo mundo põe.
+   */
   .text-chroma {
     @apply bg-chroma-gradient bg-clip-text text-transparent;
     background-size: 200% 200%;
   }
 
+  /* Rótulo minúsculo em caixa alta: o tom de terminal. */
+  .rotulo {
+    @apply text-[10px] font-medium uppercase tracking-rotulo text-zinc-500;
+  }
+
   .hairline {
-    @apply border-white/[0.06];
+    @apply border-ink-700;
   }
 
   /* Números de preço/valores: tabular pra não "dançar" quando atualiza */

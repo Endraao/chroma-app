@@ -144,7 +144,7 @@ function SolanaSwap(props: SolanaSwapProps) {
 
       <div className="space-y-3 px-4 pb-4">
         {/* Entrada */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-colors focus-within:border-chroma-violet/40">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-colors focus-within:border-marca/40">
           <div className="flex items-center justify-between text-[11px] text-zinc-500">
             <span>Você paga</span>
             <span className="flex items-center gap-1.5">
@@ -157,7 +157,7 @@ function SolanaSwap(props: SolanaSwapProps) {
                         : String(swap.balance),
                     )
                   }
-                  className="rounded px-1 text-chroma-violet transition-colors hover:text-chroma-cyan"
+                  className="rounded px-1 text-marca transition-colors hover:text-chroma-cyan"
                   title={isBuy ? "Usa o saldo menos 0,02 SOL pra taxa de rede" : "Vende tudo"}
                 >
                   máx
@@ -183,7 +183,7 @@ function SolanaSwap(props: SolanaSwapProps) {
               <button
                 key={p}
                 onClick={() => applyPreset(p)}
-                className="flex-1 rounded-lg border border-white/[0.06] py-1 text-[11px] font-semibold text-zinc-400 transition-colors hover:border-chroma-violet/40 hover:text-chroma-violet"
+                className="flex-1 rounded-lg border border-white/[0.06] py-1 text-[11px] font-semibold text-zinc-400 transition-colors hover:border-marca/40 hover:text-marca"
               >
                 {isBuy ? `${p} SOL` : `${p}%`}
               </button>
@@ -231,7 +231,7 @@ function SolanaSwap(props: SolanaSwapProps) {
                 onClick={() => setSlippage(s)}
                 className={cn(
                   "rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
-                  slippage === s ? "bg-chroma-violet/20 text-chroma-violet" : "text-zinc-500 hover:text-zinc-300",
+                  slippage === s ? "bg-marca/20 text-marca" : "text-zinc-500 hover:text-zinc-300",
                 )}
               >
                 {s}%
