@@ -22,17 +22,19 @@ const SORTS: { key: SortKey; label: string }[] = [
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: { sort?: string; chain?: string };
+  /** Promise desde o Next 16. */
+  searchParams: Promise<{ sort?: string; chain?: string }>;
 }) {
-  const sort = (searchParams.sort as SortKey) || "new";
+  const filtros = await searchParams;
+  const sort = (filtros.sort as SortKey) || "new";
 
   /*
    * Rede vinda da URL, e não do estado da carteira: assim o link que a pessoa
    * compartilha abre a mesma lista pra quem receber. A carteira conectada só
    * decide qual aba vem MARCADA — ver ChainTabs.
    */
-  const chain = CHAIN_IDS.includes(searchParams.chain as ChainId)
-    ? (searchParams.chain as ChainId)
+  const chain = CHAIN_IDS.includes(filtros.chain as ChainId)
+    ? (filtros.chain as ChainId)
     : null;
 
   const { tokens, isDemo } = await listTokens(sort, chain);

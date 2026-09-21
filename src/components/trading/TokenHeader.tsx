@@ -74,7 +74,7 @@ export function TokenHeader({
     <Card className="p-3">
       <div className="flex flex-wrap items-center gap-3">
         {token.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
+           
           <img src={token.imageUrl} alt="" className="size-10 shrink-0 rounded-lg bg-ink-800 object-cover" />
         ) : (
           <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-chroma-gradient bg-[length:200%_200%] text-sm font-black text-white/90">

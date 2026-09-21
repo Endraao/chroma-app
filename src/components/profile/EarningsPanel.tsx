@@ -1,6 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";

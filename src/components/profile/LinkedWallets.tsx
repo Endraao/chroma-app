@@ -1,6 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useSignMessage } from "wagmi";
@@ -79,6 +78,14 @@ export function LinkedWallets() {
     setErro(null);
 
     try {
+      /*
+       * `Date.now()` aqui é impuro de propósito e não roda em render: esta
+       * função só é chamada no clique. O carimbo de hora faz parte do que vai
+       * ser assinado — é ele que impede reaproveitar uma assinatura antiga
+       * (ver o prazo de validade em `src/lib/wallet-auth.ts`), então não pode
+       * ser fixo nem vir de fora.
+       */
+      // eslint-disable-next-line react-hooks/purity
       const momento = Date.now();
       const mensagem = [
         "Chroma — vincular carteira",

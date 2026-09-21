@@ -131,7 +131,7 @@ export default function ProfilePage() {
               <span>{account.wallet ? shortenAddress(account.wallet, 5) : "—"}</span>
               <span>·</span>
               <span className="flex items-center gap-1.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
+                { }
                 <img
                   src={chainIcon(account.kind === "solana" ? "solana" : "robinhood")}
                   alt=""

@@ -157,7 +157,7 @@ export function AccountMenu() {
                   const conectada = account.conectadas[id];
                   return (
                     <div key={id} className="flex items-center gap-2.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      { }
                       <img
                         src={chainIcon(id)}
                         alt=""

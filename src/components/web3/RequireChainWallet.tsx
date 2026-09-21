@@ -1,6 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";

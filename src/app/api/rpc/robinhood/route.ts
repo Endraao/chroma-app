@@ -67,7 +67,16 @@ const METODOS_PERMITIDOS = new Set([
 /** Teto de blocos por consulta de eventos, pra ninguém pedir a cadeia inteira. */
 const MAX_BLOCOS_POR_CONSULTA = 5_000n;
 
-const LIMITE = { janelaMs: 10_000, max: 60 };
+/*
+ * Medido: uma aba de moeda aberta faz ~14 pedidos por 10s (o ticker a cada
+ * 700ms). Com 60 o teto batia já na quarta aba — e atrás de um provedor de
+ * internet ou de uma CDN várias pessoas dividem o mesmo IP, então o teto
+ * punia quem estava usando normalmente.
+ *
+ * 150 dá folga pra umas dez abas e continua longe de qualquer varredura, que
+ * faria ordens de grandeza mais.
+ */
+const LIMITE = { janelaMs: 10_000, max: 150 };
 const acessos = new Map<string, { contagem: number; expiraEm: number }>();
 
 function excedeuLimite(request: Request): boolean {

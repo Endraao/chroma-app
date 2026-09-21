@@ -134,13 +134,19 @@ export function useSolanaSwap({
   }, [publicKey, connection, isBuy, tokenMint, tokenDecimals, signature]);
 
   /* --- Contas da taxa --------------------------------------------- */
-  const grossRaw = useMemo(() => {
-    if (inputDecimals === null) return 0n;
-    return parseUnits(amount, inputDecimals);
-  }, [amount, inputDecimals]);
+  /*
+   * Sem `useMemo` nas duas linhas abaixo, de propósito.
+   *
+   * São aritmética pura e barata sobre uma string curta. O compilador do
+   * React 19 memoriza sozinho; a memoização manual escrita à mão fazia ele
+   * desistir de otimizar o ARQUIVO INTEIRO — ele não consegue provar que
+   * preservaria o comportamento quando há BigInt envolvido, e prefere pular.
+   * Tirar as duas custa nada e devolve a otimização automática do resto.
+   */
+  const grossRaw = inputDecimals === null ? 0n : parseUnits(amount, inputDecimals);
 
   // A rota de swap implementada hoje é só a da Solana.
-  const fees = useMemo(() => computeFeesRaw(grossRaw, affiliate, "solana"), [grossRaw, affiliate]);
+  const fees = computeFeesRaw(grossRaw, affiliate, "solana");
 
   /* --- Cotação (com debounce) -------------------------------------- */
   const requestRef = useRef(0);

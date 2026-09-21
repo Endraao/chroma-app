@@ -16,8 +16,12 @@ import { lerFoto } from "@/lib/media-store";
  * Sem isso o token apareceria sem nome e sem imagem na Phantom. Não há risco
  * em abrir: é conteúdo público e estático, servido sem cookie nem sessão.
  */
-export async function GET(_request: Request, { params }: { params: { nome: string } }) {
-  const foto = await lerFoto(params.nome);
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ nome: string }> },
+) {
+  const { nome } = await params;
+  const foto = await lerFoto(nome);
   if (!foto) return new Response("não encontrado", { status: 404 });
 
   return new Response(new Uint8Array(foto.bytes), {

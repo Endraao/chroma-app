@@ -36,26 +36,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  webpack: (config) => {
-    // Alguns pacotes Solana esperam módulos de Node que não existem no browser.
-    config.resolve.fallback = { ...config.resolve.fallback, fs: false, net: false, tls: false };
-
-    // O barrel "wagmi/connectors" arrasta o conector baseAccount, que puxa
-    // @coinbase/cdp-sdk, que importa pacotes @x402/* que não são publicados.
-    // Nada disso é usado aqui (só usamos carteiras injetadas), então
-    // apontamos esses imports pra vazio em vez de quebrar o build.
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@x402/core/client': false,
-      '@x402/svm/exact/client': false,
-      '@x402/evm': false,
-      // Logger opcional do WalletConnect: só existe em dev, não precisa no bundle.
-      'pino-pretty': false,
-      // Dependência React Native do SDK da MetaMask; não existe no browser.
-      '@react-native-async-storage/async-storage': false,
-    };
-    return config;
-  },
+  turbopack: {},
 };
 
 export default nextConfig;
