@@ -89,8 +89,25 @@ const IconeTendencia = () => (
 /** Grupo das horizontais: o "≡" de comprimentos diferentes. */
 const IconeHorizontais = () => (
   <I>
-    <path d="M3 7h18M3 12h12M3 17h18" />
-    <circle cx="19" cy="12" r="1.6" />
+    <path d="M7 6.5h15M7 12h11M7 17.5h15" />
+    <circle cx="4" cy="6.5" r="1.7" />
+    <circle cx="4" cy="12" r="1.7" />
+    <circle cx="4" cy="17.5" r="1.7" />
+  </I>
+);
+
+/**
+ * Forquilha: o tronco com os dois braços e um ponto em cada extremidade.
+ *
+ * É o ícone do grupo de linhas paralelas no original — três hastes saindo do
+ * mesmo ponto. Uma seta ou um "V" genérico não lê a mesma coisa.
+ */
+const IconeForquilha = () => (
+  <I>
+    <path d="M5 19 12 9M12 9l7 10M12 9V4" />
+    <circle cx="12" cy="3" r="1.7" />
+    <circle cx="4" cy="20" r="1.7" />
+    <circle cx="20" cy="20" r="1.7" />
   </I>
 );
 
@@ -103,10 +120,16 @@ const IconeFibonacci = () => (
 );
 
 /** Formas: um retângulo e um círculo se sobrepondo, como no original. */
+/**
+ * Curva: o traço que sobe e desce com um ponto na ponta.
+ *
+ * No original este é o grupo das formas, e o desenho é uma CURVA, não um
+ * retângulo com um círculo. Era esse o ícone que destoava.
+ */
 const IconeFormas = () => (
   <I>
-    <rect x="3.5" y="7.5" width="11" height="11" rx="1" />
-    <circle cx="16" cy="9" r="5" />
+    <path d="M3 17c3.5 0 4-9 8-9s4.5 6 8 6" />
+    <circle cx="20.5" cy="13.6" r="1.7" />
   </I>
 );
 
@@ -210,15 +233,11 @@ const GRUPOS: Grupo[] = [
       { id: "segment", nome: "Linha de tendência" },
       { id: "rayLine", nome: "Raio" },
       { id: "straightLine", nome: "Linha estendida" },
-      { id: "parallelStraightLine", nome: "Canal paralelo" },
-      { id: "priceChannelLine", nome: "Canal de preço" },
     ],
     icones: {
       segment: <IconeTendencia />,
       rayLine: <IconeRaio />,
       straightLine: <IconeEstendida />,
-      parallelStraightLine: <IconeCanal />,
-      priceChannelLine: <IconeCanal />,
     },
   },
   {
@@ -236,6 +255,27 @@ const GRUPOS: Grupo[] = [
       horizontalRayLine: <IconeHorizontal />,
       priceLine: <IconeHorizontal />,
       verticalStraightLine: <IconeVertical />,
+    },
+  },
+  {
+    /*
+     * Os canais vieram do grupo de tendência pra cá.
+     *
+     * No original a forquilha fica entre as horizontais e a Fibonacci, e o que
+     * mora nela são as linhas PARALELAS — que é exatamente o que o ícone
+     * desenha. Deixá-las junto das tendências dava um grupo com cinco itens
+     * de naturezas diferentes e um lugar vazio na barra.
+     */
+    chave: "canais",
+    titulo: "Canais paralelos",
+    icone: <IconeForquilha />,
+    ferramentas: [
+      { id: "parallelStraightLine", nome: "Canal paralelo" },
+      { id: "priceChannelLine", nome: "Canal de preço" },
+    ],
+    icones: {
+      parallelStraightLine: <IconeCanal />,
+      priceChannelLine: <IconeCanal />,
     },
   },
   {

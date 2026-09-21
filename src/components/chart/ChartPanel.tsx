@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CandleType } from "klinecharts";
 
 import {
+  FONTE_TV,
   TradingChart,
   INDICADORES_PRINCIPAIS,
   INDICADORES_INFERIORES,
@@ -196,7 +197,12 @@ export function ChartPanel({
     <div
       ref={caixaRef}
       className="overflow-hidden rounded-xl border"
-      style={{ borderColor: BORDA, background: FUNDO }}
+      /*
+       * A fonte desce daqui pra tudo que está dentro — barra, legenda, rodapé.
+       * O canvas do gráfico recebe a mesma por configuração; as duas partes
+       * precisam combinar, senão a emenda entre o HTML e o desenho aparece.
+       */
+      style={{ borderColor: BORDA, background: FUNDO, fontFamily: FONTE_TV }}
     >
       {/* ---------------------------------------------------------------- */}
       {/* Barra de cima                                                     */}

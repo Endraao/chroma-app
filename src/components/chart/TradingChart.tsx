@@ -626,6 +626,17 @@ const LINHA = "#2a2e39";
 const TEXTO = "#d1d4dc";
 const TEXTO_FRACO = "#868993";
 
+/**
+ * A pilha de fontes do TradingView, na ordem deles.
+ *
+ * Não é capricho: no Windows ela cai em Trebuchet MS, que tem desenho de letra
+ * bem diferente da Inter que o resto do site usa. Com a fonte do site, os
+ * números do eixo e da legenda ficavam parecidos mas não iguais — e era isso
+ * que dava a sensação de "quase".
+ */
+export const FONTE_TV =
+  "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
+
 const ESTILO_ESCURO = {
   grid: {
     horizontal: { color: "#1e222d" },
@@ -646,7 +657,7 @@ const ESTILO_ESCURO = {
         upColor: VERDE,
         downColor: VERMELHO,
         line: { style: LineType.Dashed, size: 1 },
-        text: { borderRadius: 2, paddingLeft: 4, paddingRight: 4, size: 11 },
+        text: { borderRadius: 2, paddingLeft: 4, paddingRight: 4, size: 11, family: FONTE_TV },
       },
       high: { color: "#787b86" },
       low: { color: "#787b86" },
@@ -659,7 +670,7 @@ const ESTILO_ESCURO = {
      */
     tooltip: {
       showRule: TooltipShowRule.None,
-      text: { color: TEXTO, size: 11 },
+      text: { color: TEXTO, size: 11, family: FONTE_TV },
       rect: {
         color: "rgba(30,34,45,.95)",
         borderColor: "#363a45",
@@ -672,7 +683,10 @@ const ESTILO_ESCURO = {
      * A régua de indicador fica desligada porque a nossa legenda já mostra o
      * volume, e o texto dela ficava POR CIMA das velas no canto de cima.
      */
-    tooltip: { showRule: TooltipShowRule.None, text: { color: TEXTO_FRACO, size: 11 } },
+    tooltip: {
+      showRule: TooltipShowRule.None,
+      text: { color: TEXTO_FRACO, size: 11, family: FONTE_TV },
+    },
     bars: [
       {
         upColor: "rgba(8,153,129,.5)",
@@ -687,34 +701,34 @@ const ESTILO_ESCURO = {
      */
     lastValueMark: {
       show: true,
-      text: { show: true, borderRadius: 2, size: 11 },
+      text: { show: true, borderRadius: 2, size: 11, family: FONTE_TV },
     },
   },
   xAxis: {
     axisLine: { color: LINHA },
-    tickText: { color: TEXTO_FRACO, size: 11 },
+    tickText: { color: TEXTO_FRACO, size: 11, family: FONTE_TV },
     tickLine: { color: LINHA },
   },
   yAxis: {
     axisLine: { color: LINHA },
-    tickText: { color: TEXTO_FRACO, size: 11 },
+    tickText: { color: TEXTO_FRACO, size: 11, family: FONTE_TV },
     tickLine: { color: LINHA },
   },
   crosshair: {
     horizontal: {
       line: { color: "#9598a1", style: LineType.Dashed },
-      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11 },
+      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11, family: FONTE_TV },
     },
     vertical: {
       line: { color: "#9598a1", style: LineType.Dashed },
-      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11 },
+      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11, family: FONTE_TV },
     },
   },
   overlay: {
     line: { color: "#2962ff" },
     point: { color: "#2962ff", borderColor: "rgba(41,98,255,.35)" },
     polygon: { color: "rgba(41,98,255,.15)", borderColor: "#2962ff" },
-    text: { color: TEXTO },
+    text: { color: TEXTO, family: FONTE_TV },
   },
   separator: { color: LINHA },
 };
