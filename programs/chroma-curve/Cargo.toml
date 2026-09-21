@@ -1,0 +1,47 @@
+[package]
+name = "chroma-curve"
+version = "0.1.0"
+description = "Curva de bonding da Chroma"
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "chroma_curve"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+anchor-debug = []
+custom-heap = []
+custom-panic = []
+
+[dependencies]
+# `init-if-needed` ligado só por causa da conta de token do trader.
+#
+# O Anchor exige essa declaração explícita porque a inicialização condicional
+# pode abrir ataque de reinicialização: o atacante escolhe a conta, apaga o
+# estado e recomeça. Aqui isso não se aplica — a única conta assim é a conta
+# associada de token, cujo endereço é DERIVADO do par (dono, moeda) e validado
+# pelo Anchor. Não há endereço a escolher, e o próprio programa de token
+# recusa criar duas vezes.
+#
+# Nenhuma outra conta do programa usa init_if_needed, e nenhuma deve passar a
+# usar sem esse mesmo raciocínio escrito.
+anchor-lang = { version = "1.2.0", features = ["init-if-needed"] }
+anchor-spl = "1.2.0"
+
+[dev-dependencies]
+litesvm = "0.10.0"
+solana-message = "3.0.1"
+solana-transaction = "3.0.2"
+solana-signer = "3.0.0"
+solana-keypair = "3.0.1"
+solana-pubkey = "3.0.0"
+solana-system-interface = "2.0.0"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

@@ -14,7 +14,15 @@ use curva::Curva;
 use errors::ErroDaCurva;
 use state::{dividir_taxa, Config, Curve, FAIXAS};
 
-declare_id!("Chroma11111111111111111111111111111111111111");
+/*
+ * O endereço deste programa na rede.
+ *
+ * Vem do par de chaves em `target/deploy/chroma_curve-keypair.json`, que fica
+ * FORA do repositório: quem tiver aquele arquivo pode publicar código novo
+ * neste mesmo endereço. Perder o arquivo significa nunca mais atualizar o
+ * programa; vazar significa que outra pessoa atualiza por você.
+ */
+declare_id!("2uAzEJEhVdEsk3DVMrkrcnHCmoFicmg8QPk7xKw8uqB4");
 
 /// Semente do PDA global.
 pub const SEMENTE_CONFIG: &[u8] = b"config";
@@ -105,7 +113,7 @@ pub mod chroma_curve {
         // Emite o fornecimento inteiro direto no cofre da curva.
         token::mint_to(
             CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 token::MintTo {
                     mint: ctx.accounts.mint.to_account_info(),
                     to: ctx.accounts.cofre.to_account_info(),
@@ -126,7 +134,7 @@ pub mod chroma_curve {
          */
         token::set_authority(
             CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 SetAuthority {
                     current_authority: ctx.accounts.curva.to_account_info(),
                     account_or_mint: ctx.accounts.mint.to_account_info(),
@@ -141,7 +149,7 @@ pub mod chroma_curve {
         if config.launch_fee_lamports > 0 {
             system_program::transfer(
                 CpiContext::new(
-                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.system_program.key(),
                     system_program::Transfer {
                         from: ctx.accounts.criador.to_account_info(),
                         to: ctx.accounts.carteira_plataforma.to_account_info(),
@@ -179,7 +187,11 @@ pub mod chroma_curve {
     /// que aceita receber. Os dois existem porque entre montar a transação e
     /// ela ser processada o preço muda — sem eles, toda compra seria uma
     /// ordem a mercado sem limite, que é o que sanduíche come.
-    pub fn buy(ctx: Context<Negociar>, max_sol: u64, min_tokens: u64) -> Result<()> {
+    pub fn buy<'info>(
+        ctx: Context<'info, Negociar<'info>>,
+        max_sol: u64,
+        min_tokens: u64,
+    ) -> Result<()> {
         let config = &ctx.accounts.config;
         require!(!config.paused, ErroDaCurva::Pausado);
         require!(!ctx.accounts.curva.complete, ErroDaCurva::CurvaConcluida);
@@ -228,7 +240,7 @@ pub mod chroma_curve {
 
         token::transfer(
             CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 token::Transfer {
                     from: ctx.accounts.cofre.to_account_info(),
                     to: ctx.accounts.conta_do_trader.to_account_info(),
@@ -284,7 +296,11 @@ pub mod chroma_curve {
     /// Vende tokens de volta pra curva.
     ///
     /// Não é bloqueada por pausa: ver `set_paused`.
-    pub fn sell(ctx: Context<Negociar>, tokens: u64, min_sol: u64) -> Result<()> {
+    pub fn sell<'info>(
+        ctx: Context<'info, Negociar<'info>>,
+        tokens: u64,
+        min_sol: u64,
+    ) -> Result<()> {
         require!(!ctx.accounts.curva.complete, ErroDaCurva::CurvaConcluida);
         require!(tokens > 0, ErroDaCurva::ValorZero);
 
@@ -319,7 +335,7 @@ pub mod chroma_curve {
         // Os tokens entram na curva antes de qualquer lamport sair dela.
         token::transfer(
             CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 token::Transfer {
                     from: ctx.accounts.conta_do_trader.to_account_info(),
                     to: ctx.accounts.cofre.to_account_info(),
@@ -384,13 +400,17 @@ pub mod chroma_curve {
 /* ------------------------------------------------------------------ */
 
 /// Manda lamports do trader (que assina) pra alguém.
-fn transferir_do_trader(ctx: &Context<Negociar>, destino: AccountInfo, valor: u64) -> Result<()> {
+fn transferir_do_trader<'info>(
+    ctx: &Context<'info, Negociar<'info>>,
+    destino: AccountInfo<'info>,
+    valor: u64,
+) -> Result<()> {
     if valor == 0 {
         return Ok(());
     }
     system_program::transfer(
         CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.system_program.key(),
             system_program::Transfer {
                 from: ctx.accounts.trader.to_account_info(),
                 to: destino,
@@ -401,7 +421,10 @@ fn transferir_do_trader(ctx: &Context<Negociar>, destino: AccountInfo, valor: u6
 }
 
 /// Paga as três pontas a partir da carteira do trader (caso da compra).
-fn pagar_taxas(ctx: &Context<Negociar>, divisao: &state::Divisao) -> Result<()> {
+fn pagar_taxas<'info>(
+    ctx: &Context<'info, Negociar<'info>>,
+    divisao: &state::Divisao,
+) -> Result<()> {
     transferir_do_trader(
         ctx,
         ctx.accounts.criador.to_account_info(),
@@ -427,7 +450,11 @@ fn pagar_taxas(ctx: &Context<Negociar>, divisao: &state::Divisao) -> Result<()> 
 /// A checagem de isenção de aluguel não é detalhe: se o saldo cair abaixo
 /// dela, a rede apaga a conta, e junto com ela some o estado da curva de todo
 /// mundo que ainda tem a moeda.
-fn pagar_da_curva(ctx: &Context<Negociar>, destino: AccountInfo, valor: u64) -> Result<()> {
+fn pagar_da_curva<'info>(
+    ctx: &Context<'info, Negociar<'info>>,
+    destino: AccountInfo<'info>,
+    valor: u64,
+) -> Result<()> {
     if valor == 0 {
         return Ok(());
     }
@@ -589,7 +616,6 @@ pub struct Criar<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]

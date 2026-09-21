@@ -1,0 +1,19 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+# Começa em devnet. Mainnet é decisão de negócio e custa SOL de verdade —
+# não entra aqui até alguém decidir conscientemente.
+[programs.devnet]
+chroma_curve = "2uAzEJEhVdEsk3DVMrkrcnHCmoFicmg8QPk7xKw8uqB4"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "cargo test"
+
+[hooks]
