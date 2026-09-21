@@ -226,6 +226,38 @@ idempotente da conta de destino (o aluguel, ~0,002 SOL, sai do usuário).
 Código: `src/lib/solana-swap.ts`. **Não usamos o `platformFeeBps` da Jupiter** porque exigiria
 conta no programa de referral dela e entregaria o valor num endereço só, sem como dividir.
 
+### Quando a curva enche
+
+A curva fecha quando o último token à venda sai (~95 SOL arrecadados). A partir
+daí ela para de negociar, e duas instruções levam a liquidez pra uma pool da
+**Raydium CP-Swap**:
+
+1. `preparar_migracao` — embrulha o SOL arrecadado em WSOL.
+2. `migrar` — cria a pool e **queima o LP**.
+
+**As duas são abertas: qualquer carteira pode chamar.** Se a migração dependesse
+da plataforma, uma chave perdida ou um servidor fora do ar prenderiam dinheiro de
+terceiros sem prazo. Quem chama não escolhe valor nem destino — só paga o gás.
+
+**Por que duas transações e não uma:** a rede recusa creditar lamports numa conta
+que não é do programa e, na mesma instrução, chamar outro programa passando essa
+conta. A tentativa falha com "a soma dos saldos não bate".
+
+**Por que quem executa figura como criador da pool:** a Raydium abre seis contas
+e paga o aluguel delas com uma transferência do programa do sistema, tirada de
+quem cria — e o sistema só transfere de contas que ele mesmo detém. A conta da
+curva é nossa, com dados dentro, então não serve. Os ativos passam pela carteira
+de quem executa na mesma instrução; ela é um corredor, não um cofre.
+
+**O LP é queimado** na mesma instrução em que nasce. Sem isso, alguém poderia
+esvaziar o par e sumir com o dinheiro de quem comprou — o golpe que o painel de
+segurança desta plataforma avisa contra.
+
+`npm run test:migracao` enche uma curva até o fim e migra contra o programa da
+Raydium **copiado da mainnet**, rodando na rede local.
+
+---
+
 ### Robinhood Chain — o contrato existe, a ligação não
 
 Em EVM não dá pra anexar uma transferência a uma transação de swap: uma transação chama UM

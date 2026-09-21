@@ -22,7 +22,10 @@
     "localnet": "wsl -d Ubuntu -e bash /mnt/c/Users/User/AppData/Local/Temp/claude/C--Users-User-Desktop-Bot-de-disparo-ofertas/ee550764-46ec-49d6-aeeb-45352deffa8a/scratchpad/wsl/validador.sh",
     "test:lancamento": "node scripts/test-lancamento.mjs",
     "contracts:build": "wsl -d Ubuntu -e bash -lc \"export PATH=$PATH:/home/chroma/.foundry/bin && cd /mnt/c/Users/User/Desktop/chroma-app/contracts && forge build\"",
-    "contracts:test": "wsl -d Ubuntu -e bash -lc \"export PATH=$PATH:/home/chroma/.foundry/bin && cd /mnt/c/Users/User/Desktop/chroma-app/contracts && forge test -vv\""
+    "contracts:test": "wsl -d Ubuntu -e bash -lc \"export PATH=$PATH:/home/chroma/.foundry/bin && cd /mnt/c/Users/User/Desktop/chroma-app/contracts && forge test -vv\"",
+    "rust:test": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$PATH && export CARGO_TARGET_DIR=$HOME/chroma-target && cd /mnt/c/Users/User/Desktop/chroma-app && cargo test -p chroma-curve\"",
+    "rust:build": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$PATH && export CARGO_TARGET_DIR=$HOME/chroma-target && cd /mnt/c/Users/User/Desktop/chroma-app && cargo check -p chroma-curve\"",
+    "test:migracao": "node scripts/test-migracao.mjs"
   },
   "dependencies": {
     "@solana/spl-token": "^0.4.15",

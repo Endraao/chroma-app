@@ -48,4 +48,15 @@ pub enum ErroDaCurva {
 
     #[msg("Parâmetros de curva inválidos.")]
     CurvaInvalida,
+
+    #[msg("a curva ainda não encheu")]
+    CurvaNaoConcluida,
+    #[msg("esta moeda já migrou pra pool")]
+    JaMigrou,
+    #[msg("a conta da pool não é a que a Raydium calcularia")]
+    PoolErrada,
+    #[msg("sobrou pouco SOL pra criar a pool")]
+    SolInsuficienteParaMigrar,
+    #[msg("a curva não tem token sobrando pra pool")]
+    TokenInsuficienteParaMigrar,
 }

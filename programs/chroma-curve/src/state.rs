@@ -89,6 +89,14 @@ pub struct Curve {
     /// Curva concluída: os tokens acabaram e a moeda vai migrar pra uma DEX.
     /// A partir daqui não se compra nem vende mais por aqui.
     pub complete: bool,
+
+    /// A liquidez já foi pra pool.
+    ///
+    /// Separado de `complete` de propósito: entre encher e migrar existe uma
+    /// janela real, e ela precisa ser visível. Um único booleano não
+    /// distinguiria "esperando migrar" de "já migrou", e a migração poderia
+    /// ser executada duas vezes — a segunda com a conta já vazia.
+    pub migrated: bool,
     pub bump: u8,
 }
 

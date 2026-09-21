@@ -9,6 +9,7 @@ use anchor_spl::token::spl_token::instruction::AuthorityType;
 pub mod curva;
 pub mod errors;
 pub mod metadados;
+pub mod migracao;
 pub mod state;
 
 use curva::Curva;
@@ -191,6 +192,7 @@ pub mod chroma_curve {
         curva.real_token_reserves = config.initial_real_token;
         curva.cumulative_sol_volume = 0;
         curva.complete = false;
+        curva.migrated = false;
         curva.bump = ctx.bumps.curva;
 
         emit!(MoedaCriada {
@@ -417,6 +419,289 @@ pub mod chroma_curve {
 
         Ok(())
     }
+
+
+    /// Embrulha o SOL arrecadado, preparando a migração.
+    ///
+    /// -------------------------------------------------------------------
+    /// POR QUE ISTO É UMA INSTRUÇÃO SEPARADA
+    /// -------------------------------------------------------------------
+    /// A Raydium negocia token contra token; SOL nativo não entra em pool. O
+    /// jeito de converter é mandar lamports pra uma conta de WSOL e depois
+    /// pedir ao programa de token que acerte o saldo.
+    ///
+    /// Só que a rede proíbe creditar lamports numa conta que não é nossa e, na
+    /// MESMA instrução, chamar outro programa passando essa conta. A tentativa
+    /// falha com "a soma dos saldos não bate" — não é bug de conta, é uma
+    /// trava do runtime contra programa que mexe no dinheiro alheio.
+    ///
+    /// Daí a separação: aqui o crédito é a última coisa que acontece; o
+    /// `migrar` começa depois, numa transação nova, onde o saldo já é fato
+    /// consumado. É a mesma razão pela qual `buy` e `sell` sempre pagam por
+    /// último.
+    ///
+    /// Também é aberta a qualquer um, pelo mesmo motivo de `migrar`.
+    pub fn preparar_migracao(ctx: Context<PrepararMigracao>) -> Result<()> {
+        require!(ctx.accounts.curva.complete, ErroDaCurva::CurvaNaoConcluida);
+        require!(!ctx.accounts.curva.migrated, ErroDaCurva::JaMigrou);
+
+        let sol_arrecadado = ctx.accounts.curva.real_sol_reserves;
+
+        /*
+         * O custo fixo fica pra trás: a taxa que a Raydium cobra pra criar a
+         * pool, mais o aluguel das seis contas que ela abre por conta da curva.
+         * Mandar tudo pro par deixaria a curva sem lamports pra pagar isso, e a
+         * migração falharia no meio do caminho.
+         */
+        let custo_fixo = TAXA_DE_POOL_RAYDIUM + RESERVA_DE_ALUGUEL;
+        require!(
+            sol_arrecadado > custo_fixo,
+            ErroDaCurva::SolInsuficienteParaMigrar
+        );
+
+        let sol_para_pool = sol_arrecadado - custo_fixo;
+
+        /*
+         * Roda uma vez só. Chamada duas vezes, a segunda tentaria mandar o
+         * mesmo valor de novo e esvaziaria a reserva do aluguel.
+         */
+        require!(
+            ctx.accounts.conta_wsol.to_account_info().lamports()
+                <= Rent::get()?.minimum_balance(TokenAccount::LEN),
+            ErroDaCurva::JaMigrou
+        );
+
+        let curva_info = ctx.accounts.curva.to_account_info();
+        let wsol_info = ctx.accounts.conta_wsol.to_account_info();
+        mover_lamports(&curva_info, &wsol_info, sol_para_pool)?;
+
+        Ok(())
+    }
+
+    /// Leva a liquidez pra uma pool da Raydium e queima o LP.
+    ///
+    /// -------------------------------------------------------------------
+    /// QUALQUER UM PODE CHAMAR, E ISSO É PROPOSITAL
+    /// -------------------------------------------------------------------
+    /// Não há assinatura da plataforma aqui. Se dependesse de nós, uma chave
+    /// perdida ou um servidor fora do ar prenderiam dinheiro de terceiros sem
+    /// prazo — e quem comprou não teria a quem recorrer.
+    ///
+    /// Quem chama não escolhe nada: os valores vêm do estado da curva, o
+    /// destino é a pool derivada dos dois mints, e o LP é queimado no mesmo
+    /// ato. Não há o que desviar.
+    /// Leva a liquidez pra uma pool da Raydium e queima o LP.
+    ///
+    /// -------------------------------------------------------------------
+    /// QUALQUER UM PODE CHAMAR, E ISSO É PROPOSITAL
+    /// -------------------------------------------------------------------
+    /// Não há assinatura da plataforma aqui. Se dependesse de nós, uma chave
+    /// perdida ou um servidor fora do ar prenderiam dinheiro de terceiros sem
+    /// prazo — e quem comprou não teria a quem recorrer.
+    ///
+    /// -------------------------------------------------------------------
+    /// POR QUE QUEM EXECUTA FIGURA COMO CRIADOR DA POOL
+    /// -------------------------------------------------------------------
+    /// A Raydium abre seis contas nesta chamada e paga o aluguel delas com uma
+    /// transferência do PROGRAMA DO SISTEMA, tirada de quem cria. E o sistema
+    /// só transfere de contas que ele mesmo detém — a conta da curva é nossa,
+    /// com dados dentro, então não serve de origem. A rede recusa com
+    /// "argumento inválido".
+    ///
+    /// Por isso os ativos passam pela carteira de quem executa: a curva manda
+    /// os tokens e o WSOL pra ela, e a Raydium os puxa de lá pra pool. Tudo na
+    /// mesma instrução — se qualquer passo falhar, nada acontece.
+    ///
+    /// Quem executa não ganha nada com isso. As quantidades são calculadas
+    /// aqui, o destino é a pool derivada dos dois mints, e o LP nasce e é
+    /// queimado antes de a instrução terminar. Não há janela pra desviar nada:
+    /// a carteira dele é um corredor, não um cofre.
+    pub fn migrar(ctx: Context<Migrar>) -> Result<()> {
+        require!(ctx.accounts.curva.complete, ErroDaCurva::CurvaNaoConcluida);
+        require!(!ctx.accounts.curva.migrated, ErroDaCurva::JaMigrou);
+
+        let mint = ctx.accounts.mint.key();
+        let sementes: &[&[&[u8]]] =
+            &[&[SEMENTE_CURVA, mint.as_ref(), &[ctx.accounts.curva.bump]]];
+
+        /*
+         * O SOL já foi embrulhado em `preparar_migracao`; aqui só falta acertar
+         * o saldo do token com os lamports que chegaram lá.
+         */
+        token::sync_native(CpiContext::new(
+            ctx.accounts.token_program.key(),
+            token::SyncNative {
+                account: ctx.accounts.conta_wsol.to_account_info(),
+            },
+        ))?;
+
+        ctx.accounts.conta_wsol.reload()?;
+
+        let sol_para_pool = ctx.accounts.conta_wsol.amount;
+        let tokens_para_pool = ctx.accounts.cofre.amount;
+
+        require!(sol_para_pool > 0, ErroDaCurva::SolInsuficienteParaMigrar);
+        require!(tokens_para_pool > 0, ErroDaCurva::TokenInsuficienteParaMigrar);
+
+        /*
+         * Os ativos passam pra carteira de quem executa, que é quem a Raydium
+         * aceita como criadora. Assinado pela curva: é ela que detém as duas
+         * contas de origem.
+         */
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                token::Transfer {
+                    from: ctx.accounts.cofre.to_account_info(),
+                    to: ctx.accounts.conta_token_do_executor.to_account_info(),
+                    authority: ctx.accounts.curva.to_account_info(),
+                },
+                sementes,
+            ),
+            tokens_para_pool,
+        )?;
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                token::Transfer {
+                    from: ctx.accounts.conta_wsol.to_account_info(),
+                    to: ctx.accounts.conta_wsol_do_executor.to_account_info(),
+                    authority: ctx.accounts.curva.to_account_info(),
+                },
+                sementes,
+            ),
+            sol_para_pool,
+        )?;
+
+        /*
+         * A ordem dos mints é da Raydium, não nossa: ela identifica a pool
+         * pelos dois endereços ORDENADOS. Mandar fora de ordem não dá erro —
+         * cria uma pool diferente, num endereço que ninguém procura, com o
+         * dinheiro dentro.
+         */
+        let (_, _, moeda_em_segundo) = migracao::ordenar(mint, migracao::WSOL);
+
+        let (quantidade_0, quantidade_1) = if moeda_em_segundo {
+            (sol_para_pool, tokens_para_pool)
+        } else {
+            (tokens_para_pool, sol_para_pool)
+        };
+
+        /*
+         * As contas viram variáveis antes de entrar na estrutura porque a
+         * chamada guarda REFERÊNCIAS a elas. Montadas direto no lugar, seriam
+         * temporárias e morreriam antes de a instrução sair.
+         */
+        let criador = ctx.accounts.executor.to_account_info();
+        let token_do_executor = ctx.accounts.conta_token_do_executor.to_account_info();
+        let wsol_do_executor = ctx.accounts.conta_wsol_do_executor.to_account_info();
+
+        let (conta_0, conta_1) = if moeda_em_segundo {
+            (wsol_do_executor.clone(), token_do_executor.clone())
+        } else {
+            (token_do_executor.clone(), wsol_do_executor.clone())
+        };
+
+        let mint_moeda = ctx.accounts.mint.to_account_info();
+        let mint_wsol = ctx.accounts.wsol_mint.to_account_info();
+
+        let (mint_0, mint_1) = if moeda_em_segundo {
+            (mint_wsol.clone(), mint_moeda.clone())
+        } else {
+            (mint_moeda.clone(), mint_wsol.clone())
+        };
+
+        let amm_config = ctx.accounts.amm_config.to_account_info();
+        let autoridade = ctx.accounts.autoridade_raydium.to_account_info();
+        let pool = ctx.accounts.pool.to_account_info();
+        let lp_mint = ctx.accounts.lp_mint.to_account_info();
+        let conta_lp = ctx.accounts.conta_lp.to_account_info();
+        let cofre_0 = ctx.accounts.cofre_0.to_account_info();
+        let cofre_1 = ctx.accounts.cofre_1.to_account_info();
+        let taxa_de_criacao = ctx.accounts.taxa_de_criacao.to_account_info();
+        let observacao = ctx.accounts.observacao.to_account_info();
+        let programa_raydium = ctx.accounts.programa_raydium.to_account_info();
+        let token_program = ctx.accounts.token_program.to_account_info();
+        let ata_program = ctx.accounts.associated_token_program.to_account_info();
+        let system_program = ctx.accounts.system_program.to_account_info();
+        let rent = ctx.accounts.rent.to_account_info();
+
+        migracao::criar_pool(
+            migracao::ContasDaPool {
+                criador: &criador,
+                amm_config: &amm_config,
+                autoridade: &autoridade,
+                pool: &pool,
+                mint_0: &mint_0,
+                mint_1: &mint_1,
+                lp_mint: &lp_mint,
+                conta_0_do_criador: &conta_0,
+                conta_1_do_criador: &conta_1,
+                conta_lp_do_criador: &conta_lp,
+                cofre_0: &cofre_0,
+                cofre_1: &cofre_1,
+                taxa_de_criacao: &taxa_de_criacao,
+                observacao: &observacao,
+                token_program: &token_program,
+                associated_token_program: &ata_program,
+                system_program: &system_program,
+                rent: &rent,
+                programa_raydium: &programa_raydium,
+            },
+            quantidade_0,
+            quantidade_1,
+            // Quem assina é o executor, pela assinatura da própria transação.
+            &[],
+        )?;
+
+        /*
+         * Queimar o LP.
+         *
+         * O token de LP é o direito de retirar a liquidez. Deixá-lo com quem
+         * executou a migração — ou conosco, ou com quem lançou — significaria
+         * que alguém pode esvaziar o par e sumir com o dinheiro de quem
+         * comprou. É exatamente o golpe que o painel de segurança desta
+         * plataforma avisa contra.
+         *
+         * Queimado aqui dentro, na mesma instrução em que nasceu, a liquidez
+         * fica travada pra sempre e ninguém precisa confiar em ninguém.
+         */
+        let lp = {
+            let dados = ctx.accounts.conta_lp.try_borrow_data()?;
+            // Conta de token SPL: o saldo são 8 bytes a partir do deslocamento 64.
+            u64::from_le_bytes(dados[64..72].try_into().unwrap())
+        };
+
+        if lp > 0 {
+            token::burn(
+                CpiContext::new(
+                    ctx.accounts.token_program.key(),
+                    token::Burn {
+                        mint: ctx.accounts.lp_mint.to_account_info(),
+                        from: ctx.accounts.conta_lp.to_account_info(),
+                        authority: ctx.accounts.executor.to_account_info(),
+                    },
+                ),
+                lp,
+            )?;
+        }
+
+        let curva = &mut ctx.accounts.curva;
+        curva.migrated = true;
+        curva.real_sol_reserves = 0;
+
+        emit!(Migrou {
+            mint,
+            pool: ctx.accounts.pool.key(),
+            sol: sol_para_pool,
+            tokens: tokens_para_pool,
+            lp_queimado: lp,
+        });
+
+        Ok(())
+    }
+
 }
 
 /* ------------------------------------------------------------------ */
@@ -474,6 +759,39 @@ fn pagar_taxas<'info>(
 /// A checagem de isenção de aluguel não é detalhe: se o saldo cair abaixo
 /// dela, a rede apaga a conta, e junto com ela some o estado da curva de todo
 /// mundo que ainda tem a moeda.
+/// Move lamports de uma conta NOSSA pra outra, sem passar pelo sistema.
+///
+/// O programa do sistema só transfere de contas que ele mesmo detém. A conta
+/// da curva é nossa, então o caminho é mexer nos saldos direto — permitido
+/// justamente porque somos o dono.
+///
+/// O mínimo de aluguel fica sempre pra trás: uma conta que cai abaixo dele é
+/// apagada pela rede, e com ela o estado da curva.
+fn mover_lamports<'info>(
+    origem: &AccountInfo<'info>,
+    destino: &AccountInfo<'info>,
+    valor: u64,
+) -> Result<()> {
+    if valor == 0 {
+        return Ok(());
+    }
+
+    let minimo = Rent::get()?.minimum_balance(origem.data_len());
+    let restante = origem
+        .lamports()
+        .checked_sub(valor)
+        .ok_or(ErroDaCurva::SolInsuficiente)?;
+    require!(restante >= minimo, ErroDaCurva::SolInsuficiente);
+
+    **origem.try_borrow_mut_lamports()? = restante;
+    **destino.try_borrow_mut_lamports()? = destino
+        .lamports()
+        .checked_add(valor)
+        .ok_or(ErroDaCurva::EstouroDeCalculo)?;
+
+    Ok(())
+}
+
 fn pagar_da_curva<'info>(
     ctx: &Context<'info, Negociar<'info>>,
     destino: AccountInfo<'info>,
@@ -754,4 +1072,207 @@ pub struct Negocio {
 pub struct CurvaEncheu {
     pub mint: Pubkey,
     pub sol_arrecadado: u64,
+}
+
+/* ------------------------------------------------------------------ */
+/* Migração pra pool                                                   */
+/* ------------------------------------------------------------------ */
+
+/// Quanto a Raydium cobra pra criar uma pool, em lamports.
+///
+/// Está gravado aqui e conferido contra a conta de configuração dela no teste.
+/// Se a Raydium mudar o valor, é melhor a migração falhar de forma visível do
+/// que descontar um número errado do dinheiro de quem comprou.
+pub const TAXA_DE_POOL_RAYDIUM: u64 = 150_000_000;
+
+/// Quanto fica de lado pro ALUGUEL das contas que a Raydium cria.
+///
+/// -------------------------------------------------------------------------
+/// POR QUE ISTO NÃO PODE SER ESQUECIDO
+/// -------------------------------------------------------------------------
+/// A Raydium cria seis contas nesta chamada — a pool, o mint do LP, os dois
+/// cofres, o histórico de preço e a conta de LP — e todas saem do bolso de
+/// QUEM CRIA, que aqui é a própria curva.
+///
+/// Mandar todo o SOL arrecadado pra pool deixaria a curva sem lamports pra
+/// pagar esse aluguel, e a migração falharia no meio. O valor abaixo cobre as
+/// seis com folga: o histórico de preço sozinho é ~0,03 SOL e o resto soma
+/// ~0,013 SOL.
+///
+/// O que sobrar fica na conta da curva. É troco de centavos sobre dezenas de
+/// SOL, e preferir a folga é mais barato que uma migração travada.
+pub const RESERVA_DE_ALUGUEL: u64 = 60_000_000;
+
+#[derive(Accounts)]
+pub struct PrepararMigracao<'info> {
+    #[account(mut)]
+    pub executor: Signer<'info>,
+
+    #[account(seeds = [SEMENTE_CONFIG], bump = config.bump)]
+    pub config: Account<'info, Config>,
+
+    #[account(
+        mut,
+        seeds = [SEMENTE_CURVA, mint.key().as_ref()],
+        bump = curva.bump,
+        has_one = mint,
+    )]
+    pub curva: Account<'info, Curve>,
+
+    pub mint: Account<'info, Mint>,
+
+    #[account(address = migracao::WSOL @ ErroDaCurva::PoolErrada)]
+    pub wsol_mint: Account<'info, Mint>,
+
+    /// Nasce aqui, vazia; quem a enche é a última linha desta instrução.
+    #[account(
+        init_if_needed,
+        payer = executor,
+        associated_token::mint = wsol_mint,
+        associated_token::authority = curva,
+    )]
+    pub conta_wsol: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Migrar<'info> {
+    /*
+     * Quem aperta o botão. Paga as contas que nascem nesta transação e não
+     * recebe nada em troca — a chamada é aberta de propósito, ver `migrar`.
+     */
+    #[account(mut)]
+    pub executor: Signer<'info>,
+
+    #[account(seeds = [SEMENTE_CONFIG], bump = config.bump)]
+    pub config: Account<'info, Config>,
+
+    #[account(
+        mut,
+        seeds = [SEMENTE_CURVA, mint.key().as_ref()],
+        bump = curva.bump,
+        has_one = mint,
+    )]
+    pub curva: Account<'info, Curve>,
+
+    pub mint: Account<'info, Mint>,
+
+    /// Os tokens que sobraram da venda: é a perna da moeda na pool.
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = curva,
+    )]
+    pub cofre: Account<'info, TokenAccount>,
+
+    #[account(address = migracao::WSOL @ ErroDaCurva::PoolErrada)]
+    pub wsol_mint: Account<'info, Mint>,
+
+    /*
+     * A conta de WSOL, já com os lamports que `preparar_migracao` mandou.
+     *
+     * Sem `init` aqui de propósito: ela precisa ter nascido numa transação
+     * ANTERIOR. Criar e creditar na mesma instrução que chama a Raydium é
+     * justamente o que a rede recusa.
+     */
+    #[account(
+        mut,
+        associated_token::mint = wsol_mint,
+        associated_token::authority = curva,
+    )]
+    pub conta_wsol: Account<'info, TokenAccount>,
+
+    /*
+     * As contas de passagem de quem executa.
+     *
+     * Os ativos param aqui por um instante: a curva manda pra cá e a Raydium
+     * puxa daqui pra pool, tudo na mesma instrução. É o preço de a Raydium
+     * exigir uma carteira comum como criadora da pool.
+     */
+    #[account(
+        init_if_needed,
+        payer = executor,
+        associated_token::mint = mint,
+        associated_token::authority = executor,
+    )]
+    pub conta_token_do_executor: Account<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = executor,
+        associated_token::mint = wsol_mint,
+        associated_token::authority = executor,
+    )]
+    pub conta_wsol_do_executor: Account<'info, TokenAccount>,
+
+    /*
+     * Onde o LP cai antes de ser queimado.
+     *
+     * Vem sem `init`: quem cria esta conta é a PRÓPRIA RAYDIUM, dentro da
+     * chamada. E não poderia ser diferente — o mint do LP também nasce lá, e
+     * não existe conta de token pra um mint que ainda não existe.
+     */
+    /// CHECK: criada pela Raydium como conta de LP de quem executa.
+    #[account(mut)]
+    pub conta_lp: UncheckedAccount<'info>,
+
+    /*
+     * Daqui pra baixo são contas da Raydium.
+     *
+     * Vêm como `UncheckedAccount` porque o formato delas é do programa dela, e
+     * decodificar aqui só acrescentaria uma cópia da definição que pode
+     * envelhecer. A checagem que importa é o ENDEREÇO: cada uma é conferida
+     * contra a derivação que a própria Raydium faz, logo abaixo — e ela
+     * confere de novo do lado dela.
+     */
+    /// CHECK: lida pela Raydium; guarda a taxa de criação e as alíquotas.
+    pub amm_config: UncheckedAccount<'info>,
+
+    /// CHECK: autoridade dos cofres e do LP, derivada pela Raydium.
+    pub autoridade_raydium: UncheckedAccount<'info>,
+
+    /// CHECK: a pool; nasce nesta transação, derivada dos dois mints.
+    #[account(mut)]
+    pub pool: UncheckedAccount<'info>,
+
+    /// CHECK: mint do LP, derivado da pool.
+    #[account(mut)]
+    pub lp_mint: UncheckedAccount<'info>,
+
+    /// CHECK: cofre do primeiro token, derivado da pool.
+    #[account(mut)]
+    pub cofre_0: UncheckedAccount<'info>,
+
+    /// CHECK: cofre do segundo token, derivado da pool.
+    #[account(mut)]
+    pub cofre_1: UncheckedAccount<'info>,
+
+    /// CHECK: recebe a taxa de criação; endereço fixo da Raydium.
+    #[account(mut)]
+    pub taxa_de_criacao: UncheckedAccount<'info>,
+
+    /// CHECK: histórico de preço da pool, derivado dela.
+    #[account(mut)]
+    pub observacao: UncheckedAccount<'info>,
+
+    /// CHECK: conferido contra o endereço do programa da Raydium.
+    #[account(address = migracao::PROGRAMA_RAYDIUM @ ErroDaCurva::PoolErrada)]
+    pub programa_raydium: UncheckedAccount<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[event]
+pub struct Migrou {
+    pub mint: Pubkey,
+    pub pool: Pubkey,
+    pub sol: u64,
+    pub tokens: u64,
+    pub lp_queimado: u64,
 }

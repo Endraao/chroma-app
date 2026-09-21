@@ -2,7 +2,7 @@
 
 import { PublicKey } from "@solana/web3.js";
 
-import { useCurva } from "@/hooks/useCurva";
+import { useCurvaAtual } from "@/components/trading/CurvaProvider";
 import { useCurvaSwap } from "@/hooks/useCurvaSwap";
 import { useSolanaSwap } from "@/hooks/useSolanaSwap";
 import type { DadosDaCurva } from "@/hooks/useCurva";
@@ -59,6 +59,7 @@ const CURVA_VAZIA: DadosDaCurva = {
     tokenReal: 0n,
     volumeAcumulado: 0n,
     concluida: true,
+    migrada: true,
   },
   config: {
     autoridade: PublicKey.default,
@@ -80,7 +81,7 @@ const CURVA_VAZIA: DadosDaCurva = {
 };
 
 export function useTradeSolana(opcoes: Opcoes) {
-  const { curva, carregando } = useCurva(opcoes.tokenMint);
+  const { curva, carregando } = useCurvaAtual();
 
   /*
    * Enquanto carrega, nenhum dos dois roda. É meio segundo, e evita o pior

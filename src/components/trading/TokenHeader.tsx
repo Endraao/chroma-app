@@ -8,6 +8,7 @@ import { ShareToken } from "@/components/trading/ShareToken";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
 import type { StatsAoVivo } from "@/components/trading/TokenTerminal";
+import { useCurvaAtual } from "@/components/trading/CurvaProvider";
 import type { TokenSummary } from "@/lib/types";
 
 /**
@@ -36,6 +37,8 @@ export function TokenHeader({
 }) {
   const [copied, setCopied] = useState(false);
   const meta = CHAINS[token.chain];
+
+  const { progresso: progressoDaCurva } = useCurvaAtual();
 
   /*
    * Variação recalculada a partir do preço ao vivo.
@@ -89,10 +92,22 @@ export function TokenHeader({
             <Badge tone="neutral" className={meta.accent}>
               {meta.label}
             </Badge>
-            {token.bondingProgress === null ? (
-              <Badge tone="neutral">{token.dexId ?? "listado em DEX"}</Badge>
-            ) : (
+            {/*
+              * A curva da REDE manda sobre o que a Dexscreener diz.
+              *
+              * Uma moeda na nossa curva não está listada em DEX nenhuma — não
+              * existe pool. O selo dizia "listado em DEX" só porque a
+              * Dexscreener não devolve progresso de curva pra uma moeda que
+              * ela nem indexa, e o `null` caía no caso contrário.
+              */}
+            {progressoDaCurva !== null ? (
+              <Badge tone="chroma">
+                curva {progressoDaCurva.toFixed(0).replace(".", ",")}%
+              </Badge>
+            ) : token.bondingProgress !== null ? (
               <Badge tone="chroma">bonding {token.bondingProgress}%</Badge>
+            ) : (
+              <Badge tone="neutral">{token.dexId ?? "listado em DEX"}</Badge>
             )}
           </div>
 

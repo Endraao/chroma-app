@@ -92,7 +92,15 @@ export function TokenCard({ token }: { token: TokenSummary }) {
           )}
         </div>
 
-        {token.description ? (
+        {/*
+          * Descrição que só repete o nome não é descrição.
+          *
+          * Muita moeda vem da Dexscreener com o nome copiado no campo de
+          * descrição, e o card mostrava "Hold & Pray" duas vezes, uma embaixo
+          * da outra. Isso gasta a linha mais valiosa do card pra não dizer
+          * nada — nesse caso o endereço informa mais.
+          */}
+        {descricaoUtil(token.description, token.name, token.symbol) ? (
           <p className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-zinc-500">
             {token.description}
           </p>
@@ -109,4 +117,30 @@ export function TokenCard({ token }: { token: TokenSummary }) {
       </div>
     </Link>
   );
+}
+
+/**
+ * A descrição acrescenta alguma coisa ao que já está no card?
+ *
+ * Compara sem acento, sem caixa e sem pontuação, porque a repetição costuma
+ * vir com alguma variação: "Hold & Pray" contra "hold and pray", "$ZORANA"
+ * contra "ZORANA". Comparar texto cru deixaria quase tudo passar.
+ */
+function descricaoUtil(
+  descricao: string | undefined,
+  nome: string,
+  simbolo: string,
+): boolean {
+  if (!descricao?.trim()) return false;
+
+  const normalizar = (t: string) =>
+    t
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/and/g, "&")
+      .replace(/[^a-z0-9&]/g, "");
+
+  const d = normalizar(descricao);
+  return d.length > 0 && d !== normalizar(nome) && d !== normalizar(simbolo);
 }

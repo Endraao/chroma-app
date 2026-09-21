@@ -5,6 +5,8 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { ChartPanel } from "@/components/chart/ChartPanel";
 import { SwapWidget } from "@/components/trading/SwapWidget";
 import { SecurityPanel } from "@/components/security/SecurityPanel";
+import { CurvaPanel } from "@/components/trading/CurvaPanel";
+import { CurvaProvider } from "@/components/trading/CurvaProvider";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -103,6 +105,13 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
   }, [token.address, token.chain]);
 
   return (
+    /*
+     * O provedor abraça a página inteira porque o cabeçalho, o painel de
+     * progresso e o de swap precisam do MESMO estado da curva. Três leituras
+     * separadas podiam divergir por um instante, e aí a tela mostraria dois
+     * números diferentes pra mesma coisa.
+     */
+    <CurvaProvider mint={token.address}>
     <div className="space-y-4">
       {isDemo && (
         <div className="rounded-xl border border-warn/25 bg-warn/[0.06] px-4 py-2.5 text-[12px] text-warn">
@@ -138,6 +147,16 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
 
         {/* Coluna direita: swap grudado no topo ao rolar a página */}
         <div className="space-y-4 lg:sticky lg:top-[72px] lg:self-start">
+          {/*
+            * Acima do painel de swap, e não abaixo: quanto falta pra curva
+            * encher é o que decide se a pessoa compra AGORA. Enterrado no fim
+            * da coluna, ela só veria depois de já ter decidido.
+            *
+            * O componente não desenha nada quando a moeda não é da curva, que
+            * é a maioria — então nada muda na tela das moedas de mercado.
+            */}
+          <CurvaPanel />
+
           <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
             <SwapWidget symbol={token.symbol} chain={token.chain} tokenAddress={token.address} />
           </Suspense>
@@ -158,5 +177,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
         </div>
       </div>
     </div>
+    </CurvaProvider>
   );
 }

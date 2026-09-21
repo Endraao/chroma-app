@@ -1,4 +1,9 @@
-import { PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import {
+  PublicKey,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+  TransactionInstruction,
+} from "@solana/web3.js";
 
 /**
  * Como o site conversa com a curva on-chain.
@@ -112,6 +117,8 @@ export const IDENTIFICADORES = {
   create: [24, 30, 200, 40, 5, 28, 7, 119],
   buy: [102, 6, 61, 18, 1, 218, 235, 234],
   sell: [51, 230, 133, 164, 1, 127, 131, 173],
+  preparar_migracao: [240, 74, 112, 37, 187, 136, 116, 241],
+  migrar: [119, 28, 64, 192, 224, 155, 112, 5],
 } as const;
 
 export type NomeDaInstrucao = keyof typeof IDENTIFICADORES;
@@ -353,6 +360,8 @@ export interface EstadoDaCurva {
   tokenReal: bigint;
   volumeAcumulado: bigint;
   concluida: boolean;
+  /** a liquidez já foi pra pool; a curva não negocia mais */
+  migrada: boolean;
 }
 
 /** Lê um u64 little-endian. */
@@ -387,6 +396,7 @@ export function lerCurva(dados: Buffer): EstadoDaCurva {
   const tokenReal = numero();
   const volumeAcumulado = numero();
   const concluida = dados[em] === 1;
+  const migrada = dados[em + 1] === 1;
 
   return {
     mint,
@@ -397,6 +407,7 @@ export function lerCurva(dados: Buffer): EstadoDaCurva {
     tokenReal,
     volumeAcumulado,
     concluida,
+    migrada,
   };
 }
 
@@ -581,4 +592,145 @@ export function cotarVenda(
   const bruto = curva.solVirtual > novoSol ? curva.solVirtual - novoSol : 0n;
 
   return bruto - (bruto * BigInt(taxaTotalBps)) / 10_000n;
+}
+
+/* ------------------------------------------------------------------ */
+/* Migração pra Raydium                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Endereços da Raydium CP-Swap. Os mesmos na mainnet.
+ *
+ * Estão gravados aqui e não em variável de ambiente de propósito: são de um
+ * programa de terceiros que a nossa migração invoca. Se pudessem ser trocados
+ * por configuração, uma configuração errada mandaria a liquidez de alguém pra
+ * um contrato qualquer — e a transação pareceria normal.
+ */
+export const RAYDIUM_PROGRAM_ID = new PublicKey("CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C");
+export const RAYDIUM_AMM_CONFIG = new PublicKey("D4FPEruKEHrG5TenZ2mpDGEfu1iUvTiqBxvpU8HLBvC2");
+export const RAYDIUM_TAXA_DE_POOL = new PublicKey("DNXgeM9EiiaAbaWvwjHj9fQQLAX5ZsfHyvmYUNRAdNC8");
+export const WSOL_MINT = new PublicKey("So11111111111111111111111111111111111111112");
+
+/**
+ * O que a migração custa antes de sobrar liquidez.
+ *
+ * 0,15 SOL é a taxa que a Raydium cobra pra criar pool; o resto é o aluguel
+ * das seis contas que ela cria por conta da curva. O número tem que bater com
+ * `TAXA_DE_POOL_RAYDIUM + RESERVA_DE_ALUGUEL` no programa — o teste confere.
+ */
+export const CUSTO_DA_MIGRACAO = 210_000_000n;
+
+const derivarRaydium = (sementes: (Buffer | Uint8Array)[]) =>
+  PublicKey.findProgramAddressSync(sementes, RAYDIUM_PROGRAM_ID)[0];
+
+/**
+ * A Raydium identifica a pool pelos dois mints EM ORDEM de endereço.
+ *
+ * Mandar fora de ordem não dá erro — aponta pra outra pool, num endereço que
+ * ninguém procura. Por isso a ordenação vive num lugar só.
+ */
+export function ordenarMints(moeda: PublicKey, wsol: PublicKey = WSOL_MINT) {
+  const moedaPrimeiro = Buffer.compare(moeda.toBuffer(), wsol.toBuffer()) < 0;
+  return moedaPrimeiro
+    ? { mint0: moeda, mint1: wsol, moedaPrimeiro }
+    : { mint0: wsol, mint1: moeda, moedaPrimeiro };
+}
+
+/** Os endereços que a pool de uma moeda vai ocupar. */
+export function enderecosDaPool(mint: PublicKey) {
+  const { mint0, mint1 } = ordenarMints(mint);
+
+  const pool = derivarRaydium([
+    Buffer.from("pool"),
+    RAYDIUM_AMM_CONFIG.toBuffer(),
+    mint0.toBuffer(),
+    mint1.toBuffer(),
+  ]);
+
+  return {
+    pool,
+    mint0,
+    mint1,
+    autoridade: derivarRaydium([Buffer.from("vault_and_lp_mint_auth_seed")]),
+    lpMint: derivarRaydium([Buffer.from("pool_lp_mint"), pool.toBuffer()]),
+    cofre0: derivarRaydium([Buffer.from("pool_vault"), pool.toBuffer(), mint0.toBuffer()]),
+    cofre1: derivarRaydium([Buffer.from("pool_vault"), pool.toBuffer(), mint1.toBuffer()]),
+    observacao: derivarRaydium([Buffer.from("observation"), pool.toBuffer()]),
+  };
+}
+
+/**
+ * Leva a liquidez da curva pra pool da Raydium e queima o LP.
+ *
+ * Qualquer carteira pode assinar: quem chama não escolhe valor nem destino, só
+ * paga o gás. É de propósito — migração que depende da plataforma prende
+ * dinheiro de terceiros no dia em que a plataforma falhar.
+ */
+export function ixMigrar(params: {
+  executor: PublicKey;
+  mint: PublicKey;
+}): TransactionInstruction {
+  const curva = enderecoDaCurva(params.mint);
+  const p = enderecosDaPool(params.mint);
+
+  return new TransactionInstruction({
+    programId: CHROMA_PROGRAM_ID,
+    keys: [
+      assina(params.executor),
+      le(enderecoDaConfig()),
+      escreve(curva),
+      le(params.mint),
+      escreve(contaDeToken(curva, params.mint)),
+      le(WSOL_MINT),
+      escreve(contaDeToken(curva, WSOL_MINT)),
+      // As contas de passagem de quem executa; a Raydium exige carteira comum.
+      escreve(contaDeToken(params.executor, params.mint)),
+      escreve(contaDeToken(params.executor, WSOL_MINT)),
+      escreve(contaDeToken(params.executor, p.lpMint)),
+      le(RAYDIUM_AMM_CONFIG),
+      le(p.autoridade),
+      escreve(p.pool),
+      escreve(p.lpMint),
+      escreve(p.cofre0),
+      escreve(p.cofre1),
+      escreve(RAYDIUM_TAXA_DE_POOL),
+      escreve(p.observacao),
+      le(RAYDIUM_PROGRAM_ID),
+      le(TOKEN_PROGRAM_ID),
+      le(ASSOCIATED_TOKEN_PROGRAM_ID),
+      le(SystemProgram.programId),
+      le(SYSVAR_RENT_PUBKEY),
+    ],
+    data: identificador("migrar"),
+  });
+}
+
+/**
+ * Embrulha o SOL da curva, o passo que vem ANTES de migrar.
+ *
+ * Precisa ser uma transação separada: a rede recusa creditar lamports numa
+ * conta que não é do programa e, na mesma instrução, chamar outro programa
+ * passando essa conta. Duas transações, nesta ordem.
+ */
+export function ixPrepararMigracao(params: {
+  executor: PublicKey;
+  mint: PublicKey;
+}): TransactionInstruction {
+  const curva = enderecoDaCurva(params.mint);
+
+  return new TransactionInstruction({
+    programId: CHROMA_PROGRAM_ID,
+    keys: [
+      assina(params.executor),
+      le(enderecoDaConfig()),
+      escreve(curva),
+      le(params.mint),
+      le(WSOL_MINT),
+      escreve(contaDeToken(curva, WSOL_MINT)),
+      le(TOKEN_PROGRAM_ID),
+      le(ASSOCIATED_TOKEN_PROGRAM_ID),
+      le(SystemProgram.programId),
+    ],
+    data: identificador("preparar_migracao"),
+  });
 }

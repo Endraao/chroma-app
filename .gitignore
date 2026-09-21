@@ -16,3 +16,10 @@ test-ledger/
 # Chaves de carteira NUNCA entram no histórico: quem tem o arquivo tem o dinheiro.
 *.json.key
 keypairs/
+
+# Build do Rust quando rodado a partir do Windows.
+#
+# O certo é compilar com CARGO_TARGET_DIR apontando pra dentro do WSL (ver
+# `npm run rust:test`): em /mnt/c o cargo fica lento e enche o SSD do Windows
+# com 1,6 GB de artefato que o WSL nem usa.
+/target/
