@@ -1,51 +1,76 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 /**
- * Saldo da carteira conectada, em SOL e em dólar.
+ * Quanto a carteira conectada vale: SOL MAIS as moedas que ela carrega.
  *
- * O preço do SOL vem do nosso próprio `/api/price`, que já tem cache de 3s no
- * servidor — evita abrir mais uma fonte de preço só pra mostrar o saldo no
- * cabeçalho.
+ * ---------------------------------------------------------------------------
+ * POR QUE NÃO É SÓ O SOL
+ * ---------------------------------------------------------------------------
+ * Antes o cabeçalho somava só o saldo em SOL. Quem comprasse uma moeda via o
+ * número DIMINUIR — o SOL saiu, e o token que entrou não contava em lugar
+ * nenhum. O site dizia à pessoa que ela tinha perdido dinheiro toda vez que
+ * ela comprava.
  *
- * Só Solana por enquanto: é a rede onde o swap funciona. Em EVM devolve null
- * e o cabeçalho esconde a pílula em vez de mostrar "0", que seria mentira.
+ * Numa launchpad isso é pior que um número errado: o produto inteiro é
+ * converter SOL em moeda nova, e o painel tratava essa conversão como
+ * prejuízo.
+ *
+ * ---------------------------------------------------------------------------
+ * A CONTA É FEITA NO SERVIDOR
+ * ---------------------------------------------------------------------------
+ * Uma carteira ativa carrega dezenas de moedas, cada uma precisando de preço.
+ * Feito aqui seriam dezenas de requisições a cada visita; feito lá, é uma
+ * chamada só, com cache compartilhado por todo mundo — ver `/api/carteira`.
+ *
+ * Só Solana por enquanto: é a rede onde o swap funciona. Em EVM devolve null e
+ * o cabeçalho esconde a pílula, em vez de mostrar "0" — que seria mentira.
  */
-const SOL_MINT = "So11111111111111111111111111111111111111112";
 const RECARREGA_MS = 30_000;
 
 export function useWalletBalance() {
-  const { connection } = useConnection();
   const { publicKey } = useWallet();
 
   const [sol, setSol] = useState<number | null>(null);
   const [usd, setUsd] = useState<number | null>(null);
+  /** Quanto do total está em moedas, e não em SOL. */
+  const [emMoedas, setEmMoedas] = useState<number | null>(null);
+  const [quantasMoedas, setQuantasMoedas] = useState(0);
 
   useEffect(() => {
     if (!publicKey) {
       setSol(null);
       setUsd(null);
+      setEmMoedas(null);
+      setQuantasMoedas(0);
       return;
     }
 
     let cancelado = false;
+    const dono = publicKey.toBase58();
 
     const ler = async () => {
       try {
-        const lamports = await connection.getBalance(publicKey);
+        const res = await fetch(`/api/carteira?dono=${dono}`, { cache: "no-store" });
+        if (!res.ok || cancelado) return;
+
+        const dados = (await res.json()) as {
+          sol: number;
+          solUsd: number;
+          tokensUsd: number;
+          totalUsd: number;
+          moedas: number;
+        };
         if (cancelado) return;
 
-        const saldo = lamports / 1e9;
-        setSol(saldo);
-
-        const res = await fetch(`/api/price?address=${SOL_MINT}`);
-        if (!res.ok || cancelado) return;
-        const { priceUsd } = (await res.json()) as { priceUsd: number };
-        if (!cancelado) setUsd(saldo * priceUsd);
+        setSol(dados.sol);
+        setUsd(dados.totalUsd);
+        setEmMoedas(dados.tokensUsd);
+        setQuantasMoedas(dados.moedas);
       } catch {
-        /* RPC recusou ou rede oscilou: mantém o último valor conhecido */
+        /* rede oscilou: mantém o último valor conhecido */
       }
     };
 
@@ -56,7 +81,7 @@ export function useWalletBalance() {
       cancelado = true;
       window.clearInterval(timer);
     };
-  }, [publicKey, connection]);
+  }, [publicKey]);
 
-  return { sol, usd };
+  return { sol, usd, emMoedas, quantasMoedas };
 }

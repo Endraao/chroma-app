@@ -29,7 +29,7 @@ export function AccountMenu() {
   const [saldoVisivel, setSaldoVisivel] = useState(true);
 
   const account = useChromaAccount();
-  const { sol, usd } = useWalletBalance();
+  const { sol, usd, emMoedas, quantasMoedas } = useWalletBalance();
   const { wallet: solanaWallet, disconnect: disconnectSolana } = useWallet();
   const { disconnect: disconnectEvm } = useDisconnect();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -195,13 +195,36 @@ export function AccountMenu() {
               </div>
             </div>
 
-            {/* Saldo detalhado */}
+            {/*
+              Saldo detalhado: SOL e moedas em linhas separadas.
+
+              O número de cima é a soma dos dois. Sem abrir aqui, quem comprou
+              uma moeda não tinha como entender por que o total não mudou
+              quando o SOL saiu da carteira — e a explicação é justamente que
+              ele virou moeda.
+            */}
             {sol !== null && (
-              <div className="flex items-center justify-between px-4 py-2.5 text-[12px]">
-                <span className="text-zinc-500">Saldo</span>
-                <span className="tnum font-semibold text-zinc-200">
-                  {saldoVisivel ? `${sol.toFixed(4)} SOL` : "••••"}
-                </span>
+              <div className="space-y-1.5 px-4 py-2.5 text-[12px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500">Em SOL</span>
+                  <span className="tnum font-semibold text-zinc-200">
+                    {saldoVisivel ? `${sol.toFixed(4)} SOL` : "••••"}
+                  </span>
+                </div>
+
+                {emMoedas !== null && emMoedas > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-500">
+                      Em moedas
+                      <span className="ml-1 text-zinc-600">
+                        ({quantasMoedas} {quantasMoedas === 1 ? "moeda" : "moedas"})
+                      </span>
+                    </span>
+                    <span className="tnum font-semibold text-zinc-200">
+                      {saldoVisivel ? formatUsd(emMoedas) : "••••"}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
