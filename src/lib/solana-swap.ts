@@ -61,6 +61,44 @@ interface FeeRecipients {
 }
 
 /**
+ * O saldo mínimo pra uma conta vazia existir na Solana, em lamports.
+ *
+ * Valor fixo porque é da rede, não nosso: 890.880 lamports por conta sem
+ * dados. Consultado ao nó daria o mesmo número e custaria uma ida e volta em
+ * todo swap. Se a rede mudar isso um dia, a consequência é só voltarmos a
+ * descartar taxa perto do limite — nunca transação recusada, porque o número
+ * usado aqui é maior que o real.
+ */
+const PISO_DE_ALUGUEL = 890_880n;
+
+/** Quais destas contas ainda NÃO existem na rede. */
+async function contasInexistentes(
+  connection: Connection,
+  contas: PublicKey[],
+): Promise<Set<string>> {
+  if (contas.length === 0) return new Set();
+
+  try {
+    const infos = await connection.getMultipleAccountsInfo(contas);
+    const faltando = new Set<string>();
+    contas.forEach((c, i) => {
+      if (!infos[i]) faltando.add(c.toBase58());
+    });
+    return faltando;
+  } catch {
+    /*
+     * Não deu pra consultar: trata todas como EXISTENTES.
+     *
+     * É a escolha certa entre os dois erros possíveis. Supor que não existem
+     * faria a gente descartar taxa legítima toda vez que o nó oscilasse.
+     * Supor que existem, no pior caso, devolve o comportamento antigo — a
+     * transação falha e a pessoa tenta de novo.
+     */
+    return new Set();
+  }
+}
+
+/**
  * Instruções que pagam a taxa — sempre em SOL nativo.
  *
  * ---------------------------------------------------------------------------
@@ -90,8 +128,10 @@ function buildFeeInstructions(params: {
   payer: PublicKey;
   split: { totalFee: bigint; platformFee: bigint; affiliateFee: bigint };
   recipients: FeeRecipients;
+  /** contas que ainda não existem na rede — ver `PISO_DE_ALUGUEL` */
+  inexistentes: Set<string>;
 }): TransactionInstruction[] {
-  const { payer, split, recipients } = params;
+  const { payer, split, recipients, inexistentes } = params;
 
   if (split.totalFee <= 0n) return [];
 
@@ -103,7 +143,38 @@ function buildFeeInstructions(params: {
   }
 
   return targets
-    .filter((t) => t.amount > 0n)
+    .filter((t) => {
+      if (t.amount <= 0n) return false;
+
+      /*
+       * -----------------------------------------------------------------
+       * CONTA QUE AINDA NÃO EXISTE PRECISA RECEBER O ALUGUEL MÍNIMO
+       * -----------------------------------------------------------------
+       * Na Solana uma carteira que nunca recebeu nada não existe de fato. Um
+       * depósito que a deixe abaixo do mínimo de isenção de aluguel faz a
+       * REDE RECUSAR A TRANSAÇÃO INTEIRA, com `InsufficientFundsForRent` —
+       * o swap junto.
+       *
+       * Medido: com o SOL a 116 dólares, isso quebrava toda compra abaixo de
+       * 7,98 dólares (taxa da plataforma) e abaixo de 25,26 (fatia do
+       * afiliado). O primeiro botão de atalho do painel é 25 dólares — ou
+       * seja, um promotor de carteira nova derrubava o atalho mais clicado do
+       * site, e pra quem clicou pareceria que a Chroma está quebrada.
+       *
+       * Aqui a fatia pequena demais é DESCARTADA em vez de derrubar tudo.
+       * Perder sete centavos de taxa é infinitamente melhor que perder a
+       * transação — e na operação seguinte, com a conta já existindo (ou com
+       * valor maior), ela volta a ser cobrada normalmente.
+       */
+      if (inexistentes.has(t.to.toBase58()) && t.amount < PISO_DE_ALUGUEL) {
+        console.warn(
+          `[swap] taxa de ${t.amount} lamports não cobrada: ${t.to.toBase58()} ainda não ` +
+            `existe na rede e o valor está abaixo do aluguel mínimo (${PISO_DE_ALUGUEL}).`,
+        );
+        return false;
+      }
+      return true;
+    })
     .map((t) =>
       SystemProgram.transfer({
         fromPubkey: payer,
@@ -196,10 +267,16 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
   const baseDaTaxa = ehVenda ? BigInt(quote.otherAmountThreshold) : grossRaw;
   const split = computeFeesRaw(baseDaTaxa, affiliate, "solana");
 
+  const inexistentes = await contasInexistentes(
+    connection,
+    [recipients.platform, recipients.affiliate].filter((c): c is PublicKey => c !== null),
+  );
+
   const feeInstructions = buildFeeInstructions({
     payer: publicKey,
     split,
     recipients,
+    inexistentes,
   });
 
   if (ehVenda) {
