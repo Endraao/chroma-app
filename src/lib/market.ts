@@ -132,6 +132,51 @@ function toSummary(pair: DexPair): TokenSummary {
   };
 }
 
+/**
+ * Soma volume e liquidez de TODAS as pools do token.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE ISTO EXISTE
+ * ---------------------------------------------------------------------------
+ * Antes o resumo saía inteiro da pool de maior liquidez, e os números dela
+ * eram apresentados como se fossem os do token. Comparando a mesma moeda no
+ * mesmo instante com um terminal concorrente:
+ *
+ *     STONK       Chroma        soma real das 5 pools
+ *     volume 24h  $11,74M       $42,54M
+ *     liquidez    $6,51M        $12,82M
+ *
+ * Mostrávamos 27% do volume. Numa tela onde a pessoa decide se a moeda tem
+ * movimento, isso não é imprecisão — é a resposta errada.
+ *
+ * ---------------------------------------------------------------------------
+ * O QUE SOMA E O QUE NÃO SOMA
+ * ---------------------------------------------------------------------------
+ * Volume e liquidez SOMAM: são quantidades, e a moeda negocia em todas as
+ * pools ao mesmo tempo.
+ *
+ * Preço, capitalização e variação NÃO somam — somar preço de cinco pools daria
+ * cinco vezes o valor da moeda. Esses continuam vindo da pool de maior
+ * liquidez, que é a referência mais confiável: a mais funda é a mais difícil
+ * de empurrar.
+ *
+ * Só entram pools da MESMA rede. O mesmo símbolo existe em várias blockchains,
+ * e somar o volume de um homônimo em outra rede inventaria movimento que não
+ * existe aqui.
+ */
+function somarPools(base: TokenSummary, pares: DexPair[]): TokenSummary {
+  const daRede = pares.filter(
+    (p) => DEXSCREENER_TO_CHAIN[p.chainId] === base.chain && Number(p.priceUsd) > 0,
+  );
+  if (daRede.length <= 1) return base;
+
+  return {
+    ...base,
+    volume24hUsd: daRede.reduce((soma, p) => soma + (p.volume?.h24 ?? 0), 0),
+    liquidityUsd: daRede.reduce((soma, p) => soma + (p.liquidity?.usd ?? 0), 0),
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* Token individual                                                    */
 /* ------------------------------------------------------------------ */
@@ -143,9 +188,10 @@ export async function fetchToken(address: string): Promise<TokenSummary | null> 
       const data = await getJson<{ pairs: DexPair[] | null }>(
         `${DEXSCREENER}/latest/dex/tokens/${address}`,
       );
-      const pair = bestPair(data.pairs ?? []);
+      const pares = data.pairs ?? [];
+      const pair = bestPair(pares);
       if (!pair) throw new Error("token sem par listado");
-      return toSummary(pair);
+      return somarPools(toSummary(pair), pares);
     });
   } catch (error) {
     console.warn("[market] fetchToken falhou:", error);
@@ -216,11 +262,22 @@ export async function fetchTokenList(limit = 24): Promise<TokenSummary[]> {
             );
             const pairs = data.pairs ?? [];
 
-            // Um token pode ter vários pares: fica só o melhor de cada.
+            /*
+             * Um token pode ter vários pares. O MELHOR define preço e
+             * capitalização; TODOS somam volume e liquidez — ver `somarPools`
+             * pro porquê. Sem isso a vitrine mostrava uma fração do movimento
+             * real de cada moeda.
+             */
             const perToken = new Map<string, DexPair>();
+            const todosPorToken = new Map<string, DexPair[]>();
             for (const pair of pairs) {
               if (DEXSCREENER_TO_CHAIN[pair.chainId] !== DEXSCREENER_TO_CHAIN[chainId]) continue;
               const addr = pair.baseToken.address;
+
+              const lista = todosPorToken.get(addr) ?? [];
+              lista.push(pair);
+              todosPorToken.set(addr, lista);
+
               const current = perToken.get(addr);
               if (!current || (pair.liquidity?.usd ?? 0) > (current.liquidity?.usd ?? 0)) {
                 perToken.set(addr, pair);
@@ -228,7 +285,10 @@ export async function fetchTokenList(limit = 24): Promise<TokenSummary[]> {
             }
 
             return [...perToken.values()].map((pair) => {
-              const summary = toSummary(pair);
+              const summary = somarPools(
+                toSummary(pair),
+                todosPorToken.get(pair.baseToken.address) ?? [pair],
+              );
               const profile = group.find(
                 (g) => g.tokenAddress.toLowerCase() === summary.address.toLowerCase(),
               );
