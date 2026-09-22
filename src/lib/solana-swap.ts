@@ -308,24 +308,59 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
     message.instructions.splice(insertAt, 0, ...feeInstructions);
   }
 
+  /*
+   * -------------------------------------------------------------------
+   * O CARIMBO DE TEMPO É BUSCADO AGORA, NÃO LÁ ATRÁS
+   * -------------------------------------------------------------------
+   * Toda transação na Solana carrega um `blockhash` recente, e ele vale uns
+   * 60 segundos. Antes usávamos o que a Jupiter tinha posto na transação — e
+   * esse relógio já estava correndo desde a montagem da rota.
+   *
+   * Entre montar e assinar tem a pessoa: ela lê o valor, confere o token,
+   * pensa. Passando de um minuto, a rede recusava com "Blockhash not found" —
+   * uma mensagem que não diz nada a quem só queria comprar, e que culpa quem
+   * teve o cuidado de ler antes de assinar.
+   *
+   * Pegando o carimbo aqui, o minuto começa a contar no instante em que a
+   * carteira abre. A janela não fica infinita — não tem como — mas passa a
+   * ser inteira da pessoa, em vez de já vir gasta.
+   */
+  const carimbo = await connection.getLatestBlockhash("confirmed");
+  message.recentBlockhash = carimbo.blockhash;
+
   const rebuilt = new VersionedTransaction(message.compileToV0Message(lookups));
 
   onStep?.("Aguardando sua assinatura…");
   const signed = await signTransaction(rebuilt);
 
   onStep?.("Enviando pra rede…");
-  const signature = await connection.sendRawTransaction(signed.serialize(), {
-    skipPreflight: false,
-    maxRetries: 3,
-  });
+  let signature: string;
+  try {
+    signature = await connection.sendRawTransaction(signed.serialize(), {
+      skipPreflight: false,
+      maxRetries: 3,
+    });
+  } catch (erro) {
+    /*
+     * Se ainda assim venceu, a mensagem tem que dizer o que houve e o que
+     * fazer. "Blockhash not found" não é para ser lido por quem está
+     * comprando — e o conserto é simplesmente tentar de novo.
+     */
+    const texto = erro instanceof Error ? erro.message : String(erro);
+    if (/blockhash not found|block height exceeded/i.test(texto)) {
+      throw new Error(
+        "A ordem expirou enquanto esperava a assinatura. Nada foi cobrado — é só tentar de novo.",
+      );
+    }
+    throw erro;
+  }
 
   onStep?.("Confirmando…");
-  const latest = await connection.getLatestBlockhash();
   const confirmation = await connection.confirmTransaction(
     {
       signature,
-      blockhash: latest.blockhash,
-      lastValidBlockHeight: build.lastValidBlockHeight ?? latest.lastValidBlockHeight,
+      blockhash: carimbo.blockhash,
+      lastValidBlockHeight: carimbo.lastValidBlockHeight,
     },
     "confirmed",
   );
