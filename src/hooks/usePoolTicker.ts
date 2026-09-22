@@ -18,10 +18,14 @@ import { SOLANA_RPC } from "@/lib/web3";
  *
  * O que faz o gráfico tremer nos terminais bons é serem alimentados por
  * NEGÓCIO, não por relógio: cada swap move o preço na hora. Aqui isso é feito
- * assinando as duas contas-cofre da pool no RPC. Todo swap muda o saldo delas,
- * o nó empurra o novo saldo, e o preço sai da razão entre as reservas —
- * `preço = reserva de cotação / reserva do token`. Sem indexador próprio e sem
- * uma chamada de RPC por negócio: o dado chega sozinho.
+ * assinando as duas contas-cofre da pool no RPC. Todo swap muda o saldo delas
+ * e o nó empurra o novo saldo — sem indexador próprio e sem uma chamada de RPC
+ * por negócio: o dado chega sozinho.
+ *
+ * O preço sai da VARIAÇÃO dos dois cofres no mesmo slot, não do tamanho deles.
+ * O porquê está no comentário longo dentro do efeito; em uma linha: o nível das
+ * reservas só vira preço em AMM de produto constante, e a variação vira preço
+ * em qualquer uma.
  *
  * Com `commitment: "processed"` a atualização vem no slot em que a transação
  * foi processada, antes de confirmar. É o certo aqui: gráfico é para olhar, e
@@ -162,6 +166,8 @@ export function usePoolTicker({
     let pendenteBase = 0;
     let pendenteCotacao = 0;
     let janela: number | null = null;
+    /** O slot das variações que estão esperando par. */
+    let slotPendente: number | null = null;
 
     /**
      * Fecha a janela e publica, se o que chegou for mesmo um negócio.
@@ -177,6 +183,7 @@ export function usePoolTicker({
       const cotacao = pendenteCotacao;
       pendenteBase = 0;
       pendenteCotacao = 0;
+      slotPendente = null;
 
       if (base === 0 || cotacao === 0) return;
       if (Math.sign(base) === Math.sign(cotacao)) return;
@@ -192,11 +199,39 @@ export function usePoolTicker({
       });
     };
 
-    /** Registra a variação de um cofre e agenda o fechamento da janela. */
-    const acumular = (ehToken: boolean, variacao: number) => {
+    /**
+     * Registra a variação de um cofre, agrupando por SLOT.
+     *
+     * -----------------------------------------------------------------
+     * POR QUE SLOT E NÃO TEMPO
+     * -----------------------------------------------------------------
+     * A primeira versão juntava o que chegasse dentro de 120ms. Funcionava em
+     * moeda parada e falhava feio em moeda movimentada, que é onde importa: se
+     * o lado A de um negócio chega em 0ms e o lado B em 130ms, a janela fecha
+     * sozinha com só o A — e aí o B abre uma janela NOVA, que capta o lado A do
+     * negócio SEGUINTE. Os dois lados emparelhados são de negócios diferentes,
+     * e a divisão devolve um preço que não existiu.
+     *
+     * Na embercurve isso desenhou uma vela de $4,43M a $18,88M num minuto, numa
+     * moeda que a fonte mostra andando entre $9,14M e $9,53M em vinte minutos.
+     *
+     * Slot conserta porque é a unidade real: as duas pernas do MESMO negócio
+     * estão sempre no mesmo slot, e negócios diferentes quase nunca estão. O
+     * relógio continua como rede de segurança, pra última perna não ficar
+     * pendurada esperando um slot que não vem mais.
+     */
+    const acumular = (ehToken: boolean, variacao: number, slot: number) => {
       if (variacao === 0) return;
+
+      if (slotPendente !== null && slot !== slotPendente) {
+        if (janela !== null) window.clearTimeout(janela);
+        fecharJanela();
+      }
+
+      slotPendente = slot;
       if (ehToken) pendenteBase += variacao;
       else pendenteCotacao += variacao;
+
       if (janela === null) janela = window.setTimeout(fecharJanela, JANELA_DO_SWAP_MS);
     };
 
@@ -284,7 +319,7 @@ export function usePoolTicker({
         for (const cofre of cofres) {
           const id = conexao.onAccountChange(
             new PublicKey(cofre.conta),
-            (info) => {
+            (info, contexto) => {
               /*
                * O saldo de uma conta de token são 8 bytes little-endian no
                * offset 64 do layout SPL. Ler os bytes direto evita pedir
@@ -298,7 +333,7 @@ export function usePoolTicker({
               const variacao = nova - anterior.quantidade;
 
               reservasRef.current.set(cofre.conta, { mint: anterior.mint, quantidade: nova });
-              acumular(anterior.mint === tokenMint, variacao);
+              acumular(anterior.mint === tokenMint, variacao, contexto.slot);
             },
             "processed",
           );

@@ -25,18 +25,38 @@ const PRICE_POLL_MS = 3_000;
 /**
  * De quanto em quanto tempo o preço do servidor é relido como âncora.
  *
- * Não é pra desenhar — é só pra ter com o que comparar o preço que chega da
- * rede. Vinte segundos é folgado porque a âncora não precisa ser instantânea:
- * precisa estar na ordem de grandeza certa.
+ * Não é pra desenhar — é pra ter com o que comparar o preço que chega da rede.
+ * No mesmo ritmo do modo lento: assim a âncora anda junto com o mercado e a
+ * faixa de aceitação acompanha até uma disparada de verdade.
  */
-const REFERENCIA_MS = 20_000;
+const REFERENCIA_MS = PRICE_POLL_MS;
 
 /**
  * Quanto o preço ao vivo pode se afastar da âncora antes de ser descartado.
  *
- * Três vezes. Abaixo disso é mercado; acima é defeito nosso.
+ * Começou em 3×, e passou um preço de metade do valor real. Depois 1,5×, e
+ * ainda passou um de 1,59× — por pouco.
+ *
+ * Depois 1,5×, e ainda passou um de 1,59×. Depois 1,12×, e a vela de um minuto
+ * ficou com máxima em $10,70M e mínima em $8,65M numa moeda que, pela fonte,
+ * andou de $9,61M a $9,67M naquele minuto.
+ *
+ * Agora 1,03×. A faixa pode ser apertada assim porque sair dela não trava mais
+ * nada: o preço do servidor entra no lugar. O pior caso deixou de ser "vela
+ * errada" e virou "vela até 3 segundos atrasada" — e 3% de corte é invisível
+ * na escala do gráfico, ao contrário de um pavio de 100%.
+ *
+ * O efeito prático é uma troca automática: em pool comportada a maioria dos
+ * tiques passa e o gráfico corre por negócio; em pool barulhenta quase tudo
+ * cai pra âncora e o gráfico corre por relógio. Rápido quando dá pra confiar,
+ * certo sempre.
+ *
+ * Por que ainda escapa preço ruim: dois negócios em SENTIDOS OPOSTOS no mesmo
+ * slot se anulam em parte, e a razão entre o que sobra não é o preço de nenhum
+ * dos dois. Sem os dados por transação — que a assinatura de conta não entrega
+ * — não dá pra separar um do outro. Daí a faixa.
  */
-const FATOR_MAXIMO = 3;
+const FATOR_MAXIMO = 1.03;
 /** De quanto em quanto tempo as velas fechadas são recarregadas. */
 const CANDLE_REFRESH_MS = 60_000;
 
@@ -334,18 +354,33 @@ export function useLiveChartData({
      * é descartado e a âncora do servidor continua valendo.
      */
     const referencia = referenciaRef.current;
+    let preco = tickDaPool.precoUsd;
+
     if (referencia > 0) {
-      const fator = tickDaPool.precoUsd / referencia;
+      const fator = preco / referencia;
       if (fator > FATOR_MAXIMO || fator < 1 / FATOR_MAXIMO) {
+        /*
+         * Fora da faixa: vale o preço do servidor, não o descarte puro.
+         *
+         * Descartar e sair era o primeiro desenho, e deixava um buraco: no modo
+         * ao vivo a busca por pesquisa fica DESLIGADA, então a vela parava de
+         * andar até chegar um tique bom. Numa moeda em movimento isso é um
+         * gráfico travado mostrando um preço velho — e travado é pior que
+         * lento, porque não se anuncia.
+         *
+         * Usando a âncora, a vela continua andando com o número que o servidor
+         * confirmou. No pior caso o gráfico fica 3 segundos atrás do mercado;
+         * nunca fica errado.
+         */
         console.warn(
-          `[grafico] preço ao vivo descartado: ${tickDaPool.precoUsd} contra ` +
-            `${referencia} confirmados pelo servidor (${fator.toFixed(2)}x)`,
+          `[grafico] preço ao vivo fora da faixa: ${preco} contra ` +
+            `${referencia} confirmados pelo servidor (${fator.toFixed(2)}x) — usando o do servidor`,
         );
-        return;
+        preco = referencia;
       }
     }
 
-    precoPendenteRef.current = tickDaPool.precoUsd;
+    precoPendenteRef.current = preco;
     volumePendenteRef.current += tickDaPool.volumeUsd;
   }, [tickDaPool]);
 

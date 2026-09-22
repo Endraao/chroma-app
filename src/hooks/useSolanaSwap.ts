@@ -155,11 +155,25 @@ export function useSolanaSwap({
   // A rota de swap implementada hoje é só a da Solana.
   const fees = computeFeesRaw(grossRaw, affiliate, "solana");
 
+  /*
+   * Quanto de fato vai pra rota.
+   *
+   * COMPRA: o bruto menos a taxa. Ela é cobrada em SOL na entrada, então o que
+   * sobra é o que compra token.
+   *
+   * VENDA: o bruto INTEIRO. A taxa passou a ser cobrada em SOL na saída (ver
+   * `buildFeeInstructions`), então todo token que a pessoa mandou é vendido.
+   * Descontar aqui também seria cobrar duas vezes — uma em token e outra em
+   * SOL.
+   */
+  const ehVenda = inputMint !== SOL_MINT;
+  const valorDaRota = ehVenda ? grossRaw : fees.netAmount;
+
   /* --- Cotação (com debounce) -------------------------------------- */
   const requestRef = useRef(0);
 
   useEffect(() => {
-    if (!enabled || !tokenMint || inputDecimals === null || fees.netAmount <= 0n) {
+    if (!enabled || !tokenMint || inputDecimals === null || valorDaRota <= 0n) {
       setQuote(null);
       setPhase("idle");
       return;
@@ -174,7 +188,7 @@ export function useSolanaSwap({
         const params = new URLSearchParams({
           inputMint,
           outputMint,
-          amount: fees.netAmount.toString(),
+          amount: valorDaRota.toString(),
           slippageBps: String(slippageBps),
         });
         const res = await fetch(`/api/swap?${params}`, { cache: "no-store" });
@@ -193,18 +207,37 @@ export function useSolanaSwap({
     }, QUOTE_DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [tokenMint, inputMint, outputMint, fees.netAmount, slippageBps, inputDecimals, enabled]);
+  }, [tokenMint, inputMint, outputMint, valorDaRota, slippageBps, inputDecimals, enabled]);
 
   /* --- Valores derivados pra interface ----------------------------- */
+  /*
+   * Na venda, a tela mostra o que sobra DEPOIS da nossa taxa.
+   *
+   * A cotação da Jupiter é do swap puro; a taxa sai do SOL recebido, na mesma
+   * transação. Mostrar o número dela seria prometer um valor que nunca chega
+   * na carteira — e a diferença só apareceria no extrato, depois de assinado.
+   *
+   * Na compra não tem o que descontar: a taxa já saiu da entrada, e o que a
+   * Jupiter cotou é exatamente o que chega.
+   */
+  const taxaNaSaida = useMemo(() => {
+    if (!quote || !ehVenda) return 0n;
+    return computeFeesRaw(BigInt(quote.otherAmountThreshold), affiliate, "solana").totalFee;
+  }, [quote, ehVenda, affiliate]);
+
   const outAmount = useMemo(() => {
     if (!quote || outputDecimals === null) return 0;
-    return formatUnits(BigInt(quote.outAmount), outputDecimals);
-  }, [quote, outputDecimals]);
+    const bruto = BigInt(quote.outAmount);
+    const liquido = bruto > taxaNaSaida ? bruto - taxaNaSaida : 0n;
+    return formatUnits(liquido, outputDecimals);
+  }, [quote, outputDecimals, taxaNaSaida]);
 
   const minReceived = useMemo(() => {
     if (!quote || outputDecimals === null) return 0;
-    return formatUnits(BigInt(quote.otherAmountThreshold), outputDecimals);
-  }, [quote, outputDecimals]);
+    const bruto = BigInt(quote.otherAmountThreshold);
+    const liquido = bruto > taxaNaSaida ? bruto - taxaNaSaida : 0n;
+    return formatUnits(liquido, outputDecimals);
+  }, [quote, outputDecimals, taxaNaSaida]);
 
   const priceImpactPct = quote ? Number(quote.priceImpactPct) * 100 : 0;
   const route = quote?.routePlan?.map((r) => r.swapInfo.label).filter(Boolean).join(" → ") ?? "";
@@ -225,7 +258,6 @@ export function useSolanaSwap({
         quote,
         grossRaw,
         inputMint,
-        tokenProgram,
         affiliate,
         onStep: setStep,
       });
@@ -234,8 +266,16 @@ export function useSolanaSwap({
       setPhase("done");
       setStep("");
 
-      // Registra a conversão pro painel do afiliado (não bloqueia o sucesso).
-      if (affiliate && inputDecimals !== null) {
+      /*
+       * Registra a conversão pro painel do afiliado (não bloqueia o sucesso).
+       *
+       * Volume e comissão vão em LAMPORTS nos dois sentidos, lidos do que a
+       * transação de fato pagou. Antes usavam os decimais da ENTRADA, e numa
+       * venda a entrada é a meme coin: uma comissão de 3.000 unidades de uma
+       * moeda de um centavo virava "3.000 SOL" no painel, e o volume do dia
+       * somava quantidade de token com quantidade de SOL no mesmo total.
+       */
+      if (affiliate) {
         void fetch("/api/affiliate", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -244,9 +284,9 @@ export function useSolanaSwap({
             wallet: affiliate,
             ref: affiliateRef,
             txHash: result.signature,
-            volumeNative: formatUnits(grossRaw, inputDecimals),
+            volumeNative: formatUnits(result.volumeLamports, SOL_DECIMALS),
             // O valor que o promotor de fato recebeu, não uma estimativa.
-            commissionNative: formatUnits(result.affiliatePaidRaw, inputDecimals),
+            commissionNative: formatUnits(result.affiliatePaidRaw, SOL_DECIMALS),
             tokenAddress: tokenMint,
             tokenSymbol,
             // Este hook só monta swap na Solana; a comissão sai em SOL.
@@ -261,7 +301,7 @@ export function useSolanaSwap({
       // Cancelar no Phantom não é erro: é o usuário mudando de ideia.
       setError(/user rejected|rejected the request|cancel/i.test(message) ? null : message);
     }
-  }, [quote, publicKey, signTransaction, connection, grossRaw, inputMint, tokenProgram, affiliate, affiliateRef, inputDecimals, tokenMint, tokenSymbol]);
+  }, [quote, publicKey, signTransaction, connection, grossRaw, inputMint, affiliate, affiliateRef, tokenMint, tokenSymbol]);
 
   return {
     /** null = não foi possível ler o mint (endereço não-Solana, ou RPC recusou) */

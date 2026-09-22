@@ -9,14 +9,6 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import {
-  TOKEN_PROGRAM_ID,
-  TOKEN_2022_PROGRAM_ID,
-  createAssociatedTokenAccountIdempotentInstruction,
-  createTransferInstruction,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
-
 import { computeFeesRaw } from "./fees";
 import { SOL_MINT, type JupiterQuote } from "./jupiter";
 import { PLATFORM_FEE_WALLET_SOL } from "./web3";
@@ -33,11 +25,15 @@ import { PLATFORM_FEE_WALLET_SOL } from "./web3";
  * não existe "a plataforma te paga depois" — o dinheiro sai da carteira do
  * comprador e chega na do afiliado no mesmo slot em que o swap acontece.
  *
- * A ordem é: taxa primeiro, swap depois. Se o usuário não tiver saldo pra
- * taxa, a transação inteira falha antes de qualquer swap acontecer.
+ * A ORDEM DEPENDE DO SENTIDO, e isso importa:
  *
- * O valor cotado na Jupiter já é o LÍQUIDO (bruto menos 1%), então o usuário
- * recebe exatamente o que a tela mostrou.
+ * - **Compra**: taxa primeiro, swap depois. A taxa sai do SOL que a pessoa já
+ *   tem; se não tiver saldo, a transação inteira falha antes de qualquer swap.
+ * - **Venda**: swap primeiro, taxa depois. O SOL que a taxa cobra só passa a
+ *   existir depois da troca — cobrada antes, ela sairia do saldo que a pessoa
+ *   já tinha na carteira, e não do dinheiro da venda.
+ *
+ * Nos dois casos a taxa é em SOL. O motivo está em `buildFeeInstructions`.
  */
 
 /** Descompacta uma transação versionada resolvendo as Address Lookup Tables. */
@@ -59,41 +55,43 @@ async function decompile(connection: Connection, tx: VersionedTransaction) {
   return { message, lookups };
 }
 
-/**
- * SPL clássico ou Token-2022? O program id muda as instruções de transferência.
- * Vem dos metadados da Jupiter (`/api/token-meta`) pra não gastar uma chamada
- * de RPC — e porque o RPC público bloqueia o browser de qualquer jeito.
- */
-function tokenProgramFrom(tokenProgram: string | null): PublicKey {
-  if (tokenProgram === TOKEN_2022_PROGRAM_ID.toBase58()) return TOKEN_2022_PROGRAM_ID;
-  return TOKEN_PROGRAM_ID;
-}
-
 interface FeeRecipients {
   platform: PublicKey;
   affiliate: PublicKey | null;
 }
 
 /**
- * Instruções que pagam a taxa.
+ * Instruções que pagam a taxa — sempre em SOL nativo.
  *
- * - Entrada em SOL (compra): transferência nativa, simples e barata.
- * - Entrada em token (venda): transferência SPL. Se a carteira de destino
- *   ainda não tiver conta desse token, a instrução idempotente cria — e o
- *   custo de aluguel (~0,002 SOL) sai do usuário. É o preço de cobrar a taxa
- *   na moeda de entrada; a alternativa seria cobrar na saída, que só é
- *   conhecida depois da execução.
+ * ---------------------------------------------------------------------------
+ * POR QUE SEMPRE EM SOL, E NÃO NA MOEDA QUE ENTRA
+ * ---------------------------------------------------------------------------
+ * Antes a taxa saía do que ENTRAVA na transação. Na compra entra SOL e estava
+ * tudo certo; na venda entra a meme coin, e aí saíam três problemas — o
+ * segundo grave:
+ *
+ *   1. A carteira da plataforma juntava meme coin em vez de SOL, e cada uma
+ *      teria que ser vendida na mão depois.
+ *   2. O AFILIADO recebia em token, mas o painel de ganhos escreve o número
+ *      com o símbolo da rede. Uma comissão de 3.000 unidades de uma moeda de
+ *      um centavo aparecia como "3.000 SOL" — uns 355 mil dólares — e era esse
+ *      número que liberava o botão de sacar.
+ *   3. O gráfico de volume do afiliado somava unidade de token com unidade de
+ *      SOL no mesmo total.
+ *
+ * Agora a venda cobra do que SAI: o swap acontece inteiro e, na mesma
+ * transação, uma fatia do SOL recebido vai pra plataforma e pro afiliado. É o
+ * mesmo desenho que a curva da Chroma sempre usou.
+ *
+ * De quebra some a criação de conta de token pro destinatário, que custava
+ * ~0,002 SOL de aluguel do bolso de quem vendia.
  */
 function buildFeeInstructions(params: {
   payer: PublicKey;
-  inputMint: string;
-  tokenProgram: string | null;
-  grossRaw: bigint;
-  affiliate: string | null;
+  split: { totalFee: bigint; platformFee: bigint; affiliateFee: bigint };
   recipients: FeeRecipients;
 }): TransactionInstruction[] {
-  const { payer, inputMint, tokenProgram, grossRaw, affiliate, recipients } = params;
-  const split = computeFeesRaw(grossRaw, affiliate, "solana");
+  const { payer, split, recipients } = params;
 
   if (split.totalFee <= 0n) return [];
 
@@ -104,40 +102,31 @@ function buildFeeInstructions(params: {
     targets.push({ to: recipients.affiliate, amount: split.affiliateFee });
   }
 
-  // Compra: a taxa é em SOL nativo.
-  if (inputMint === SOL_MINT) {
-    return targets
-      .filter((t) => t.amount > 0n)
-      .map((t) =>
-        SystemProgram.transfer({
-          fromPubkey: payer,
-          toPubkey: t.to,
-          lamports: t.amount,
-        }),
-      );
-  }
-
-  // Venda: a taxa é no próprio token.
-  const mint = new PublicKey(inputMint);
-  const programId = tokenProgramFrom(tokenProgram);
-  const source = getAssociatedTokenAddressSync(mint, payer, true, programId);
-
-  const instructions: TransactionInstruction[] = [];
-  for (const target of targets) {
-    if (target.amount <= 0n) continue;
-    const destination = getAssociatedTokenAddressSync(mint, target.to, true, programId);
-    instructions.push(
-      createAssociatedTokenAccountIdempotentInstruction(payer, destination, target.to, mint, programId),
-      createTransferInstruction(source, destination, payer, target.amount, [], programId),
+  return targets
+    .filter((t) => t.amount > 0n)
+    .map((t) =>
+      SystemProgram.transfer({
+        fromPubkey: payer,
+        toPubkey: t.to,
+        lamports: t.amount,
+      }),
     );
-  }
-  return instructions;
 }
 
 export interface SwapExecution {
   signature: string;
+  /** SEMPRE em lamports, nos dois sentidos. */
   feePaidRaw: bigint;
+  /** SEMPRE em lamports, nos dois sentidos. */
   affiliatePaidRaw: bigint;
+  /**
+   * O tamanho do negócio em lamports — o que a taxa mediu.
+   *
+   * Existe pro painel do afiliado, que soma volume de várias operações num
+   * total só. Sem ele, quem chama teria que adivinhar a unidade a partir do
+   * sentido do swap, e era aí que o painel somava token com SOL.
+   */
+  volumeLamports: bigint;
 }
 
 export interface SwapRequest {
@@ -148,8 +137,6 @@ export interface SwapRequest {
   /** valor BRUTO que o usuário digitou, em unidades brutas */
   grossRaw: bigint;
   inputMint: string;
-  /** program id do mint de entrada, vindo de /api/token-meta */
-  tokenProgram: string | null;
   affiliate: string | null;
   onStep?: (step: string) => void;
 }
@@ -159,7 +146,7 @@ export interface SwapRequest {
  * instruções de taxa, manda o usuário assinar e envia pra rede.
  */
 export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution> {
-  const { connection, publicKey, signTransaction, quote, grossRaw, inputMint, tokenProgram, affiliate, onStep } =
+  const { connection, publicKey, signTransaction, quote, grossRaw, inputMint, affiliate, onStep } =
     req;
 
   if (!PLATFORM_FEE_WALLET_SOL) {
@@ -188,29 +175,61 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
   onStep?.("Anexando a taxa à mesma transação…");
   const { message, lookups } = await decompile(connection, swapTx);
 
+  /*
+   * -------------------------------------------------------------------
+   * SOBRE O QUE A TAXA É COBRADA
+   * -------------------------------------------------------------------
+   * Compra: sobre o SOL que a pessoa mandou. Número conhecido e exato.
+   *
+   * Venda: sobre o SOL que ela vai receber — que só é conhecido depois da
+   * execução. Usamos o `otherAmountThreshold`, que é o MÍNIMO que a Jupiter
+   * garante, e não o valor esperado.
+   *
+   * A escolha é deliberada e custa dinheiro pra nós: quando a execução sai
+   * melhor que o mínimo, cobramos um pouco menos que 0,95%. O contrário —
+   * cobrar sobre o esperado — significaria que, numa execução pior que a
+   * prevista, a diferença sairia do SOL que a pessoa já tinha na carteira.
+   * Cobrar a mais de quem acabou de levar uma execução ruim é o tipo de coisa
+   * que ninguém percebe na hora e todo mundo descobre depois.
+   */
+  const ehVenda = inputMint !== SOL_MINT;
+  const baseDaTaxa = ehVenda ? BigInt(quote.otherAmountThreshold) : grossRaw;
+  const split = computeFeesRaw(baseDaTaxa, affiliate, "solana");
+
   const feeInstructions = buildFeeInstructions({
     payer: publicKey,
-    inputMint,
-    tokenProgram,
-    grossRaw,
-    affiliate: recipients.affiliate ? affiliate : null,
+    split,
     recipients,
   });
 
-  /*
-   * As instruções de compute budget da Jupiter precisam continuar no começo,
-   * senão o runtime ignora os limites que ela calculou. Por isso a taxa entra
-   * logo DEPOIS delas, e não na posição zero.
-   */
-  const COMPUTE_BUDGET = "ComputeBudget111111111111111111111111111111";
-  let insertAt = 0;
-  while (
-    insertAt < message.instructions.length &&
-    message.instructions[insertAt].programId.toBase58() === COMPUTE_BUDGET
-  ) {
-    insertAt++;
+  if (ehVenda) {
+    /*
+     * Na venda a taxa entra DEPOIS do swap, no fim da transação.
+     *
+     * O SOL que ela cobra só existe depois da troca acontecer. Posta antes, a
+     * transferência tiraria do saldo que a pessoa já tinha na carteira — ou
+     * falharia, se ela estivesse sem saldo. Depois, sai do dinheiro da própria
+     * venda, que é o certo.
+     */
+    message.instructions.push(...feeInstructions);
+  } else {
+    /*
+     * Na compra entra no começo, logo depois do compute budget da Jupiter.
+     *
+     * Essas instruções de orçamento precisam continuar em primeiro lugar,
+     * senão o runtime ignora os limites que ela calculou — por isso a taxa não
+     * vai na posição zero.
+     */
+    const COMPUTE_BUDGET = "ComputeBudget111111111111111111111111111111";
+    let insertAt = 0;
+    while (
+      insertAt < message.instructions.length &&
+      message.instructions[insertAt].programId.toBase58() === COMPUTE_BUDGET
+    ) {
+      insertAt++;
+    }
+    message.instructions.splice(insertAt, 0, ...feeInstructions);
   }
-  message.instructions.splice(insertAt, 0, ...feeInstructions);
 
   const rebuilt = new VersionedTransaction(message.compileToV0Message(lookups));
 
@@ -238,8 +257,12 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
     throw new Error(`transação falhou on-chain: ${JSON.stringify(confirmation.value.err)}`);
   }
 
-  const split = computeFeesRaw(grossRaw, affiliate, "solana");
-  return { signature, feePaidRaw: split.totalFee, affiliatePaidRaw: split.affiliateFee };
+  return {
+    signature,
+    feePaidRaw: split.totalFee,
+    affiliatePaidRaw: split.affiliateFee,
+    volumeLamports: baseDaTaxa,
+  };
 }
 
 /** Link de afiliado pode vir com lixo na URL: não deixa isso derrubar o swap. */
