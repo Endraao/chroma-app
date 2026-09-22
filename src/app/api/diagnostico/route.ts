@@ -65,6 +65,21 @@ export async function GET() {
       },
     },
 
+    /*
+     * Os NOMES que a Vercel injetou pro armazenamento e pro banco.
+     *
+     * A integração do Blob aparece conectada ao projeto no painel, mas
+     * `BLOB_READ_WRITE_TOKEN` chegou vazio. A explicação provável é que ela
+     * injete com outro nome — a tela de conexão oferece um prefixo próprio,
+     * e foi assim que o banco virou `DATABASE_URL` em vez do `STORAGE_URL`
+     * que vinha sugerido.
+     *
+     * Só os nomes, nunca os valores.
+     */
+    nomesInjetados: Object.keys(process.env)
+      .filter((k) => /BLOB|STORAGE|POSTGRES|NEON|DATABASE/i.test(k))
+      .sort(),
+
     at: Date.now(),
   });
 }
