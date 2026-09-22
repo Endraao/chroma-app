@@ -1,5 +1,6 @@
 import "server-only";
 
+import { fornecimentoDaRede } from "./fornecimento";
 import { cached, putStale, stale } from "./cache";
 import { CHAINS } from "./web3";
 import type { Candle, ChainId, TokenSummary } from "./types";
@@ -177,6 +178,44 @@ function somarPools(base: TokenSummary, pares: DexPair[]): TokenSummary {
   };
 }
 
+/**
+ * Recalcula a capitalização com o fornecimento LIDO DA REDE.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE A FONTE DE MERCADO NÃO SERVE AQUI
+ * ---------------------------------------------------------------------------
+ * A Dexscreener manda dois tamanhos e nenhum é o de hoje. Medido na STONK, com
+ * o preço a $0,3264:
+ *
+ *     fdv        supõe 1.000,1M tokens (o que foi cunhado lá atrás)
+ *     marketCap  supõe   876,8M tokens (estimativa velha)
+ *     a rede diz         827,0M tokens
+ *
+ * Mostrávamos 50 milhões de tokens que já foram queimados — 6% de
+ * capitalização a mais. Contra o terminal de referência, com o MESMO preço na
+ * tela: eles $270,7M, nós $286,16M. A diferença era inteira essa.
+ *
+ * Capitalização é o número que a pessoa usa pra decidir se a moeda é grande ou
+ * pequena. Errar 6% pra cima faz a moeda parecer maior do que é.
+ *
+ * O preço continua vindo da pool: ele é de mercado. O que muda é só por quanto
+ * ele é multiplicado.
+ */
+export async function corrigirCapitalizacao(resumos: TokenSummary[]): Promise<TokenSummary[]> {
+  const solanas = resumos.filter((t) => t.chain === "solana").map((t) => t.address);
+  if (solanas.length === 0) return resumos;
+
+  const porMint = await fornecimentoDaRede(solanas);
+  if (porMint.size === 0) return resumos;
+
+  return resumos.map((t) => {
+    const fornecimento = porMint.get(t.address);
+    /* Sem resposta da rede fica o número da fonte: impreciso, mas existe. */
+    if (!fornecimento || t.priceUsd <= 0) return t;
+    return { ...t, marketCapUsd: t.priceUsd * fornecimento };
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Token individual                                                    */
 /* ------------------------------------------------------------------ */
@@ -191,7 +230,10 @@ export async function fetchToken(address: string): Promise<TokenSummary | null> 
       const pares = data.pairs ?? [];
       const pair = bestPair(pares);
       if (!pair) throw new Error("token sem par listado");
-      return somarPools(toSummary(pair), pares);
+
+      const resumo = somarPools(toSummary(pair), pares);
+      const [comFornecimento] = await corrigirCapitalizacao([resumo]);
+      return comFornecimento;
     });
   } catch (error) {
     console.warn("[market] fetchToken falhou:", error);

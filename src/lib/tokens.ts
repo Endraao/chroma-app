@@ -1,6 +1,6 @@
 import "server-only";
 
-import { fetchPoolFeed, fetchToken, fetchTokenList } from "./market";
+import { corrigirCapitalizacao, fetchPoolFeed, fetchToken, fetchTokenList } from "./market";
 import { moedasDaChroma } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
@@ -169,7 +169,14 @@ async function universo(): Promise<TokenSummary[]> {
     porChave.set(`${t.chain}:${t.address.toLowerCase()}`, t);
   }
 
-  return [...porChave.values()];
+  /*
+   * A capitalização de TODAS as moedas sai do fornecimento real da rede, numa
+   * chamada só pra vitrine inteira — ver `corrigirCapitalizacao` em market.ts.
+   *
+   * As fontes de mercado carregam estimativa velha de quantos tokens existem,
+   * e moeda que queimou parte do fornecimento aparecia maior do que é.
+   */
+  return corrigirCapitalizacao([...porChave.values()]);
 }
 
 export async function listTokens(
