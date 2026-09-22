@@ -2,7 +2,7 @@ import "server-only";
 
 import { AFFILIATE_FEE_BPS } from "./fees";
 import type { ChainId } from "./types";
-import { db } from "./db";
+import { banco, sql } from "./db";
 import { MOEDA_DA_REDE, type AffiliateSummary, type GanhosDaRede } from "./affiliate-types";
 
 export type { AffiliateSummary, GanhosDaRede };
@@ -10,21 +10,21 @@ export type { AffiliateSummary, GanhosDaRede };
 /**
  * Persistência dos eventos de afiliado.
  *
- * Formato: JSONL (um JSON por linha) em `.data/affiliate-events.jsonl`.
- * Escrita é append puro, que o sistema operacional trata como atômico para
- * linhas curtas — sem risco de dois pedidos simultâneos corromperem o arquivo.
+ * Mora em Postgres — ver `db.ts` pro porquê. Passou por dois formatos antes:
+ * um arquivo JSONL, depois SQLite. Cada troca resolveu um problema concreto:
  *
- * POR QUE ARQUIVO E NÃO BANCO: o MVP roda numa máquina só e assim não exige
- * que o usuário instale Postgres pra testar. Os limites são reais e estão
- * listados abaixo. Quando for pra produção, troque só este arquivo — o resto
- * da aplicação não sabe onde os dados moram.
+ *   - **JSONL → SQLite**: o mesmo swap contava duas vezes. Um reenvio do
+ *     registro de conversão, banal quando a rede demora e a tela tenta de
+ *     novo, somava a comissão de novo no painel. Nos dados que vieram do
+ *     formato antigo isso já tinha acontecido: 136 registros de trade eram 6
+ *     transações repetidas. Hoje um índice único de transação barra.
  *
- * Limites conhecidos:
- *  - uma instância só (em serverless, cada instância teria o seu arquivo);
- *  - a leitura carrega o arquivo inteiro na memória;
- *  - não há índice: consulta por carteira é varredura linear.
+ *   - **SQLite → Postgres**: o site vai rodar na Vercel, onde o disco é
+ *     descartado a cada publicação. Banco em arquivo ali significa histórico
+ *     de comissão sumindo a cada deploy.
  *
- * Nada disso afeta o pagamento do afiliado, que acontece on-chain.
+ * Nada disso afeta o PAGAMENTO do afiliado, que acontece on-chain, na mesma
+ * transação do swap. O que mora aqui é o histórico que o painel mostra.
  */
 
 
@@ -64,28 +64,22 @@ export interface AffiliateRecord {
   txHash?: string;
 }
 
-/*
- * Daqui pra baixo o armazenamento é SQLite, não mais um arquivo JSONL. O porquê
- * da troca está em `db.ts`. Duas coisas melhoraram além da velocidade:
- *
- *   - **O mesmo swap não conta duas vezes.** Um reenvio do registro de
- *     conversão — banal quando a rede demora e a tela tenta de novo — somava a
- *     comissão de novo no painel. Agora o índice único da transação barra.
- *
- *   - **O painel lê só o que é da pessoa.** Antes carregava o arquivo inteiro e
- *     filtrava na memória, a cada visita.
- */
-
 /** Grava o evento. Reenvio do mesmo swap é ignorado, não somado. */
 export async function recordEvent(record: AffiliateRecord): Promise<void> {
-  db()
-    .prepare(
-      `INSERT OR IGNORE INTO eventos_de_afiliado
-         (wallet, conta, event, at, chain, landed_on, volume_usd, volume_native,
-          commission_native, token_address, token_symbol, tx_hash)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
+  await banco();
+
+  /*
+   * `ON CONFLICT DO NOTHING` em cima do índice único de `tx_hash`: reenvio do
+   * mesmo swap é ignorado, não somado. É o que impede a mesma comissão de
+   * entrar duas vezes quando a rede demora e a tela tenta de novo.
+   */
+  await sql.query(
+    `INSERT INTO eventos_de_afiliado
+       (wallet, conta, event, at, chain, landed_on, volume_usd, volume_native,
+        commission_native, token_address, token_symbol, tx_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+     ON CONFLICT DO NOTHING`,
+    [
       record.wallet,
       record.conta ?? null,
       record.event,
@@ -98,7 +92,8 @@ export async function recordEvent(record: AffiliateRecord): Promise<void> {
       record.tokenAddress ?? null,
       record.tokenSymbol ?? null,
       record.txHash ?? null,
-    );
+    ],
+  );
 }
 
 interface LinhaDeEvento {
@@ -121,7 +116,9 @@ function paraRegistro(l: LinhaDeEvento): AffiliateRecord {
     wallet: l.wallet,
     conta: l.conta ?? undefined,
     event: l.event as AffiliateEvent,
-    at: l.at,
+    /* BIGINT chega como texto do Postgres; sem converter, o agrupamento por
+       dia e todo cálculo de período dariam NaN em silêncio. */
+    at: Number(l.at),
     chain: (l.chain ?? undefined) as ChainId | undefined,
     landedOn: l.landed_on ?? undefined,
     volumeUsd: l.volume_usd ?? undefined,
@@ -140,21 +137,22 @@ function paraRegistro(l: LinhaDeEvento): AffiliateRecord {
  * basta porque eventos antigos não o têm; os endereços sozinhos não bastam
  * porque a pessoa pode vincular uma carteira depois de já ter recebido nela.
  */
-function eventosDe(quem: IdentidadeDoPromotor): AffiliateRecord[] {
+async function eventosDe(quem: IdentidadeDoPromotor): Promise<AffiliateRecord[]> {
   const enderecos = quem.wallets.filter(Boolean);
-
-  /*
-   * O `IN` é montado com um `?` por endereço. São no máximo duas ou três
-   * carteiras — uma por rede — então a lista é curtíssima, e os valores
-   * continuam indo como parâmetro, nunca concatenados na consulta.
-   */
-  const espacos = enderecos.map(() => "?").join(", ");
 
   const condicoes: string[] = [];
   const valores: (string | null)[] = [];
 
+  /*
+   * Postgres numera os parâmetros ($1, $2…) em vez de usar `?` posicional.
+   * O contador cresce junto com a lista de valores, então a numeração não tem
+   * como sair de sincronia com a ordem em que eles são empilhados — que era o
+   * erro fácil de cometer ao converter isto na mão.
+   */
+  const proximo = () => `$${valores.length + 1}`;
+
   if (quem.nickname) {
-    condicoes.push("conta = ?");
+    condicoes.push(`conta = ${proximo()}`);
     valores.push(quem.nickname);
   }
   if (enderecos.length > 0) {
@@ -163,22 +161,29 @@ function eventosDe(quem: IdentidadeDoPromotor): AffiliateRecord[] {
      * a maiúsculas — a mesma carteira pode ter sido gravada em grafias
      * diferentes — e o da Solana é sensível, então a exata precisa continuar
      * existindo. O filtro fino vem depois, em `summarize`.
+     *
+     * São no máximo duas ou três carteiras (uma por rede), então a lista é
+     * curtíssima — e os valores continuam indo como parâmetro, nunca
+     * concatenados na consulta.
      */
-    condicoes.push(`wallet IN (${espacos})`);
+    const exatos = enderecos.map(() => proximo()).join(", ");
+    condicoes.push(`wallet IN (${exatos})`);
     valores.push(...enderecos);
-    condicoes.push(`lower(wallet) IN (${espacos})`);
+
+    const minusculos = enderecos.map(() => proximo()).join(", ");
+    condicoes.push(`lower(wallet) IN (${minusculos})`);
     valores.push(...enderecos.map((e) => e.toLowerCase()));
   }
 
   if (condicoes.length === 0) return [];
 
-  const linhas = db()
-    .prepare(
-      `SELECT * FROM eventos_de_afiliado
-       WHERE ${condicoes.join(" OR ")}
-       ORDER BY at ASC`,
-    )
-    .all(...valores) as unknown as LinhaDeEvento[];
+  await banco();
+  const linhas = (await sql.query(
+    `SELECT * FROM eventos_de_afiliado
+     WHERE ${condicoes.join(" OR ")}
+     ORDER BY at ASC`,
+    valores,
+  )) as unknown as LinhaDeEvento[];
 
   return linhas.map(paraRegistro);
 }
@@ -284,7 +289,7 @@ export async function summarize(quem: IdentidadeDoPromotor): Promise<AffiliateSu
    * endereço de duas formas pra não perder grafia de EVM, e isso pode trazer
    * algo a mais — o que entra na conta é o que passa aqui.
    */
-  const mine = eventosDe(quem).filter(eDele);
+  const mine = (await eventosDe(quem)).filter(eDele);
   const trades = mine.filter((r) => r.event === "trade");
 
   /*

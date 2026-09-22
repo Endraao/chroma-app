@@ -2,7 +2,7 @@ import "server-only";
 
 
 import type { ChainId } from "./types";
-import { chaveDoEndereco, db } from "./db";
+import { banco, chaveDoEndereco, comTransacao, sql } from "./db";
 
 /**
  * Apelidos (nicknames) ligados a carteiras.
@@ -153,10 +153,11 @@ interface LinhaDaConta {
 }
 
 /** Monta a conta juntando as carteiras dela. */
-function montar(linha: LinhaDaConta): Account {
-  const carteiras = db()
-    .prepare("SELECT chain, endereco FROM carteiras WHERE conta = ?")
-    .all(linha.id) as unknown as { chain: string; endereco: string }[];
+async function montar(linha: LinhaDaConta): Promise<Account> {
+  const carteiras = (await sql.query(
+    "SELECT chain, endereco FROM carteiras WHERE conta = $1",
+    [linha.id],
+  )) as unknown as { chain: string; endereco: string }[];
 
   return {
     nickname: linha.apelido,
@@ -166,17 +167,23 @@ function montar(linha: LinhaDaConta): Account {
     carteiras: Object.fromEntries(
       carteiras.map((c) => [c.chain, c.endereco]),
     ) as Partial<Record<ChainId, string>>,
-    createdAt: linha.created_at,
+    /*
+     * `Number(...)` e não o valor cru: o driver do Postgres devolve BIGINT
+     * como TEXTO, pra não perder precisão em número grande. Sem converter, a
+     * data viraria "1789869050000" como string e toda conta de tempo daria
+     * `NaN` — sem erro nenhum, só idade errada na tela.
+     */
+    createdAt: Number(linha.created_at),
     avatar: linha.avatar ?? undefined,
     cover: linha.cover ?? undefined,
   };
 }
 
-function porId(id: number): Account | null {
-  const linha = db().prepare("SELECT * FROM contas WHERE id = ?").get(id) as
-    | unknown as LinhaDaConta
-    | undefined;
-  return linha ? montar(linha) : null;
+async function porId(id: number): Promise<Account | null> {
+  const linhas = (await sql.query("SELECT * FROM contas WHERE id = $1", [
+    id,
+  ])) as unknown as LinhaDaConta[];
+  return linhas[0] ? montar(linhas[0]) : null;
 }
 
 /**
@@ -187,11 +194,12 @@ function porId(id: number): Account | null {
  * agora é acerto de chave primária.
  */
 export async function findByWallet(wallet: string): Promise<Account | null> {
-  const achou = db()
-    .prepare("SELECT conta FROM carteiras WHERE endereco = ?")
-    .get(chaveDoEndereco(wallet)) as { conta: number } | undefined;
+  await banco();
+  const achou = (await sql.query("SELECT conta FROM carteiras WHERE endereco = $1", [
+    chaveDoEndereco(wallet),
+  ])) as unknown as { conta: number }[];
 
-  return achou ? porId(achou.conta) : null;
+  return achou[0] ? porId(achou[0].conta) : null;
 }
 
 /**
@@ -203,11 +211,12 @@ export async function findByWallet(wallet: string): Promise<Account | null> {
  */
 export async function findByNickname(nickname: string): Promise<Account | null> {
   const key = nickname.trim().toLowerCase().replace(/^@/, "");
-  const achou = db()
-    .prepare("SELECT conta FROM apelidos WHERE nickname = ?")
-    .get(key) as { conta: number } | undefined;
+  await banco();
+  const achou = (await sql.query("SELECT conta FROM apelidos WHERE nickname = $1", [
+    key,
+  ])) as unknown as { conta: number }[];
 
-  return achou ? porId(achou.conta) : null;
+  return achou[0] ? porId(achou[0].conta) : null;
 }
 
 /**
@@ -242,67 +251,83 @@ export async function claimNickname(params: {
     return { ok: false, error: "Esse apelido já está em uso.", status: 409 };
   }
 
-  const banco = db();
+  await banco();
   const chain = REDE_DO_KIND[params.kind];
   const agora = Date.now();
-
-  const existente = banco
-    .prepare("SELECT conta FROM carteiras WHERE endereco = ?")
-    .get(chaveDoEndereco(params.wallet)) as { conta: number } | undefined;
+  const exibicao = params.nickname.trim().replace(/^@/, "");
+  const enderecoChave = chaveDoEndereco(params.wallet);
 
   /*
-   * Tudo numa transação. Uma troca de apelido mexe em duas tabelas; parar no
-   * meio deixaria a conta com o nome novo e sem o apontamento, ou o contrário.
+   * Tudo numa transação, e a LEITURA vai dentro dela.
+   *
+   * No SQLite a leitura ficava do lado de fora, antes do `BEGIN`. Funcionava
+   * porque lá só existe um escritor por vez. Em Postgres, com várias funções
+   * serverless atendendo ao mesmo tempo, ler fora da transação abre a janela
+   * clássica: duas requisições da mesma pessoa leem "não existe conta" juntas e
+   * as duas criam — e a segunda vira uma conta órfã, com o apelido apontando
+   * pra ela e a carteira apontando pra outra. É a linha que decide pra onde vai
+   * a comissão.
+   *
+   * Uma troca de apelido também mexe em três tabelas; parar no meio deixaria a
+   * conta com o nome novo e sem o apontamento, ou o contrário.
    */
-  banco.exec("BEGIN IMMEDIATE");
-  try {
-    let id: number;
-
-    if (existente) {
-      // Troca de apelido: a conta é a mesma, o nome de exibição muda.
-      id = existente.conta;
-      banco
-        .prepare("UPDATE contas SET apelido = ?, display_name = ?, kind = ? WHERE id = ?")
-        .run(nickname, params.nickname.trim().replace(/^@/, ""), params.kind, id);
-    } else {
-      const r = banco
-        .prepare(
-          `INSERT INTO contas (apelido, display_name, wallet, kind, created_at)
-           VALUES (?, ?, ?, ?, ?)`,
+  const id = await comTransacao(async (c) => {
+      const existente = (
+        await c.query<{ conta: number }>(
+          "SELECT conta FROM carteiras WHERE endereco = $1 FOR UPDATE",
+          [enderecoChave],
         )
-        .run(nickname, params.nickname.trim().replace(/^@/, ""), params.wallet, params.kind, agora);
-      id = Number(r.lastInsertRowid);
-    }
+      ).rows[0];
 
-    /*
-     * O apelido é REGISTRADO, nunca substituído. Os antigos ficam apontando pra
-     * mesma conta — é isso que mantém link velho funcionando e impede que
-     * alguém assuma um nome largado.
-     */
-    banco
-      .prepare(
-        `INSERT INTO apelidos (nickname, conta, desde) VALUES (?, ?, ?)
-         ON CONFLICT(nickname) DO NOTHING`,
-      )
-      .run(nickname, id, agora);
+      let conta: number;
 
-    banco
-      .prepare(
-        `INSERT INTO carteiras (endereco, conta, chain) VALUES (?, ?, ?)
-         ON CONFLICT(endereco) DO UPDATE SET conta = excluded.conta, chain = excluded.chain`,
-      )
-      .run(chaveDoEndereco(params.wallet), id, chain);
+      if (existente) {
+        // Troca de apelido: a conta é a mesma, o nome de exibição muda.
+        conta = existente.conta;
+        await c.query(
+          "UPDATE contas SET apelido = $1, display_name = $2, kind = $3 WHERE id = $4",
+          [nickname, exibicao, params.kind, conta],
+        );
+      } else {
+        const criada = await c.query<{ id: number }>(
+          `INSERT INTO contas (apelido, display_name, wallet, kind, created_at)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [nickname, exibicao, params.wallet, params.kind, agora],
+        );
+        conta = Number(criada.rows[0].id);
+      }
 
-    banco.exec("COMMIT");
+      /*
+       * O apelido é REGISTRADO, nunca substituído. Os antigos ficam apontando
+       * pra mesma conta — é isso que mantém link velho funcionando e impede
+       * que alguém assuma um nome largado.
+       */
+      await c.query(
+        `INSERT INTO apelidos (nickname, conta, desde) VALUES ($1, $2, $3)
+         ON CONFLICT (nickname) DO NOTHING`,
+        [nickname, conta, agora],
+      );
 
-    const account = porId(id);
-    return account
-      ? { ok: true, account }
-      : { ok: false, error: "não consegui gravar a conta", status: 500 };
-  } catch (erro) {
-    banco.exec("ROLLBACK");
-    throw erro;
-  }
+      await c.query(
+        `INSERT INTO carteiras (endereco, conta, chain) VALUES ($1, $2, $3)
+         ON CONFLICT (endereco) DO UPDATE SET conta = excluded.conta, chain = excluded.chain`,
+        [enderecoChave, conta, chain],
+      );
+
+    return conta;
+  });
+
+  /*
+   * Sem try/catch aqui de propósito: `comTransacao` já desfaz tudo quando o
+   * bloco lança, e engolir o erro neste ponto devolveria "deu certo" pra uma
+   * gravação que não aconteceu. Falha de banco no registro de apelido tem que
+   * subir e virar erro 500 — é melhor a pessoa tentar de novo do que achar que
+   * o link de indicação dela existe quando não existe.
+   */
+  const account = await porId(id);
+  return account
+    ? { ok: true, account }
+    : { ok: false, error: "não consegui gravar a conta", status: 500 };
 }
 
 /* ------------------------------------------------------------------ */
@@ -324,21 +349,21 @@ export async function saveProfileMedia(params: {
   avatar?: string;
   cover?: string;
 }): Promise<MediaResult> {
-  const achou = db()
-    .prepare("SELECT conta FROM carteiras WHERE endereco = ?")
-    .get(chaveDoEndereco(params.wallet)) as { conta: number } | undefined;
+  await banco();
+  const achou = (await sql.query("SELECT conta FROM carteiras WHERE endereco = $1", [
+    chaveDoEndereco(params.wallet),
+  ])) as unknown as { conta: number }[];
 
-  if (!achou) {
+  if (!achou[0]) {
     return { ok: false, error: "Escolha um apelido antes de trocar as fotos.", status: 404 };
   }
 
-  db()
-    .prepare(
-      `UPDATE contas SET avatar = COALESCE(?, avatar), cover = COALESCE(?, cover) WHERE id = ?`,
-    )
-    .run(params.avatar ?? null, params.cover ?? null, achou.conta);
+  await sql.query(
+    `UPDATE contas SET avatar = COALESCE($1, avatar), cover = COALESCE($2, cover) WHERE id = $3`,
+    [params.avatar ?? null, params.cover ?? null, achou[0].conta],
+  );
 
-  const account = porId(achou.conta);
+  const account = await porId(achou[0].conta);
   return account
     ? { ok: true, account }
     : { ok: false, error: "não consegui gravar as fotos", status: 500 };
@@ -397,20 +422,19 @@ export async function linkWallet(params: {
    * acima não fecha sozinha: duas requisições simultâneas passariam as duas
    * pelo if e as duas gravariam. Aqui a segunda esbarra no banco.
    */
-  const alvo = db()
-    .prepare("SELECT conta FROM apelidos WHERE nickname = ?")
-    .get(conta.nickname) as { conta: number } | undefined;
+  const alvo = (await sql.query("SELECT conta FROM apelidos WHERE nickname = $1", [
+    conta.nickname,
+  ])) as unknown as { conta: number }[];
 
-  if (!alvo) {
+  if (!alvo[0]) {
     return { ok: false, error: "não achei a conta pra vincular", status: 500 };
   }
 
-  db()
-    .prepare(
-      `INSERT INTO carteiras (endereco, conta, chain) VALUES (?, ?, ?)
-       ON CONFLICT(endereco) DO UPDATE SET conta = excluded.conta, chain = excluded.chain`,
-    )
-    .run(chaveDoEndereco(params.endereco), alvo.conta, params.chain);
+  await sql.query(
+    `INSERT INTO carteiras (endereco, conta, chain) VALUES ($1, $2, $3)
+     ON CONFLICT (endereco) DO UPDATE SET conta = excluded.conta, chain = excluded.chain`,
+    [chaveDoEndereco(params.endereco), alvo[0].conta, params.chain],
+  );
 
   const account = await findByNickname(conta.nickname);
   return account

@@ -50,7 +50,7 @@ const TTL_CURVAS = 15_000;
 export async function moedasDaChroma(): Promise<TokenSummary[]> {
   let registros: MoedaRegistrada[];
   try {
-    registros = listarMoedasDaChroma();
+    registros = await listarMoedasDaChroma();
   } catch (erro) {
     console.warn("[chroma] não deu pra ler as moedas registradas:", erro);
     return [];
