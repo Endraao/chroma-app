@@ -184,6 +184,97 @@ function buildFeeInstructions(params: {
     );
 }
 
+/** De quanto em quanto tempo a transação é reenviada enquanto não confirma. */
+const REENVIO_MS = 2_000;
+/** De quanto em quanto tempo se pergunta se ela já entrou. */
+const CHECAGEM_MS = 1_000;
+
+/**
+ * Envia e fica insistindo até confirmar ou o carimbo vencer.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE UM ENVIO SÓ NÃO BASTA
+ * ---------------------------------------------------------------------------
+ * Na Solana, transação enviada não é transação aceita. Em momento de volume os
+ * validadores descartam o que não coube, e a sua simplesmente some — sem erro,
+ * sem aviso. O que acontecia aqui: mandávamos uma vez, esperávamos, e depois de
+ * um minuto a carteira devolvia "Signature has expired: block height exceeded".
+ *
+ * Isso é especialmente cruel porque a mensagem NÃO diz o que a pessoa precisa
+ * saber: se vendeu ou não. Aconteceu de verdade nesta venda, e a resposta só
+ * apareceu depois de eu consultar a rede.
+ *
+ * O jeito certo é insistir. A transação assinada continua válida durante toda a
+ * vida do carimbo, então reenviar a MESMA transação não cria risco de vender
+ * duas vezes: a rede aceita aquela assinatura uma vez só, e as repetições são
+ * descartadas.
+ *
+ * ---------------------------------------------------------------------------
+ * `skipPreflight` NOS REENVIOS
+ * ---------------------------------------------------------------------------
+ * O primeiro envio passa pela simulação, que é onde erro de verdade aparece
+ * cedo (saldo insuficiente, rota inválida). Do segundo em diante ela é pulada:
+ * já sabemos que a transação é válida, e simular de novo a cada dois segundos
+ * gastaria o nó e ainda poderia falhar por estado momentâneo.
+ */
+async function enviarInsistindo(
+  connection: Connection,
+  bruto: Uint8Array,
+  carimbo: { blockhash: string; lastValidBlockHeight: number },
+  onStep?: (step: string) => void,
+): Promise<string> {
+  let assinatura: string;
+
+  try {
+    assinatura = await connection.sendRawTransaction(bruto, { skipPreflight: false });
+  } catch (erro) {
+    const texto = erro instanceof Error ? erro.message : String(erro);
+    if (/blockhash not found|block height exceeded/i.test(texto)) {
+      throw new Error(
+        "A ordem expirou enquanto esperava a assinatura. Nada foi cobrado — é só tentar de novo.",
+      );
+    }
+    throw erro;
+  }
+
+  onStep?.("Confirmando…");
+  let ultimoReenvio = Date.now();
+
+  for (;;) {
+    const status = (await connection.getSignatureStatuses([assinatura])).value[0];
+
+    if (status?.err) {
+      throw new Error(`transação falhou on-chain: ${JSON.stringify(status.err)}`);
+    }
+    if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") {
+      return assinatura;
+    }
+
+    /*
+     * Venceu o carimbo e a transação não entrou? Então ela não vai entrar
+     * NUNCA — e isso é uma certeza, não um palpite: sem carimbo válido a rede
+     * recusa. Dá pra afirmar com todas as letras que nada foi cobrado.
+     */
+    const altura = await connection.getBlockHeight("confirmed");
+    if (altura > carimbo.lastValidBlockHeight) {
+      throw new Error(
+        "A rede não incluiu a ordem a tempo e ela expirou. Nada foi cobrado e seus tokens " +
+          "continuam com você — é só tentar de novo.",
+      );
+    }
+
+    if (Date.now() - ultimoReenvio >= REENVIO_MS) {
+      ultimoReenvio = Date.now();
+      /* Reenviar a MESMA assinatura não duplica: a rede aceita uma vez só. */
+      await connection
+        .sendRawTransaction(bruto, { skipPreflight: true, maxRetries: 0 })
+        .catch(() => {});
+    }
+
+    await new Promise((r) => setTimeout(r, CHECAGEM_MS));
+  }
+}
+
 export interface SwapExecution {
   signature: string;
   /** SEMPRE em lamports, nos dois sentidos. */
@@ -334,40 +425,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
   const signed = await signTransaction(rebuilt);
 
   onStep?.("Enviando pra rede…");
-  let signature: string;
-  try {
-    signature = await connection.sendRawTransaction(signed.serialize(), {
-      skipPreflight: false,
-      maxRetries: 3,
-    });
-  } catch (erro) {
-    /*
-     * Se ainda assim venceu, a mensagem tem que dizer o que houve e o que
-     * fazer. "Blockhash not found" não é para ser lido por quem está
-     * comprando — e o conserto é simplesmente tentar de novo.
-     */
-    const texto = erro instanceof Error ? erro.message : String(erro);
-    if (/blockhash not found|block height exceeded/i.test(texto)) {
-      throw new Error(
-        "A ordem expirou enquanto esperava a assinatura. Nada foi cobrado — é só tentar de novo.",
-      );
-    }
-    throw erro;
-  }
-
-  onStep?.("Confirmando…");
-  const confirmation = await connection.confirmTransaction(
-    {
-      signature,
-      blockhash: carimbo.blockhash,
-      lastValidBlockHeight: carimbo.lastValidBlockHeight,
-    },
-    "confirmed",
-  );
-
-  if (confirmation.value.err) {
-    throw new Error(`transação falhou on-chain: ${JSON.stringify(confirmation.value.err)}`);
-  }
+  const signature = await enviarInsistindo(connection, signed.serialize(), carimbo, onStep);
 
   return {
     signature,
