@@ -60,19 +60,17 @@ export function SecurityPanel({
   report,
   carregando,
   liquidityUsd,
-  marketCapUsd,
 }: {
   report: SecurityReport | null;
   carregando: boolean;
   liquidityUsd?: number;
-  marketCapUsd?: number;
 }) {
   const [aberto, setAberto] = useState(false);
 
   if (carregando) return <Skeleton className="h-[86px] rounded-2xl" />;
   if (!report) return null;
 
-  const alertas = montarAlertas(report, { liquidityUsd, marketCapUsd });
+  const alertas = montarAlertas(report, { liquidityUsd });
   const passaram = report.checks.filter((c) => c.level === "safe");
   const naoVerificados = report.checks.filter((c) => c.level === "unknown");
 
@@ -174,6 +172,23 @@ export function SecurityPanel({
 /* ------------------------------------------------------------------ */
 
 /**
+ * A venda que serve de régua pro aviso de liquidez.
+ *
+ * Quinhentos dólares não é número mágico: é mais ou menos o tamanho de uma
+ * posição de quem está começando. O aviso precisa responder à pergunta dessa
+ * pessoa, não à de quem move cem mil.
+ */
+const VENDA_DE_REFERENCIA = 500;
+
+/**
+ * Abaixo disto o aviso aparece.
+ *
+ * Dez mil dólares de pool é o ponto em que a venda de referência já custa uns
+ * 10% de preço. Acima disso, o impacto vira ruído; abaixo, vira prejuízo.
+ */
+const PISO_DE_LIQUIDEZ = 10_000;
+
+/**
  * Junta o que veio do contrato com o que dá pra ver do mercado.
  *
  * Passa pelo filtro das duas perguntas lá de cima: só entra o que pode
@@ -181,7 +196,7 @@ export function SecurityPanel({
  */
 function montarAlertas(
   report: SecurityReport,
-  mercado: { liquidityUsd?: number; marketCapUsd?: number },
+  mercado: { liquidityUsd?: number },
 ): Alerta[] {
   const alertas: Alerta[] = [];
 
@@ -224,24 +239,49 @@ function montarAlertas(
   }
 
   /*
-   * Liquidez rasa demais para o tamanho da moeda — este entra porque é
-   * literalmente "você não consegue sair": vender move o preço contra você.
+   * Liquidez rasa demais pra sair — em DÓLAR, não em proporção.
    *
-   * O corte é em 2%, não em 5%. Moeda recém-lançada começa com pouca liquidez
-   * por construção, e avisar nesse caso seria de novo carimbar perigo em todo
-   * lançamento. Abaixo de 2% já não é começo de vida, é armadilha de saída.
+   * -------------------------------------------------------------------------
+   * POR QUE A PROPORÇÃO FOI EMBORA
+   * -------------------------------------------------------------------------
+   * A regra era `liquidez ÷ capitalização < 2%`. Ela marcava a PUMP, de 3,7
+   * bilhões de capitalização, com alerta vermelho de "você não consegue sair"
+   * — numa moeda com a auditoria limpa e nota 96.
+   *
+   * Dois erros somados:
+   *
+   *   1. **A proporção não quer dizer nada em moeda grande.** Quanto maior a
+   *      capitalização, menor essa razão fica naturalmente. Qualquer token de
+   *      bilhão fica abaixo de 2%, e isso não diz nada sobre conseguir vender.
+   *
+   *   2. **A gente enxerga UMA pool.** A liquidez que lemos é a do melhor par
+   *      da fonte. A própria auditoria da PUMP respondeu "10 pool(s)" — os
+   *      23 milhões que comparamos eram um décimo do que existe.
+   *
+   * -------------------------------------------------------------------------
+   * O QUE SUBSTITUIU
+   * -------------------------------------------------------------------------
+   * A pergunta real de quem compra é "se eu quiser sair, quanto o preço anda
+   * contra mim?". Numa pool de produto constante, uma venda de tamanho V
+   * contra liquidez L move o preço em cerca de 2V/L. Com 500 dólares de venda
+   * e 10 mil de liquidez, isso é 10% — dinheiro de verdade indo embora.
+   *
+   * Então o corte é em dólar absoluto, e o texto diz a conta em vez de mostrar
+   * uma porcentagem que ninguém sabe interpretar. Moeda de bilhão nunca cai
+   * aqui; moeda de 3 mil dólares de pool cai, e cai com razão.
    */
-  const { liquidityUsd, marketCapUsd } = mercado;
-  if (liquidityUsd !== undefined && marketCapUsd && marketCapUsd > 0) {
-    const proporcao = liquidityUsd / marketCapUsd;
-    if (proporcao < 0.02) {
-      alertas.push({
-        id: "liquidez_rasa",
-        titulo: "Liquidez rasa demais para sair",
-        detalhe: `Só ${formatUsd(liquidityUsd)} de liquidez para ${formatUsd(marketCapUsd)} de capitalização (${(proporcao * 100).toFixed(1)}%). Uma venda um pouco maior derruba o preço contra você.`,
-        nivel: "danger",
-      });
-    }
+  const { liquidityUsd } = mercado;
+  if (liquidityUsd !== undefined && liquidityUsd < PISO_DE_LIQUIDEZ) {
+    const impacto = liquidityUsd > 0 ? (2 * VENDA_DE_REFERENCIA) / liquidityUsd : 1;
+    alertas.push({
+      id: "liquidez_rasa",
+      titulo: "Difícil sair desta moeda",
+      detalhe:
+        liquidityUsd > 0
+          ? `A pool tem ${formatUsd(liquidityUsd)}. Uma venda de ${formatUsd(VENDA_DE_REFERENCIA)} já derrubaria o preço uns ${Math.min(99, Math.round(impacto * 100))}% contra você.`
+          : "Não encontramos liquidez negociável para esta moeda.",
+      nivel: "danger",
+    });
   }
 
   return alertas;

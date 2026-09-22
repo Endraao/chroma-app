@@ -171,7 +171,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             report={report}
             carregando={auditando}
             liquidityUsd={stats.liquidityUsd}
-            marketCapUsd={token.marketCapUsd}
           />
 
           <Card>
