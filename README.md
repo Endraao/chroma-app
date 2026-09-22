@@ -435,11 +435,28 @@ Em ordem de peso, não de importância.
 
 ---
 
+## Publicação na Vercel
+
+- **O autor do commit precisa ser uma conta de GitHub de verdade.** No plano Hobby a Vercel só
+  publica commits escritos pelo dono do projeto: qualquer outro e-mail vira "colaboração" e a
+  publicação sai como `Blocked`, com a mensagem *"couldn't find a Git account for the commit
+  author"*. Aconteceu aqui — o git estava com `dev@chroma.local`, que não existe em conta nenhuma,
+  e seis publicações seguidas ficaram travadas antes de alguém ler o motivo. O e-mail privado do
+  GitHub (`<id>+<usuario>@users.noreply.github.com`) sempre é reconhecido.
+- `DATABASE_URL` e `BLOB_READ_WRITE_TOKEN` vêm das integrações do Neon e do Blob — não devem ser
+  criadas à mão, senão uma sobrescreve a outra.
+- Variável com `NEXT_PUBLIC_` não pode ser marcada como `Secret`: ela vai embutida no código que
+  roda no navegador, por definição. A Vercel avisa, e o aviso está certo.
+- `NEXT_PUBLIC_SITE_URL` precisa apontar pro domínio de produção. Sem ela o código usa a origem da
+  requisição, e uma publicação de teste gravaria esse endereço temporário dentro dos metadados de
+  um token — que ficam imutáveis na transação de criação.
+
 ## Notas de build
 
 - `npm run dev` escreve em `.next`; `npm run build` escreve em `.next-prod` (via
-  `scripts/build.mjs`). Os formatos são incompatíveis: quando compartilhavam a mesma pasta, a
-  página abria em branco com todo CSS e JS em 404.
+  `scripts/build.mjs`) — **exceto na Vercel**, onde a saída precisa ser `.next` ou a publicação
+  falha com "No Output Directory named .next found". Os formatos são incompatíveis: quando
+  compartilhavam a mesma pasta, a página abria em branco com todo CSS e JS em 404.
 - Três dependências opcionais são apontadas pra vazio em `next.config.mjs` porque não existem no
   browser e não são usadas: `@x402/*`, `pino-pretty` e `@react-native-async-storage/async-storage`.
 - `tsconfig.json` usa `target: ES2020` por causa dos `BigInt` em `fees.ts`.
