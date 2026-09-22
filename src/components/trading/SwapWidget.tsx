@@ -167,7 +167,18 @@ function SolanaSwap({
     }
 
     const parte = (swap.balance * pct) / 100;
-    setDigitado(parte > 0 ? arredondar(parte, swap.tokenDecimals ?? 6) : "");
+    /*
+     * Corta pra BAIXO, não arredonda.
+     *
+     * Arredondar podia pedir mais do que a pessoa tem: um saldo de
+     * 3,0030004999 com seis casas viraria 3,003001 — um milionésimo a mais que
+     * o saldo. A transação seria assinada e recusada pela rede por saldo
+     * insuficiente, e o motivo não apareceria em lugar nenhum da tela.
+     *
+     * No 100% isso é o caso normal, não o raro: é exatamente quando o número
+     * encosta no limite.
+     */
+    setDigitado(parte > 0 ? cortar(parte, swap.tokenDecimals ?? 6) : "");
   }
 
   const semValor = digitadoNum <= 0;
@@ -201,16 +212,42 @@ function SolanaSwap({
 
         {/* ------------- saldo à esquerda, ajustes à direita ------------ */}
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-[11px] text-zinc-600">
-            {swap.balance !== null && (
-              <>
-                saldo{" "}
-                <span className="tnum text-zinc-500">
-                  {formatPrice(swap.balance, comprando ? 4 : 2)} {comprando ? "SOL" : symbol}
+          {/*
+            O saldo é um BOTÃO, não um texto.
+
+            Vender tudo é o gesto mais comum de quem está saindo de uma posição,
+            e antes ele só existia escondido no atalho de 100% — que numa fileira
+            de seis botões iguais ninguém lê como "vender tudo". Clicar no
+            próprio saldo é o caminho curto que todo terminal tem.
+
+            Na compra ele também vale, e aí desconta a reserva de taxa de rede:
+            gastar o saldo inteiro deixaria a carteira sem como pagar a própria
+            transação, que falha DEPOIS de assinada.
+          */}
+          {swap.balance !== null ? (
+            <button
+              onClick={() => atalhoEmPorcentagem(100)}
+              disabled={swap.balance <= 0}
+              className="group text-[11px] text-zinc-600 transition-colors hover:text-zinc-400 disabled:cursor-not-allowed"
+              title={
+                comprando
+                  ? `Usa o saldo menos ${RESERVA_DE_REDE_SOL} SOL, pra sobrar taxa de rede`
+                  : `Vender todos os seus ${symbol}`
+              }
+            >
+              saldo{" "}
+              <span className="tnum text-zinc-500 group-hover:text-zinc-300">
+                {formatPrice(swap.balance, comprando ? 4 : 2)} {comprando ? "SOL" : symbol}
+              </span>
+              {swap.balance > 0 && (
+                <span className="ml-1.5 rounded border border-marca/30 px-1 py-px text-[10px] font-bold uppercase text-marca group-hover:border-marca/60">
+                  máx
                 </span>
-              </>
-            )}
-          </span>
+              )}
+            </button>
+          ) : (
+            <span />
+          )}
 
           <Engrenagem
             slippage={slippage}
@@ -644,4 +681,17 @@ function saneia(bruto: string): string {
 /** Corta casas sem notação científica e sem zero à toa no fim. */
 function arredondar(n: number, casas: number): string {
   return String(Number(n.toFixed(Math.min(9, Math.max(0, casas)))));
+}
+
+/**
+ * Como `arredondar`, mas sempre pra baixo.
+ *
+ * Existe pros atalhos de porcentagem do saldo. Ver o comentário em
+ * `atalhoEmPorcentagem`: pedir um milionésimo a mais do que se tem faz a rede
+ * recusar a transação depois de assinada, sem explicar por quê.
+ */
+function cortar(n: number, casas: number): string {
+  const c = Math.min(9, Math.max(0, casas));
+  const fator = 10 ** c;
+  return String(Math.floor(n * fator) / fator);
 }
