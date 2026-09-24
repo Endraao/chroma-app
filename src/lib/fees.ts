@@ -231,29 +231,23 @@ export function validateCreatorTax(bps: number): { ok: true; bps: number } | { o
   return { ok: true, bps };
 }
 
-/* ------------------------------------------------------------------ */
-/* Cascata do pool de taxas de criador                                 */
-/* ------------------------------------------------------------------ */
-
-export const POOL_SPLIT_BPS = {
-  /** compra a moeda vencedora na curva dela e queima */
-  burnWinner: 6_000,
-  /** vai pro criador da moeda vencedora */
-  winningCreator: 3_000,
-  /** fica com a plataforma, na carteira daquela rede */
-  platform: 1_000,
-} as const;
-
-/**
- * Divide o pool. BigInt porque isso vira transferência on-chain, e o resto
- * da divisão não pode evaporar: a sobra vai pra queima, que é a parte que
- * beneficia todo mundo que segura o token.
+/*
+ * POOL DE TAXAS E QUEIMA: REMOVIDOS.
+ * ---------------------------------------------------------------------------
+ * Existia aqui um `POOL_SPLIT_BPS` (60% compra-e-queima da moeda vencedora,
+ * 30% pro criador vencedor, 10% pra plataforma) e um `computePoolSplit()`.
+ *
+ * Nada no sistema alimentava esse pool: a função só era chamada pela página de
+ * taxas, pra desenhar uma barra, e pelo teste. O mecanismo que ela descrevia
+ * — moedas de um mesmo "tema" competindo, com "fechamento" e "épocas" — nunca
+ * foi especificado nem implementado, e a página explicava esses três termos
+ * para ninguém, porque nenhum deles existe no produto.
+ *
+ * Decisão do dono do projeto: sem queima por enquanto; a fatia da plataforma
+ * fica integralmente em caixa. A fatia da plataforma é a coluna PLATAFORMA da
+ * tabela de faixas, calculada em `distributeFees()` — nada além disso é
+ * cobrado, e não há mais nenhuma redistribuição programada.
  */
-export function computePoolSplit(poolRaw: bigint) {
-  const winningCreator = (poolRaw * BigInt(POOL_SPLIT_BPS.winningCreator)) / BigInt(BPS_DENOMINATOR);
-  const platform = (poolRaw * BigInt(POOL_SPLIT_BPS.platform)) / BigInt(BPS_DENOMINATOR);
-  return { burnWinner: poolRaw - winningCreator - platform, winningCreator, platform };
-}
 
 /* ------------------------------------------------------------------ */
 /* Rótulos prontos pra interface                                       */
@@ -268,9 +262,6 @@ export const feeLabel = {
   affiliate: pct(AFFILIATE_FEE_BPS),
   creatorTaxDefault: pct(DEFAULT_CREATOR_TAX_BPS),
   creatorTaxMax: pct(MAX_CREATOR_TAX_BPS),
-  poolBurn: pct(POOL_SPLIT_BPS.burnWinner),
-  poolCreator: pct(POOL_SPLIT_BPS.winningCreator),
-  poolPlatform: pct(POOL_SPLIT_BPS.platform),
 };
 
 /** Rótulos de uma rede específica. */

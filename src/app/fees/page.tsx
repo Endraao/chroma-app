@@ -4,7 +4,6 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import {
   CHAIN_FEES,
-  POOL_SPLIT_BPS,
   distributeFees,
   feeLabel,
   feeLabelFor,
@@ -26,9 +25,9 @@ export default function FeesPage() {
       <header>
         <h1 className="text-3xl font-black tracking-tight text-zinc-50">Taxas e limites</h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-zinc-400">
-          Cada rede tem a sua tabela, porque cada rede tem um concorrente diferente.
+          Cada rede tem a sua própria tabela. Tudo o que você paga na Chroma está nesta página.
           <br />
-          Nada aqui está escondido num tooltip de tela de confirmação.
+          Nenhuma taxa aparece só na hora de confirmar a operação.
         </p>
       </header>
 
@@ -45,7 +44,7 @@ export default function FeesPage() {
             icon="users"
             label="Divisão com quem indicou"
             value={feeLabel.affiliate}
-            note="Sai da nossa fatia, não do bolso do trader, e cai na carteira do promotor na mesma transação do swap. Sem indicação, essa fatia fica com a plataforma."
+            note="Sai da parte da plataforma, não do bolso do trader, e cai na carteira de quem indicou na mesma transação do swap. Quando não há indicação, essa parte fica com a plataforma."
             highlight
           />
           <FeeCard
@@ -58,38 +57,14 @@ export default function FeesPage() {
             icon="layers"
             label="Limite de lançamentos"
             value="nenhum"
-            note="A taxa de lançamento é o limite. Paga no envio, lançada na atribuição."
+            note="Você pode lançar quantas moedas quiser. O único custo é a taxa de lançamento, cobrada no envio."
           />
           <FeeCard
             icon="percent"
-            label="Token que não nasceu aqui"
+            label="Moeda lançada fora da Chroma"
             value="paga menos"
-            note="Sem criador nosso pra pagar, essa fatia simplesmente não é cobrada — só a nossa e a do afiliado."
+            note="Não existe taxa de criador nessas moedas, então ela não é cobrada. Você paga apenas a taxa da plataforma e a parte de quem indicou."
           />
-        </div>
-      </section>
-
-      {/* Cascata do pool */}
-      <section>
-        <h2 className="text-xl font-bold tracking-tight text-zinc-50">Pool de taxas</h2>
-        <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-zinc-400">
-          A taxa de criador de cada moeda de um mesmo tema flui para um pool único, antes do
-          fechamento e para sempre depois dele. No fechamento, e em toda época seguinte, cada unidade
-          que chega é dividida das mesmas três formas.
-        </p>
-
-        <div className="mt-5">
-          <WaterfallBar />
-
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
-            <Legend color="bg-bull" label="Compra e queima a vencedora" value={feeLabel.poolBurn} />
-            <Legend color="bg-chroma-cyan" label="Criador vencedor" value={feeLabel.poolCreator} />
-            <Legend color="bg-marca" label="Plataforma" value={feeLabel.poolPlatform} />
-          </div>
-
-          <p className="mt-2 text-[11px] text-zinc-600">
-            A cascata, no fechamento e em toda época depois dele. Criador perdedor não recebe nada.
-          </p>
         </div>
       </section>
 
@@ -98,22 +73,21 @@ export default function FeesPage() {
         <Card className="p-4">
           <div className="mb-2 flex items-center gap-2">
             <Badge tone="warn">estado atual</Badge>
-            <span className="text-[13px] font-bold text-zinc-200">O que já é cobrado de verdade</span>
+            <span className="text-[13px] font-bold text-zinc-200">O que está em vigor hoje</span>
           </div>
           <ul className="space-y-1.5 text-[12px] leading-relaxed text-zinc-500">
             <li className="flex gap-2">
               <span className="text-bull">✓</span>
               <span>
-                <strong className="text-zinc-300">Taxa de swap e divisão com o afiliado</strong> — já
-                funcionam, dentro da transação de swap na Solana.
+                <strong className="text-zinc-300">Taxa de swap e parte de quem indicou</strong> — em
+                vigor, cobradas dentro da própria transação de swap na Solana.
               </span>
             </li>
             <li className="flex gap-2">
               <span className="text-zinc-700">○</span>
               <span>
-                <strong className="text-zinc-400">Taxas de criador, lançamento e pool</strong> — os
-                valores estão definidos e a conta está pronta, mas dependem da curva de bonding
-                on-chain, que ainda não existe. Nada disso é cobrado hoje.
+                <strong className="text-zinc-400">Taxas de criador e de lançamento</strong> — os
+                valores já estão definidos, mas ainda não são cobradas.
               </span>
             </li>
           </ul>
@@ -136,8 +110,8 @@ function ChainFeeSection({ chain }: { chain: ChainId }) {
       <div className="flex flex-wrap items-baseline gap-3">
         <h2 className={cn("text-xl font-bold tracking-tight", meta.accent)}>{meta.label}</h2>
         <span className="text-[12px] text-zinc-600">
-          concorrente: {config.reference.name} — {labels.referenceTotal} no total,{" "}
-          {labels.referenceCreator} pro criador
+          comparação: {config.reference.name} cobra {labels.referenceTotal} no total,{" "}
+          {labels.referenceCreator} para o criador
         </span>
       </div>
 
@@ -150,7 +124,7 @@ function ChainFeeSection({ chain }: { chain: ChainId }) {
             diffBps === 0
               ? `Exatamente o que o ${config.reference.name} cobra.`
               : diffBps > 0
-                ? `${formatBps(diffBps)} acima do ${config.reference.name} — é o que paga o afiliado sem tirar do criador.`
+                ? `${formatBps(diffBps)} acima do ${config.reference.name}. Essa diferença remunera quem indicou, sem reduzir a parte do criador.`
                 : `${formatBps(-diffBps)} abaixo do ${config.reference.name}.`
           }
         />
@@ -158,7 +132,7 @@ function ChainFeeSection({ chain }: { chain: ChainId }) {
           icon="percent"
           label="Swap de token externo"
           value={labels.swap}
-          note="Roteado via agregador. Não há criador nosso, então essa fatia não é cobrada."
+          note="A operação é roteada por um agregador. Como a moeda não foi lançada na Chroma, não há taxa de criador."
         />
         <FeeCard
           icon="box"
@@ -218,9 +192,10 @@ function ChainFeeSection({ chain }: { chain: ChainId }) {
       </div>
 
       <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-        O trader paga sempre {labels.curveTotal}; o que muda é a divisão. Em verde, as faixas em que o
-        criador ganha mais do que ganharia no {config.reference.name} ({labels.referenceCreator}). O
-        volume acumulado só cresce, então a faixa nunca regride no meio do dia.
+        Você paga sempre {labels.curveTotal}; o que muda é a divisão desse valor. Em verde, as faixas
+        em que o criador recebe pelo menos o mesmo que receberia no {config.reference.name} (
+        {labels.referenceCreator}). O volume acumulado só aumenta, então a faixa alcançada nunca
+        diminui.
       </p>
 
       {/*
@@ -231,52 +206,16 @@ function ChainFeeSection({ chain }: { chain: ChainId }) {
       */}
       <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-600">
         A tabela mostra o caso em que a compra veio por um link de indicação.{" "}
-        <strong className="text-zinc-400">Sem indicação, a fatia do afiliado fica com a plataforma</strong> —
-        ela passa a {formatBps(distributeFees(chain, 0, false).platformBps)} na primeira faixa e{" "}
+        <strong className="text-zinc-400">Sem indicação, essa parte fica com a plataforma</strong> —
+        que passa a {formatBps(distributeFees(chain, 0, false).platformBps)} na primeira faixa e{" "}
         {formatBps(
           distributeFees(chain, config.creatorTiers[config.creatorTiers.length - 1].fromVolumeUsd, false)
             .platformBps,
         )}{" "}
-        no topo. O trader paga{" "}
-        {labels.curveTotal} de qualquer jeito: indicação nunca encarece a operação.
+        no topo. Em qualquer caso você paga {labels.curveTotal}: a indicação nunca encarece a sua
+        operação.
       </p>
     </section>
-  );
-}
-
-/** Barra da cascata, com as fatias proporcionais aos bps reais. */
-function WaterfallBar() {
-  const slices = [
-    { bps: POOL_SPLIT_BPS.burnWinner, color: "bg-bull" },
-    { bps: POOL_SPLIT_BPS.winningCreator, color: "bg-chroma-cyan" },
-    { bps: POOL_SPLIT_BPS.platform, color: "bg-marca" },
-  ];
-
-  return (
-    <div className="flex h-9 w-full gap-1 overflow-hidden">
-      {slices.map((slice, i) => (
-        <div
-          key={i}
-          style={{ width: `${slice.bps / 100}%` }}
-          className={cn(
-            "h-full opacity-80",
-            slice.color,
-            i === 0 && "rounded-l-full",
-            i === slices.length - 1 && "rounded-r-full",
-          )}
-        />
-      ))}
-    </div>
-  );
-}
-
-function Legend({ color, label, value }: { color: string; label: string; value: string }) {
-  return (
-    <span className="flex items-center gap-2 text-[12px]">
-      <span className={cn("size-2.5 rounded-full opacity-80", color)} />
-      <span className="text-zinc-400">{label}</span>
-      <span className="tnum font-bold text-zinc-100">{value}</span>
-    </span>
   );
 }
 
@@ -294,13 +233,12 @@ function FeeCard({
   highlight?: boolean;
 }) {
   return (
-    <Card
-      interactive
-      className={cn("p-4", highlight && "border-marca/30 bg-marca/[0.04]")}
-    >
+    <Card interactive className={cn("p-4", highlight && "border-marca/30 bg-marca/[0.04]")}>
       <div className="flex items-center gap-2">
         <Icon name={icon} />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+          {label}
+        </span>
       </div>
       <div
         className={cn(
@@ -316,7 +254,12 @@ function FeeCard({
 }
 
 function Icon({ name }: { name: "percent" | "box" | "layers" | "users" }) {
-  const common = { className: "size-4 text-zinc-500", fill: "none", stroke: "currentColor", strokeWidth: 1.5 };
+  const common = {
+    className: "size-4 text-zinc-500",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.5,
+  };
 
   if (name === "box") {
     return (

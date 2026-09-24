@@ -195,20 +195,27 @@ node scripts/test-fees.mjs
 ```
 
 Confirma, nas duas redes, que as três fatias sempre somam o total, que a plataforma nunca cai
-abaixo do piso, que a fatia do criador no topo bate a do concorrente e que o split do pool não
-perde nenhuma fração na divisão.
+abaixo do piso e que a fatia do criador no topo bate a do concorrente.
 
-### Pool de taxas de criador
+### Pool de taxas e queima — removidos
 
-As taxas de criador de todas as moedas de um mesmo tema entram num pool. No fechamento, e em toda
-época depois dele, cada unidade é dividida em 60% compra-e-queima da vencedora, 30% pro criador
-vencedor e 10% pra plataforma. Criador perdedor não recebe nada.
+Existiu aqui um pool que juntava a taxa de criador de moedas de um mesmo "tema" e, num
+"fechamento", dividia tudo em 60% compra-e-queima da vencedora, 30% pro criador vencedor e 10%
+pra plataforma (`POOL_SPLIT_BPS` / `computePoolSplit()`).
 
-`computePoolSplit()` trabalha em BigInt e joga o resto da divisão na queima — assim nenhuma fração
-se perde, e a sobra vai pra parte que beneficia quem segura o token.
+Nada alimentava esse pool: a função só era chamada pela página de taxas, pra desenhar uma barra,
+e pelo teste. Os três termos que a página usava — tema, fechamento e época — nunca foram
+especificados nem implementados.
+
+**Decisão do dono do projeto:** sem queima por enquanto, e a fatia da plataforma fica
+integralmente em caixa. Não há mais nenhuma redistribuição programada. A receita da plataforma é
+a coluna PLATAFORMA da tabela de faixas, calculada em `distributeFees()`.
+
+Se um mecanismo de competição entre moedas voltar à mesa, ele precisa vir com definição escrita
+de tema, fechamento e época antes de virar texto na interface.
 
 **Estado:** só a taxa de swap e o split do afiliado são cobrados de verdade hoje. As taxas de
-criador, de lançamento e o pool dependem da curva de bonding on-chain, que ainda não existe.
+criador e de lançamento dependem da curva de bonding on-chain, que ainda não existe.
 
 ### Como a taxa vira transação (Solana — implementado)
 

@@ -17,7 +17,6 @@ import {
   CHAIN_FEES,
   PLATFORM_FLOOR_BPS,
   computeFeesRaw,
-  computePoolSplit,
   distributeFees,
   swapFeeBps,
 } from "../src/lib/fees.ts";
@@ -95,14 +94,11 @@ for (const chain of chains) {
   }
 }
 
-console.log("\n=== split do pool (igual em todas as redes) ===");
-for (const pool of [0n, 1n, 7n, 999n, 1_000_000_007n, 123_456_789_012_345n]) {
-  const s = computePoolSplit(pool);
-  ok(
-    s.burnWinner + s.winningCreator + s.platform === pool,
-    `pool ${pool} → ${s.burnWinner} + ${s.winningCreator} + ${s.platform}`,
-  );
-}
+/*
+ * O split do pool era testado aqui. Saiu junto com o pool: não existe mais
+ * queima nem redistribuição, a fatia da plataforma fica integralmente em
+ * caixa e já é conferida nos blocos acima.
+ */
 
 console.log(falhas === 0 ? "\nTUDO PASSOU\n" : `\n${falhas} FALHA(S)\n`);
 process.exit(falhas === 0 ? 0 : 1);
