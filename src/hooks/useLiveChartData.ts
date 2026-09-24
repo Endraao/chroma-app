@@ -76,7 +76,8 @@ interface LiveChartData {
   lastCandle: Candle | null;
   price: number;
   change: number;
-  status: "connecting" | "live" | "demo" | "error";
+  /** "vazio" = a fonte respondeu, e não há vela nenhuma para este par. */
+  status: "connecting" | "live" | "vazio" | "erro";
   /** true quando o preço chega direto da rede, não por pesquisa */
   tempoReal: boolean;
   /**
@@ -93,38 +94,31 @@ interface LiveChartData {
 }
 
 /* ------------------------------------------------------------------ */
-/* Feed simulado (usado só quando o token não tem par indexado)        */
+/* NÃO EXISTE MAIS FEED SIMULADO                                       */
 /* ------------------------------------------------------------------ */
-
-function seedFrom(address: string): number {
-  let hash = 0;
-  for (let i = 0; i < address.length; i++) hash = (hash * 31 + address.charCodeAt(i)) | 0;
-  return Math.abs(hash % 100000) / 100000 || 0.42;
-}
-
-function buildDemoHistory(address: string, intervalSec: number, count = 240): Candle[] {
-  const seed = seedFrom(address);
-  let price = 0.0000012 + seed * 0.0000085;
-  const now = Math.floor(Date.now() / 1000);
-  const start = now - (now % intervalSec) - intervalSec * count;
-  const candles: Candle[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const open = price;
-    const drift = (Math.sin(i / 14 + seed * 10) + Math.random() - 0.45) * 0.035;
-    const close = Math.max(open * (1 + drift), 1e-12);
-    candles.push({
-      time: start + i * intervalSec,
-      open,
-      high: Math.max(open, close) * (1 + Math.random() * 0.02),
-      low: Math.min(open, close) * (1 - Math.random() * 0.02),
-      close,
-      volume: Math.random() * 40000 + 2000,
-    });
-    price = close;
-  }
-  return candles;
-}
+/*
+ * Havia aqui um gerador de velas sintéticas, usado quando a fonte de dados
+ * falhava. Ele desenhava o preço com uma senoide mais ruído aleatório, e o
+ * resultado na tela eram ondas suaves e regulares — montanhas — em vez de
+ * mercado.
+ *
+ * O problema não era a aparência. Era que aquilo ia para a tela com o mesmo
+ * eixo, as mesmas cores e o mesmo cabeçalho de abertura/máxima/mínima das
+ * velas verdadeiras. A única diferença visível era a COR DE UM ÍCONE, cuja
+ * explicação só aparecia ao passar o mouse.
+ *
+ * Como a fonte pública passou a responder 429 em rajada, isso deixou de ser
+ * caso raro: o gráfico de QUALQUER moeda virava desenho, e as pessoas liam
+ * preço inventado num terminal de negociação.
+ *
+ * Um gráfico vazio informa que não há dados. Um gráfico bonito com números
+ * falsos informa errado, e quem olha não tem como saber. Por isso o gerador
+ * saiu inteiro, em vez de ganhar um aviso maior.
+ *
+ * A resiliência foi para onde pertence: `fetchCandles` guarda a última
+ * resposta boa por trinta minutos e a serve quando a fonte recusa. Vela velha
+ * é dado velho; vela inventada não é dado.
+ */
 
 /* ------------------------------------------------------------------ */
 /* Hook                                                                */
@@ -151,7 +145,8 @@ function buildDemoHistory(address: string, intervalSec: number, count = 240): Ca
  * de preço só recalcula de tempos em tempos, então pedir mais vezes devolve o
  * mesmo número. Já foi tentado.
  *
- * Token sem par listado (recém-criado) cai num feed simulado e o painel avisa.
+ * Token sem par listado (recém-criado) fica com o gráfico vazio e o painel diz
+ * isso. Não existe mais feed simulado — ver a nota no topo do arquivo.
  */
 export function useLiveChartData({
   address,
@@ -165,7 +160,6 @@ export function useLiveChartData({
   const [candles, setCandles] = useState<Candle[]>([]);
   const [status, setStatus] = useState<LiveChartData["status"]>("connecting");
   const [volumeObservadoUsd, setVolumeObservado] = useState(0);
-  const demoRef = useRef(false);
 
   const intervalSec = INTERVAL_SECONDS[interval];
 
@@ -182,9 +176,20 @@ export function useLiveChartData({
         });
         if (!res.ok) throw new Error(`api/candles respondeu ${res.status}`);
         const data = (await res.json()) as Candle[];
-        if (cancelled || !Array.isArray(data) || !data.length) return;
+        if (cancelled) return;
 
-        demoRef.current = false;
+        /*
+         * Resposta vazia não é sucesso.
+         *
+         * Antes isto era um `return` silencioso junto com os outros casos, e o
+         * estado ficava em "connecting" para sempre: um esqueleto girando sem
+         * nunca dizer que não havia nada a mostrar.
+         */
+        if (!Array.isArray(data) || !data.length) {
+          setStatus("vazio");
+          return;
+        }
+
         setStatus("live");
         setCandles((prev) => {
           // Num refresh, preserva o preço ao vivo já aplicado na última vela.
@@ -203,18 +208,21 @@ export function useLiveChartData({
           return merged;
         });
       } catch (error) {
-        if (cancelled || isRefresh) return;
-        console.warn("[chart] sem velas reais, usando feed demo:", error);
-        demoRef.current = true;
-        setCandles(buildDemoHistory(address, intervalSec));
-        setStatus("demo");
+        if (cancelled) return;
+        console.warn("[chart] não foi possível carregar as velas:", error);
+        /*
+         * Numa atualização periódica, um erro NÃO apaga o que já está na tela:
+         * as velas que estão lá continuam verdadeiras, só param de avançar.
+         * Trocar dado bom por tela de erro por causa de uma falha passageira
+         * seria piorar de propósito.
+         */
+        if (isRefresh) return;
+        setStatus("erro");
       }
     };
 
     void load();
-    const timer = window.setInterval(() => {
-      if (!demoRef.current) void load(true);
-    }, CANDLE_REFRESH_MS);
+    const timer = window.setInterval(() => void load(true), CANDLE_REFRESH_MS);
 
     return () => {
       cancelled = true;
@@ -415,9 +423,6 @@ export function useLiveChartData({
     if (!address || !candles.length || tempoReal) return;
 
     const tick = async () => {
-      // No modo demo não há preço real pra buscar — quem move a vela é o efeito 3.
-      if (demoRef.current) return;
-
       try {
         const res = await fetch(`/api/price?address=${address}`, { cache: "no-store" });
         if (!res.ok) return;
@@ -432,46 +437,6 @@ export function useLiveChartData({
     return () => window.clearInterval(timer);
   }, [address, candles.length, tempoReal, aplicarPreco]);
 
-  /* --- 3. Tick do feed simulado ------------------------------------ */
-  useEffect(() => {
-    if (status !== "demo" || !candles.length) return;
-
-    const timer = window.setInterval(() => {
-      setCandles((prev) => {
-        if (!prev.length) return prev;
-        const last = prev[prev.length - 1];
-        const nowSec = Math.floor(Date.now() / 1000);
-        const bucket = nowSec - (nowSec % intervalSec);
-        const nextPrice = Math.max(last.close * (1 + (Math.random() - 0.49) * 0.018), 1e-12);
-
-        if (bucket > last.time) {
-          return [
-            ...prev.slice(-600),
-            {
-              time: bucket,
-              open: last.close,
-              high: Math.max(last.close, nextPrice),
-              low: Math.min(last.close, nextPrice),
-              close: nextPrice,
-              volume: Math.random() * 5000,
-            },
-          ];
-        }
-        return [
-          ...prev.slice(0, -1),
-          {
-            ...last,
-            close: nextPrice,
-            high: Math.max(last.high, nextPrice),
-            low: Math.min(last.low, nextPrice),
-            volume: last.volume + Math.random() * 300,
-          },
-        ];
-      });
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [status, candles.length, intervalSec]);
 
   const setInterval = useCallback((i: Interval) => setIntervalState(i), []);
 

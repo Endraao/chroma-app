@@ -7,12 +7,19 @@ import { CandleType } from "klinecharts";
 import {
   FONTE_TV,
   TradingChart,
-  INDICADORES_PRINCIPAIS,
-  INDICADORES_INFERIORES,
   type ComandosDoGrafico,
   type Indicador,
+  type ParametrosDeIndicador,
 } from "./TradingChart";
 import { INTERVALS, useLiveChartData, type Interval } from "@/hooks/useLiveChartData";
+import {
+  EM_PAINEL_PROPRIO,
+  POR_CHAVE,
+  SOBRE_AS_VELAS,
+  parametrosPadrao,
+  prender,
+  type Indicador as DoCatalogo,
+} from "@/lib/indicadores";
 import {
   aplicarEscala,
   fornecimentoEmCirculacao,
@@ -21,18 +28,6 @@ import {
 } from "@/lib/chart-scale";
 import { cn, formatPrice, formatUsd } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
-
-/** O que cada indicador mostra, pra quem não decorou a sopa de letras. */
-const DESCRICAO: Record<Indicador, string> = {
-  MA: "Média móvel simples",
-  EMA: "Média móvel exponencial",
-  BOLL: "Bandas de Bollinger",
-  SAR: "Parabolic SAR",
-  VOL: "Volume",
-  MACD: "Convergência de médias",
-  RSI: "Índice de força relativa",
-  KDJ: "Estocástico KDJ",
-};
 
 export function ChartPanel({
   address,
@@ -70,6 +65,18 @@ export function ChartPanel({
   } = useLiveChartData({ address, pool, chain, quoteAddress, quotePriceUsd });
 
   const [indicadores, setIndicadores] = useState<Indicador[]>(["VOL"]);
+
+  /**
+   * O que a pessoa configurou, por indicador.
+   *
+   * Só entra aqui o que foi MEXIDO — o que está no padrão fica de fora, e o
+   * gráfico cai no valor de fábrica do catálogo. Guardar tudo faria o objeto
+   * carregar 27 listas pra descrever "nada foi alterado", e a mudança de um
+   * padrão no catálogo deixaria de valer pra quem já abriu a página.
+   */
+  const [parametros, setParametros] = useState<ParametrosDeIndicador>({});
+  /** Qual indicador está com a gaveta de ajustes aberta; um de cada vez. */
+  const [ajustando, setAjustando] = useState<string | null>(null);
   /** Qual menu da barra está aberto; um de cada vez. */
   const [menu, setMenu] = useState<
     "intervalo" | "vela" | "indicadores" | "chart" | null
@@ -193,6 +200,32 @@ export function ChartPanel({
       atual.includes(nome) ? atual.filter((i) => i !== nome) : [...atual, nome],
     );
 
+  /**
+   * Troca um parâmetro de um indicador.
+   *
+   * Guarda a lista INTEIRA, não só o valor mexido: é o formato que
+   * `overrideIndicator` espera, e montar a lista na hora de enviar faria a
+   * ordem dos números depender de duas partes do código concordarem.
+   */
+  const trocarParametro = (chave: string, posicao: number, bruto: number) => {
+    const definicao = POR_CHAVE.get(chave);
+    if (!definicao) return;
+
+    setParametros((atual) => {
+      const lista = [...(atual[chave] ?? parametrosPadrao(chave))];
+      lista[posicao] = prender(bruto, definicao.parametros[posicao]!);
+      return { ...atual, [chave]: lista };
+    });
+  };
+
+  /** Volta o indicador pro valor de fábrica, tirando a chave do objeto. */
+  const restaurarParametros = (chave: string) =>
+    setParametros((atual) => {
+      const copia = { ...atual };
+      delete copia[chave];
+      return copia;
+    });
+
   return (
     <div
       ref={caixaRef}
@@ -261,26 +294,50 @@ export function ChartPanel({
           aberto={menu === "indicadores"}
           onToggle={() => abrir("indicadores")}
           titulo="Indicadores"
-          largura={250}
+          largura={288}
         >
-          <Secao titulo="Sobre as velas" />
-          {INDICADORES_PRINCIPAIS.map((nome) => (
-            <ItemIndicador
-              key={nome}
-              nome={nome}
-              ativo={indicadores.includes(nome)}
-              onClick={() => alternar(nome)}
-            />
-          ))}
-          <Secao titulo="Painel separado" />
-          {INDICADORES_INFERIORES.map((nome) => (
-            <ItemIndicador
-              key={nome}
-              nome={nome}
-              ativo={indicadores.includes(nome)}
-              onClick={() => alternar(nome)}
-            />
-          ))}
+          {/*
+            Rola de propósito: são 27 indicadores, e a lista é mais alta que o
+            gráfico. Sem o teto, o menu passaria da borda de baixo e os últimos
+            ficariam fora do alcance em tela de notebook.
+          */}
+          <div className="max-h-[min(58vh,420px)] overflow-y-auto pr-0.5">
+            <Secao titulo="Sobre as velas" />
+            {SOBRE_AS_VELAS.map((ind) => (
+              <ItemIndicador
+                key={ind.chave}
+                indicador={ind}
+                ativo={indicadores.includes(ind.chave)}
+                ajustando={ajustando === ind.chave}
+                valores={parametros[ind.chave] ?? parametrosPadrao(ind.chave)}
+                alterado={parametros[ind.chave] !== undefined}
+                onAlternar={() => alternar(ind.chave)}
+                onAjustar={() =>
+                  setAjustando((atual) => (atual === ind.chave ? null : ind.chave))
+                }
+                onTrocar={(pos, v) => trocarParametro(ind.chave, pos, v)}
+                onRestaurar={() => restaurarParametros(ind.chave)}
+              />
+            ))}
+
+            <Secao titulo="Painel separado" />
+            {EM_PAINEL_PROPRIO.map((ind) => (
+              <ItemIndicador
+                key={ind.chave}
+                indicador={ind}
+                ativo={indicadores.includes(ind.chave)}
+                ajustando={ajustando === ind.chave}
+                valores={parametros[ind.chave] ?? parametrosPadrao(ind.chave)}
+                alterado={parametros[ind.chave] !== undefined}
+                onAlternar={() => alternar(ind.chave)}
+                onAjustar={() =>
+                  setAjustando((atual) => (atual === ind.chave ? null : ind.chave))
+                }
+                onTrocar={(pos, v) => trocarParametro(ind.chave, pos, v)}
+                onRestaurar={() => restaurarParametros(ind.chave)}
+              />
+            ))}
+          </div>
         </Menu>
 
         <Risco />
@@ -342,13 +399,21 @@ export function ChartPanel({
           */}
           <BotaoDeIcone
             titulo={
-              status === "demo"
-                ? "Sem par indexado: o gráfico está simulado."
-                : tempoReal
-                  ? "Tempo real: a vela anda a cada negócio, lido da própria rede."
-                  : "Ao vivo: o preço é conferido a cada 3 segundos."
+              status === "erro"
+                ? "Não foi possível carregar as velas agora."
+                : status === "vazio"
+                  ? "Esta moeda ainda não tem histórico de negociação."
+                  : tempoReal
+                    ? "Tempo real: a vela anda a cada negócio, lido da própria rede."
+                    : "Ao vivo: o preço é conferido a cada 3 segundos."
             }
-            cor={status === "demo" ? "#f0b90b" : tempoReal ? VERDE : "#868993"}
+            cor={
+              status === "erro" || status === "vazio"
+                ? "#f0b90b"
+                : tempoReal
+                  ? VERDE
+                  : "#868993"
+            }
           >
             <IconeRaio />
           </BotaoDeIcone>
@@ -373,6 +438,34 @@ export function ChartPanel({
       {/* ---------------------------------------------------------------- */}
       {/* O gráfico                                                         */}
       {/* ---------------------------------------------------------------- */}
+      {/*
+        SEM VELAS, A TELA DIZ ISSO — com todas as letras.
+
+        Antes, quando a fonte falhava, o lugar era preenchido por velas
+        inventadas: o gráfico parecia normal e a única pista era a cor de um
+        ícone, explicada só ao passar o mouse. Num terminal de negociação, a
+        pessoa lia preço falso sem ter como perceber.
+
+        A tela vazia é feia de propósito. Ela informa; o desenho bonito
+        informava errado.
+      */}
+      {candlesNaEscala.length === 0 && (status === "vazio" || status === "erro") && (
+        <div className="grid h-[420px] place-items-center px-6 text-center">
+          <div>
+            <p className="text-[13px] font-semibold text-zinc-300">
+              {status === "vazio"
+                ? "Esta moeda ainda não tem histórico de negociação"
+                : "Não foi possível carregar o gráfico agora"}
+            </p>
+            <p className="mx-auto mt-1.5 max-w-[340px] text-[12px] leading-relaxed text-zinc-600">
+              {status === "vazio"
+                ? "Assim que houver negócios registrados no par, as velas aparecem aqui."
+                : "A fonte de dados de mercado não respondeu. Tente recarregar a página em alguns instantes."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <TradingChart
         comandos={grafico}
         candles={candlesNaEscala}
@@ -386,6 +479,7 @@ export function ChartPanel({
          */
         serie={`${address}:${interval}:${escalaEfetiva}`}
         indicadores={indicadores}
+        parametros={parametros}
       />
 
       {/* ---------------------------------------------------------------- */}
@@ -788,52 +882,151 @@ function Secao({ titulo }: { titulo: string }) {
   );
 }
 
+/**
+ * Uma linha do menu de indicadores: liga/desliga e, quando há o que ajustar,
+ * abre uma gaveta com os períodos.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE A ENGRENAGEM É UM BOTÃO SEPARADO
+ * ---------------------------------------------------------------------------
+ * Porque ligar e configurar são intenções diferentes, e a maioria absoluta das
+ * vezes a pessoa quer só ligar. Se o clique na linha abrisse os ajustes, todo
+ * mundo pagaria o preço de um menu extra pra fazer o que faz sempre.
+ *
+ * A engrenagem também só aparece no que TEM o que ajustar: volume, AVP e PVT
+ * não têm parâmetro, e uma engrenagem que abre uma gaveta vazia é pior do que
+ * engrenagem nenhuma.
+ */
 function ItemIndicador({
-  nome,
+  indicador,
   ativo,
-  onClick,
+  ajustando,
+  valores,
+  alterado,
+  onAlternar,
+  onAjustar,
+  onTrocar,
+  onRestaurar,
 }: {
-  nome: Indicador;
+  indicador: DoCatalogo;
   ativo: boolean;
-  onClick: () => void;
+  ajustando: boolean;
+  valores: number[];
+  /** Saiu do padrão de fábrica? Muda o rótulo e libera o "restaurar". */
+  alterado: boolean;
+  onAlternar: () => void;
+  onAjustar: () => void;
+  onTrocar: (posicao: number, valor: number) => void;
+  onRestaurar: () => void;
 }) {
+  const temAjuste = indicador.parametros.length > 0;
+
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors",
-        ativo ? "bg-marca/10" : "hover:bg-white/5",
-      )}
-    >
-      <span
-        className={cn(
-          "grid size-4 shrink-0 place-items-center rounded border",
-          ativo ? "border-marca bg-marca text-white" : "border-white/15",
-        )}
-      >
-        {ativo && (
-          <svg
-            viewBox="0 0 24 24"
-            className="size-3"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3.5"
-          >
-            <path d="m5 13 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "block text-[12px] font-bold",
-            ativo ? "text-marca" : "text-zinc-200",
-          )}
+    <div className={cn("rounded-lg transition-colors", ativo && "bg-marca/10")}>
+      <div className="flex items-center">
+        <button
+          onClick={onAlternar}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5"
         >
-          {nome}
-        </span>
-        <span className="block truncate text-[10px] text-zinc-600">{DESCRICAO[nome]}</span>
-      </span>
-    </button>
+          <span
+            className={cn(
+              "grid size-4 shrink-0 place-items-center rounded border",
+              ativo ? "border-marca bg-marca text-white" : "border-white/15",
+            )}
+          >
+            {ativo && (
+              <svg
+                viewBox="0 0 24 24"
+                className="size-3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3.5"
+              >
+                <path d="m5 13 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </span>
+
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline gap-1.5">
+              <span
+                className={cn(
+                  "text-[12px] font-bold",
+                  ativo ? "text-marca" : "text-zinc-200",
+                )}
+              >
+                {indicador.chave}
+              </span>
+              {/*
+                Os números aparecem NA LINHA, como num terminal de verdade:
+                "MA 5 10 30 60". É o que deixa a configuração visível sem abrir
+                nada — e o que faz alguém perceber que dá pra mexer.
+              */}
+              {temAjuste && (
+                <span
+                  className={cn(
+                    "tnum truncate text-[10px]",
+                    alterado ? "text-marca/70" : "text-zinc-600",
+                  )}
+                >
+                  {valores.join(" ")}
+                </span>
+              )}
+            </span>
+            <span className="block truncate text-[10px] text-zinc-600">{indicador.rotulo}</span>
+          </span>
+        </button>
+
+        {temAjuste && (
+          <button
+            onClick={onAjustar}
+            title={`Ajustar ${indicador.chave}`}
+            aria-label={`Ajustar ${indicador.chave}`}
+            className={cn(
+              "mr-1 grid size-6 shrink-0 place-items-center rounded-md transition-colors",
+              ajustando ? "bg-white/10 text-marca" : "text-zinc-600 hover:bg-white/5 hover:text-zinc-300",
+            )}
+          >
+            <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {ajustando && temAjuste && (
+        <div className="border-t border-white/[0.06] px-2 pb-2 pt-2">
+          <p className="mb-1.5 text-[10px] leading-relaxed text-zinc-600">{indicador.nota}</p>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            {indicador.parametros.map((p, i) => (
+              <label key={p.rotulo} className="block">
+                <span className="mb-0.5 block truncate text-[9.5px] uppercase tracking-wider text-zinc-600">
+                  {p.rotulo}
+                </span>
+                <input
+                  type="number"
+                  min={p.min}
+                  max={p.max}
+                  value={valores[i] ?? p.padrao}
+                  onChange={(e) => onTrocar(i, Number(e.target.value))}
+                  className="tnum w-full rounded border border-ink-600 bg-ink-800 px-1.5 py-1 text-[11px] font-semibold text-zinc-100 focus:border-marca/50 focus:outline-none"
+                />
+              </label>
+            ))}
+          </div>
+
+          {alterado && (
+            <button
+              onClick={onRestaurar}
+              className="mt-1.5 text-[10px] text-zinc-500 underline underline-offset-2 transition-colors hover:text-marca"
+            >
+              restaurar padrão
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

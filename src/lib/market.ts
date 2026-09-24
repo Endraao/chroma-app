@@ -390,31 +390,66 @@ export async function fetchCandles(address: string, interval: string, limit = 30
   if (!network) throw new Error(`GeckoTerminal não cobre a rede ${token.chain}`);
 
   const key = `candles:${network}:${token.pairAddress}:${interval}`;
-  return cached(key, TTL.candles, async () => {
-    /*
-     * `token=<endereço>` diz QUAL lado do par queremos precificar.
-     *
-     * Sem isso a GeckoTerminal escolhe sozinha, e ela escolhe o "base" do
-     * pool — que muitas vezes é o OUTRO token. O gráfico do Gamestonk vinha
-     * mostrando $22,85 por token, que é o preço do GMEx do outro lado do par,
-     * enquanto o preço real era $0,0₅3027. As velas e o cabeçalho discordavam
-     * por um fator de milhões e nada acusava.
-     */
-    const url =
-      `${GECKOTERMINAL}/networks/${network}/pools/${token.pairAddress}/ohlcv/${tf.path}` +
-      `?aggregate=${tf.aggregate}&limit=${limit}&currency=usd&token=${address}`;
+  /*
+   * REDE DE SEGURANÇA CONTRA O 429.
+   * -------------------------------------------------------------------------
+   * A GeckoTerminal corta em poucas dezenas de requisições por minuto, e o
+   * site inteiro bebe da mesma fonte: a vitrine da home, o cabeçalho da moeda,
+   * a tabela de negócios e estas velas. Numa rajada ela passa a responder 429
+   * para tudo — inclusive para quem só abriu uma página.
+   *
+   * Sem isto o 429 subia como exceção, a rota devolvia 502, e o gráfico caía
+   * num gerador de velas SINTÉTICAS. O que aparecia na tela eram ondas
+   * perfeitas de `Math.sin()`, em qualquer moeda, porque nenhuma conseguia
+   * dados — e nada além da cor de um ícone dizia que aquilo era inventado.
+   *
+   * Vela de dois minutos atrás é informação velha; vela inventada é informação
+   * falsa. As duas coisas não se comparam, e só uma delas pode ir pra tela.
+   *
+   * A cópia de resguardo vive meia hora, bem mais que o TTL normal: ela não
+   * serve pra poupar requisição, serve pra atravessar o período em que a fonte
+   * está recusando.
+   */
+  const resguardo = `${key}:ultimo`;
+  const RESGUARDO_MS = 30 * 60_000;
 
-    const data = await getJson<{
-      data: { attributes: { ohlcv_list: [number, number, number, number, number, number][] } };
-    }>(url, 20);
+  try {
+    return await cached(key, TTL.candles, async () => {
+      /*
+       * `token=<endereço>` diz QUAL lado do par queremos precificar.
+       *
+       * Sem isso a GeckoTerminal escolhe sozinha, e ela escolhe o "base" do
+       * pool — que muitas vezes é o OUTRO token. O gráfico do Gamestonk vinha
+       * mostrando $22,85 por token, que é o preço do GMEx do outro lado do par,
+       * enquanto o preço real era $0,0₅3027. As velas e o cabeçalho discordavam
+       * por um fator de milhões e nada acusava.
+       */
+      const url =
+        `${GECKOTERMINAL}/networks/${network}/pools/${token.pairAddress}/ohlcv/${tf.path}` +
+        `?aggregate=${tf.aggregate}&limit=${limit}&currency=usd&token=${address}`;
 
-    const list = data.data?.attributes?.ohlcv_list ?? [];
+      const data = await getJson<{
+        data: { attributes: { ohlcv_list: [number, number, number, number, number, number][] } };
+      }>(url, 20);
 
-    // A GeckoTerminal devolve do mais recente pro mais antigo; o gráfico quer o contrário.
-    return list
-      .map(([time, open, high, low, close, volume]) => ({ time, open, high, low, close, volume }))
-      .sort((a, b) => a.time - b.time);
-  });
+      const list = data.data?.attributes?.ohlcv_list ?? [];
+
+      // A GeckoTerminal devolve do mais recente pro mais antigo; o gráfico quer o contrário.
+      const velas = list
+        .map(([time, open, high, low, close, volume]) => ({ time, open, high, low, close, volume }))
+        .sort((a, b) => a.time - b.time);
+
+      if (velas.length) putStale(resguardo, velas, RESGUARDO_MS);
+      return velas;
+    });
+  } catch (erro) {
+    const ultimas = stale<Candle[]>(resguardo);
+    if (ultimas?.length) {
+      console.warn("[market] velas da fonte falharam, servindo a última cópia:", erro);
+      return ultimas;
+    }
+    throw erro;
+  }
 }
 
 /* ------------------------------------------------------------------ */
