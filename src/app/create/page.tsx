@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { TEXTO_DA_ETAPA, useLancarToken } from "@/hooks/useLancarToken";
+import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 import { DEFAULT_PAIR, LIQUIDITY_PAIRS, pairLogo } from "@/lib/pairs";
 import {
@@ -51,9 +52,41 @@ const BANNER_MEDIA: MediaSpec = {
 export default function CreateTokenPage() {
   const account = useChromaAccount();
   const router = useRouter();
-  const lancamento = useLancarToken();
+
+  /*
+   * UM HOOK POR REDE, e a tela escolhe qual usar.
+   * ---------------------------------------------------------------------
+   * As duas redes assinam de jeitos incompatíveis: a Solana monta uma
+   * transação com `@solana/web3.js` e um par de chaves novo que precisa
+   * assinar junto; a EVM chama uma função de contrato pelo wagmi e lê o
+   * endereço da moeda no recibo.
+   *
+   * Tentar unificar isso num hook só significaria um corpo cheio de `if
+   * (chain === ...)` em volta de bibliotecas diferentes. Dois hooks com a
+   * MESMA forma de retorno — `lancar`, `etapa`, `erro`, `ocupado`,
+   * `carteiraConectada` — deixam a tela tratar os dois igual.
+   *
+   * Os dois são chamados sempre, porque hook não pode ser condicional; o
+   * que não está em uso simplesmente fica parado.
+   */
+  const lancamentoSolana = useLancarToken();
+  const lancamentoEvm = useLancarTokenEvm();
 
   const [chain, setChain] = useState<ChainId>("solana");
+
+  /*
+   * A partir daqui a tela não sabe mais em que rede está: ela fala com
+   * `lancamento`, e quem é `lancamento` depende da rede escolhida. Assim o
+   * botão, a mensagem de erro e o texto de etapa continuam com um caminho só.
+   */
+  const lancamento = chain === "solana" ? lancamentoSolana : lancamentoEvm;
+
+  /*
+   * A Solana está publicada; a Robinhood depende dos contratos estarem no ar.
+   * `disponivel` só existe no hook EVM — na Solana a resposta é sempre sim.
+   */
+  const redeDisponivel = chain === "solana" ? true : lancamentoEvm.disponivel;
+
   const [pair, setPair] = useState(DEFAULT_PAIR.solana);
   const [rewards, setRewards] = useState<CreatorRewardsMode>("creator");
   const [creatorTaxBps, setCreatorTaxBps] = useState(DEFAULT_CREATOR_TAX_BPS);
@@ -440,7 +473,7 @@ export default function CreateTokenPage() {
         disabled={
           !ready ||
           lancamento.ocupado ||
-          chain !== "solana" ||
+          !redeDisponivel ||
           !lancamento.carteiraConectada
         }
         onClick={async () => {
@@ -462,17 +495,23 @@ export default function CreateTokenPage() {
            * quer VER — deixá-la no formulário preenchido, sem saber se deu
            * certo, é o pior desfecho possível.
            */
-          if (resultado) router.push(`/token/${resultado.mint}`);
+          /*
+           * Cada rede nomeia a moeda de um jeito: na Solana o endereço se
+           * chama `mint`, na EVM é o endereço do contrato do token. A tela
+           * precisa do endereço, não do nome que cada rede dá a ele.
+           */
+          if (!resultado) return;
+          router.push(`/token/${"mint" in resultado ? resultado.mint : resultado.moeda}`);
         }}
       >
         {lancamento.ocupado
           ? TEXTO_DA_ETAPA[lancamento.etapa]
-          : chain !== "solana"
-            ? `Lançar na ${meta.label} ainda não está ligado`
+          : !redeDisponivel
+            ? `Lançar na ${meta.label} em breve`
             : !account.isSignedIn
               ? "Faça login para criar"
               : !lancamento.carteiraConectada
-                ? "Conecte sua carteira Solana"
+                ? `Conecte sua carteira ${meta.label}`
                 : !media
                   ? "Envie a imagem ou o vídeo"
                   : !ready
