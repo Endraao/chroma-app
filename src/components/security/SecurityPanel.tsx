@@ -142,17 +142,19 @@ export function SecurityPanel({
       )}
 
       {/*
-        Informação, não alarme: fica em cinza e fora da lista de alertas. Vale
-        pra todo token que não passou por revisão humana — ou seja, todos, por
-        enquanto. Justamente por valer pra todos é que NÃO pode ser um alerta
-        vermelho: viraria ruído em cima de cada lançamento.
+        O bloco "Token não verificado" ficava aqui e saiu a pedido do dono.
+
+        Ele valia para TODAS as moedas do site — nenhuma passa por revisão
+        humana — e repetir em cada página o que vale para todas é ruído: ocupa
+        espaço fixo sem separar moeda limpa de moeda suja, que é o trabalho
+        deste painel.
+
+        O aviso não sumiu do site: está no rodapé de todas as páginas
+        (`rodapeAviso`) e nos Termos de Uso, que dizem que as moedas são
+        criadas por usuários e não são auditadas nem endossadas pela Chroma.
+        A linha "auditoria automática não é garantia" continua logo abaixo,
+        dentro da lista de verificações.
       */}
-      <div className="border-t border-white/[0.07] px-3.5 py-2">
-        <div className="text-[11px] font-semibold text-zinc-400">Token não verificado</div>
-        <div className="text-[11px] leading-relaxed text-zinc-600">
-          Ninguém da Chroma revisou este token. Pesquise por conta própria antes de comprar.
-        </div>
-      </div>
 
       {aberto && (
         <div className="space-y-1 border-t border-white/[0.07] bg-ink-950/40 px-3.5 py-2.5">

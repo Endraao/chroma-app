@@ -63,6 +63,27 @@ export interface SecurityCheck {
   level: RiskLevel;
   /** valor exibido à direita, ex.: "5%", "Sim", "Travada 180d" */
   value: string;
+  /**
+   * A frase que vira ALERTA quando esta verificação reprova.
+   *
+   * Fica junto da verificação, e não numa lista separada, porque a lista
+   * separada foi o defeito: ela era escrita à mão e ficou para trás. Havia
+   * verificações marcadas como perigo máximo — transfer hook, conta fechável,
+   * nenhuma pool — que não geravam aviso nenhum, porque ninguém lembrou de
+   * acrescentá-las na outra ponta.
+   *
+   * Com a frase aqui, acrescentar uma verificação já acrescenta o alerta.
+   */
+  aviso?: string;
+  /**
+   * Perigo que zera o dinheiro, e não só incomoda.
+   *
+   * Pesa mais no score e alerta mesmo em nível de atenção. "O dono pode
+   * retirar a liquidez" e "o dono pode trocar o nome do token" não podem
+   * valer a mesma coisa: a primeira acaba com o investimento, a segunda é
+   * chateação.
+   */
+  critico?: boolean;
 }
 
 export interface SecurityReport {

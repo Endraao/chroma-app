@@ -116,9 +116,8 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
     <div className="space-y-4">
       {isDemo && (
         <div className="rounded-xl border border-warn/25 bg-warn/[0.06] px-4 py-2.5 text-[12px] text-warn">
-          Sem dados de mercado reais para este endereço — a Dexscreener não tem par indexado, ou a
-          API não respondeu. Preço, liquidez e volume abaixo são ilustrativos. A auditoria do
-          contrato continua real.
+          Ainda não há dados de mercado para este endereço. Preço, liquidez e volume abaixo são
+          apenas ilustrativos. A auditoria do contrato continua sendo real.
         </div>
       )}
 
@@ -158,6 +157,25 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             */}
           <CurvaPanel />
 
+          {/*
+            A AUDITORIA VEM ANTES DO BOTÃO DE COMPRAR.
+            -----------------------------------------------------------------
+            Estava depois. Quem abria a página via o campo de valor, o botão
+            verde e o preço subindo; o aviso de que a liquidez pode ser
+            retirada pelo dono ficava abaixo de tudo isso, fora da tela em
+            telas menores.
+
+            Aviso que chega depois da decisão não é aviso, é registro. Como o
+            painel se resume a uma linha quando não há nada a dizer, pôr ele
+            aqui não atrapalha as moedas limpas — e nas sujas ele aparece onde
+            precisa aparecer.
+          */}
+          <SecurityPanel
+            report={report}
+            carregando={auditando}
+            liquidityUsd={stats.liquidityUsd}
+          />
+
           <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
             <SwapWidget
               symbol={token.symbol}
@@ -166,12 +184,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
               priceUsd={price}
             />
           </Suspense>
-
-          <SecurityPanel
-            report={report}
-            carregando={auditando}
-            liquidityUsd={stats.liquidityUsd}
-          />
 
           <Card>
             <CardBody className="space-y-2 text-[12px] text-zinc-500">
