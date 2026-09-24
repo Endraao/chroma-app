@@ -24,7 +24,7 @@ use state::{dividir_taxa, Config, Curve, FAIXAS};
  * neste mesmo endereço. Perder o arquivo significa nunca mais atualizar o
  * programa; vazar significa que outra pessoa atualiza por você.
  */
-declare_id!("2uAzEJEhVdEsk3DVMrkrcnHCmoFicmg8QPk7xKw8uqB4");
+declare_id!("HAB3yLmxe6aYjtFhn7bEv9QLeUVxjt8dhgRamUWLwzip");
 
 /// Semente do PDA global.
 pub const SEMENTE_CONFIG: &[u8] = b"config";

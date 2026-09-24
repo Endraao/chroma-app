@@ -24,10 +24,20 @@ import {
  * divergência apareça como falha, e não como transação recusada pelo usuário.
  */
 
-/** Endereço do programa. Trocado por rede em `PROGRAMAS`, abaixo. */
+/**
+ * Endereço do programa.
+ *
+ * O padrão TEM QUE SER o mesmo endereço do `declare_id!` em
+ * `programs/chroma-curve/src/lib.rs`. Os scripts de teste rodam em node puro,
+ * que não carrega `.env.local`, então caem sempre neste valor — e um padrão
+ * desatualizado faz o teste falhar com "Attempt to load a program that does
+ * not exist", que parece rede fora do ar e não é.
+ *
+ * Trocou o keypair do programa? Muda nos dois lugares, e no `.env.local`.
+ */
 export const CHROMA_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_CHROMA_PROGRAM_ID ||
-    "2uAzEJEhVdEsk3DVMrkrcnHCmoFicmg8QPk7xKw8uqB4",
+    "HAB3yLmxe6aYjtFhn7bEv9QLeUVxjt8dhgRamUWLwzip",
 );
 
 export const SEMENTE_CONFIG = Buffer.from("config");

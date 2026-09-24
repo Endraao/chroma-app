@@ -26,7 +26,12 @@
     "rust:test": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$PATH && export CARGO_TARGET_DIR=$HOME/chroma-target && cd /mnt/c/Users/User/Desktop/chroma-app && cargo test -p chroma-curve\"",
     "rust:build": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$PATH && export CARGO_TARGET_DIR=$HOME/chroma-target && cd /mnt/c/Users/User/Desktop/chroma-app && cargo check -p chroma-curve\"",
     "test:migracao": "node scripts/test-migracao.mjs",
-    "paridade": "node scripts/gerar-paridade.mjs"
+    "paridade": "node scripts/gerar-paridade.mjs",
+    "test:recados": "node scripts/test-recados.mjs",
+    "test:indicacao": "node scripts/test-indicacao.mjs",
+    "test:vinculo": "node scripts/test-vinculo.mjs",
+    "devnet:config": "node scripts/configurar-devnet.mjs",
+    "devnet:deploy": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH && cd /mnt/c/Users/User/Desktop/chroma-app && anchor deploy --provider.cluster devnet\""
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

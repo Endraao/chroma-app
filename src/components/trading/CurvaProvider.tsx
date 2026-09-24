@@ -25,9 +25,18 @@ interface ValorDaCurva {
   carregando: boolean;
   /** 0 a 100, ou null quando a moeda não é da curva */
   progresso: number | null;
+  /**
+   * O mint desta página.
+   *
+   * Vai junto porque quem consome a curva às vezes precisa AGIR sobre ela —
+   * migrar, por exemplo — e não só mostrar números. Sem isto, o componente
+   * receberia o endereço por prop em paralelo ao contexto, e as duas fontes
+   * poderiam apontar para moedas diferentes.
+   */
+  mint: string | null;
 }
 
-const VAZIO: ValorDaCurva = { curva: null, carregando: false, progresso: null };
+const VAZIO: ValorDaCurva = { curva: null, carregando: false, progresso: null, mint: null };
 
 const CurvaContext = createContext<ValorDaCurva>(VAZIO);
 
@@ -41,7 +50,7 @@ export function CurvaProvider({
   const { curva, carregando } = useCurva(mint);
 
   const valor = useMemo<ValorDaCurva>(() => {
-    if (!curva) return { curva: null, carregando, progresso: null };
+    if (!curva) return { curva: null, carregando, progresso: null, mint };
 
     /*
      * A conta é em TOKENS VENDIDOS, não em SOL arrecadado.
@@ -56,8 +65,8 @@ export function CurvaProvider({
 
     const progresso = aVenda > 0n ? Number((vendidos * 10_000n) / aVenda) / 100 : 0;
 
-    return { curva, carregando, progresso };
-  }, [curva, carregando]);
+    return { curva, carregando, progresso, mint };
+  }, [curva, carregando, mint]);
 
   return <CurvaContext.Provider value={valor}>{children}</CurvaContext.Provider>;
 }

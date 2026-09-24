@@ -1,6 +1,8 @@
 "use client";
 
+import { Button } from "@/components/ui/Button";
 import { useCurvaAtual } from "@/components/trading/CurvaProvider";
+import { useMigrarCurva } from "@/hooks/useMigrarCurva";
 import { formatUnits } from "@/lib/utils";
 
 /**
@@ -30,7 +32,14 @@ import { formatUnits } from "@/lib/utils";
 const DECIMAIS_SOL = 9;
 
 export function CurvaPanel() {
-  const { curva, carregando, progresso } = useCurvaAtual();
+  const { curva, carregando, progresso, mint } = useCurvaAtual();
+
+  /*
+   * O hook fica ANTES do `return null` de propósito: React não aceita hook
+   * condicional. Com a curva ausente ele simplesmente nunca é acionado, porque
+   * o botão que o chama não chega a ser desenhado.
+   */
+  const migracao = useMigrarCurva(mint ?? "");
 
   /*
    * Enquanto carrega, nada é desenhado. Um esqueleto piscando em toda moeda de
@@ -79,24 +88,81 @@ export function CurvaPanel() {
       <p className="border-t border-white/[0.06] px-3.5 py-2.5 text-[11px] leading-relaxed text-zinc-500">
         {estado.migrada ? (
           <>
-            A curva encheu e a liquidez foi pra uma pool na Raydium. O token de
-            LP foi <span className="text-bull">queimado</span>, então ninguém —
-            nem quem lançou, nem a Chroma — consegue retirar essa liquidez.
+            A curva foi concluída e a liquidez migrou para uma pool na Raydium.
+            O token de LP foi <span className="text-bull">queimado</span>, então
+            ninguém — nem quem lançou, nem a Chroma — consegue retirar essa
+            liquidez.
           </>
         ) : concluida ? (
           <>
-            Todos os tokens à venda foram comprados. A liquidez vai pra uma pool
-            na Raydium e o LP é queimado; qualquer pessoa pode disparar esse
-            passo, e é só isso que falta.
+            Todos os tokens à venda foram comprados. Agora a liquidez migra para
+            uma pool na Raydium e o token de LP é queimado. Qualquer pessoa pode
+            executar esse último passo — inclusive você.
           </>
         ) : (
           <>
-            O preço sobe a cada compra, pela fórmula da curva — não tem livro de
-            ofertas nem ninguém do outro lado. Quem vende, vende de volta pra
-            curva, e isso vale enquanto ela não encher.
+            O preço sobe a cada compra, seguindo a fórmula da curva: não existe
+            livro de ofertas nem ninguém do outro lado. Quem vende, vende de
+            volta para a própria curva, até que ela seja concluída.
           </>
         )}
       </p>
+
+      {/*
+        O BOTÃO SÓ APARECE NA JANELA EM QUE ELE FAZ ALGUMA COISA.
+        -------------------------------------------------------------------
+        Curva ainda enchendo: migrar seria recusado pelo programa. Já migrada:
+        a segunda tentativa também é recusada (o teste cobre isso). Então o
+        botão vive só no intervalo entre "cheia" e "migrada" — que é
+        exatamente quando a moeda fica travada esperando alguém agir.
+      */}
+      {concluida && !estado.migrada && (
+        <div className="space-y-2 border-t border-white/[0.06] px-3.5 py-3">
+          <Button
+            variant="chroma"
+            size="md"
+            className="w-full"
+            onClick={migracao.migrar}
+            disabled={!migracao.podeMigrar || migracao.fase === "executando"}
+          >
+            {migracao.fase === "executando"
+              ? "Migrando…"
+              : migracao.fase === "pronta"
+                ? "Liquidez migrada"
+                : "Migrar para a Raydium"}
+          </Button>
+
+          {migracao.passo && (
+            <p className="tnum text-center text-[11px] text-zinc-500">{migracao.passo}</p>
+          )}
+
+          {!migracao.podeMigrar && (
+            <p className="text-center text-[11px] text-zinc-600">
+              Conecte uma carteira Solana para executar.
+            </p>
+          )}
+
+          {migracao.erro && (
+            <p className="text-[11px] leading-relaxed text-bear">{migracao.erro}</p>
+          )}
+
+          {migracao.assinatura && (
+            <a
+              href={`https://solscan.io/tx/${migracao.assinatura}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-center text-[11px] font-semibold text-marca hover:underline"
+            >
+              ver a transação
+            </a>
+          )}
+
+          <p className="text-[11px] leading-relaxed text-zinc-600">
+            São duas assinaturas na sua carteira. Você paga só a taxa de rede: o custo da pool sai
+            do SOL que já está na curva, e você não recebe nada por executar.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
