@@ -31,7 +31,8 @@
     "test:indicacao": "node scripts/test-indicacao.mjs",
     "test:vinculo": "node scripts/test-vinculo.mjs",
     "devnet:config": "node scripts/configurar-devnet.mjs",
-    "devnet:deploy": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH && cd /mnt/c/Users/User/Desktop/chroma-app && anchor deploy --provider.cluster devnet\""
+    "devnet:deploy": "wsl -d Ubuntu -e bash -lc \"export PATH=$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH && cd /mnt/c/Users/User/Desktop/chroma-app && anchor deploy --provider.cluster devnet\"",
+    "test:abi": "node scripts/test-abi-evm.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
