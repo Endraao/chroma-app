@@ -40,6 +40,16 @@ import { banco, chaveDoEndereco, comTransacao, sql } from "./db";
 export type WalletKind = "solana" | "evm";
 
 export interface Account {
+  /** id interno da conta; usado pra comparar identidade sem depender do apelido */
+  id: number;
+  /**
+   * Apelido de quem indicou esta pessoa, ou `null`.
+   *
+   * Gravado na criação e nunca alterado. É o que mantém as duas redes da mesma
+   * pessoa pagando o mesmo promotor — ver `resolverIndicador` e a nota em
+   * `db.ts`.
+   */
+  indicadoPor: string | null;
   /** chave única, sempre minúscula */
   nickname: string;
   /** como a pessoa digitou, para exibir */
@@ -123,7 +133,7 @@ export function validateNickname(raw: string): { ok: true; nickname: string } | 
     };
   }
   if (RESERVED.has(nickname)) {
-    return { ok: false, error: "Esse apelido é reservado. Escolha outro." };
+    return { ok: false, error: "Este apelido é reservado. Escolha outro." };
   }
   return { ok: true, nickname };
 }
@@ -150,6 +160,8 @@ interface LinhaDaConta {
   avatar: string | null;
   cover: string | null;
   created_at: number;
+  /** Coluna acrescentada depois; contas antigas trazem `null`. */
+  indicado_por: string | null;
 }
 
 /** Monta a conta juntando as carteiras dela. */
@@ -160,10 +172,13 @@ async function montar(linha: LinhaDaConta): Promise<Account> {
   )) as unknown as { chain: string; endereco: string }[];
 
   return {
+    id: linha.id,
     nickname: linha.apelido,
     displayName: linha.display_name,
     wallet: linha.wallet,
     kind: linha.kind as WalletKind,
+    /* Minúsculo: é chave de busca em `apelidos`, que guarda tudo em caixa baixa. */
+    indicadoPor: linha.indicado_por?.toLowerCase() ?? null,
     carteiras: Object.fromEntries(
       carteiras.map((c) => [c.chain, c.endereco]),
     ) as Partial<Record<ChainId, string>>,
@@ -220,6 +235,46 @@ export async function findByNickname(nickname: string): Promise<Account | null> 
 }
 
 /**
+ * Quem indicou o dono desta carteira, e pra onde a comissão vai NESTA rede.
+ *
+ * ---------------------------------------------------------------------------
+ * É ISTO QUE FAZ AS DUAS REDES PAGAREM O MESMO PROMOTOR
+ * ---------------------------------------------------------------------------
+ * A pergunta é feita com a carteira que está operando AGORA — que pode ser a
+ * da Solana ou a da Robinhood. Das duas se chega à mesma conta, e a conta
+ * carrega o `indicado_por` gravado no dia em que ela nasceu.
+ *
+ * Daí o caminho segue: apelido do promotor → conta dele → carteira dele NA
+ * REDE DO SWAP. Se alguém entrou pelo seu link e operou em Solana, e meses
+ * depois conectou a Robinhood com outra carteira, você recebe nas duas —
+ * porque o vínculo está na conta da pessoa, não no navegador dela.
+ *
+ * Devolve `null` quando não há indicador, quando o promotor não tem carteira
+ * nesta rede (a comissão não teria pra onde ir), ou quando alguém tentou
+ * indicar a si mesmo.
+ */
+export async function resolverIndicador(
+  carteiraDeQuemOpera: string,
+  chain: ChainId,
+): Promise<{ apelido: string; endereco: string } | null> {
+  const conta = await findByWallet(carteiraDeQuemOpera);
+  if (!conta?.indicadoPor) return null;
+
+  const promotor = await findByNickname(conta.indicadoPor);
+  if (!promotor) return null;
+
+  /*
+   * Auto-indicação: a pessoa usou o próprio link. Barrado aqui, e não só na
+   * gravação, porque contas antigas podem ter sido criadas antes desta
+   * checagem existir.
+   */
+  if (promotor.id === conta.id) return null;
+
+  const endereco = walletForChain(promotor, chain);
+  return endereco ? { apelido: promotor.nickname, endereco } : null;
+}
+
+/**
  * O apelido está tomado por outra pessoa?
  *
  * Apelido largado continua tomado. Devolvê-lo ao mercado seria convite pra
@@ -242,13 +297,21 @@ export async function claimNickname(params: {
   nickname: string;
   wallet: string;
   kind: WalletKind;
+  /**
+   * Apelido de quem indicou esta pessoa, quando ela chegou por um `?ref=`.
+   *
+   * Gravado UMA VEZ, na criação da conta, e nunca sobrescrito. Ver a nota
+   * longa em `db.ts`: é o que faz as duas redes da mesma pessoa pagarem
+   * sempre o mesmo promotor, em qualquer aparelho.
+   */
+  indicadoPor?: string | null;
 }): Promise<ClaimResult> {
   const validation = validateNickname(params.nickname);
   if (!validation.ok) return { ok: false, error: validation.error, status: 400 };
   const nickname = validation.nickname;
 
   if (await isNicknameTaken(nickname, params.wallet)) {
-    return { ok: false, error: "Esse apelido já está em uso.", status: 409 };
+    return { ok: false, error: "Este apelido já está em uso.", status: 409 };
   }
 
   await banco();
@@ -289,10 +352,28 @@ export async function claimNickname(params: {
           [nickname, exibicao, params.kind, conta],
         );
       } else {
+        /*
+         * O indicador entra AQUI, na criação, e só aqui.
+         *
+         * Nunca num `UPDATE` depois: senão bastaria a pessoa abrir um link de
+         * indicação novo pra trocar de promotor, e o primeiro — que fez o
+         * trabalho de trazê-la — perderia a comissão pro último que mandou
+         * um link. Quem trouxe, trouxe.
+         *
+         * Indicar a si mesmo é barrado em `resolverIndicador`, antes de
+         * chegar aqui.
+         */
         const criada = await c.query<{ id: number }>(
-          `INSERT INTO contas (apelido, display_name, wallet, kind, created_at)
-           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-          [nickname, exibicao, params.wallet, params.kind, agora],
+          `INSERT INTO contas (apelido, display_name, wallet, kind, created_at, indicado_por)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [
+            nickname,
+            exibicao,
+            params.wallet,
+            params.kind,
+            agora,
+            params.indicadoPor?.trim().replace(/^@/, "").toLowerCase() || null,
+          ],
         );
         conta = Number(criada.rows[0].id);
       }
@@ -327,7 +408,7 @@ export async function claimNickname(params: {
   const account = await porId(id);
   return account
     ? { ok: true, account }
-    : { ok: false, error: "não consegui gravar a conta", status: 500 };
+    : { ok: false, error: "Não foi possível salvar a sua conta.", status: 500 };
 }
 
 /* ------------------------------------------------------------------ */
@@ -366,7 +447,7 @@ export async function saveProfileMedia(params: {
   const account = await porId(achou[0].conta);
   return account
     ? { ok: true, account }
-    : { ok: false, error: "não consegui gravar as fotos", status: 500 };
+    : { ok: false, error: "Não foi possível salvar as fotos.", status: 500 };
 }
 
 
@@ -403,7 +484,7 @@ export async function linkWallet(params: {
       : /^0x[a-fA-F0-9]{40}$/.test(params.endereco);
 
   if (!formatoOk) {
-    return { ok: false, error: "Esse endereço não é dessa rede.", status: 400 };
+    return { ok: false, error: "Este endereço não pertence a esta rede.", status: 400 };
   }
 
   /*
@@ -414,7 +495,7 @@ export async function linkWallet(params: {
    */
   const dono = await findByWallet(params.endereco);
   if (dono && dono.nickname !== conta.nickname) {
-    return { ok: false, error: "Essa carteira já está em outra conta.", status: 409 };
+    return { ok: false, error: "Esta carteira já pertence a outra conta.", status: 409 };
   }
 
   /*
@@ -427,7 +508,7 @@ export async function linkWallet(params: {
   ])) as unknown as { conta: number }[];
 
   if (!alvo[0]) {
-    return { ok: false, error: "não achei a conta pra vincular", status: 500 };
+    return { ok: false, error: "Não encontramos a conta para vincular.", status: 500 };
   }
 
   await sql.query(
@@ -439,5 +520,5 @@ export async function linkWallet(params: {
   const account = await findByNickname(conta.nickname);
   return account
     ? { ok: true, account }
-    : { ok: false, error: "não consegui vincular a carteira", status: 500 };
+    : { ok: false, error: "Não foi possível vincular a carteira.", status: 500 };
 }

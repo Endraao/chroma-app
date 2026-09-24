@@ -6,6 +6,7 @@ import { PublicKey } from "@solana/web3.js";
 
 import { SOL_MINT, type JupiterQuote } from "@/lib/jupiter";
 import { executeSolanaSwap } from "@/lib/solana-swap";
+import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import { computeFeesRaw } from "@/lib/fees";
 import { formatUnits, parseUnits } from "@/lib/utils";
 import type { TradeSide } from "@/lib/types";
@@ -293,6 +294,23 @@ export function useSolanaSwap({
             chain: "solana",
           }),
         }).catch(() => {});
+      }
+
+      /*
+       * Pontos do airdrop.
+       *
+       * Repara no que NÃO vai nesta chamada: volume, valor, quantidade de
+       * pontos. Só a assinatura e o endereço. O servidor vai à blockchain
+       * conferir que a transação existe, que foi esta carteira que assinou e
+       * que ela passou pela Chroma — e só então calcula quanto vale.
+       *
+       * O registro de afiliado logo acima aceita números vindos da tela porque
+       * lá eles só desenham um painel. Aqui virariam fatia de um token com
+       * valor de mercado, e a primeira pessoa a abrir o console do navegador
+       * levaria o airdrop inteiro.
+       */
+      if (publicKey) {
+        void reivindicarPontos(result.signature, publicKey.toBase58());
       }
     } catch (err) {
       setPhase("error");

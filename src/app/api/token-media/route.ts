@@ -56,7 +56,7 @@ function baseDoSite(request: Request): string {
 
 export async function POST(request: Request) {
   if (excedeuLimite(request)) {
-    return NextResponse.json({ error: "muitas tentativas; espere um minuto" }, { status: 429 });
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto e tente novamente." }, { status: 429 });
   }
 
   const tamanho = Number(request.headers.get("content-length") ?? 0);
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
 
   const arquivoDaMoeda = form.get("coin");
   if (!(arquivoDaMoeda instanceof File)) {
-    return NextResponse.json({ error: "envie a imagem ou o vídeo da moeda" }, { status: 400 });
+    return NextResponse.json({ error: "Envie a imagem ou o vídeo da moeda." }, { status: 400 });
   }
 
   const dadosBase = {
@@ -145,6 +145,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[api/token-media] falha:", error);
-    return NextResponse.json({ error: "não consegui guardar a mídia" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível salvar o arquivo." }, { status: 500 });
   }
 }

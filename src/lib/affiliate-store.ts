@@ -3,6 +3,7 @@ import "server-only";
 import { AFFILIATE_FEE_BPS } from "./fees";
 import type { ChainId } from "./types";
 import { banco, sql } from "./db";
+import { precosNativos } from "./precos-nativos";
 import { MOEDA_DA_REDE, type AffiliateSummary, type GanhosDaRede } from "./affiliate-types";
 
 export type { AffiliateSummary, GanhosDaRede };
@@ -145,15 +146,33 @@ async function eventosDe(quem: IdentidadeDoPromotor): Promise<AffiliateRecord[]>
 
   /*
    * Postgres numera os parâmetros ($1, $2…) em vez de usar `?` posicional.
-   * O contador cresce junto com a lista de valores, então a numeração não tem
-   * como sair de sincronia com a ordem em que eles são empilhados — que era o
-   * erro fácil de cometer ao converter isto na mão.
+   *
+   * ---------------------------------------------------------------------------
+   * O VALOR É EMPILHADO NO MESMO PASSO EM QUE O MARCADOR É GERADO
+   * ---------------------------------------------------------------------------
+   * Isto já esteve separado — gerava os marcadores com um `map` e empilhava os
+   * valores num `push` depois — e o comentário antigo garantia que "a numeração
+   * não tem como sair de sincronia". Saía.
+   *
+   * O contador lê `valores.length`, e durante o `map` nada tinha sido
+   * empilhado ainda: com duas carteiras, os dois marcadores saíam IGUAIS
+   * (`$2, $2`). Sobrava um `$N` sem uso e o Postgres recusava a consulta
+   * inteira com "could not determine data type of parameter" (42P18).
+   *
+   * O defeito ficou escondido porque só aparece com DUAS OU MAIS carteiras —
+   * e até vincular a segunda rede funcionar, ninguém tinha duas. Quem tivesse
+   * veria o painel de indicação vazio, sem erro visível na tela.
+   *
+   * Empilhando junto, a numeração não pode divergir nem se alguém acrescentar
+   * outra condição no meio.
    */
-  const proximo = () => `$${valores.length + 1}`;
+  const marcador = (valor: string) => {
+    valores.push(valor);
+    return `$${valores.length}`;
+  };
 
   if (quem.nickname) {
-    condicoes.push(`conta = ${proximo()}`);
-    valores.push(quem.nickname);
+    condicoes.push(`conta = ${marcador(quem.nickname)}`);
   }
   if (enderecos.length > 0) {
     /*
@@ -166,13 +185,11 @@ async function eventosDe(quem: IdentidadeDoPromotor): Promise<AffiliateRecord[]>
      * curtíssima — e os valores continuam indo como parâmetro, nunca
      * concatenados na consulta.
      */
-    const exatos = enderecos.map(() => proximo()).join(", ");
+    const exatos = enderecos.map((e) => marcador(e)).join(", ");
     condicoes.push(`wallet IN (${exatos})`);
-    valores.push(...enderecos);
 
-    const minusculos = enderecos.map(() => proximo()).join(", ");
+    const minusculos = enderecos.map((e) => marcador(e.toLowerCase())).join(", ");
     condicoes.push(`lower(wallet) IN (${minusculos})`);
-    valores.push(...enderecos.map((e) => e.toLowerCase()));
   }
 
   if (condicoes.length === 0) return [];
@@ -298,18 +315,40 @@ export async function summarize(quem: IdentidadeDoPromotor): Promise<AffiliateSu
    */
   const redes = [...new Set(trades.map((t) => t.chain ?? "solana"))] as ChainId[];
 
+  const porRede = redes.map((chain) =>
+    resumirRede(
+      chain,
+      trades.filter((t) => (t.chain ?? "solana") === chain),
+    ),
+  );
+
+  /*
+   * O TOTAL EM DÓLAR, somando as redes.
+   *
+   * É a única pergunta que o promotor faz de verdade — "quanto eu já ganhei?"
+   * — e ela não tinha resposta na tela, porque 0,5 SOL e 0,01 ETH não somam.
+   * O dólar é o único denominador comum entre as duas redes.
+   *
+   * Sem preço, vira `null` em vez de um número errado: é melhor a tela
+   * esconder o total do que mostrar comissão a menos com cara de certa. Ver
+   * `precos-nativos.ts`.
+   */
+  const precos = await precosNativos();
+  const totalUsd = porRede.reduce(
+    (soma, r) => soma + r.commissionNative * (precos[r.chain] ?? 0),
+    0,
+  );
+  const temPreco = porRede.some((r) => (precos[r.chain] ?? 0) > 0);
+
   return {
     wallet: quem.wallet,
     nickname: quem.nickname ?? null,
     carteiras: quem.carteiras ?? {},
     clicks: mine.filter((r) => r.event === "click").length,
     trades: trades.length,
-    porRede: redes.map((chain) =>
-      resumirRede(
-        chain,
-        trades.filter((t) => (t.chain ?? "solana") === chain),
-      ),
-    ),
+    porRede,
+    /** Soma das redes, convertida ao preço de AGORA. */
+    totalUsd: temPreco ? totalUsd : null,
     lastActivity: mine.at(-1)?.at ?? null,
   };
 }

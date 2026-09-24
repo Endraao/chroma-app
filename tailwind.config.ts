@@ -81,16 +81,27 @@ const config: Config = {
         "2xl": "10px",
       },
       backgroundImage: {
-        // Gradiente de refração: logo e barra de progresso da curva, só.
+        /*
+         * O espectro da marca virou AZUL → BRANCO. Sem roxo, sem verde.
+         *
+         * O gradiente antigo (#8b5cf6 roxo → índigo → ciano → #34d399 verde)
+         * continuava aparecendo em todo fio de 1px do site: a aresta no topo
+         * dos painéis, a linha no topo da janela, a barra da curva. Mesmo
+         * depois de o cristal e as letras virarem azul, o roxo seguia à vista
+         * ali — e foi exatamente isso que o dono apontou.
+         *
+         * O verde ficou fora por um motivo a mais: ele disputa com o verde de
+         * ALTA do mercado, que é o único verde que deve significar algo aqui.
+         */
         "chroma-gradient":
-          "linear-gradient(100deg, #8b5cf6 0%, #6366f1 28%, #22d3ee 62%, #34d399 100%)",
+          "linear-gradient(100deg, #0ea5e9 0%, #38bdf8 38%, #7dd3fc 70%, #ffffff 100%)",
         /*
          * O mesmo espectro na vertical, pra faixa que desce ao lado de uma
          * lista ranqueada. Existe separado porque `rotate` num elemento de 1px
          * de largura muda a caixa do layout e desalinha tudo em volta.
          */
         "chroma-vertical":
-          "linear-gradient(180deg, #8b5cf6 0%, #6366f1 28%, #22d3ee 62%, #34d399 100%)",
+          "linear-gradient(180deg, #0ea5e9 0%, #38bdf8 38%, #7dd3fc 70%, #ffffff 100%)",
         "grid-faint":
           "linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px)",
       },

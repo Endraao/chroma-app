@@ -1,54 +1,69 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/Button";
+import { CristalHolografico } from "@/components/ui/CristalHolografico";
+import { textos, type Idioma } from "@/lib/idiomas";
 
 /**
  * A abertura da home.
  *
  * ---------------------------------------------------------------------------
- * O QUE ESTAVA ERRADO
+ * POR QUE ELA VOLTOU A TER UM TÍTULO GIGANTE
  * ---------------------------------------------------------------------------
- * Antes era tudo numa fileira só: "Tokens", "Volume 24h", "Criar token" e
- * "Link de afiliado" lado a lado, com a mesma altura e o mesmo espaçamento.
+ * Numa versão anterior o título grande foi REMOVIDO de propósito: numa
+ * launchpad a lista é o produto, e espaço gasto em cabeçalho some da vitrine.
+ * Aquele raciocínio continua certo sobre título que EXPLICA — um parágrafo de
+ * promessa em corpo 40 empurrando a tabela pra baixo.
  *
- * O problema não é estético, é de leitura. Número e botão são coisas de
- * naturezas opostas — um você LÊ, o outro você CLICA. Alinhados na mesma
- * linha, com caixas do mesmo tamanho, nada indica qual é qual: o olho tem que
- * ler os quatro pra descobrir que dois são ação. E como cada caixinha tinha
- * borda própria, a faixa virava uma régua de retângulos soltos.
+ * O que entra aqui não é isso. É a MARCA, escrita uma vez, do jeito que só
+ * este site consegue escrever: o nome é Chroma, e o espectro atravessando as
+ * letras é literalmente o que a palavra significa. Um site de lançamento de
+ * moeda é escolhido por confiança, e quem chega decide em dois segundos se
+ * está num lugar construído ou num molde genérico.
+ *
+ * A vitrine continua logo abaixo, sem rolagem no desktop.
  *
  * ---------------------------------------------------------------------------
- * COMO FICOU
+ * AS TRÊS CAMADAS DE MOVIMENTO, E POR QUE SÃO DIFERENTES ENTRE SI
  * ---------------------------------------------------------------------------
- * Três camadas dentro de UM painel, empilhadas por função:
+ *   - o reflexo nas letras   → 7s, constante  (a marca "respira")
+ *   - o reflexo no cristal   → 6s, constante  (fora de fase com as letras)
+ *   - a varredura do botão   → só no hover    (responde a VOCÊ)
  *
- *   1. o que é a plataforma       (texto, à esquerda)
- *   2. o que você pode fazer      (as duas ações, à direita, em coluna)
- *   3. como ela está agora        (os números, na régua de rodapé)
+ * Fora de fase de propósito. Sincronizados, os três viram um pisca-pisca só e
+ * o olho lê "animação"; defasados, leem como superfícies diferentes pegando a
+ * mesma luz — que é o efeito procurado.
  *
- * As ações em coluna, e não lado a lado, porque elas não são equivalentes:
- * criar um token é o que a plataforma existe pra fazer; o link de afiliado é
- * o segundo passo. Empilhadas, a primeira fica por cima — ordem de leitura é
- * ordem de importância.
- *
- * Os números viraram uma régua de rodapé, do jeito que um terminal mostra
- * estado: rótulo minúsculo, valor em mono, divididos por fio de 1px. Eles
- * continuam ali pra quem procura, e pararam de disputar com os botões.
+ * Os números seguem numa régua de rodapé, do jeito que um terminal mostra
+ * estado: rótulo minúsculo, valor em mono, divididos por fio de 1px.
  */
 export function FaixaDeAbertura({
+  idioma,
   quantidadeDeTokens,
   volumeTotal,
 }: {
+  idioma: Idioma;
   quantidadeDeTokens: string;
   volumeTotal: string;
 }) {
+  const t = textos(idioma);
+
   return (
-    <section className="brilho faceta relative overflow-hidden rounded-lg border border-ink-700 bg-ink-900">
+    <section className="relative overflow-hidden rounded-lg border border-ink-700 bg-ink-900">
+      {/*
+        A textura pontilhada, atrás de tudo e sem capturar clique.
+
+        Ponto, e não a grade de linhas que o site usava: grade desenha CAIXAS,
+        e caixa logo acima de uma tabela cheia de bordas faz o olho tentar
+        alinhar as duas. Ponto é textura; não compete com estrutura.
+      */}
+      <div className="fundo-pontos" aria-hidden />
+
       {/* A luz entrando pela aresta de cima do painel. */}
       <div className="aresta" />
 
-      <div className="relative z-[1] flex flex-col gap-5 px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-10 lg:px-6 lg:py-6">
-        <div className="min-w-0 max-w-[620px]">
+      <div className="relative z-[1] flex flex-col gap-6 px-5 py-7 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-8 lg:py-8">
+        <div className="min-w-0 max-w-[640px]">
           <div className="flex items-center gap-2">
             <span
               aria-hidden
@@ -57,28 +72,74 @@ export function FaixaDeAbertura({
             <span className="rotulo">Solana · Robinhood Chain</span>
           </div>
 
-          <h1 className="mt-2.5 text-[24px] font-bold leading-[1.15] tracking-tight text-zinc-50 sm:text-[30px]">
-            Lance, ganhe indicando e negocie com as melhores taxas.
+          {/*
+            O nome como logotipo, não como frase.
+
+            Peso máximo e `tracking` negativo porque a palavra precisa virar
+            BLOCO: o reflexo atravessando letras espaçadas se perde no vão
+            entre elas, e aí sobra só um degradê colorido.
+          */}
+          {/*
+            "LAUNCHPAD" em linha própria, menor e com as letras ABERTAS.
+
+            Numa linha só, "CHROMA LAUNCHPAD" em corpo 76 não caberia — e
+            reduzir o corpo pra caber encolheria o nome da marca, que é
+            justamente o que precisa dominar. Empilhado, CHROMA continua do
+            tamanho que era e a palavra de baixo vira o que ela é: a categoria
+            do produto, não parte do nome.
+
+            O espaçamento positivo (`tracking-[0.34em]`) é o contrário do que
+            CHROMA usa, e é de propósito: letra apertada lê como logotipo,
+            letra aberta lê como rótulo. A diferença entre as duas linhas faz
+            o trabalho que um tamanho menor sozinho não faria.
+          */}
+          <h1 className="mt-3 select-none">
+            <span className="holo-texto block text-[46px] font-black leading-[0.92] tracking-[-0.045em] sm:text-[64px] lg:text-[76px]">
+              CHROMA
+            </span>
+            <span className="mt-1.5 block text-[19px] font-bold uppercase tracking-[0.3em] text-zinc-400 sm:text-[26px] lg:text-[31px]">
+              Launchpad
+            </span>
           </h1>
 
-          <p className="mt-2.5 text-[13px] leading-relaxed text-zinc-400">
-            Terminal não-custodial, gráfico ao vivo e auditoria na mesma tela.{" "}
-            <strong className="font-semibold text-marca">Quem indica recebe</strong> em cada
-            swap, direto na carteira e na mesma transação.
+          <p className="mt-3 max-w-[520px] text-[13.5px] leading-relaxed text-zinc-400">
+            {/*
+              Entre chaves, e não solto como texto: `///` cru no meio do JSX
+              é lido pelo linter como começo de comentário, e o aviso está
+              certo — quem lesse o arquivo depois hesitaria igual.
+            */}
+            <span className="font-mono text-marca">{"/// "}</span>
+            {t.heroLinha}
           </p>
+
+          <div className="mt-6 flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row">
+            {/*
+              O único botão-espectro do site. Ver a nota em `Button.tsx`: o
+              efeito só significa alguma coisa porque não se repete.
+            */}
+            <Link href="/create" className="block sm:w-auto">
+              <Button variant="espectro" size="lg" className="w-full px-7 sm:w-auto">
+                {t.heroBotaoCriar}
+              </Button>
+            </Link>
+            <Link href="/airdrop" className="block sm:w-auto">
+              <Button variant="outline" size="lg" className="w-full px-6 sm:w-auto">
+                {t.heroBotaoPontos}
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        <div className="flex w-full shrink-0 flex-col gap-2 sm:flex-row lg:w-auto lg:min-w-[190px] lg:flex-col">
-          <Link href="/create" className="block sm:flex-1 lg:flex-none">
-            <Button variant="chroma" size="lg" className="w-full">
-              Criar token
-            </Button>
-          </Link>
-          <Link href="/affiliate" className="block sm:flex-1 lg:flex-none">
-            <Button variant="outline" size="lg" className="w-full">
-              Link de afiliado
-            </Button>
-          </Link>
+        {/*
+          O cristal só aparece a partir de `lg`.
+
+          No celular ele roubaria a altura que a primeira moeda da lista
+          precisa: a pessoa abriria o site e veria um enfeite ocupando a tela
+          toda, com o produto abaixo da dobra. Ornamento cede espaço, nunca o
+          contrário.
+        */}
+        <div className="hidden shrink-0 lg:block">
+          <CristalHolografico size={230} />
         </div>
       </div>
 
@@ -94,9 +155,9 @@ export function FaixaDeAbertura({
         {/* "Tokens", e não "Tokens listados": no celular o rótulo longo
             quebrava em duas linhas e torcia a régua. Ao lado de um número
             inteiro, numa launchpad, a palavra sozinha já diz tudo. */}
-        <Medida rotulo="Tokens" valor={quantidadeDeTokens} />
-        <Medida rotulo="Volume 24h" valor={volumeTotal} />
-        <Medida rotulo="Redes" valor="2" aoVivo />
+        <Medida rotulo={t.medidaTokens} valor={quantidadeDeTokens} />
+        <Medida rotulo={t.medidaVolume} valor={volumeTotal} />
+        <Medida rotulo={t.medidaRedes} valor="2" aoVivo />
       </div>
     </section>
   );

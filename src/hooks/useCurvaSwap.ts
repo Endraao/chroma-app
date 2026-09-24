@@ -13,6 +13,7 @@ import {
 } from "@/lib/chroma-program";
 import type { DadosDaCurva } from "@/hooks/useCurva";
 import { formatUnits, parseUnits } from "@/lib/utils";
+import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import type { TradeSide } from "@/lib/types";
 
 /**
@@ -342,6 +343,17 @@ export function useCurvaSwap({
             chain: "solana",
           }),
         }).catch(() => {});
+      }
+
+      /*
+       * Pontos do airdrop — só a assinatura sai daqui.
+       *
+       * O servidor confere a transação na rede antes de creditar qualquer
+       * coisa. Ver a nota longa em `useSolanaSwap.ts`: número que vem da tela
+       * nunca pode virar ponto.
+       */
+      if (publicKey) {
+        void reivindicarPontos(assinatura, publicKey.toBase58());
       }
     } catch (e) {
       setStep("");

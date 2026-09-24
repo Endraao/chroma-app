@@ -130,7 +130,7 @@ export function useLancarToken() {
 
         const resposta = await fetch("/api/token-media", { method: "POST", body: form });
         const publicado = await resposta.json();
-        if (!resposta.ok) throw new Error(publicado?.error ?? "não consegui publicar a arte");
+        if (!resposta.ok) throw new Error(publicado?.error ?? "Não foi possível enviar a imagem.");
 
         const uri: string = publicado.metadataUrl;
 

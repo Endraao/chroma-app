@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { feeLabel } from "@/lib/fees";
 import { PAYOUT_MODE, payoutReady } from "@/lib/payout";
 import { chainIcon } from "@/lib/chain-icons";
+import { formatUsd } from "@/lib/utils";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 import { MOEDA_DA_REDE } from "@/lib/affiliate-types";
 import { cn } from "@/lib/utils";
@@ -44,8 +45,51 @@ export function EarningsPanel({ resumo }: { resumo: AffiliateSummary | null }) {
 
   const nadaAinda = redes.every((r) => r.trades === 0);
 
+  /* As redes que de fato renderam algo — é o que o total detalha embaixo. */
+  const comGanho = redes.filter((r) => r.commissionNative > 0);
+  const detalhe = comGanho.map((r) => `${curto(r.commissionNative)} ${r.symbol}`).join("  +  ");
+
   return (
     <div className="space-y-4">
+      {/*
+        O TOTAL vem primeiro, e é o maior número da tela.
+        -------------------------------------------------------------------
+        Antes esta área abria direto nos cartões por rede: tanto em SOL, tanto
+        em ETH. Está correto — são ativos diferentes, em carteiras diferentes
+        — mas obriga a pessoa a fazer a conta de cabeça pra responder a única
+        pergunta que ela veio fazer: quanto eu já ganhei.
+
+        Some quando nada entrou ainda: um "US$ 0,00" gigante na abertura
+        desanima justamente quem ainda nem começou a divulgar.
+      */}
+      {!nadaAinda && (
+        <Card>
+          <CardBody className="space-y-1 py-5 text-center">
+            <p className="rotulo">Total já recebido</p>
+
+            {resumo?.totalUsd != null ? (
+              <p className="tnum text-4xl font-black text-zinc-50">
+                {formatUsd(resumo.totalUsd)}
+              </p>
+            ) : (
+              /* Sem preço, mostra as quantidades — que nunca estão erradas. */
+              <p className="tnum text-2xl font-black text-zinc-50">{detalhe || "—"}</p>
+            )}
+
+            <p className="mx-auto max-w-[430px] text-[11px] leading-relaxed text-zinc-600">
+              {detalhe}
+              {resumo?.totalUsd != null && (
+                <>
+                  {" "}
+                  — convertido ao preço de hoje, então o valor em dólar sobe e desce com o mercado.
+                  A quantidade em cada moeda nunca diminui.
+                </>
+              )}
+            </p>
+          </CardBody>
+        </Card>
+      )}
+
       {redes.map((rede) => (
         <RedeCard
           key={rede.chain}
@@ -63,15 +107,15 @@ export function EarningsPanel({ resumo }: { resumo: AffiliateSummary | null }) {
           <p className="text-[12px] leading-relaxed text-zinc-500">
             {nadaAinda ? (
               <>
-                Ainda não entrou comissão. Abra uma moeda e use o botão{" "}
-                <strong className="text-zinc-300">Compartilhar</strong> — é de lá que sai o link com
-                a sua indicação. Você recebe {feeLabel.affiliate} de cada operação de quem entrar por
-                ele, na moeda da rede em que ela operar.
+                Você ainda não recebeu comissão. Abra uma moeda e clique em{" "}
+                <strong className="text-zinc-300">Compartilhar</strong> para gerar o seu link de
+                indicação. Você recebe {feeLabel.affiliate} de cada operação de quem entrar por ele,
+                na moeda da rede em que a pessoa operar.
               </>
             ) : (
               <>
-                Cliques contam quem abriu o seu link; trades, quem de fato operou. A distância entre
-                os dois é o que dá pra melhorar na divulgação.
+                Cliques são quantas pessoas abriram o seu link. Trades são quantas delas realmente
+                operaram.
               </>
             )}
           </p>
@@ -270,13 +314,13 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
             {PAYOUT_MODE === "instant" ? (
               <p className="rounded-xl border border-bull/20 bg-bull/[0.05] p-3 text-[11px] leading-relaxed text-zinc-400">
                 <strong className="text-bull">Você não precisa resgatar.</strong> Cada{" "}
-                {feeLabel.affiliate} já foi transferido pra sua carteira dentro da própria
-                transação, no mesmo bloco — por isso cada linha acima tem comprovante on-chain.
+                {feeLabel.affiliate} já foi transferido para a sua carteira dentro da própria
+                transação, na hora — e cada valor acima fica registrado na blockchain.
               </p>
             ) : !pronto ? (
               <p className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[11px] leading-relaxed text-warn">
-                O modo de acúmulo está ligado, mas o cofre on-chain desta rede ainda não foi
-                publicado. Ver <code>src/lib/payout.ts</code>.
+                O resgate nesta rede ainda não está disponível. As suas comissões continuam sendo
+                somadas normalmente.
               </p>
             ) : null}
           </>

@@ -100,8 +100,8 @@ export default function CreateTokenPage() {
       <div>
         <h1 className="text-2xl font-black tracking-tight text-zinc-50">Criar token</h1>
         <p className="mt-1 text-[13px] text-zinc-500">
-          Deploy e negociação no mesmo fluxo: assim que o token nasce, a curva de bonding abre e a página de trade
-          já existe.
+          Criação e negociação no mesmo lugar: assim que a moeda é criada, ela já fica disponível
+          para compra e venda, com página própria e gráfico ao vivo.
         </p>
       </div>
 
@@ -361,16 +361,17 @@ export default function CreateTokenPage() {
           )}
 
           <p className="text-[11px] leading-relaxed text-zinc-500">
-            Cobrada em cada trade da sua moeda e somada ao pool do tema. O protocolo limita em{" "}
-            {feeLabel.creatorTaxMax} — acima disso o lançamento é recusado. Escolha com cuidado:{" "}
-            <strong className="text-zinc-300">esse número não pode ser alterado depois</strong>, e taxa
-            alta afasta comprador, porque é a assinatura clássica de golpe.
+            Cobrada de quem negocia a sua moeda e paga direto para você, além da sua fatia das
+            faixas. O limite é {feeLabel.creatorTaxMax}; acima disso o lançamento é recusado. Escolha
+            com cuidado:{" "}
+            <strong className="text-zinc-300">esse número não pode ser alterado depois</strong>, e
+            taxas altas costumam afastar compradores.
           </p>
 
           <div className="rounded-xl border border-white/[0.06] bg-ink-950/60 p-3 text-[11px] leading-relaxed text-zinc-500">
             <span className="font-semibold text-zinc-300">Além dela, você já recebe</span>{" "}
-            {chainLabels.creatorBase} de cada trade, subindo até {chainLabels.creatorTop} conforme a moeda
-            ganha volume — sem cobrar nada a mais do comprador.{" "}
+            {chainLabels.creatorBase} de cada operação, subindo até {chainLabels.creatorTop}{" "}
+            conforme a moeda ganha volume — sem cobrar nada a mais de quem compra.{" "}
             <span className="text-zinc-600">
               No {chainLabels.reference.name} o criador recebe {chainLabels.referenceCreator}.
             </span>{" "}
@@ -418,9 +419,10 @@ export default function CreateTokenPage() {
             onChange={(v) => set("initialBuy", v.replace(/[^0-9.]/g, ""))}
           />
           <p className="text-[11px] leading-relaxed text-zinc-500">
-            A Chroma não faz custódia: o token é seu e a transação sai da sua carteira. A compra inicial usa o mesmo
-            preço da curva que todo mundo — não existe alocação escondida pro criador. O que você comprar aqui
-            aparece no painel de segurança como concentração do criador.
+            A Chroma não faz custódia: a moeda é sua e a transação sai da sua carteira. A compra
+            inicial paga o mesmo preço que qualquer outra pessoa — não existe reserva de tokens para
+            o criador. O que você comprar aqui aparece no painel de segurança como concentração do
+            criador.
           </p>
         </CardBody>
       </Card>

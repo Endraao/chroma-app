@@ -37,9 +37,19 @@ export function AccountMenu() {
   // O estado da carteira só existe no browser: renderizar no servidor quebraria a hidratação.
   useEffect(() => setMounted(true), []);
 
-  // Conectou mas ainda não escolheu apelido: reabre o modal na etapa do apelido.
+  /*
+   * Conectou e REALMENTE não tem conta: abre o modal na etapa do apelido.
+   *
+   * O `else` não é enfeite. Antes só existia o `if`, então se o modal abrisse
+   * por engano — e abria, em toda recarga, por causa do defeito descrito em
+   * `useChromaAccount` — ele nunca mais se fechava sozinho. A conta chegava
+   * da rede um instante depois, `needsNickname` virava falso, e o modal
+   * continuava lá pedindo um apelido a quem já tinha um.
+   *
+   * Era por isso que a mesma carteira acumulava dezenas de apelidos.
+   */
   useEffect(() => {
-    if (account.needsNickname) setModalOpen(true);
+    setModalOpen(account.needsNickname);
   }, [account.needsNickname]);
 
   // Fecha ao clicar fora ou apertar Esc.
@@ -155,6 +165,20 @@ export function AccountMenu() {
               <div className="space-y-1.5">
                 {CHAIN_IDS.map((id) => {
                   const conectada = account.conectadas[id];
+                  /*
+                   * CONECTADA ≠ VINCULADA, e a tela precisa dizer isso.
+                   * -----------------------------------------------------
+                   * `conectadas` é o que está plugado no navegador agora.
+                   * `carteiras` é o que pertence à CONTA, no banco — e é
+                   * só isso que recebe comissão de indicação.
+                   *
+                   * Esta lista mostrava as duas sob o título "Suas redes",
+                   * sem separar. Uma carteira recém-conectada aparecia como
+                   * se já fosse da conta, e o painel de indicação, logo ao
+                   * lado, dizia "você não tem carteira nesta rede". Os dois
+                   * estavam certos e pareciam se contradizer.
+                   */
+                  const vinculada = Boolean(account.carteiras?.[id]);
                   return (
                     <div key={id} className="flex items-center gap-2.5">
                       { }
@@ -175,8 +199,25 @@ export function AccountMenu() {
                         )}
                       </span>
                       {conectada ? (
-                        <span className="tnum shrink-0 text-[11px] text-zinc-500">
-                          {shortenAddress(conectada, 3)}
+                        <span className="flex shrink-0 items-center gap-1.5">
+                          {/*
+                            Conectada mas FORA da conta: a comissão desta rede
+                            não tem pra onde ir. O atalho leva direto pra tela
+                            que resolve, em vez de deixar a pessoa procurar.
+                          */}
+                          {!vinculada && (
+                            <Link
+                              href="/profile?aba=conta"
+                              onClick={() => setMenuOpen(false)}
+                              title="Esta carteira ainda não pertence à sua conta"
+                              className="rounded-md border border-warn/40 px-1.5 py-0.5 text-[10px] font-bold text-warn transition-colors hover:bg-warn/10"
+                            >
+                              vincular
+                            </Link>
+                          )}
+                          <span className="tnum text-[11px] text-zinc-500">
+                            {shortenAddress(conectada, 3)}
+                          </span>
                         </span>
                       ) : (
                         <button

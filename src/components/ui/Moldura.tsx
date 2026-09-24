@@ -56,7 +56,24 @@ export function Moldura({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="flex items-start">
+    /*
+     * Sem `items-start`. A barra precisa ESTICAR até o fim da página.
+     *
+     * A barra da esquerda é `sticky`, e `sticky` só gruda dentro da caixa do
+     * próprio pai. Com `items-start`, o `<aside>` ficava com a altura do
+     * conteúdo dele — cerca de uma tela — e em página longa, ao rolar além
+     * disso, a caixa acabava e a barra ia embora junto.
+     *
+     * Esticada (o padrão do flex), ela acompanha a altura da coluna de
+     * conteúdo, e o `sticky` lá dentro passa a ter pista pra correr a página
+     * inteira.
+     *
+     * `sticky` e não `fixed` de propósito: `fixed` tiraria a barra do fluxo, e
+     * o conteúdo precisaria de um recuo manual do tamanho exato dela — o
+     * número mágico repetido em dois lugares que este componente existe justo
+     * pra evitar.
+     */
+    <div className="flex">
       {/*
         A fronteira de Suspense abraça SÓ a barra, e isso não é detalhe.
 

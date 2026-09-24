@@ -39,6 +39,10 @@ export function LinkedWallets() {
 
   const nickname = account.account?.nickname ?? null;
 
+  /** As redes cuja carteira já pertence à conta — as que podem autorizar. */
+  const redesDaConta = Object.keys(account.carteiras ?? {}) as ChainId[];
+  const temCarteiraNaConta = redesDaConta.length > 0;
+
   /**
    * Assina com a carteira que JÁ é da conta.
    *
@@ -69,8 +73,36 @@ export function LinkedWallets() {
       setModalAberto(true);
       return;
     }
-    if (!nickname || !account.assinante) {
+    if (!nickname) {
       setErro("Escolha um apelido antes de vincular carteiras.");
+      return;
+    }
+
+    /*
+     * SEM ASSINANTE É UM PROBLEMA DIFERENTE, E PRECISA DE OUTRA FRASE.
+     * -----------------------------------------------------------------------
+     * `assinante` é uma carteira que está ao mesmo tempo NA CONTA e CONECTADA
+     * agora. É ela que assina a autorização — a prova de que quem está
+     * vinculando é o dono da conta.
+     *
+     * Antes as duas condições caíam na mesma mensagem, "escolha um apelido".
+     * Isso criava um beco sem saída de verdade: quem já tinha apelido, tinha a
+     * carteira da conta em OUTRA rede e a desconectava, clicava em Vincular e
+     * era mandado resolver algo que já estava resolvido. Não havia como
+     * descobrir o que faltava pela tela.
+     *
+     * A frase agora diz qual rede reconectar, porque é a única informação que
+     * destrava a situação.
+     */
+    if (!account.assinante) {
+      const nomes = redesDaConta.map((c) => CHAINS[c].label).join(" ou ");
+
+      setErro(
+        temCarteiraNaConta
+          ? `Reconecte sua carteira ${nomes} — é ela que autoriza a vinculação, ` +
+            `porque já pertence a esta conta. Pode manter as duas conectadas ao mesmo tempo.`
+          : "Conecte a carteira desta conta para autorizar a vinculação.",
+      );
       return;
     }
 
@@ -114,7 +146,7 @@ export function LinkedWallets() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "não consegui vincular");
+      if (!res.ok) throw new Error(data?.error ?? "Não foi possível vincular a carteira.");
 
       account.aplicarCarteiras(data.account.carteiras ?? {});
       setSalvou(chain);
@@ -136,6 +168,26 @@ export function LinkedWallets() {
       </CardHeader>
 
       <CardBody className="space-y-2">
+        {/*
+          O AVISO VEM ANTES DO CLIQUE, não depois.
+          -------------------------------------------------------------------
+          Sem uma carteira da conta conectada, nenhum botão "Vincular" desta
+          tela funciona — falta quem assine a autorização. Antes isso só
+          aparecia como erro DEPOIS de clicar, e com a frase errada.
+
+          Um botão que não pode funcionar precisa dizer isso antes de ser
+          apertado; caso contrário a pessoa clica, não entende, e conclui que
+          o site está quebrado.
+        */}
+        {nickname && !account.assinante && temCarteiraNaConta && (
+          <div className="rounded-lg border border-warn/30 bg-warn/[0.07] px-3 py-2.5 text-[11.5px] leading-relaxed text-warn">
+            Para vincular uma carteira nova, reconecte a sua{" "}
+            <strong>{redesDaConta.map((c) => CHAINS[c].label).join(" ou ")}</strong> — é ela que
+            autoriza, porque já pertence a esta conta. Você pode manter as duas conectadas ao mesmo
+            tempo.
+          </div>
+        )}
+
         {CHAIN_IDS.map((chain) => {
           const meta = CHAINS[chain];
           const vinculada = account.carteiras[chain] ?? null;
@@ -202,10 +254,9 @@ export function LinkedWallets() {
 
         <p className="border-t border-white/[0.06] pt-3 text-[11px] leading-relaxed text-zinc-600">
           Vincular pede <strong className="text-zinc-400">uma assinatura</strong> da carteira que já
-          está na conta. É a única coisa aqui que pede — e pede porque é a única que muda pra onde o
-          seu dinheiro vai. Assinar mensagem{" "}
-          <strong className="text-zinc-400">não é transação</strong>: não move fundos nem dá
-          permissão sobre eles.
+          está na conta — é assim que confirmamos que a carteira nova também é sua. Assinar uma
+          mensagem <strong className="text-zinc-400">não é uma transação</strong>: não move fundos
+          nem dá qualquer permissão sobre eles.
         </p>
       </CardBody>
 

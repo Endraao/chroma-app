@@ -154,7 +154,576 @@ body::after {
     font-variant-numeric: tabular-nums;
     @apply font-mono;
   }
+
+  /*
+   * =====================================================================
+   * HOLOGRAFIA
+   * =====================================================================
+   * A diferença entre "gradiente colorido" e "holográfico" é UMA coisa: o
+   * reflexo especular. Gradiente parado é pintura; holograma é superfície que
+   * devolve luz diferente conforme o ângulo muda.
+   *
+   * Por isso toda peça aqui tem DUAS camadas empilhadas:
+   *
+   *   1. o espectro da marca, que oscila devagar (a cor do material)
+   *   2. uma faixa branca estreita que ATRAVESSA, mais rápido (o reflexo)
+   *
+   * A camada 1 é tudo que o site tinha, e é o que fazia a logo parecer só
+   * colorida. A camada 2 é o que faz o olho ler "isto é iridescente".
+   */
+
+  /*
+   * Texto holográfico. Para a marca e títulos de abertura — NUNCA para texto
+   * corrido, onde o reflexo passando por baixo das palavras atrapalha ler.
+   */
+  .holo-texto {
+    /*
+     * ---------------------------------------------------------------------
+     * O LAÇO DE TRÊS CORES: AZUL FORTE → AZUL CLARO → BRANCO → recomeça
+     * ---------------------------------------------------------------------
+     * A palavra é pintada com uma COR SÓLIDA que troca, e não com um gradiente
+     * filtrado. Essa diferença é o conserto da dessincronia, e vale explicar
+     * porque a versão anterior parecia certa e não era.
+     *
+     * Antes, texto e cristal recebiam o MESMO filtro — mediram idênticos,
+     * quadro a quadro. Só que filtro age sobre o que já existe, e as bases
+     * eram diferentes: o texto era um gradiente azul, o cristal é um PNG
+     * escuro. `saturate(0.18) brightness(1.4)` sobre azul dá um azul
+     * lavado; sobre o cristal dá prata. Números iguais, cores diferentes na
+     * tela — e era isso que se via: um azul ao lado de um branco.
+     *
+     * Agora o texto declara as três cores EXATAS do laço, e o cristal usa as
+     * mesmas três no brilho que projeta. O que bate é a cor de verdade, não a
+     * operação matemática.
+     *
+     * O laço fecha porque a primeira e a última parada são a mesma cor: sem
+     * isso, a volta daria um pisca de branco pra azul num quadro só.
+     */
+    color: var(--azul-forte);
+
+    /*
+     * SEM brilho na palavra. Só o cristal acende.
+     *
+     * Havia um `text-shadow` aqui pra palavra não ficar chapada. Saiu a
+     * pedido, e a decisão é boa: com as duas coisas brilhando, a abertura
+     * tinha dois focos de luz disputando, e a palavra — que é texto e precisa
+     * ser LIDA — levava a pior. Luz é do cristal; a palavra é a marca escrita.
+     */
+
+    /*
+     * `linear`, não `ease-in-out`, por causa do fim da volta: com aceleração
+     * a cor desacelera ao chegar no 100% e arranca de novo no 0%. Os valores
+     * são idênticos nas pontas, então não há salto de cor — mas há salto de
+     * VELOCIDADE, e o olho lê essa parada-e-arranco como defeito.
+     */
+    animation: cor-da-marca var(--ciclo) linear infinite;
+  }
+
+  /*
+   * O reflexo atravessando uma superfície (painel, cartão, botão).
+   *
+   * `mix-blend-mode: overlay` pra CLAREAR o que está embaixo em vez de cobrir:
+   * pintar por cima com branco a 8% apagaria o conteúdo; overlay realça o que
+   * já existe, que é o que luz faz.
+   */
+  .holo-face {
+    @apply relative overflow-hidden;
+  }
+  .holo-face::after {
+    content: "";
+    @apply pointer-events-none absolute inset-0 z-[2];
+    background: linear-gradient(
+      100deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.07) 47%,
+      rgba(168, 220, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.07) 53%,
+      transparent 65%
+    );
+    background-size: 280% 100%;
+    mix-blend-mode: overlay;
+    animation: holo-varrer var(--varredura) linear infinite;
+  }
+
+  /*
+   * O fundo pontilhado.
+   *
+   * Ponto, e não grade de linhas: grade desenha CAIXAS, e caixa atrás de uma
+   * tabela cheia de bordas vira ruído estrutural — o olho tenta alinhar as
+   * linhas do fundo com as da tabela. Ponto é textura, não estrutura.
+   *
+   * A máscara radial apaga os pontos nas bordas; sem ela, eles encostam no
+   * limite da tela e o fundo lê como papel quadriculado cortado.
+   */
+  /*
+   * `z-0`, e NÃO `-z-10`.
+   *
+   * O pai é `relative` sem z-index, então não abre contexto de empilhamento —
+   * e um filho com z negativo cai atrás do FUNDO do próprio pai, que é opaco.
+   * Os pontos simplesmente sumiriam. Em z-0 eles ficam acima do fundo e abaixo
+   * do conteúdo, que é `z-[1]`.
+   */
+  .fundo-pontos {
+    @apply pointer-events-none absolute inset-0 z-0;
+    background-image: radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.055) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 65% at 50% 35%, black 30%, transparent 78%);
+    mask-image: radial-gradient(ellipse 80% 65% at 50% 35%, black 30%, transparent 78%);
+  }
+
+  /*
+   * A varredura de cor do botão principal, da esquerda pra direita no hover.
+   *
+   * Feita com `background-position` num gradiente largo, e não com um
+   * `::before` deslizante: é uma propriedade só, roda na GPU, e não cria
+   * camada que possa cobrir o texto do botão.
+   */
+  /*
+   * A varredura fica na METADE CLARA da paleta, e isso é legibilidade.
+   *
+   * O laço da marca vai de azul forte a branco, mas o texto deste botão é
+   * quase preto (`text-ink-950`). Sobre o azul forte ele fica ilegível — o
+   * contraste de um `#08090b` em cima de `#1d4ed8` é insuficiente.
+   *
+   * Então aqui a varredura é azul claro → branco → azul claro: é a mesma
+   * família de cor do resto do site, sem roxo, e o texto continua nítido do
+   * começo ao fim do movimento.
+   */
+  .varrer {
+    background-image: linear-gradient(
+      100deg,
+      var(--azul-claro) 0%,
+      #bae6fd 26%,
+      #ffffff 50%,
+      #bae6fd 74%,
+      var(--azul-claro) 100%
+    );
+    background-size: 220% 100%;
+    background-position: 100% 50%;
+    transition: background-position 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .varrer:hover,
+  .group:hover .varrer {
+    background-position: 0% 50%;
+  }
 }
+
+/*
+ * O cristal trocando de cor.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE `hue-rotate` NO PNG, E NÃO UM CRISTAL DESENHADO EM SVG
+ * ---------------------------------------------------------------------------
+ * Tentei redesenhar o cristal como vetor, pra poder animar face por face. O
+ * resultado ficou ruim, e o motivo é simples: o logo tem lapidação, sombra e
+ * profundidade de verdade, e reproduzir isso com polígono chapado dá um
+ * desenho de hexágono — parecido de longe, pobre de perto.
+ *
+ * O caminho certo é o contrário: manter a arte que já existe e mexer só na
+ * LUZ que passa por ela. É literalmente o conceito da marca.
+ *
+ * ---------------------------------------------------------------------------
+ * A CURVA NÃO É UMA VOLTA INTEIRA DE MATIZ
+ * ---------------------------------------------------------------------------
+ * `hue-rotate(0 → 360)` passa por verde, amarelo e laranja no meio do
+ * caminho, e o cristal vira um arco-íris de festa. Aqui a rotação vai e VOLTA
+ * dentro de uma faixa estreita, que cobre ciano → magenta → roxo e nada mais.
+ *
+ * O `saturate` acompanha porque matiz sozinha não lê como luz: é o ganho de
+ * saturação no pico que faz parecer que o cristal está sendo atravessado, em
+ * vez de pintado.
+ */
+/*
+ * A ORDEM DOS FILTROS É O TRUQUE
+ * ------------------------------
+ * `drop-shadow` vem PRIMEIRO e `hue-rotate` por último, porque cada filtro
+ * opera no resultado do anterior. Assim a rotação de matiz pega a sombra
+ * junto, e o brilho em volta muda de cor com a pedra — em vez de ficar um
+ * halo ciano fixo atrás de um cristal que troca de cor sozinho.
+ *
+ * E `drop-shadow`, não `box-shadow` nem um círculo borrado atrás: ele segue o
+ * CANAL ALFA da imagem, ou seja, o contorno facetado de verdade. Um círculo
+ * desfocado atrás de um icosaedro lê como adesivo sobre uma bola de luz; a
+ * sombra pelo contorno lê como a própria pedra acendendo.
+ *
+ * Foi isso que faltava na primeira tentativa: o halo estava lá, escondido
+ * atrás do próprio cristal, e o efeito parecia quase inexistente.
+ */
+/*
+ * =============================================================================
+ * UM RELÓGIO SÓ PARA TODA A COR DO SITE
+ * =============================================================================
+ * Antes cada camada tinha o próprio tempo e a própria lógica de cor: o cristal
+ * girava matiz em 14s, a névoa atrás dele deslizava um gradiente em 8s, as
+ * letras varriam um reflexo em 7s. O efeito era que NUNCA estavam na mesma cor
+ * ao mesmo tempo — havia sempre um roxo ao lado de um verde ao lado de um
+ * ciano.
+ *
+ * Isso foi escolha minha, com o argumento de que tempos diferentes evitam que
+ * o olho perceba o laço. O dono do projeto pediu o contrário, e ele tem razão
+ * sobre o que importa aqui: um cristal é UM corpo, atravessado por UMA luz.
+ * Se cada camada mostra uma cor diferente, o que se vê são três efeitos
+ * separados, não um objeto iluminado.
+ *
+ * Agora todas as camadas cromáticas usam a MESMA duração (`--ciclo`, 14s) e as
+ * mesmas fases. A única exceção é o reflexo que varre as letras, em 7s — que é
+ * exatamente METADE do ciclo, então ele reencontra as outras camadas em fase a
+ * cada volta. Harmônico, não aleatório.
+ */
+:root {
+  /*
+   * O ciclo de COR. Longo de propósito.
+   *
+   * Começou em 14s e ficou chamativo demais — dava pra ficar olhando a cor
+   * mudar, e ornamento que rouba atenção numa tela de preço é ornamento
+   * errado. Em 48s a transição é quase imperceptível: quem passa dez segundos
+   * na página vê uma cor, quem volta depois vê outra, e ninguém vê "uma
+   * animação rodando".
+   */
+  --ciclo: 48s;
+
+  /*
+   * A varredura do reflexo tem relógio PRÓPRIO, e não é derivada do ciclo.
+   *
+   * Ela é luz passando por uma superfície, não cor mudando — e precisa
+   * continuar visível: um reflexo que leva 24s pra atravessar a palavra lê
+   * como travamento, não como brilho. Desacoplar as duas coisas é o que
+   * permite cor lentíssima E reflexo vivo ao mesmo tempo.
+   *
+   * Isso não desfaz a sincronia pedida: o que precisa bater entre o cristal e
+   * as letras é a COR, e essa continua no mesmo `--ciclo`.
+   */
+  --varredura: 7s;
+
+  /*
+   * A respiração da névoa do cristal.
+   *
+   * Nove segundos: lento o bastante pra ler como respiração, e não como
+   * pisca-pisca; rápido o bastante pra se perceber que está vivo. O ciclo de
+   * COR do site é de 48s, mas aqui isso não serviria — uma pulsação que leva
+   * 24 segundos pra ir e voltar simplesmente não é percebida como pulsação.
+   *
+   * Por isso tem relógio próprio, e não deriva de `--ciclo`.
+   */
+  --pulso: 9s;
+
+  /*
+   * As DUAS cores do laço, mais o branco que fecha a sequência.
+   *
+   * Uma variável, um lugar. Elas aparecem no cristal grande, no logo do
+   * cabeçalho e nas letras de CHROMA — sem isto, trocar o tom de azul exigiria
+   * caçar o valor em três arquivos e um deles ficaria pra trás.
+   */
+  /*
+   * O azul forte saiu do marinho (#1d4ed8) para um azul VIVO.
+   *
+   * O marinho é escuro demais pro fundo quase preto do site: em vez de ler
+   * como "azul forte", lia como cinza-azulado apagado, e a primeira parada do
+   * laço quase não se distinguia do painel atrás. Um azul saturado e claro
+   * tem presença sobre preto e ainda deixa espaço pras duas paradas seguintes
+   * serem mais claras que ele.
+   */
+  --azul-forte: #0ea5e9;
+  --azul-claro: #7dd3fc;
+}
+
+/*
+ * =============================================================================
+ * O LAÇO DE COR, PARA QUEM NÃO PRECISA DE SOMBRA
+ * =============================================================================
+ * Exatamente as mesmas paradas e os mesmos números de `cristal-cromatico`,
+ * sem os `drop-shadow`. É o que as letras de CHROMA usam.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUE O TEXTO PRECISOU MUDAR DE MECANISMO
+ * ---------------------------------------------------------------------------
+ * Antes ele deslizava um gradiente (`background-position`, de 180% a -80%)
+ * enquanto o cristal trocava filtros em marcos de 0/33/66%. Isso causava dois
+ * defeitos ao mesmo tempo, e os dois foram notados:
+ *
+ *   1. **Dessincronia.** Deslizar um gradiente e interpolar um filtro mapeiam
+ *      tempo em cor de formas diferentes. A palavra chegava no branco antes
+ *      do cristal, por mais que as durações fossem iguais. Não havia ajuste
+ *      de número que resolvesse — era o mecanismo, não o valor.
+ *
+ *   2. **O salto ao reiniciar.** `-80%` e `180%` são pontos DIFERENTES do
+ *      gradiente. Ao voltar pro começo, a cor pulava — aquele "reset"
+ *      perceptível no fim da volta.
+ *
+ * Com os dois na mesma função de quadros, a sincronia passa a ser garantida
+ * por construção, e não por coincidência de duração. E como não há mais
+ * posição pra dar a volta, não há mais salto.
+ */
+@keyframes cromatico {
+  0%,
+  100% {
+    filter: saturate(1.9) brightness(1);
+  }
+  33% {
+    filter: saturate(1.15) brightness(1.16);
+  }
+  66% {
+    filter: saturate(0.18) brightness(1.4);
+  }
+}
+
+/*
+ * AS TRÊS CORES, DECLARADAS. Para texto, que pode simplesmente SER a cor.
+ * =============================================================================
+ * Esta é a fonte da verdade do laço. `cristal-cromatico` projeta exatamente
+ * estes mesmos valores no `drop-shadow`, nas mesmas paradas — é o que faz a
+ * palavra e o brilho da pedra baterem de fato, e não só numericamente.
+ *
+ * Quem mudar um tom tem que mudar nos DOIS lugares. É por isso que os blocos
+ * estão lado a lado neste arquivo, e não cada um no seu canto.
+ */
+/*
+ * O brilho que atravessa o botão do airdrop.
+ *
+ * Sai de fora à esquerda e some fora à direita, com uma PAUSA longa no fim:
+ * as paradas 0% e 55% são iguais, então ele passa uma vez e espera. Sem a
+ * pausa seria um brilho correndo sem parar, que cansa e vira ruído no
+ * cabeçalho — o objetivo é chamar atenção de tempos em tempos, não competir
+ * com a lista de moedas.
+ */
+@keyframes passar-brilho {
+  0%,
+  55% {
+    left: -100%;
+  }
+  85%,
+  100% {
+    left: 160%;
+  }
+}
+
+@keyframes cor-da-marca {
+  0%,
+  100% {
+    color: #0ea5e9;
+  }
+  33% {
+    color: #7dd3fc;
+  }
+  66% {
+    color: #ffffff;
+  }
+}
+
+/*
+ * =============================================================================
+ * O CRISTAL: BRANCO PARADO, NÉVOA RESPIRANDO
+ * =============================================================================
+ * Antes ele percorria o laço azul → azul claro → branco, em sincronia com as
+ * letras de CHROMA. Foi trocado a pedido, e o raciocínio por trás vale manter
+ * registrado porque ele contraria a versão anterior:
+ *
+ * Sincronizar a pedra com a palavra fazia as duas competirem pelo mesmo
+ * trabalho. Uma marca precisa de UM ponto de tensão, não de dois piscando
+ * juntos — e num terminal onde verde e vermelho significam dinheiro, cor
+ * ornamental atrapalha o olho antes de enfeitar.
+ *
+ * Agora o cristal é branco e não muda de cor NUNCA. O que se move é só a
+ * intensidade da luz em volta, como respiração. É o efeito de um objeto
+ * parado sendo iluminado, e não de um objeto trocando de cor.
+ *
+ * A saturação fica travada em 0,15 nos dois extremos: é ela que mantém o
+ * branco. Se um dia alguém quiser o azul de volta, é essa linha que muda —
+ * e aí some a razão de existir deste bloco.
+ */
+@keyframes cristal-pulsar {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 9px rgba(255, 255, 255, 0.24))
+      drop-shadow(0 0 22px rgba(255, 255, 255, 0.08)) saturate(0.15) brightness(1.28);
+  }
+  50% {
+    filter: drop-shadow(0 0 19px rgba(255, 255, 255, 0.46))
+      drop-shadow(0 0 42px rgba(255, 255, 255, 0.17)) saturate(0.15) brightness(1.4);
+  }
+}
+
+/*
+ * A FAIXA DE MATIZ SÓ ANDA PRA FRENTE, E ISSO É A PARTE QUE IMPORTA
+ * -----------------------------------------------------------------
+ * A base do brilho é o ciano da marca, que fica por volta de 187° no círculo
+ * de matiz. A partir dali:
+ *
+ *   +75°  → ~262°, roxo
+ *   +115° → ~302°, magenta
+ *
+ * Rotação NEGATIVA a partir do ciano vai pro outro lado e cai em ~140°, que é
+ * verde. Uma primeira versão fazia exatamente isso, e o cristal piscava verde
+ * no meio do ciclo — bonito em nada e fora da paleta.
+ *
+ * Por isso o ciclo é ciano → roxo → magenta → ciano, sempre no mesmo sentido,
+ * e nunca passa de 115°: além disso começa o vermelho.
+ */
+/*
+ * O CRISTAL NO MESMO LAÇO: azul forte → azul claro → branco → recomeça.
+ * =============================================================================
+ * `hue-rotate` sozinho NÃO chega no branco, e essa é a diferença em relação à
+ * versão anterior. Matiz é só o ângulo da cor no círculo — girar o ângulo te
+ * leva de azul pra verde pra magenta, e nunca pro branco, porque branco não é
+ * uma matiz: é ausência de saturação com brilho alto.
+ *
+ * Então quem faz o trabalho aqui é `saturate` caindo junto com `brightness`
+ * subindo:
+ *
+ *   azul forte → saturação alta, brilho normal
+ *   azul claro → saturação média, brilho um pouco acima
+ *   branco     → saturação quase zero, brilho alto
+ *
+ * A cor da sombra acompanha, senão o cristal embranquecia com um halo azul em
+ * volta — e o halo é justamente a parte que se vê primeiro.
+ *
+ * As paradas 0% e 100% são idênticas pra o laço fechar sem pisca.
+ */
+@keyframes cristal-cromatico {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 13px rgba(14, 165, 233, 0.5))
+      drop-shadow(0 0 26px rgba(14, 165, 233, 0.2)) saturate(1.9) brightness(1);
+  }
+  33% {
+    filter: drop-shadow(0 0 14px rgba(125, 211, 252, 0.45))
+      drop-shadow(0 0 28px rgba(125, 211, 252, 0.18)) saturate(1.15) brightness(1.16);
+  }
+  66% {
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.4))
+      drop-shadow(0 0 30px rgba(255, 255, 255, 0.15)) saturate(0.18) brightness(1.4);
+  }
+}
+
+/*
+ * O estado PARADO, para quem pediu menos movimento.
+ *
+ * Sem isto o cristal ficaria com a cor crua do PNG — escuro e sem brilho
+ * nenhum contra o fundo quase preto — e quem usa redução de movimento veria
+ * uma pedra apagada onde todo mundo vê a marca. Acessibilidade tira o
+ * movimento, não a identidade.
+ */
+/*
+ * O primeiro quadro, antes da animação assumir.
+ *
+ * Tem que ser o MESMO branco do `0%` de `cristal-pulsar` — com valores
+ * diferentes o cristal daria um salto de cor no instante em que a animação
+ * começa, bem na abertura da página, que é onde mais se olha.
+ */
+.cristal-parado {
+  filter: drop-shadow(0 0 9px rgba(255, 255, 255, 0.24))
+    drop-shadow(0 0 22px rgba(255, 255, 255, 0.08)) saturate(0.15) brightness(1.28);
+}
+
+/*
+ * O MESMO tratamento, na escala do cabeçalho.
+ *
+ * ---------------------------------------------------------------------------
+ * O QUE ESTAVA ERRADO NO LOGO DO TOPO
+ * ---------------------------------------------------------------------------
+ * Ele tinha um `<span>` do tamanho da caixa inteira, pintado com o gradiente
+ * da marca e desfocado em 10px. Em 38 pixels isso não vira halo: vira uma
+ * mancha roxa quadrada atrás do cristal, porque o borrão de 10px num quadrado
+ * de 38px não tem distância pra suavizar as quinas. O logo parecia estar
+ * dentro de um adesivo.
+ *
+ * Aqui o brilho sai do PRÓPRIO desenho, via `drop-shadow`, que respeita o
+ * canal alfa e portanto o contorno facetado. Sem caixa, sem quina.
+ *
+ * Os raios são menores que os de `.cristal-parado` de propósito: sombra de
+ * 46px em volta de um ícone de 38px cobriria metade do cabeçalho.
+ */
+/*
+ * O halo do cabeçalho é BRANCO, e quase não existe.
+ *
+ * Era azul e ficava feio — num ícone de 38px, sombra colorida não lê como
+ * luz refratada, lê como borrão azul atrás de um desenho escuro. Branco
+ * apenas SEPARA o cristal do fundo, que é tudo o que se precisa nessa escala;
+ * a cor da marca fica pra onde ela tem espaço pra significar alguma coisa,
+ * que é o cristal grande da abertura.
+ *
+ * Raio de 4px e 9px: o suficiente pra descolar do preto e nada além disso.
+ */
+.cristal-marca {
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3))
+    drop-shadow(0 0 9px rgba(255, 255, 255, 0.12)) brightness(1.06);
+  transition: filter 0.4s ease;
+}
+.group:hover .cristal-marca {
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.45))
+    drop-shadow(0 0 12px rgba(255, 255, 255, 0.2)) brightness(1.14);
+}
+
+/*
+ * A flutuação. Três pixels, dezesseis segundos.
+ *
+ * Quase imperceptível, e é essa a intenção: um objeto parado no meio de uma
+ * tela que atualiza preço o tempo todo lê como imagem travada. Movimento
+ * grande, por outro lado, vira enfeite de site de apresentação. Três pixels
+ * dizem "isto está vivo" sem pedir atenção.
+ */
+@keyframes flutuar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/*
+ * Uma volta completa do reflexo.
+ *
+ * `linear`, não `ease`: reflexo que acelera e desacelera lê como animação de
+ * interface. Luz atravessando superfície tem velocidade constante.
+ */
+@keyframes holo-varrer {
+  0% {
+    background-position: 180% 50%;
+  }
+  100% {
+    background-position: -80% 50%;
+  }
+}
+
+/*
+ * Quem pediu menos movimento no sistema operacional não recebe nenhum.
+ *
+ * Não é acessibilidade opcional: reflexo passando em laço contínuo é
+ * exatamente o estímulo que dispara enxaqueca e desconforto vestibular. A cor
+ * fica; o movimento para.
+ */
+/*
+ * NÃO EXISTE BLOQUEIO POR `prefers-reduced-motion` AQUI. É DECISÃO, NÃO FALHA.
+ * ---------------------------------------------------------------------------
+ * Havia um bloco que desligava as animações pra quem marca "reduzir
+ * movimento" no sistema. Ele foi REMOVIDO a pedido do dono do projeto, em
+ * 23/09/2026, para que todo mundo veja a identidade animada.
+ *
+ * O que isso significa na prática, pra quem mexer nisto depois:
+ *
+ *   - Quem tem sensibilidade vestibular — enxaqueca, enjoo de movimento —
+ *     verá a flutuação do cristal e o reflexo do texto mesmo tendo pedido ao
+ *     sistema operacional pra não ver.
+ *   - Em compensação, quase nenhum site respeita essa configuração, então o
+ *     comportamento aqui passa a ser o mesmo do resto da web.
+ *
+ * O risco real é baixo: nada aqui pisca (o ciclo mais rápido é de 7s, muito
+ * abaixo do limite de 3Hz que importa pra fotossensibilidade) e a flutuação
+ * é de TRÊS pixels.
+ *
+ * Para reverter, basta envolver as animações de novo:
+ *
+ *   @media (prefers-reduced-motion: reduce) {
+ *     .holo-texto, .holo-face::after, .animate-pulse-dot { animation: none; }
+ *     .holo-texto { background-position: 50% 50%; }
+ *   }
+ */
 
 /* Scrollbar discreta */
 ::-webkit-scrollbar {

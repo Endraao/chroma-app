@@ -43,7 +43,7 @@ function excedeuLimite(request: Request): boolean {
 
 export async function POST(request: Request) {
   if (excedeuLimite(request)) {
-    return NextResponse.json({ error: "muitas tentativas; espere um minuto" }, { status: 429 });
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto e tente novamente." }, { status: 429 });
   }
 
   /*
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "campo deve ser avatar ou cover" }, { status: 400 });
   }
   if (!(arquivo instanceof File)) {
-    return NextResponse.json({ error: "nenhum arquivo enviado" }, { status: 400 });
+    return NextResponse.json({ error: "Nenhum arquivo foi enviado." }, { status: 400 });
   }
 
   const campo: CampoDeFoto = campoBruto;
@@ -99,6 +99,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, url: salvo.url, account: conta.account });
   } catch (error) {
     console.error("[api/account/photo] falha:", error);
-    return NextResponse.json({ error: "não consegui guardar a imagem" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível salvar a imagem." }, { status: 500 });
   }
 }

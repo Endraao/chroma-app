@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
   const price = await fetchPrice(address);
   if (price === null) {
-    return NextResponse.json({ error: "preço indisponível" }, { status: 502 });
+    return NextResponse.json({ error: "Preço indisponível no momento." }, { status: 502 });
   }
 
   return NextResponse.json({ address, priceUsd: price, at: Date.now() });

@@ -101,28 +101,59 @@ function sortTokens(list: TokenSummary[], sort: SortKey): TokenSummary[] {
  * ---------------------------------------------------------------------------
  * Porque nenhuma sozinha cobre o que a home precisa:
  *
- * - Os feeds da GeckoTerminal trazem o fluxo de verdade — pool recém-criada,
- *   pool em alta, pool grande — mas NÃO cobrem a Robinhood Chain, que sequer
- *   aparece no catálogo de redes deles.
+ * - Os feeds da GeckoTerminal trazem o fluxo de verdade: pool recém-criada,
+ *   pool em alta, pool grande.
  * - A lista da Dexscreener é pequena e enviesada (só quem foi lá cadastrar o
- *   perfil), mas indexa a Robinhood e traz descrição escrita pelo projeto.
+ *   perfil), mas traz descrição escrita pelo próprio projeto.
  *
  * Somadas, uma tapa o buraco da outra. Empatando no mesmo endereço, os números
  * vêm de quem apurou mais liquidez, e os campos que só uma das fontes tem
  * (imagem, descrição) são preservados dos dois lados.
+ *
+ * ---------------------------------------------------------------------------
+ * A ROBINHOOD CHAIN ESTAVA FALTANDO, E NÃO ERA LIMITAÇÃO DA FONTE
+ * ---------------------------------------------------------------------------
+ * Durante meses esta função pediu os três feeds SÓ da Solana. O comentário
+ * aqui dizia que a GeckoTerminal não cobria a Robinhood Chain — e era falso.
+ * Ela cobre, com o id `robinhood`, e o mapeamento já estava certo em
+ * `web3.ts` desde sempre. Ninguém nunca chamou.
+ *
+ * O efeito era a vitrine mostrar duas ou três moedas da Robinhood por dia,
+ * as únicas que apareciam de raspão na lista de perfis da Dexscreener. Medido
+ * na fonte no dia em que isto foi corrigido: 53 pools com liquidez acima de
+ * mil dólares nos três feeds, incluindo uma de US$ 18,9 milhões.
+ *
+ * Lição pra não repetir: quando uma rede aparece vazia, conferir a FONTE
+ * antes de concluir que ela não tem dados.
  */
 async function universo(): Promise<TokenSummary[]> {
-  const [novas, emAlta, grandes, perfis, daCasa] = await Promise.all([
-    fetchPoolFeed("solana", "new_pools"),
-    fetchPoolFeed("solana", "trending_pools"),
-    fetchPoolFeed("solana", "pools"),
-    fetchTokenList(),
-    moedasDaChroma(),
-  ]);
+  const [novas, emAlta, grandes, novasRh, emAltaRh, grandesRh, perfis, daCasa] =
+    await Promise.all([
+      fetchPoolFeed("solana", "new_pools"),
+      fetchPoolFeed("solana", "trending_pools"),
+      fetchPoolFeed("solana", "pools"),
+      fetchPoolFeed("robinhood", "new_pools"),
+      fetchPoolFeed("robinhood", "trending_pools"),
+      fetchPoolFeed("robinhood", "pools"),
+      fetchTokenList(),
+      moedasDaChroma(),
+    ]);
 
   const porEndereco = new Map<string, TokenSummary>();
 
-  for (const t of [...grandes, ...emAlta, ...novas, ...perfis]) {
+  /*
+   * Ordem importa: quem entra DEPOIS só sobrescreve se tiver mais liquidez.
+   * As pools grandes primeiro, as novas por último — dentro de cada rede.
+   */
+  for (const t of [
+    ...grandes,
+    ...grandesRh,
+    ...emAlta,
+    ...emAltaRh,
+    ...novas,
+    ...novasRh,
+    ...perfis,
+  ]) {
     const chave = `${t.chain}:${t.address.toLowerCase()}`;
     const anterior = porEndereco.get(chave);
 

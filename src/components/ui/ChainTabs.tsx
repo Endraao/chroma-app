@@ -30,11 +30,12 @@ import type { ChainId } from "@/lib/types";
  * Component — e passar os dados em vez do comportamento é o que mantém o
  * componente utilizável em qualquer página que liste moedas.
  */
-export function ChainTabs({ ativa, sort }: { ativa: ChainId | null; sort: string }) {
-  const hrefDe = (chain: ChainId | null) => {
+export function ChainTabs({ ativa, sort }: { ativa: ChainId; sort: string }) {
+  const hrefDe = (chain: ChainId) => {
     const q = new URLSearchParams();
     if (sort && sort !== "new") q.set("sort", sort);
-    if (chain) q.set("chain", chain);
+    /* Solana é o padrão e não precisa ir na URL — igual ao seletor do topo. */
+    if (chain !== "solana") q.set("chain", chain);
     const s = q.toString();
     return s ? `/?${s}` : "/";
   };
@@ -49,10 +50,13 @@ export function ChainTabs({ ativa, sort }: { ativa: ChainId | null; sort: string
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-1.5">
-      <Aba href={hrefDe(null)} selecionada={ativa === null}>
-        Todas
-      </Aba>
+      {/*
+        A aba "Todas" saiu junto com a opção do cabeçalho.
 
+        Não é só limpeza: se ela ficasse, o seletor do topo diria "Solana"
+        enquanto a lista mostraria as duas redes misturadas. Os dois controles
+        mexem no MESMO `?chain=`, então precisam oferecer as mesmas escolhas.
+      */}
       {CHAIN_IDS.map((chain) => (
         <Aba key={chain} href={hrefDe(chain)} selecionada={ativa === chain}>
           <img

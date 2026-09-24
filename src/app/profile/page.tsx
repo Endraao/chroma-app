@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -24,11 +25,41 @@ import { cn, formatUsd, shortenAddress } from "@/lib/utils";
 
 type Aba = "indicacoes" | "conta";
 
+/**
+ * A página inteira precisa de uma fronteira de Suspense por causa do
+ * `useSearchParams` lá dentro — ele suspende na renderização do servidor.
+ *
+ * Aqui a fronteira pode abraçar tudo, ao contrário do que vale pra barra de
+ * categorias: esta é uma página, não um pedaço de moldura, então não existe
+ * conteúdo irmão pra ser arrastado junto pro `<div hidden>` enquanto espera.
+ */
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={null}>
+      <Perfil />
+    </Suspense>
+  );
+}
+
+function Perfil() {
   const account = useChromaAccount();
   const { sol, usd } = useWalletBalance();
 
-  const [aba, setAba] = useState<Aba>("indicacoes");
+  /*
+   * A ABA VEM DA URL, e isso conserta um botão que não fazia nada.
+   * ---------------------------------------------------------------------------
+   * O aviso "você não tem carteira nesta rede", no painel de indicação, tem um
+   * botão "Vincular" que aponta pra `/profile?aba=conta`. Só que esta página
+   * abria SEMPRE em "indicações", ignorando o parâmetro.
+   *
+   * Resultado: clicar em Vincular navegava, a tela parecia não mudar nada, e o
+   * aviso continuava ali. Era impossível descobrir pela interface que a
+   * ferramenta de vincular estava na outra aba.
+   */
+  const parametros = useSearchParams();
+  const [aba, setAba] = useState<Aba>(
+    parametros.get("aba") === "conta" ? "conta" : "indicacoes",
+  );
   const [ganhos, setGanhos] = useState<AffiliateSummary | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [origem, setOrigem] = useState("");
@@ -42,13 +73,21 @@ export default function ProfilePage() {
   useEffect(() => setOrigem(window.location.origin), []);
 
   useEffect(() => {
-    if (!account.wallet) return;
-    // As métricas são por CARTEIRA: é ela que recebe, o apelido é só a fachada.
-    fetch(`/api/affiliate?wallet=${account.wallet}`)
+    if (!account.chaveDeBusca) return;
+    /*
+     * Manda TODAS as carteiras conectadas, não só a preferida.
+     *
+     * As métricas são por CARTEIRA — é ela que recebe, o apelido é só a
+     * fachada —, mas a BUSCA pela conta precisa das duas. Com `account.wallet`
+     * a consulta usava o endereço da Solana (que tem prioridade), e se ele não
+     * estivesse vinculado, a rota não achava a conta que existe. Ver a nota em
+     * `/api/affiliate`.
+     */
+    fetch(`/api/affiliate?wallet=${account.chaveDeBusca}`)
       .then((r) => r.json())
       .then(setGanhos)
       .catch(() => {});
-  }, [account.wallet]);
+  }, [account.chaveDeBusca]);
 
   if (!account.isSignedIn) {
     return (
@@ -222,9 +261,9 @@ export default function ProfilePage() {
                 </Button>
               </div>
               <p className="text-[11px] leading-relaxed text-zinc-600">
-                Este é o link geral. Pra divulgar uma moeda específica, use o botão{" "}
-                <strong className="text-zinc-400">Compartilhar</strong> na página dela — funciona
-                muito melhor, porque as pessoas compartilham a moeda, não a plataforma.
+                Este é o seu link geral. Para divulgar uma moeda específica, use o botão{" "}
+                <strong className="text-zinc-400">Compartilhar</strong> na página dela: o link já
+                sai com a sua indicação.
               </p>
             </CardBody>
           </Card>
@@ -358,8 +397,8 @@ function ContaTab({ account }: { account: ReturnType<typeof useChromaAccount> })
           <EspecDaFoto campo="avatar" className="block" />
           <EspecDaFoto campo="cover" className="block" />
           <p className="pt-1 text-[11px] leading-relaxed text-zinc-600">
-            Sem foto enviada, a Chroma desenha uma a partir do seu endereço — por isso todo perfil
-            já tem avatar e capa. Pra trocar, use os botões de câmera no topo desta página.
+            Enquanto você não envia uma foto, a Chroma cria uma automaticamente a partir do seu
+            endereço. Para trocar, use os botões de câmera no topo desta página.
           </p>
         </div>
 
@@ -370,9 +409,9 @@ function ContaTab({ account }: { account: ReturnType<typeof useChromaAccount> })
         */}
         <p className="border-t border-white/[0.06] pt-3 text-[11px] leading-relaxed text-zinc-600">
           Trocar de apelido{" "}
-          <strong className="text-zinc-400">não quebra os links já divulgados</strong>: os antigos
-          continuam apontando pra sua carteira, e ninguém mais pode registrá-los. Não pede assinatura
-          nem taxa nenhuma.
+          <strong className="text-zinc-400">não quebra os links que você já divulgou</strong>: os
+          antigos continuam apontando para a sua carteira e ninguém mais pode registrá-los. A troca
+          não exige assinatura nem cobra taxa.
         </p>
       </CardBody>
     </Card>

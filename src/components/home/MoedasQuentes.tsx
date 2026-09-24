@@ -71,7 +71,7 @@ export function MoedasQuentes({ tokens }: { tokens: TokenSummary[] }) {
           </div>
 
           <p className="px-3 pb-2 text-[10px] leading-snug text-zinc-600">
-            Maior volume negociado — onde tem gente operando agora.
+            As moedas com maior volume negociado nas últimas 24 horas.
           </p>
 
           <div className="relative z-[1] px-1 pb-1">

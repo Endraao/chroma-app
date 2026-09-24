@@ -109,12 +109,13 @@ export function ShareToken({ token }: { token: TokenSummary }) {
               <>
                 Quem comprar por este link te paga{" "}
                 <strong className="text-marca">{feeLabel.affiliate}</strong> de cada operação
-                — sai da nossa parte, não do bolso de quem compra.
+                — sai da parte da plataforma, não do bolso de quem compra.
               </>
             ) : (
               <>
-                <strong className="text-zinc-300">Faça login</strong> pra este link virar seu: você
-                passa a receber {feeLabel.affiliate} de cada operação de quem entrar por ele.
+                <strong className="text-zinc-300">Entre na sua conta</strong> para este link virar
+                seu: você passa a receber {feeLabel.affiliate} de cada operação de quem entrar por
+                ele.
               </>
             )}
           </p>

@@ -3,6 +3,15 @@ node_modules
 out
 .env
 .env.local
+# Cópias e backups de ambiente.
+#
+# `.env.local` já estava coberto, mas um backup feito na hora de trocar a
+# string do banco (`.env.local.bak`) NÃO estava — e ele carrega a senha
+# inteira do Postgres. Ia entrar no primeiro commit sem ninguém notar.
+#
+# Padrão largo de propósito: qualquer `.env` com sufixo fica de fora.
+.env*.bak
+.env.*.local
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store

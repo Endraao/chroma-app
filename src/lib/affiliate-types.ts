@@ -58,6 +58,14 @@ export interface AffiliateSummary {
   trades: number;
   /** uma entrada por rede em que a pessoa já recebeu alguma coisa */
   porRede: GanhosDaRede[];
+  /**
+   * Tudo que já entrou, somado e convertido em dólar ao preço de AGORA.
+   *
+   * `null` quando não deu pra buscar os preços — a tela esconde o total em
+   * vez de mostrar um valor a menos. As quantidades por rede continuam
+   * corretas de qualquer jeito.
+   */
+  totalUsd: number | null;
   lastActivity: number | null;
 }
 

@@ -267,8 +267,8 @@ function SolanaSwap({
             <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
               Esta ordem move o preço em{" "}
               <strong className="font-semibold">{swap.priceImpactPct.toFixed(1)}%</strong>. É
-              grande demais pra liquidez que existe — você compra caro e quem vender depois recebe
-              menos.
+              grande demais para a liquidez disponível: você compra a um preço pior e quem vender
+              depois recebe menos.
             </p>
           )}
 
@@ -439,7 +439,7 @@ function CampoDeValor({
             <>≈ {formatPrice(emSol, 4)} SOL</>
           ) : (
             <span className="text-warn/80">
-              cotação do SOL indisponível — o valor acima está em SOL
+              cotação do SOL indisponível no momento — o valor acima está em SOL
             </span>
           )
         ) : (
@@ -597,9 +597,10 @@ function Engrenagem({
           </div>
 
           <p className="mt-2.5 text-[11px] leading-snug text-zinc-500">
-            O quanto o preço pode piorar entre você assinar e a ordem executar. Passando disso a
-            transação é <strong className="font-semibold text-zinc-400">cancelada</strong> em vez
-            de sair a qualquer preço — é o que te protege do bot que compra na sua frente.
+            O quanto o preço pode piorar entre você assinar e a ordem ser executada. Acima desse
+            limite a transação é <strong className="font-semibold text-zinc-400">cancelada</strong>{" "}
+            em vez de sair a qualquer preço. É o que protege você de perder valor numa oscilação
+            brusca.
           </p>
 
           {(minimoGarantido || rota) && (
@@ -653,10 +654,9 @@ function EvmSwapPlaceholder({ symbol, chain }: { symbol: string; chain: ChainId 
 
       <div className="space-y-3 px-4 pb-4 pt-1">
         <div className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[12px] leading-relaxed text-warn">
-          <div className="mb-1 font-semibold">Swap em {meta.label} ainda não está ligado.</div>
-          Em EVM não dá pra anexar a transferência do afiliado na mesma transação como na Solana —
-          precisa de um contrato router da Chroma, ou do parâmetro de afiliado de um agregador.
-          Está no README, em &quot;Como a taxa vira transação&quot;.
+          <div className="mb-1 font-semibold">Negociação em {meta.label} em breve.</div>
+          Ainda não é possível comprar e vender nesta rede pela Chroma. Estamos trabalhando nisso. A
+          negociação na {CHAINS.solana.label} já está disponível normalmente.
         </div>
 
         <RequireChainWallet chain={chain}>

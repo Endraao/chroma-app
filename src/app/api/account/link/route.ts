@@ -41,7 +41,7 @@ function excedeuLimite(request: Request): boolean {
 
 export async function POST(request: Request) {
   if (excedeuLimite(request)) {
-    return NextResponse.json({ error: "muitas tentativas; espere um minuto" }, { status: 429 });
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto e tente novamente." }, { status: 429 });
   }
 
   let body: Record<string, unknown>;
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   const conta = await findByWallet(assinante);
   if (!conta) {
-    return NextResponse.json({ error: "essa carteira não tem conta aqui" }, { status: 404 });
+    return NextResponse.json({ error: "Esta carteira ainda não tem conta na Chroma." }, { status: 404 });
   }
 
   /*
@@ -88,11 +88,11 @@ export async function POST(request: Request) {
     : null;
 
   if (!esperada || esperada !== mensagem) {
-    return NextResponse.json({ error: "a mensagem assinada não confere" }, { status: 400 });
+    return NextResponse.json({ error: "A assinatura não confere. Tente novamente." }, { status: 400 });
   }
 
   if (!(await assinaturaConfere({ assinante, mensagem, assinatura }))) {
-    return NextResponse.json({ error: "assinatura inválida ou expirada" }, { status: 401 });
+    return NextResponse.json({ error: "A assinatura é inválida ou expirou. Tente novamente." }, { status: 401 });
   }
 
   /*

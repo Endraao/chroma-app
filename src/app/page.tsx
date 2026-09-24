@@ -1,13 +1,14 @@
 import Link from "next/link";
 
 import { FaixaDeAbertura } from "@/components/home/FaixaDeAbertura";
+import { idiomaAtual } from "@/lib/idioma-servidor";
 import { LinhaDeMoeda } from "@/components/home/LinhaDeMoeda";
 import { MoedasQuentes } from "@/components/home/MoedasQuentes";
 import { Secao } from "@/components/home/Secao";
 import { TokenCard } from "@/components/ui/TokenCard";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
-import { CHAIN_IDS } from "@/lib/web3";
+import { CHAIN_IDS, CHAINS } from "@/lib/web3";
 import type { ChainId, TokenSummary } from "@/lib/types";
 import { formatUsd } from "@/lib/utils";
 
@@ -56,9 +57,20 @@ export default async function HomePage({
    * compartilha abre a mesma lista pra quem receber. A carteira conectada só
    * decide qual aba vem MARCADA — ver ChainTabs.
    */
-  const chain = CHAIN_IDS.includes(filtros.chain as ChainId)
+  /*
+   * SOLANA é o padrão quando a URL não diz nada — não mais "todas as redes".
+   *
+   * É a rede onde a plataforma funciona por inteiro: swap ligado, lançamento
+   * na curva, comissão de afiliado paga na transação. Na Robinhood Chain hoje
+   * só existe leitura. Abrir no "todas" misturava as duas e entregava, logo na
+   * primeira tela, moedas que a pessoa não consegue comprar.
+   *
+   * O parâmetro continua mandando: quem chegar por um link com `?chain=` vê o
+   * que o link pediu, e é isso que mantém link de indicação funcionando.
+   */
+  const chain: ChainId = CHAIN_IDS.includes(filtros.chain as ChainId)
     ? (filtros.chain as ChainId)
-    : null;
+    : "solana";
 
   /*
    * Quatro leituras da mesma lista.
@@ -113,14 +125,15 @@ export default async function HomePage({
   return (
     <div className="space-y-5">
       <FaixaDeAbertura
+        idioma={await idiomaAtual()}
         quantidadeDeTokens={String(tokens.length)}
         volumeTotal={formatUsd(totalVolume)}
       />
 
       {isDemo && (
         <div className="rounded border border-warn/30 bg-warn/[0.06] px-3 py-2 text-[12px] text-warn">
-          A Dexscreener não respondeu agora — a lista abaixo é de demonstração. Recarregue em
-          alguns segundos.
+          Não foi possível carregar os dados de mercado agora. A lista abaixo é apenas um exemplo.
+          Recarregue a página em alguns segundos.
         </div>
       )}
 
@@ -151,7 +164,11 @@ export default async function HomePage({
           {maiores.length > 0 && <div className="aresta" />}
 
           <div id="mercado" className="scroll-mt-20">
-            <Secao titulo="Mercado" resumo="Tudo que está listado, do seu jeito." cor="#22d3ee">
+            <Secao
+              titulo="Mercado"
+              resumo="Todas as moedas listadas. Use os filtros para ordenar."
+              cor="#22d3ee"
+            >
               <ChainTabs ativa={chain} sort={sort} />
 
               <div className="mb-3 flex flex-wrap items-center gap-1">
@@ -177,7 +194,10 @@ export default async function HomePage({
               </div>
 
               {tokens.length === 0 ? (
-                <Vazio href={linkCom({ chain: null })} />
+                <Vazio
+                  href={linkCom({ chain: chain === "solana" ? "robinhood" : "solana" })}
+                  outraRede={CHAINS[chain === "solana" ? "robinhood" : "solana"].label}
+                />
               ) : (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                   {tokens.map((token) => (
@@ -194,7 +214,7 @@ export default async function HomePage({
 
               <Secao
                 titulo="Recém-chegadas"
-                resumo="Acabaram de nascer e ainda são pequenas. Mais risco, e é pra ser assim."
+                resumo="Moedas criadas há pouco tempo e ainda pequenas. O risco aqui é maior."
                 cor="#34d399"
                 acao={{ rotulo: "Ver todas", href: linkCom({ sort: "new" }) }}
               >
@@ -224,14 +244,21 @@ export default async function HomePage({
   );
 }
 
-function Vazio({ href }: { href: string }) {
+/**
+ * A lista vazia manda pra OUTRA rede, não mais pra "as duas".
+ *
+ * O destino "todas as redes" deixou de existir quando a home passou a abrir
+ * em Solana. Um link pra um filtro que não existe mais devolveria a pessoa
+ * exatamente pra lista vazia de onde ela saiu.
+ */
+function Vazio({ href, outraRede }: { href: string; outraRede: string }) {
   return (
     <div className="rounded-lg border border-ink-700 bg-ink-900 px-6 py-12 text-center">
       <p className="text-[14px] font-semibold text-zinc-300">Nenhuma moeda nessa rede agora.</p>
       <p className="mt-1 text-[12px] text-zinc-600">
         A lista vem do mercado ao vivo e muda o tempo todo.{" "}
         <Link href={href} className="text-marca hover:underline">
-          Ver as duas redes
+          Ver a rede {outraRede}
         </Link>
         .
       </p>
@@ -249,9 +276,8 @@ function Vazio({ href }: { href: string }) {
 function SemSeparacao({ tokens }: { tokens: TokenSummary[] }) {
   return (
     <p className="text-[11px] text-zinc-600">
-      {tokens.length} {tokens.length === 1 ? "moeda listada" : "moedas listadas"} neste filtro —
-      poucas pra separar em faixas. As seções de maiores e de recém-chegadas voltam quando a
-      lista crescer.
+      {tokens.length} {tokens.length === 1 ? "moeda listada" : "moedas listadas"} neste filtro. As
+      seções de maiores e de recém-chegadas aparecem quando houver mais moedas.
     </p>
   );
 }

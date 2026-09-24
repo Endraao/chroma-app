@@ -5,6 +5,8 @@ import { Suspense } from "react";
 import { WalletProviders } from "@/components/web3/WalletProviders";
 import { Header } from "@/components/ui/Header";
 import { Moldura } from "@/components/ui/Moldura";
+import { Rodape } from "@/components/ui/Rodape";
+import { idiomaAtual } from "@/lib/idioma-servidor";
 import { AffiliateBanner } from "@/components/web3/AffiliateBanner";
 import { RpcNotice } from "@/components/web3/RpcNotice";
 
@@ -40,9 +42,25 @@ export const metadata: Metadata = {
     "Lance e negocie tokens em Solana e EVM com gráfico ao vivo, auditoria de contrato e revenue-share de 0,5% para afiliados.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  /*
+   * O idioma é decidido AQUI, no servidor, e desce como propriedade.
+   *
+   * Assim a página já nasce traduzida — ver `src/lib/idioma-servidor.ts` pro
+   * porquê de ser cookie e não `localStorage`, e pro custo que isso tem.
+   */
+  const idioma = await idiomaAtual();
+
   return (
-    <html lang="pt-BR" className="dark">
+    /*
+     * `lang` de verdade, não `pt-BR` fixo pra todo mundo.
+     *
+     * É o atributo que o leitor de tela usa pra escolher a PRONÚNCIA: uma
+     * página em coreano marcada como português é lida em voz alta como se
+     * fosse português. Também é o que diz ao buscador pra quem esta página
+     * serve.
+     */
+    <html lang={idioma} className="dark">
       <body className={`${display.variable} ${mono.variable} min-h-screen font-sans`}>
         <WalletProviders>
           {/* useSearchParams precisa de um limite de Suspense no App Router. */}
@@ -50,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AffiliateBanner />
           </Suspense>
           <RpcNotice />
-          <Header />
+          <Header idioma={idioma} />
           {/*
             Sem Suspense aqui de propósito.
 
@@ -60,6 +78,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             usa enquanto espera, e o site abria com o cabeçalho e mais nada.
           */}
           <Moldura>{children}</Moldura>
+
+          {/*
+            O rodapé fica FORA da moldura de propósito: dentro, ele nasceria
+            dentro da coluna de conteúdo e a barra de categorias empurraria o
+            aviso de risco pro lado. Fora, ele atravessa a largura inteira em
+            toda página, que é onde um aviso de risco tem que estar.
+          */}
+          <Rodape idioma={idioma} />
         </WalletProviders>
       </body>
     </html>

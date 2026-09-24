@@ -143,6 +143,33 @@ async function criarTabelas(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_apelidos_conta ON apelidos(conta)`,
 
     /*
+     * QUEM INDICOU ESTA CONTA. Gravado uma vez, nunca sobrescrito.
+     *
+     * ---------------------------------------------------------------------
+     * POR QUE NA CONTA, E NÃO SÓ NO NAVEGADOR
+     * ---------------------------------------------------------------------
+     * A atribuição de indicação vivia apenas no `localStorage` de quem clicou
+     * no link. Isso funciona enquanto a pessoa fica no mesmo navegador — e
+     * some quando ela troca de aparelho, limpa o histórico ou abre em aba
+     * anônima. O promotor perdia a comissão sem nunca saber por quê.
+     *
+     * Pior: com uma carteira por rede, quem entrou pelo link na Solana e
+     * depois conectou a Robinhood podia ser tratado como visita nova. As duas
+     * redes da MESMA pessoa precisam pagar o MESMO promotor.
+     *
+     * Guardando na conta, o vínculo passa a valer para todas as carteiras
+     * dela, em qualquer rede e em qualquer aparelho.
+     *
+     * Guarda o APELIDO, não o id: é o que sobrevive a o promotor trocar de
+     * carteira, e é o mesmo identificador que anda no `?ref=`.
+     *
+     * `ADD COLUMN IF NOT EXISTS` porque a tabela já existe em produção com
+     * dados reais — criar de novo apagaria contas de gente.
+     */
+    `ALTER TABLE contas ADD COLUMN IF NOT EXISTS indicado_por TEXT`,
+    `CREATE INDEX IF NOT EXISTS idx_contas_indicado_por ON contas(indicado_por)`,
+
+    /*
      * Carteiras em tabela própria, não num campo JSON.
      *
      * A chave primária é o endereço, e é ela que torna "uma carteira pertence
@@ -223,6 +250,108 @@ async function criarTabelas(): Promise<void> {
      )`,
     `CREATE INDEX IF NOT EXISTS idx_moedas_criada ON moedas(criada_em DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_moedas_criador ON moedas(criador)`,
+
+    /*
+     * Denúncias de moeda.
+     *
+     * ---------------------------------------------------------------------
+     * POR QUE ISTO EXISTE
+     * ---------------------------------------------------------------------
+     * Qualquer pessoa cria uma moeda aqui, com o nome e a arte que quiser.
+     * É assim que a launchpad funciona — e é também como o site acaba
+     * hospedando insulto racial, pornografia e golpe explícito, do jeito que
+     * acontece em toda plataforma do gênero que não se protegeu.
+     *
+     * Isso é risco NOSSO, não do denunciante: provedor de hospedagem,
+     * provedor de dados e lei brasileira cobram de quem publica. A diferença
+     * entre "não fizemos nada" e "temos canal e agimos" é literalmente esta
+     * tabela.
+     *
+     * Guarda o denunciante só como carteira opcional — não pedimos identidade
+     * pra alguém apontar um crime.
+     */
+    `CREATE TABLE IF NOT EXISTS denuncias (
+       id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       token     TEXT NOT NULL,
+       rede      TEXT,
+       simbolo   TEXT,
+       motivo    TEXT NOT NULL,
+       detalhe   TEXT,
+       carteira  TEXT,
+       ip_hash   TEXT,
+       estado    TEXT NOT NULL DEFAULT 'aberta',
+       criada_em BIGINT NOT NULL
+     )`,
+    /* A fila de moderação é sempre "o que está aberto, mais novo primeiro". */
+    `CREATE INDEX IF NOT EXISTS idx_denuncias_fila ON denuncias(estado, criada_em DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_denuncias_token ON denuncias(token)`,
+
+    /*
+     * Mensagens do formulário de contato e suporte.
+     *
+     * Vai pro banco ANTES de tentar e-mail, e isso não é ordem à toa: se o
+     * envio falhar — chave errada, serviço fora, cota estourada — a mensagem
+     * da pessoa continua aqui. Formulário que só manda e-mail perde pedido de
+     * ajuda em silêncio, e quem escreveu acha que foi ignorado.
+     */
+    `CREATE TABLE IF NOT EXISTS mensagens (
+       id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       nome      TEXT NOT NULL,
+       email     TEXT NOT NULL,
+       carteira  TEXT,
+       assunto   TEXT NOT NULL,
+       texto     TEXT NOT NULL,
+       ip_hash   TEXT,
+       enviada   BOOLEAN NOT NULL DEFAULT FALSE,
+       estado    TEXT NOT NULL DEFAULT 'aberta',
+       criada_em BIGINT NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mensagens_fila ON mensagens(estado, criada_em DESC)`,
+
+    /*
+     * O livro-razão de pontos do airdrop.
+     *
+     * ---------------------------------------------------------------------
+     * É LANÇAMENTO, NÃO PLACAR
+     * ---------------------------------------------------------------------
+     * Cada linha é um fato que aconteceu e não muda mais: "esta carteira
+     * ganhou 340 pontos por ESTE swap, nesta data". O total de alguém é a
+     * SOMA das linhas, calculada na hora.
+     *
+     * A alternativa — uma coluna `total` que sobe a cada evento — parece mais
+     * simples e é uma armadilha. Um bug que some errado uma vez corrompe o
+     * número pra sempre, sem deixar rastro de quando nem por quê. E no dia da
+     * distribuição, quem discordar do próprio saldo não tem o que conferir.
+     * Aqui tem: dá pra abrir a conta lançamento por lançamento.
+     *
+     * ---------------------------------------------------------------------
+     * `referencia` É O QUE IMPEDE CRÉDITO DUPLO
+     * ---------------------------------------------------------------------
+     * Assinatura da transação, endereço da moeda, id da indicação — o que
+     * for, mas único e vindo de fora. Com o índice único em (tipo,
+     * referencia), reenviar o mesmo swap dez vezes credita uma vez só.
+     *
+     * Esta é a mesma lição que os eventos de afiliado já ensinaram: sem o
+     * índice, 136 registros de trade eram 6 transações repetidas. Lá isso
+     * inflava um painel; aqui inflaria a fatia que alguém recebe de um token
+     * com valor de mercado.
+     */
+    `CREATE TABLE IF NOT EXISTS pontos (
+       id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       carteira   TEXT NOT NULL,
+       rede       TEXT NOT NULL,
+       tipo       TEXT NOT NULL,
+       pontos     INTEGER NOT NULL,
+       referencia TEXT NOT NULL,
+       detalhe    TEXT,
+       temporada  INTEGER NOT NULL DEFAULT 1,
+       criado_em  BIGINT NOT NULL
+     )`,
+    /* A regra de "cada fato conta uma vez" é do BANCO, não do código. */
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_pontos_unico ON pontos(tipo, referencia)`,
+    /* O saldo de uma carteira é sempre "soma tudo desta carteira na temporada". */
+    `CREATE INDEX IF NOT EXISTS idx_pontos_carteira ON pontos(carteira, temporada)`,
+    `CREATE INDEX IF NOT EXISTS idx_pontos_tipo ON pontos(temporada, tipo)`,
   ];
 
   for (const passo of passos) await sql.query(passo);

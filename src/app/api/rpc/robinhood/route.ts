@@ -153,7 +153,7 @@ function recusar(chamada: Chamada): string | null {
 export async function POST(request: Request) {
   if (excedeuLimite(request)) {
     return NextResponse.json(
-      { error: { code: -32005, message: "muitas requisições" } },
+      { error: { code: -32005, message: "Muitas requisições. Aguarde um instante." } },
       { status: 429 },
     );
   }

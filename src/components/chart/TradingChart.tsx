@@ -25,6 +25,7 @@ import {
 
 import { BarraDeDesenho } from "./BarraDeDesenho";
 import { registrarRegua } from "./regua";
+import { POR_CHAVE, parametrosPadrao } from "@/lib/indicadores";
 import { cn } from "@/lib/utils";
 import type { EscalaDoGrafico } from "@/lib/chart-scale";
 import type { Candle } from "@/lib/types";
@@ -60,17 +61,29 @@ import type { Candle } from "@/lib/types";
  * minuto. Era isso que fazia o gráfico parecer duro.
  */
 
-/** Indicadores desenhados POR CIMA das velas. */
-export const INDICADORES_PRINCIPAIS = ["MA", "EMA", "BOLL", "SAR"] as const;
-/** Indicadores que ganham um painel próprio embaixo. */
-export const INDICADORES_INFERIORES = ["VOL", "MACD", "RSI", "KDJ"] as const;
+/**
+ * Quem é quem sai do catálogo, em `src/lib/indicadores.ts`.
+ *
+ * Antes as duas listas eram escritas aqui, à mão, com 8 dos 27 indicadores que
+ * a biblioteca já carrega. Manter a lista no mesmo arquivo que desenha o
+ * gráfico garantia que ligar um indicador novo exigisse lembrar de dois
+ * lugares — o menu e aqui — e um dos dois sempre ficaria pra trás.
+ */
+export type Indicador = string;
 
-export type Indicador =
-  | (typeof INDICADORES_PRINCIPAIS)[number]
-  | (typeof INDICADORES_INFERIORES)[number];
+/** Quais parâmetros cada indicador está usando agora, por chave. */
+export type ParametrosDeIndicador = Record<string, number[]>;
 
-const ehPrincipal = (nome: string) =>
-  (INDICADORES_PRINCIPAIS as readonly string[]).includes(nome);
+const ehPrincipal = (nome: string) => POR_CHAVE.get(nome)?.painel === "velas";
+
+/**
+ * O padrão de `parametros`, fora do componente.
+ *
+ * Um `{}` escrito na assinatura viraria objeto novo a cada renderização, e o
+ * efeito dos indicadores — que tem `parametros` nas dependências — rodaria
+ * sem parar recalculando o gráfico inteiro.
+ */
+const VAZIO: ParametrosDeIndicador = {};
 
 /* ------------------------------------------------------------------ */
 
@@ -150,6 +163,7 @@ export function TradingChart({
   escala,
   serie,
   indicadores,
+  parametros = VAZIO,
   altura = 560,
   comandos,
   rotulo,
@@ -160,6 +174,15 @@ export function TradingChart({
   /** identidade da série: mudou, reaplica tudo. Ex.: "endereço:1m:mcap" */
   serie: string;
   indicadores: Indicador[];
+  /**
+   * O que a pessoa configurou, por indicador. Chave ausente = valor de
+   * fábrica do catálogo.
+   *
+   * Precisa ser referência ESTÁVEL entre renderizações — um objeto literal
+   * novo a cada render dispararia o efeito sem parar, e cada disparo
+   * recalcula todas as séries do gráfico.
+   */
+  parametros?: ParametrosDeIndicador;
   /** altura em px; o gráfico é a peça principal da página, então é generosa */
   altura?: number;
   /** por onde a barra de ferramentas manda no gráfico */
@@ -283,40 +306,57 @@ export function TradingChart({
     }
 
     for (const nome of desejados) {
-      if (mapa.has(nome)) continue;
-      /*
-       * O VOLUME fica numa FAIXA PRÓPRIA, baixa, colada embaixo do preço.
-       *
-       * Tentei pô-lo dentro do painel das velas pra imitar o terminal de
-       * referência, e isso introduziu um bug feio: os dois passam a dividir o
-       * mesmo eixo. Em market cap o preço é ~3.000 contra volume ~12 e não se
-       * nota; em preço por token é 0,000003 contra 12 — o volume vira uma
-       * parede de barras e as velas somem numa linha no rodapé.
-       *
-       * Numa faixa própria as escalas são independentes, então nenhuma moeda
-       * quebra o gráfico. Visualmente dá no mesmo: a faixa é curta e o selo do
-       * último volume continua aparecendo na coluna do eixo.
-       */
-      const painel = ehPrincipal(nome)
-        ? chart.createIndicator(nome, true, { id: "candle_pane" })
-        : chart.createIndicator(nome, false, {
-            height: nome === "VOL" ? 64 : 80,
-            /* A faixa do volume não se arrasta: ela é apoio, não um gráfico. */
-            dragEnabled: nome !== "VOL",
-          });
+      let painel = mapa.get(nome);
 
-      if (painel) {
-        mapa.set(nome, painel);
-
+      if (painel === undefined) {
         /*
-         * Sem as médias móveis do volume. A biblioteca calcula MA5/MA10/MA20
-         * por padrão e escreve as três na legenda; num gráfico de meme coin de
-         * minuto isso é ruído sobre ruído.
+         * O VOLUME fica numa FAIXA PRÓPRIA, baixa, colada embaixo do preço.
+         *
+         * Tentei pô-lo dentro do painel das velas pra imitar o terminal de
+         * referência, e isso introduziu um bug feio: os dois passam a dividir o
+         * mesmo eixo. Em market cap o preço é ~3.000 contra volume ~12 e não se
+         * nota; em preço por token é 0,000003 contra 12 — o volume vira uma
+         * parede de barras e as velas somem numa linha no rodapé.
+         *
+         * Numa faixa própria as escalas são independentes, então nenhuma moeda
+         * quebra o gráfico. Visualmente dá no mesmo: a faixa é curta e o selo do
+         * último volume continua aparecendo na coluna do eixo.
          */
-        if (nome === "VOL") chart.overrideIndicator({ name: "VOL", calcParams: [] }, painel);
+        const criado = ehPrincipal(nome)
+          ? chart.createIndicator(nome, true, { id: "candle_pane" })
+          : chart.createIndicator(nome, false, {
+              height: nome === "VOL" ? 64 : 80,
+              /* A faixa do volume não se arrasta: ela é apoio, não um gráfico. */
+              dragEnabled: nome !== "VOL",
+            });
+
+        /* Nome que a biblioteca não conhece: ignora em vez de guardar lixo. */
+        if (!criado) continue;
+
+        painel = criado;
+        mapa.set(nome, criado);
       }
+
+      /*
+       * Os parâmetros são aplicados SEMPRE, na criação e a cada mudança.
+       *
+       * É o que faz o menu de configuração valer: sem esta linha o indicador
+       * nasceria com o padrão da biblioteca e ficaria surdo ao que a pessoa
+       * escolhesse depois. `overrideIndicator` recalcula a série inteira, o
+       * que é exatamente o desejado — período novo, curva nova.
+       *
+       * Vale também pro VOLUME, cujo padrão no nosso catálogo é lista VAZIA:
+       * a biblioteca calcula MA5/MA10/MA20 do volume por conta própria e
+       * escreve as três na legenda, e num gráfico de meme coin de minuto isso
+       * é ruído sobre ruído. Antes isso era um `if` especial aqui; agora é só
+       * o valor padrão dele no catálogo.
+       */
+      chart.overrideIndicator(
+        { name: nome, calcParams: parametros[nome] ?? parametrosPadrao(nome) },
+        painel,
+      );
     }
-  }, [indicadores, pronto]);
+  }, [indicadores, parametros, pronto]);
 
   /* --- A vela que a legenda mostra --------------------------------- */
   /*

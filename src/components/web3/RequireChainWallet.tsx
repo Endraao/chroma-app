@@ -66,15 +66,15 @@ export function RequireChainWallet({
         <p className="text-[11px] leading-relaxed text-zinc-500">
           {redeErrada ? (
             <>
-              Pra operar esta moeda a carteira precisa estar na{" "}
-              <strong className="text-zinc-300">{meta.label}</strong>. Assinar em outra rede mandaria
-              a transação pro lugar errado.
+              Para negociar esta moeda, a sua carteira precisa estar na{" "}
+              <strong className="text-zinc-300">{meta.label}</strong>. Troque de rede na carteira
+              para continuar.
             </>
           ) : (
             <>
-              Conecte uma carteira da <strong className="text-zinc-300">{meta.label}</strong> pra
-              comprar ou vender. As duas redes podem ficar conectadas ao mesmo tempo — cada moeda usa
-              a sua.
+              Conecte uma carteira da <strong className="text-zinc-300">{meta.label}</strong> para
+              comprar ou vender. Você pode manter as duas redes conectadas ao mesmo tempo: cada
+              moeda usa a carteira da sua rede.
             </>
           )}
         </p>

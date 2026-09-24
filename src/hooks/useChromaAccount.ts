@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount as useWagmiAccount } from "wagmi";
 
 import type { ChainId } from "@/lib/types";
+import { refGuardado } from "@/hooks/useAffiliateTracking";
 
 /**
  * A MetaMask devolve o endereço com maiúsculas do checksum e o arquivo pode ter
@@ -46,6 +47,31 @@ export function useChromaAccount() {
 
   const [account, setAccount] = useState<ChromaAccount | null>(null);
   const [loading, setLoading] = useState(false);
+
+  /**
+   * Qual carteira já teve a busca de conta CONCLUÍDA.
+   *
+   * ---------------------------------------------------------------------------
+   * POR QUE ISTO PRECISOU EXISTIR
+   * ---------------------------------------------------------------------------
+   * `needsNickname` era `isSignedIn && !loading && !account`, e isso abria o
+   * modal de apelido em TODA recarga de página, para quem já tinha conta.
+   *
+   * A ordem dos acontecimentos num F5 é:
+   *
+   *   1. a carteira reconecta sozinha  → `isSignedIn` vira true
+   *   2. o React renderiza             → `loading` ainda é false, `account` é null
+   *   3. SÓ ENTÃO o efeito roda e começa a buscar a conta
+   *
+   * Entre o passo 2 e o 3 existe um quadro em que a expressão dava "true" —
+   * não porque a pessoa não tem conta, mas porque ninguém ainda tinha
+   * perguntado. O modal abria nesse quadro e não fechava mais.
+   *
+   * Comparar a chave resolvida com a chave atual resolve sem precisar de um
+   * `setState` no corpo do efeito: quando a carteira muda, as duas param de
+   * bater sozinhas, e "ainda não sei" é o estado natural.
+   */
+  const [chaveResolvida, setChaveResolvida] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +99,7 @@ export function useChromaAccount() {
   useEffect(() => {
     if (!chaveDeBusca) {
       setAccount(null);
+      setChaveResolvida(null);
       return;
     }
 
@@ -80,15 +107,40 @@ export function useChromaAccount() {
     setLoading(true);
 
     fetch(`/api/account?wallet=${chaveDeBusca}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled) setAccount(data ?? null);
+      .then(async (r) => {
+        /*
+         * Resposta de ERRO não é resposta "sem conta".
+         *
+         * Banco fora do ar, servidor com 500, rede caindo — em todos esses
+         * casos a verdade é "não deu pra saber", e não "esta carteira nunca
+         * registrou apelido". Tratar os dois igual é o que transformava uma
+         * falha de infraestrutura num convite pra criar conta duplicada.
+         *
+         * Foi exatamente o que aconteceu: com a senha do banco recusada, o
+         * site pedia apelido a cada F5 pra quem já tinha um — e o botão de
+         * registrar não funcionava, porque a gravação falhava pelo mesmo
+         * motivo. Trinta apelidos depois, o defeito ficou visível.
+         */
+        if (!r.ok) throw new Error(`conta: HTTP ${r.status}`);
+
+        const data = (await r.json()) as ChromaAccount | null;
+        if (cancelled) return;
+
+        setAccount(data ?? null);
+        setLoading(false);
+        /* Só uma resposta BOA conta como "agora eu sei". */
+        setChaveResolvida(chaveDeBusca);
       })
       .catch(() => {
-        if (!cancelled) setAccount(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        setAccount(null);
+        setLoading(false);
+        /*
+         * `chaveResolvida` fica como está — ou seja, diferente da chave atual.
+         * `needsNickname` continua falso e o modal não aparece. A pessoa vê o
+         * site normalmente; só as funções que dependem de conta ficam quietas
+         * até o servidor voltar.
+         */
       });
 
     return () => {
@@ -127,10 +179,16 @@ export function useChromaAccount() {
         const res = await fetch("/api/account", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ nickname, wallet, kind }),
+          /*
+           * O `?ref=` guardado no navegador viaja junto, e é AQUI que ele
+           * deixa de ser temporário: a partir deste momento o vínculo mora na
+           * conta e vale pras duas redes, em qualquer aparelho. Ver a nota em
+           * `db.ts`.
+           */
+          body: JSON.stringify({ nickname, wallet, kind, indicadoPor: refGuardado() }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data?.error ?? "não consegui registrar");
+        if (!res.ok) throw new Error(data?.error ?? "Não foi possível concluir o registro.");
 
         setAccount(data.account);
         return true;
@@ -185,6 +243,19 @@ export function useChromaAccount() {
 
   return {
     wallet,
+    /**
+     * TODAS as carteiras conectadas agora, separadas por vírgula.
+     *
+     * É a chave certa pra qualquer rota que precise achar a CONTA da pessoa —
+     * e não só um endereço. Usar `wallet` sozinho abre um buraco: ele é o
+     * endereço PREFERIDO (Solana ganha da EVM), e se justamente esse não
+     * estiver vinculado, a busca não acha a conta que existe.
+     *
+     * Foi exatamente o que aconteceu no painel de afiliados: ele mandava
+     * `wallet`, a Solana não estava vinculada, e a tela dizia "você não tem
+     * carteira nesta rede" para as duas redes — inclusive pra que estava.
+     */
+    chaveDeBusca,
     kind,
     conectadas,
     carteiras: account?.carteiras ?? {},
@@ -193,7 +264,14 @@ export function useChromaAccount() {
     account,
     label,
     referralId,
-    needsNickname: isSignedIn && !loading && !account,
+    /*
+     * "Precisa escolher apelido" exige que a busca TENHA TERMINADO para esta
+     * carteira. Sem a comparação de chave, isto era verdadeiro no quadro
+     * entre a carteira reconectar e o efeito começar a buscar — e o modal
+     * abria em toda recarga pra quem já tinha conta. Ver a nota em
+     * `chaveResolvida`.
+     */
+    needsNickname: isSignedIn && chaveResolvida === chaveDeBusca && !account,
     loading,
     claiming,
     error,

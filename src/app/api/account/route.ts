@@ -34,13 +34,13 @@ export async function GET(request: Request) {
     return NextResponse.json({
       available: !existing,
       nickname: validation.nickname,
-      reason: existing ? "Esse apelido já está em uso." : null,
+      reason: existing ? "Este apelido já está em uso." : null,
     });
   }
 
   if (nickname) {
     const account = await findByNickname(nickname);
-    if (!account) return NextResponse.json({ error: "apelido não encontrado" }, { status: 404 });
+    if (!account) return NextResponse.json({ error: "Apelido não encontrado." }, { status: 404 });
 
     /*
      * Com `chain`, devolve o endereço DAQUELA rede — é assim que a indicação
@@ -109,7 +109,7 @@ function excedeuLimite(request: Request): boolean {
 
 export async function POST(request: Request) {
   if (excedeuLimite(request)) {
-    return NextResponse.json({ error: "muitas tentativas; espere um minuto" }, { status: 429 });
+    return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto e tente novamente." }, { status: 429 });
   }
 
   let body: Record<string, unknown>;
@@ -127,7 +127,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "nickname e wallet são obrigatórios" }, { status: 400 });
   }
 
-  const result = await claimNickname({ nickname, wallet, kind });
+  /*
+   * Quem indicou, vindo do `?ref=` que o navegador guardou.
+   *
+   * Aceito do cliente, e isso não abre buraco: o pior que alguém consegue
+   * fazer mentindo aqui é atribuir a PRÓPRIA conta a um promotor que não a
+   * trouxe. Não dá pra roubar comissão de terceiro — a comissão vai pro
+   * promotor, não pra quem mente — e a auto-indicação é recusada por
+   * `resolverIndicador`, que compara as duas contas.
+   *
+   * Gravado UMA VEZ, na criação da conta. Ver `claimNickname`.
+   */
+  const indicadoPor =
+    typeof body.indicadoPor === "string" ? body.indicadoPor.slice(0, 64) : null;
+
+  const result = await claimNickname({ nickname, wallet, kind, indicadoPor });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

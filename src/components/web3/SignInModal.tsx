@@ -70,7 +70,7 @@ export function SignInModal({ open, onClose }: { open: boolean; onClose: () => v
       : step === "all"
         ? {
             title: "Carteiras " + REDE[scope].label,
-            subtitle: "Detectadas primeiro; o resto abre a página de instalação.",
+            subtitle: "As instaladas aparecem primeiro. As demais abrem a página de instalação.",
           }
         : {
             title: "Escolha seu apelido",
@@ -163,14 +163,15 @@ function MainStep({ onShowAll }: { onShowAll: (rede: WalletNetwork) => void }) {
 
       {!hasAny && (
         <p className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[12px] leading-snug text-warn">
-          Nenhuma carteira detectada neste navegador. As listadas abrem a página de instalação —
-          depois de instalar, recarregue esta página.
+          Nenhuma carteira foi encontrada neste navegador. As opções acima abrem a página de
+          instalação. Depois de instalar, recarregue esta página.
         </p>
       )}
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
-        Ao entrar você concorda que a Chroma é um roteador não-custodial: as transações saem da sua
-        carteira e a plataforma nunca tem posse dos seus fundos. Dá pra conectar as duas redes.
+        Ao entrar, você reconhece que a Chroma é uma interface não custodial: as transações saem da
+        sua carteira e a plataforma nunca tem posse dos seus fundos. Você pode conectar as duas redes
+        ao mesmo tempo.
       </p>
     </div>
   );
@@ -334,7 +335,7 @@ function GoogleRow() {
           SOCIAL_LOGIN_ENABLED
             ? undefined
             : setMessage(
-                "Login com Google precisa de um provedor de embedded wallet (Privy, Web3Auth, Dynamic). Ainda não foi contratado — ver src/lib/social-login.ts.",
+                "A entrada com o Google ainda não está disponível. Por enquanto, use uma das carteiras listadas acima.",
               )
         }
         className={cn(
@@ -437,8 +438,8 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
         3 a 20 caracteres, só letras, números e <code>_</code>. Seu link fica{" "}
-        <span className="text-marca">/?ref={nickname || "seunome"}</span>. Dá pra trocar
-        depois no seu perfil — os links antigos continuam funcionando.
+        <span className="text-marca">/?ref={nickname || "seunome"}</span>. Você pode trocar de
+        apelido depois, no seu perfil, e os links antigos continuam funcionando.
       </p>
 
       <div className="rounded-xl border border-white/[0.06] bg-ink-950/60 p-3 text-[11px] leading-relaxed text-zinc-500">

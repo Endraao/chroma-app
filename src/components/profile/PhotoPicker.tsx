@@ -63,7 +63,7 @@ export function PhotoPicker({
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-      img.onerror = () => reject(new Error("não consegui abrir essa imagem"));
+      img.onerror = () => reject(new Error("Não foi possível abrir esta imagem."));
       img.src = url;
     });
   }
@@ -93,7 +93,7 @@ export function PhotoPicker({
     } catch (e) {
       onRecado({
         tipo: "erro",
-        texto: e instanceof Error ? e.message : "não consegui ler essa imagem",
+        texto: e instanceof Error ? e.message : "Não foi possível ler esta imagem.",
       });
     } finally {
       URL.revokeObjectURL(url);
@@ -112,7 +112,7 @@ export function PhotoPicker({
 
       const res = await fetch("/api/account/photo", { method: "POST", body: form });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "não consegui guardar a imagem");
+      if (!res.ok) throw new Error(data?.error ?? "Não foi possível salvar a imagem.");
 
       onSaved(data.url as string);
     } catch (e) {

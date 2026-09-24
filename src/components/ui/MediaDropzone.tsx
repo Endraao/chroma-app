@@ -58,7 +58,7 @@ function readDimensions(file: File, url: string): Promise<{ width: number; heigh
       video.preload = "metadata";
       video.onloadedmetadata = () =>
         resolve({ width: video.videoWidth, height: video.videoHeight, kind: "video" });
-      video.onerror = () => reject(new Error("não consegui ler o vídeo"));
+      video.onerror = () => reject(new Error("Não foi possível ler este vídeo."));
       video.src = url;
       return;
     }
@@ -66,7 +66,7 @@ function readDimensions(file: File, url: string): Promise<{ width: number; heigh
     const image = new Image();
     image.onload = () =>
       resolve({ width: image.naturalWidth, height: image.naturalHeight, kind: "image" });
-    image.onerror = () => reject(new Error("não consegui ler a imagem"));
+    image.onerror = () => reject(new Error("Não foi possível ler esta imagem."));
     image.src = url;
   });
 }

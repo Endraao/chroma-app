@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { ShareToken } from "@/components/trading/ShareToken";
+import { DenunciarToken } from "@/components/trading/DenunciarToken";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
 import type { StatsAoVivo } from "@/components/trading/TokenTerminal";
@@ -129,6 +130,15 @@ export function TokenHeader({
               </a>
             )}
             <span>criado {timeAgo(token.createdAt)} atrás</span>
+
+            {/*
+              A denúncia mora AQUI, na linha dos metadados, e não junto do
+              compartilhar. Canal de denúncia em destaque vira arma: dá pra
+              usar pra sujar a fila de um concorrente em massa. Quem precisa
+              dele, acha — e o ícone de bandeira é o mesmo que toda plataforma
+              do gênero usa, então não precisa de rótulo.
+            */}
+            <DenunciarToken token={token} />
           </div>
         </div>
 

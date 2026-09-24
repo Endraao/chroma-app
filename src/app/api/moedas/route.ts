@@ -3,6 +3,7 @@ import { PublicKey } from "@solana/web3.js";
 
 import { enderecoDaCurva, lerCurva } from "@/lib/chroma-program";
 import { registrarMoeda } from "@/lib/db";
+import { creditarMoeda } from "@/lib/airdrop";
 
 /**
  * POST /api/moedas — registra uma moeda recém-lançada na Chroma.
@@ -69,7 +70,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    registrarMoeda({
+    /*
+     * `await` não é enfeite aqui.
+     *
+     * Sem ele a promessa fica solta, e em função serverless o processo pode
+     * ser encerrado assim que a resposta sai — antes de a escrita terminar. A
+     * moeda seria criada na rede e sumiria da nossa vitrine, de vez em quando,
+     * sem erro em lugar nenhum. O `catch` também nunca pegaria nada.
+     */
+    await registrarMoeda({
       endereco: chaveDoMint.toBase58(),
       rede: "solana",
       nome: texto(corpo.nome, LIMITES.nome) || chaveDoMint.toBase58().slice(0, 6),
@@ -83,7 +92,24 @@ export async function POST(request: Request) {
     });
   } catch (erro) {
     console.warn("[moedas] falha ao registrar:", erro);
-    return NextResponse.json({ error: "não deu pra registrar" }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível registrar agora." }, { status: 500 });
+  }
+
+  /*
+   * Pontos do airdrop pela moeda lançada.
+   *
+   * Depois do registro e num `try` próprio: se a pontuação falhar, a moeda já
+   * está registrada e a criação não pode ser desfeita por causa disso. Perder
+   * ponto é chato; perder a moeda da vitrine é quebrar o produto.
+   *
+   * O criador vem da conta on-chain — o mesmo valor que o registro usou — e
+   * não do corpo do pedido. Sem isso, qualquer um pediria pontos em nome de
+   * qualquer endereço.
+   */
+  try {
+    await creditarMoeda(chaveDoMint.toBase58(), curva.criador, "solana");
+  } catch (erro) {
+    console.warn("[moedas] falha ao pontuar o airdrop:", erro);
   }
 
   return NextResponse.json({ ok: true, mint: chaveDoMint.toBase58() });

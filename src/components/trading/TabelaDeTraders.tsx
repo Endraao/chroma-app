@@ -130,7 +130,7 @@ export function TabelaDeTraders({ address, symbol, chain }: { address: string; s
         <Esqueleto />
       ) : falhou && !quadro ? (
         <p className="px-4 py-10 text-center text-[12px] text-zinc-600">
-          Não deu pra ler os negócios deste par agora.
+          Não foi possível carregar as operações deste par agora.
         </p>
       ) : lista.length === 0 ? (
         <p className="px-4 py-10 text-center text-[12px] text-zinc-600">
@@ -229,12 +229,12 @@ function Cabecalho({
         */}
         <p className="mt-1.5 text-[11px] leading-snug text-zinc-500">
           {carregando ? (
-            "Lendo os negócios recentes…"
+            "Carregando as operações recentes…"
           ) : falhou ? (
             /* "Sem negócios" seria uma afirmação sobre o mercado; o que houve
                foi uma falha nossa em ler. São coisas diferentes e a tela não
                pode confundir as duas. */
-            "A fonte dos negócios não respondeu. Tentando de novo em instantes."
+            "Não foi possível carregar as operações. Tentando novamente em instantes."
           ) : quadro?.desde && quadro?.ate ? (
             <>
               Calculado sobre os últimos{" "}

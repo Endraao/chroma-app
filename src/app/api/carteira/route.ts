@@ -42,6 +42,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ ...valor, at: Date.now() });
   } catch (erro) {
     console.warn("[carteira] falhou:", erro);
-    return NextResponse.json({ error: "não deu pra ler a carteira" }, { status: 502 });
+    return NextResponse.json({ error: "Não foi possível ler os dados da carteira." }, { status: 502 });
   }
 }

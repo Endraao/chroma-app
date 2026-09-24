@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAccount } from "wagmi";
 
 import { detectChainFromAddress } from "@/lib/utils";
 import { REDE_DO_ENDERECO } from "@/lib/chains";
@@ -63,6 +65,17 @@ interface StoredAffiliate {
 
 /** Cliques já reportados nesta aba — ver a trava dentro do efeito. */
 const reportedClicks = new Set<string>();
+
+/**
+ * O `?ref=` guardado, só o apelido, pra quem precisa dele fora deste hook.
+ *
+ * Existe porque o registro de apelido (`useChromaAccount`) precisa mandar o
+ * indicador junto na criação da conta, e importar o hook inteiro lá dentro
+ * criaria dependência circular entre os dois.
+ */
+export function refGuardado(): string | null {
+  return read()?.ref ?? null;
+}
 
 function read(): StoredAffiliate | null {
   if (typeof window === "undefined") return null;
@@ -146,6 +159,16 @@ export function useAffiliateTracking(chain?: ChainId) {
   const [entry, setEntry] = useState<StoredAffiliate | null>(null);
   const [affiliate, setAffiliate] = useState<string | null>(null);
 
+  /*
+   * A carteira de QUEM ESTÁ OPERANDO — não a do promotor.
+   *
+   * É a chave pra perguntar ao servidor "quem indicou esta pessoa?". Qualquer
+   * uma das redes serve: as duas levam à mesma conta.
+   */
+  const { publicKey } = useWallet();
+  const { address: enderecoEvm } = useAccount();
+  const carteiraAtual = publicKey?.toBase58() ?? enderecoEvm ?? null;
+
   useEffect(() => {
     const ref = searchParams.get("ref")?.trim();
 
@@ -207,21 +230,63 @@ export function useAffiliateTracking(chain?: ChainId) {
    * Resolve o endereço só quando se sabe a rede — e refaz se a pessoa abrir
    * uma moeda de outra rede sem recarregar a página.
    */
+  /*
+   * ---------------------------------------------------------------------------
+   * A CONTA MANDA; O NAVEGADOR É O PLANO B
+   * ---------------------------------------------------------------------------
+   * Primeiro pergunta ao servidor quem indicou o DONO DA CARTEIRA que está
+   * operando. Essa resposta vem da conta, e a conta junta as carteiras das
+   * duas redes — então quem entrou pelo link na Solana e hoje opera na
+   * Robinhood continua pagando o mesmo promotor, em qualquer aparelho.
+   *
+   * Só se não houver vínculo gravado é que vale o `?ref=` guardado no
+   * navegador. Essa ordem importa: o vínculo da conta é permanente e o do
+   * navegador é temporário, então deixar o navegador vencer permitiria que um
+   * link novo roubasse a indicação de quem trouxe a pessoa.
+   */
   useEffect(() => {
-    if (!entry || !chain) {
+    if (!chain) {
       setAffiliate(null);
       return;
     }
 
     let cancelled = false;
-    void enderecoDoRef(entry.ref, chain).then((endereco) => {
+
+    (async () => {
+      if (carteiraAtual) {
+        try {
+          const res = await fetch(
+            `/api/affiliate/indicador?wallet=${carteiraAtual}&chain=${chain}`,
+            { cache: "no-store" },
+          );
+          if (res.ok) {
+            const { indicador } = (await res.json()) as {
+              indicador: { apelido: string; endereco: string } | null;
+            };
+            if (cancelled) return;
+            if (indicador) {
+              setAffiliate(indicador.endereco);
+              return;
+            }
+          }
+        } catch {
+          /* servidor fora: cai no `?ref=` do navegador, abaixo */
+        }
+      }
+
+      if (!entry) {
+        if (!cancelled) setAffiliate(null);
+        return;
+      }
+
+      const endereco = await enderecoDoRef(entry.ref, chain);
       if (!cancelled) setAffiliate(endereco);
-    });
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [entry, chain]);
+  }, [entry, chain, carteiraAtual]);
 
   return {
     /** endereço que recebe a comissão NESTA rede — é este que entra na transação */

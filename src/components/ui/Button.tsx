@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-type Variant = "chroma" | "buy" | "sell" | "ghost" | "outline";
+type Variant = "chroma" | "espectro" | "buy" | "sell" | "ghost" | "outline";
 type Size = "sm" | "md" | "lg";
 
 /*
@@ -12,11 +12,24 @@ type Size = "sm" | "md" | "lg";
  * gerada — e, pior, ele compete com o gráfico e com os números de preço, que
  * é o que a pessoa veio ver. Cor sólida da marca, borda de 1px, nada de
  * sombra colorida: a ênfase vem do contraste com o fundo quase preto.
+ *
+ * ---------------------------------------------------------------------------
+ * A EXCEÇÃO: `espectro`
+ * ---------------------------------------------------------------------------
+ * Existe UM botão no site que pode ser o espectro inteiro varrendo de um lado
+ * ao outro: o "Criar token" da abertura. A regra acima continua valendo em
+ * todo o resto, e é justamente por isso que essa exceção funciona — gradiente
+ * em todo botão vira enfeite e não significa nada; num botão só, é hierarquia.
+ *
+ * Usar em qualquer outro lugar desfaz as duas coisas de uma vez.
  */
 const variants: Record<Variant, string> = {
   chroma:
     "bg-marca text-ink-950 font-bold hover:bg-marca-forte " +
     "active:translate-y-px",
+  espectro:
+    "varrer text-ink-950 font-bold active:translate-y-px " +
+    "shadow-[0_0_0_1px_rgba(255,255,255,.08)]",
   buy: "bg-bull/12 text-bull border border-bull/35 hover:bg-bull/20",
   sell: "bg-bear/12 text-bear border border-bear/35 hover:bg-bear/20",
   ghost: "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100",
