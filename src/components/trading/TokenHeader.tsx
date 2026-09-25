@@ -132,6 +132,28 @@ export function TokenHeader({
             <span>criado {timeAgo(token.createdAt)} atrás</span>
 
             {/*
+              SITE E X DA MOEDA — e, quando não há, uma busca no X.
+              ---------------------------------------------------------------
+              A maioria das meme coins não declara link nenhum, e era aí que a
+              tela ficava muda: quem quer saber se o projeto existe de verdade
+              sai do site pra procurar, e às vezes não volta.
+
+              A busca vai pelo ENDEREÇO DO CONTRATO, não pelo nome. Nome de
+              meme coin se repete às centenas e o resultado viria cheio de
+              moeda homônima; o contrato é único, e quem fala dela cita ele.
+            */}
+            {token.website && <EloExterno href={token.website} rotulo="site" />}
+            {token.twitter ? (
+              <EloExterno href={token.twitter} rotulo="X" />
+            ) : (
+              <EloExterno
+                href={`https://x.com/search?q=${encodeURIComponent(token.address)}&f=live`}
+                rotulo="buscar no X"
+              />
+            )}
+            {token.telegram && <EloExterno href={token.telegram} rotulo="Telegram" />}
+
+            {/*
               A denúncia mora AQUI, na linha dos metadados, e não junto do
               compartilhar. Canal de denúncia em destaque vira arma: dá pra
               usar pra sujar a fila de um concorrente em massa. Quem precisa
@@ -190,6 +212,26 @@ export function TokenHeader({
         )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Link que sai do site.
+ *
+ * `noreferrer` junto com `noopener` de propósito: sem eles, a página aberta
+ * ganha uma referência de volta e pode redirecionar esta aqui — e a pessoa
+ * volta achando que ainda está na Chroma.
+ */
+function EloExterno({ href, rotulo }: { href: string; rotulo: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="transition-colors hover:text-zinc-300"
+    >
+      {rotulo} ↗
+    </a>
   );
 }
 

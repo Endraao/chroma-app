@@ -42,6 +42,16 @@ export interface TokenSummary {
   /** Par de maior liquidez — é dele que saem as velas do gráfico. */
   pairAddress?: string;
   dexId?: string;
+  /**
+   * Links que o projeto declarou.
+   *
+   * Opcionais porque a maioria das meme coins não tem nenhum — e é justamente
+   * por isso que a tela oferece uma busca no X quando faltam: a conversa sobre
+   * a moeda existe mesmo quando o site não existe.
+   */
+  website?: string;
+  twitter?: string;
+  telegram?: string;
 }
 
 export interface Candle {

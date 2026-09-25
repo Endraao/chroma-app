@@ -80,7 +80,11 @@ interface DexPair {
   marketCap?: number;
   fdv?: number;
   pairCreatedAt?: number;
-  info?: { imageUrl?: string };
+  info?: {
+    imageUrl?: string;
+    websites?: { url?: string; label?: string }[];
+    socials?: { url?: string; type?: string; platform?: string }[];
+  };
 }
 
 async function getJson<T>(url: string, revalidateSeconds = 10): Promise<T> {
@@ -90,6 +94,38 @@ async function getJson<T>(url: string, revalidateSeconds = 10): Promise<T> {
   });
   if (!res.ok) throw new Error(`${url} respondeu ${res.status}`);
   return (await res.json()) as T;
+}
+
+/**
+ * Site e redes sociais que o projeto declarou, se houver.
+ *
+ * A fonte identifica a rede social às vezes por `type`, às vezes por
+ * `platform`, e o rótulo varia de caixa. Em vez de confiar nesses campos, o
+ * reconhecimento é pela URL: quem manda é o domínio, que não muda de nome.
+ *
+ * `x.com` e `twitter.com` são a mesma coisa e as duas formas circulam.
+ */
+function linksDoProjeto(info: DexPair["info"]): {
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+} {
+  const urls = [
+    ...(info?.websites ?? []).map((w) => w?.url),
+    ...(info?.socials ?? []).map((s) => s?.url),
+  ].filter((u): u is string => typeof u === "string" && /^https?:\/\//i.test(u));
+
+  const acha = (padrao: RegExp) => urls.find((u) => padrao.test(u));
+
+  const twitter = acha(/(^|\/\/)([^/]*\.)?(twitter|x)\.com\//i);
+  const telegram = acha(/(^|\/\/)([^/]*\.)?t\.me\//i);
+
+  /* O site é a primeira URL que não é rede social conhecida. */
+  const website = urls.find(
+    (u) => u !== twitter && u !== telegram && !/(discord|t\.me|twitter\.com|x\.com)/i.test(u),
+  );
+
+  return { website, twitter, telegram };
 }
 
 /** Entre vários pares do mesmo token, o que vale é o de maior liquidez. */
@@ -109,6 +145,7 @@ function toSummary(pair: DexPair): TokenSummary {
     symbol: pair.baseToken.symbol,
     imageUrl: pair.info?.imageUrl,
     description: undefined,
+    ...linksDoProjeto(pair.info),
     priceUsd: Number(pair.priceUsd ?? 0),
     change24h: pair.priceChange?.h24 ?? 0,
     priceChanges: pair.priceChange,
