@@ -144,6 +144,27 @@ export const ABI_DA_CURVA = [
       { name: "migrada", type: "bool" },
     ],
   },
+  {
+    type: "function",
+    name: "tokenAVenda",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "pausado",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "taxaDeLancamento",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 /* ------------------------------------------------------------------ */

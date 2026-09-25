@@ -9,6 +9,8 @@ import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { useAffiliateTracking } from "@/hooks/useAffiliateTracking";
 import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
 import { useTradeSolana } from "@/hooks/useTradeSolana";
+import { useCurvaEvm } from "@/hooks/useCurvaEvm";
+import { useCurvaSwapEvm } from "@/hooks/useCurvaSwapEvm";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPrice, shortenAddress } from "@/lib/utils";
 import type { ChainId, TradeSide } from "@/lib/types";
@@ -76,7 +78,7 @@ export function SwapWidget({
   return meta.kind === "solana" ? (
     <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} />
   ) : (
-    <EvmSwapPlaceholder symbol={symbol} chain={chain} />
+    <EvmSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} />
   );
 }
 
@@ -642,28 +644,136 @@ function IconeDeEngrenagem() {
 }
 
 /* ------------------------------------------------------------------ */
-/* EVM — ainda não implementado, e a tela diz isso                     */
+/* EVM — curva da Chroma na Robinhood Chain                            */
 /* ------------------------------------------------------------------ */
 
-function EvmSwapPlaceholder({ symbol, chain }: { symbol: string; chain: ChainId }) {
+/**
+ * Compra e venda na curva da Robinhood.
+ *
+ * Só atende MOEDA DA CURVA. Token externo nesta rede continua sem caminho:
+ * ele depende do `ChromaRouter` repassando para a Uniswap, que é outro
+ * trabalho. Dizer "em breve" para esse caso é verdade; dizer para a moeda da
+ * curva deixou de ser.
+ */
+function EvmSwap({
+  symbol,
+  chain,
+  tokenAddress,
+}: {
+  symbol: string;
+  chain: ChainId;
+  tokenAddress: string;
+}) {
   const meta = CHAINS[chain];
+  const { curva, podeComprar, podeVender, carregando } = useCurvaEvm(tokenAddress);
+
+  const [side, setSide] = useState<TradeSide>("buy");
+  const [digitado, setDigitado] = useState("");
+  const [slippageBps] = useState(300);
+
+  const swap = useCurvaSwapEvm({
+    moeda: tokenAddress,
+    curva,
+    side,
+    valor: digitado,
+    slippageBps,
+    afiliado: null,
+    habilitado: Boolean(curva),
+  });
+
+  const ehCompra = side === "buy";
+  const podeOperar = ehCompra ? podeComprar : podeVender;
+
+  /* Moeda que não é da curva: o caminho por DEX ainda não existe aqui. */
+  if (!carregando && !curva) {
+    return (
+      <Card className="overflow-hidden">
+        <AbasDeLado side="buy" onChange={() => {}} disabled />
+        <div className="space-y-3 px-4 pb-4 pt-1">
+          <div className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[12px] leading-relaxed text-warn">
+            <div className="mb-1 font-semibold">Negociação em {meta.label} em breve.</div>
+            Esta moeda não foi lançada na Chroma, e a negociação de moedas externas nesta rede ainda
+            não está disponível. Na {CHAINS.solana.label} funciona normalmente.
+          </div>
+          <RequireChainWallet chain={chain}>
+            <Button variant="outline" size="lg" className="w-full" disabled>
+              {symbol} — em breve
+            </Button>
+          </RequireChainWallet>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="overflow-hidden">
-      <AbasDeLado side="buy" onChange={() => {}} disabled />
+      <AbasDeLado side={side} onChange={setSide} disabled={swap.ocupado} />
 
       <div className="space-y-3 px-4 pb-4 pt-1">
-        <div className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[12px] leading-relaxed text-warn">
-          <div className="mb-1 font-semibold">Negociação em {meta.label} em breve.</div>
-          Ainda não é possível comprar e vender nesta rede pela Chroma. Estamos trabalhando nisso. A
-          negociação na {CHAINS.solana.label} já está disponível normalmente.
-        </div>
+        <input
+          inputMode="decimal"
+          value={digitado}
+          onChange={(e) => setDigitado(saneia(e.target.value))}
+          placeholder={ehCompra ? `0.0 ${meta.nativeSymbol}` : `0.0 ${symbol}`}
+          className="w-full bg-transparent text-center text-3xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
+        />
+
+        {swap.saida && (
+          <p className="tnum text-center text-[12px] text-zinc-500">
+            ≈ {swap.saida} {ehCompra ? symbol : meta.nativeSymbol}
+          </p>
+        )}
+
+        {curva?.concluida && !curva.migrada && (
+          <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
+            A curva encheu. A negociação recomeça quando a liquidez migrar para a pool.
+          </p>
+        )}
 
         <RequireChainWallet chain={chain}>
-          <Button variant="outline" size="lg" className="w-full" disabled>
-            {symbol} — em breve
+          <Button
+            variant={ehCompra ? "buy" : "sell"}
+            size="lg"
+            className="w-full"
+            disabled={!podeOperar || !swap.pronto || swap.ocupado}
+            onClick={swap.executar}
+          >
+            {swap.ocupado
+              ? swap.passo || "Processando…"
+              : !podeOperar
+                ? "Indisponível agora"
+                : `${ehCompra ? "Comprar" : "Vender"} ${symbol}`}
           </Button>
         </RequireChainWallet>
+
+        {swap.passo && !swap.ocupado && (
+          <p className="text-center text-[11px] text-zinc-500">{swap.passo}</p>
+        )}
+
+        {!ehCompra && (
+          <p className="text-[11px] leading-relaxed text-zinc-600">
+            Vender pede duas assinaturas: uma autorizando a curva a retirar os tokens e outra da
+            venda em si. A autorização é pelo valor exato, não infinita.
+          </p>
+        )}
+
+        {swap.erro && <p className="text-[11px] leading-relaxed text-bear">{swap.erro}</p>}
+
+        {swap.hash && (
+          <a
+            /*
+             * `meta.explorer` aponta pra página de TOKEN; transação fica noutro
+             * caminho no mesmo explorer. Trocar o sufixo aqui evita um link que
+             * abre "token não encontrado" com um hash de transação na URL.
+             */
+            href={`${meta.explorer.replace(/\/token\/$/, "/tx/")}${swap.hash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-center text-[11px] font-semibold text-marca hover:underline"
+          >
+            ver a transação
+          </a>
+        )}
       </div>
     </Card>
   );
