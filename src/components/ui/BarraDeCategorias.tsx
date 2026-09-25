@@ -5,6 +5,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { chainIcon } from "@/lib/chain-icons";
+import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 
 /**
  * A coluna de ícones da esquerda.
@@ -96,24 +98,32 @@ const CATEGORIAS: Item[] = [
   },
 ];
 
-const REDES: Item[] = [
-  {
-    href: "/?chain=solana",
-    rotulo: "Solana",
-    cor: "#8b5cf6",
-    corFixa: true,
-    icone: <IconeRede />,
-    casa: (p, _s, chain) => p === "/" && chain === "solana",
-  },
-  {
-    href: "/?chain=robinhood",
-    rotulo: "Robinhood Chain",
-    cor: "#34d399",
-    corFixa: true,
-    icone: <IconeRede />,
-    casa: (p, _s, chain) => p === "/" && chain === "robinhood",
-  },
-];
+/**
+ * As redes usam o SÍMBOLO DELAS, não um desenho de globo.
+ *
+ * Com o mesmo globo nas duas, a barra fechada mostrava dois ícones idênticos
+ * um embaixo do outro, e a cor era a única diferença — o que não diz a ninguém
+ * qual é qual. A marca da rede é reconhecida de imediato e dispensa legenda,
+ * que é exatamente o que a barra fechada não tem.
+ *
+ * Sai de CHAIN_IDS para seguir a ordem do site: a rede principal vem primeiro.
+ */
+const REDES: Item[] = CHAIN_IDS.map((id) => ({
+  href: `/?chain=${id}`,
+  rotulo: CHAINS[id].label,
+  cor: id === "robinhood" ? "#34d399" : "#8b5cf6",
+  corFixa: true,
+  icone: (
+    <img
+      src={chainIcon(id)}
+      alt=""
+      width={16}
+      height={16}
+      className="size-4 shrink-0 rounded-full"
+    />
+  ),
+  casa: (p: string, _s: string | null, chain: string | null) => p === "/" && chain === id,
+}));
 
 const RODAPE: Item[] = [
   {

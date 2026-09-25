@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { CristalHolografico } from "@/components/ui/CristalHolografico";
 import { textos, type Idioma } from "@/lib/idiomas";
+import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 
 /**
  * A abertura da home.
@@ -69,7 +70,15 @@ export function FaixaDeAbertura({
               aria-hidden
               className="h-3 w-[2px] shrink-0 rounded-full bg-chroma-gradient"
             />
-            <span className="rotulo">Solana · Robinhood Chain</span>
+            {/*
+              Sai de CHAIN_IDS, e não escrito à mão.
+
+              Estava fixo como "Solana · Robinhood Chain", o que passou a
+              contradizer o próprio site quando a Robinhood virou a rede
+              principal: a primeira linha da home anunciava a Solana na frente
+              enquanto todo o resto abria na Robinhood.
+            */}
+            <span className="rotulo">{CHAIN_IDS.map((c) => CHAINS[c].label).join(" · ")}</span>
           </div>
 
           {/*

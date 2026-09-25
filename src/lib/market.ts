@@ -501,13 +501,36 @@ const PAGINAS_POR_FEED = 2;
  * SOL é o base entraria na vitrine como se o SOL fosse a meme coin — com o
  * preço, a variação e a capitalização do SOL.
  */
+/**
+ * As moedas contra as quais se cota, e que NÃO são a moeda da pool.
+ *
+ * ---------------------------------------------------------------------------
+ * A LISTA PRECISA COBRIR TODAS AS REDES, E NÃO COBRIA
+ * ---------------------------------------------------------------------------
+ * Só havia entradas da Solana aqui. Na Robinhood Chain, onde se cota contra
+ * USDG e WETH, nenhuma delas era reconhecida — então num par USDG/PONS em que
+ * a fonte põe a USDG como "base", o site listava a USDG como se fosse a moeda
+ * negociável, carregando o par do PONS junto.
+ *
+ * O efeito visível era clicar em "Global Dollar USDG" na vitrine e abrir a
+ * página do PONS, com a arte e o gráfico da outra moeda. Trocar a moeda que a
+ * pessoa achou que ia comprar é dos piores defeitos possíveis num terminal.
+ *
+ * Endereços conferidos no feed de pools da própria rede.
+ */
 const COTACOES = new Set(
   [
+    /* Solana */
     "So11111111111111111111111111111111111111112", // SOL
     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
     "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT
     "jupSoLaHXQiZZTSfEWMTRRgpnyFm8f6sZdosWBjx93v", // jupSOL
     "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So", // mSOL
+
+    /* Robinhood Chain */
+    "0x5fc5360d0400a0fd4f2af552add042d716f1d168", // USDG
+    "0x0bd7d308f8e1639fab988df18a8011f41eacad73", // WETH
+    "0x0000000000000000000000000000000000000000", // ETH nativo
   ].map((m) => m.toLowerCase()),
 );
 

@@ -161,6 +161,15 @@ export function ChartPanel({
     [candles, escalaEfetiva, fornecimento],
   );
 
+  /**
+   * Não há o que desenhar.
+   *
+   * Enquanto está carregando, o gráfico fica: ele mesmo mostra o esqueleto. A
+   * tela de aviso só entra quando a busca TERMINOU sem vela nenhuma — seja
+   * porque o par não tem histórico, seja porque a fonte recusou.
+   */
+  const semVelas = candlesNaEscala.length === 0 && (status === "vazio" || status === "erro");
+
   /** Formata um PREÇO POR TOKEN na escala escolhida. */
   const emEscala = (v: number) =>
     escalaEfetiva === "mcap" ? `$${rotuloCompacto(v * fornecimento)}` : `$${formatPrice(v)}`;
@@ -448,24 +457,28 @@ export function ChartPanel({
 
         A tela vazia é feia de propósito. Ela informa; o desenho bonito
         informava errado.
+
+        A tela vazia SUBSTITUI o gráfico, não convive com ele. Na primeira
+        versão os dois eram renderizados: o aviso aparecia em cima e as réguas
+        vazias logo abaixo, o que parecia defeito de layout em vez de ausência
+        de dados.
       */}
-      {candlesNaEscala.length === 0 && (status === "vazio" || status === "erro") && (
+      {semVelas ? (
         <div className="grid h-[420px] place-items-center px-6 text-center">
           <div>
             <p className="text-[13px] font-semibold text-zinc-300">
               {status === "vazio"
                 ? "Esta moeda ainda não tem histórico de negociação"
-                : "Não foi possível carregar o gráfico agora"}
+                : "Carregando o gráfico…"}
             </p>
             <p className="mx-auto mt-1.5 max-w-[340px] text-[12px] leading-relaxed text-zinc-600">
               {status === "vazio"
                 ? "Assim que houver negócios registrados no par, as velas aparecem aqui."
-                : "A fonte de dados de mercado não respondeu. Tente recarregar a página em alguns instantes."}
+                : "A fonte de mercado está limitando as consultas. Estamos tentando de novo sozinhos."}
             </p>
           </div>
         </div>
-      )}
-
+      ) : (
       <TradingChart
         comandos={grafico}
         candles={candlesNaEscala}
@@ -481,6 +494,7 @@ export function ChartPanel({
         indicadores={indicadores}
         parametros={parametros}
       />
+      )}
 
       {/* ---------------------------------------------------------------- */}
       {/* Barra de baixo                                                    */}
