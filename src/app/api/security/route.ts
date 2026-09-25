@@ -350,20 +350,34 @@ function checkDeLiquidezSolana(d: any, daListaDeConfianca = false): SecurityChec
   }
 
   /*
-   * Não medir não é o mesmo que estar seguro, e também não é o mesmo que estar
-   * em perigo. Fica como desconhecido — que penaliza de leve a nota e NÃO
-   * dispara alerta vermelho, porque acusar sem base é o que transforma o
-   * painel em ruído.
+   * NÃO DAR PRA MEDIR É UM AVISO, NÃO UM SILÊNCIO.
+   * ---------------------------------------------------------------------
+   * Este caso já foi tratado como "desconhecido" mudo, para não acusar sem
+   * base — e isso abriu um buraco justamente onde mais se aplica o golpe.
+   *
+   * Em pool concentrada (Meteora DLMM, Orca Whirlpool, Raydium CLMM) a
+   * posição é um NFT: não existe token de LP para queimar, então não há como
+   * PROVAR que a liquidez está travada. O que existe de sobra é gente
+   * lançando ali e puxando a liquidez depois — e nessas pools retirar é
+   * trivial para quem tem a posição.
+   *
+   * Então o painel diz o que sabe: não foi possível confirmar, e nessas pools
+   * o dono costuma conseguir retirar. Fica em ATENÇÃO, não em perigo, porque
+   * moeda consolidada e legítima também vive em pool concentrada — acusar
+   * todas de golpe seria o alarme falso que ensina a ignorar o alarme.
    */
   if (!mensuravel) {
     return {
       id: "lp_locked",
       label: "Liquidez travada",
       description:
-        "A liquidez desta moeda está em pool concentrada, onde não existe token de LP para queimar. Não há como confirmar por aqui se o dono pode retirá-la.",
-      level: "unknown",
-      value: "não dá pra conferir",
-      critico: true,
+        "Em pool concentrada não existe token de LP para queimar, então não há como confirmar a trava por aqui.",
+      level: "warn",
+      value: "não confirmada",
+      critico: daListaDeConfianca ? false : true,
+      aviso: daListaDeConfianca
+        ? undefined
+        : "Não foi possível confirmar se a liquidez está travada. Nesse tipo de pool — Meteora, Orca, Raydium CLMM — quem colocou a liquidez normalmente consegue retirá-la a qualquer momento, e é assim que a maioria dos golpes acontece.",
     };
   }
 

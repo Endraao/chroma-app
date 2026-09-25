@@ -47,6 +47,15 @@ interface Alerta {
   titulo: string;
   detalhe: string;
   nivel: Exclude<RiskLevel, "safe">;
+  /**
+   * Fica visível sem abrir o painel, mesmo não sendo perigo confirmado.
+   *
+   * Existe por um caso só: liquidez que não dá pra confirmar. Não é acusação
+   * — pode ser moeda séria em pool concentrada — mas é a informação que mais
+   * decide se vale arriscar, e escondê-la atrás de um clique seria repetir o
+   * erro que este painel já cometeu uma vez.
+   */
+  destacar?: boolean;
 }
 
 /**
@@ -74,6 +83,9 @@ export function SecurityPanel({
   const passaram = report.checks.filter((c) => c.level === "safe");
   const naoVerificados = report.checks.filter((c) => c.level === "unknown");
 
+  /* À vista: o que zera o dinheiro, e a liquidez sem prova de trava. */
+  const aVista = alertas.filter((a) => a.nivel === "danger" || a.destacar);
+  const leves = alertas.filter((a) => a.nivel !== "danger" && !a.destacar);
   const grave = alertas.some((a) => a.nivel === "danger");
   /*
    * Sem nada errado, o bloco fica neutro em vez de verde. Verde comemorando
@@ -127,26 +139,39 @@ export function SecurityPanel({
             visível na lista, marcado item a item, que é onde a informação
             significa alguma coisa.
           */}
+          {/*
+            Os alertas leves são CONTADOS aqui, não listados lá fora. Assim o
+            painel continua dizendo que existem, sem ocupar a coluna com eles.
+          */}
           <span className="block text-[11px] text-zinc-600">
             {passaram.length} verificações no contrato passaram
+            {leves.length > 0 &&
+              ` · ${leves.length} ${leves.length === 1 ? "ponto de atenção" : "pontos de atenção"}`}
           </span>
         </span>
         <Seta aberto={aberto} />
       </button>
 
       {/*
-        Os alertas ficam visíveis SEM abrir. Esconder o problema atrás de um
-        clique é o mesmo que não ter alerta: ninguém clica pra descobrir que
-        está prestes a perder dinheiro.
+        SÓ O QUE ZERA O DINHEIRO FICA VISÍVEL SEM ABRIR.
+        -------------------------------------------------------------------
+        Antes todo alerta aparecia aqui fora. Como quase toda meme coin tem
+        alguma pendência, o painel ficava com três ou quatro linhas acesas em
+        qualquer moeda — e aí a pessoa aprende a pular o bloco inteiro,
+        inclusive no dia em que ele estiver certo.
+
+        Alerta grave — liquidez removível, honeypot, emissão aberta — continua
+        do lado de fora, porque esconder isso atrás de um clique é o mesmo que
+        não ter alerta. O resto passou pra lista de dentro, que abre em um
+        toque e está resumida no cabeçalho.
       */}
-      {alertas.length > 0 && (
+      {aVista.length > 0 && (
         <div className="space-y-2 border-t border-white/[0.07] px-3.5 py-2.5">
-          {alertas.map((a) => (
+          {aVista.map((a) => (
             <div key={a.id}>
               <div
                 className={cn(
                   "text-[12px] font-semibold",
-                  /* Vermelho só no que zera o dinheiro; o resto informa em amarelo. */
                   a.nivel === "danger" ? "text-bear" : "text-warn/85",
                 )}
               >
@@ -175,6 +200,18 @@ export function SecurityPanel({
 
       {aberto && (
         <div className="space-y-1 border-t border-white/[0.07] bg-ink-950/40 px-3.5 py-2.5">
+          {/* Os pontos de atenção, com a explicação de cada um. */}
+          {leves.length > 0 && (
+            <div className="mb-2 space-y-1.5">
+              {leves.map((a) => (
+                <div key={a.id}>
+                  <div className="text-[11.5px] font-semibold text-warn/85">{a.titulo}</div>
+                  <div className="text-[11px] leading-relaxed text-zinc-500">{a.detalhe}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {report.checks.map((c) => (
             <Linha key={c.id} check={c} />
           ))}
@@ -255,6 +292,37 @@ function montarAlertas(
     if (c.id === "liquidity" && (mercado.liquidityUsd ?? 0) > 0) continue;
 
     alertas.push({ id: c.id, titulo: c.label, detalhe: c.description, nivel: c.level });
+  }
+
+  /*
+   * LIQUIDEZ QUE NÃO DÁ PRA CONFIRMAR, NUMA MOEDA QUE ESTÁ NEGOCIANDO.
+   * -------------------------------------------------------------------------
+   * A auditoria não consegue provar a trava em dois casos: quando a pool é
+   * concentrada — Meteora, Orca, Raydium CLMM, onde a posição é um NFT e não
+   * existe token de LP pra queimar — e quando ela simplesmente não conhece o
+   * par, que é o normal em moeda recém-lançada.
+   *
+   * Nos dois o painel ficava MUDO sobre liquidez, e é justamente aí que mora
+   * o golpe mais comum: lançar, esperar entrar gente, puxar a liquidez.
+   *
+   * O alerta só entra quando a moeda TEM mercado de verdade pelos nossos
+   * próprios dados. Sem liquidez nenhuma, o assunto é outro e já tem alerta
+   * próprio — não dá pra vender de jeito nenhum.
+   */
+  const travaConfirmada = report.checks.find((c) => c.id === "lp_locked")?.level === "safe";
+  const semProva = report.checks.some(
+    (c) => c.id === "lp_locked" && (c.level === "unknown" || c.value === "não confirmada"),
+  );
+
+  if (!travaConfirmada && semProva && (mercado.liquidityUsd ?? 0) > 0) {
+    alertas.push({
+      id: "lp_sem_prova",
+      titulo: "Liquidez pode ser retirada",
+      detalhe:
+        "Não foi possível confirmar que a liquidez está travada. Em pools como as da Meteora e da Orca, quem a colocou costuma conseguir retirá-la a qualquer momento — e é assim que acontece a maior parte dos golpes.",
+      nivel: "warn",
+      destacar: true,
+    });
   }
 
   /*
