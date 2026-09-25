@@ -8,7 +8,8 @@ import { Secao } from "@/components/home/Secao";
 import { TokenCard } from "@/components/ui/TokenCard";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
-import { CHAIN_IDS, CHAINS } from "@/lib/web3";
+import { moedasDaChroma } from "@/lib/moedas-da-chroma";
+import { CHAIN_IDS, CHAINS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
 import type { ChainId, TokenSummary } from "@/lib/types";
 import { formatUsd } from "@/lib/utils";
 
@@ -32,6 +33,8 @@ const SORTS: { key: SortKey; label: string }[] = [
 const QUANTAS_MAIORES = 5;
 const QUANTAS_QUENTES = 8;
 const QUANTAS_NOVAS = 9;
+/** As da casa cabem numa linha e meia; passar disso vira lista, não vitrine. */
+const QUANTAS_DA_CASA = 10;
 
 /**
  * A partir de quantas moedas vale separar em zonas.
@@ -58,19 +61,22 @@ export default async function HomePage({
    * decide qual aba vem MARCADA — ver ChainTabs.
    */
   /*
-   * SOLANA é o padrão quando a URL não diz nada — não mais "todas as redes".
+   * A rede padrão é a ROBINHOOD, e ela vem de `REDE_PADRAO`.
    *
-   * É a rede onde a plataforma funciona por inteiro: swap ligado, lançamento
-   * na curva, comissão de afiliado paga na transação. Na Robinhood Chain hoje
-   * só existe leitura. Abrir no "todas" misturava as duas e entregava, logo na
-   * primeira tela, moedas que a pessoa não consegue comprar.
+   * É a rede onde a plataforma funciona por inteiro: swap na curva, comissão
+   * de afiliado na própria transação e, principalmente, LANÇAMENTO. Na Solana
+   * o programa da curva ainda não está publicado, então criar moeda não
+   * acontece — só negociar o que já existe.
+   *
+   * Abrir na rede onde o launchpad não funciona faria a primeira tela do site
+   * prometer o que ele não entrega.
    *
    * O parâmetro continua mandando: quem chegar por um link com `?chain=` vê o
    * que o link pediu, e é isso que mantém link de indicação funcionando.
    */
   const chain: ChainId = CHAIN_IDS.includes(filtros.chain as ChainId)
     ? (filtros.chain as ChainId)
-    : "solana";
+    : REDE_PADRAO;
 
   /*
    * Quatro leituras da mesma lista.
@@ -83,12 +89,32 @@ export default async function HomePage({
    * faixas de cima e de baixo têm critério próprio, e mudariam de sentido se
    * obedecessem ao botão de ordenação da grade central.
    */
-  const [principal, porValor, porVolume, porIdade] = await Promise.all([
+  const [principal, porValor, porVolume, porIdade, daCasa] = await Promise.all([
     listTokens(sort, chain),
     listTokens("marketCap", chain),
     listTokens("volume", chain),
     listTokens("new", chain),
+    /*
+     * As moedas LANÇADAS AQUI vêm por outro caminho, e precisam vir.
+     *
+     * Enquanto estão na curva elas não existem em DEX nenhuma, então nenhuma
+     * fonte de mercado as conhece — `listTokens` nunca as traria. Preço e
+     * capitalização saem da conta da curva, lida direto da rede.
+     *
+     * Uma falha aqui não derruba a home: sem elas a página continua sendo a
+     * vitrine de mercado que já era.
+     */
+    moedasDaChroma().catch(() => [] as TokenSummary[]),
   ]);
+
+  /*
+   * Filtradas pela rede escolhida, como todo o resto da página.
+   *
+   * Misturar redes só nesta faixa faria a pessoa clicar numa moeda que a
+   * carteira dela não consegue negociar, vindo de uma tela que diz estar
+   * filtrada.
+   */
+  const lancadasNaChroma = daCasa.filter((t) => t.chain === chain);
 
   const { tokens, isDemo } = principal;
   const totalVolume = tokens.reduce((acc, t) => acc + t.volume24hUsd, 0);
@@ -138,6 +164,29 @@ export default async function HomePage({
       )}
 
       {/*
+        O QUE A REDE ESCOLHIDA NÃO FAZ, DITO ANTES DA LISTA.
+        ------------------------------------------------------------------
+        Só aparece na Solana, e só porque lá o lançamento não existe ainda.
+        Quem está na Robinhood não vê aviso nenhum — repetir para todo mundo
+        o que vale para uma rede é o tipo de recado que as pessoas aprendem a
+        pular, e aí ele não serve quando importa.
+      */}
+      {!podeLancarNaRede(chain) && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded border border-warn/30 bg-warn/[0.06] px-3 py-2 text-[12px] text-warn">
+          <span>
+            Ainda não é possível <strong>criar moedas</strong> na {CHAINS[chain].label} pela Chroma.
+            Aqui você pode comprar e vender normalmente.
+          </span>
+          <Link
+            href={`/?chain=${REDE_PADRAO}`}
+            className="font-semibold underline underline-offset-2 hover:text-warn/80"
+          >
+            Ver a {CHAINS[REDE_PADRAO].label}
+          </Link>
+        </div>
+      )}
+
+      {/*
         A barra lateral fica FORA da faixa de abertura de propósito: ela precisa
         acompanhar a rolagem da vitrine, e pra isso o topo dela tem que estar na
         mesma altura em que a vitrine começa.
@@ -146,6 +195,36 @@ export default async function HomePage({
         <MoedasQuentes tokens={quentes} />
 
         <div className="min-w-0 flex-1 space-y-8">
+          {/*
+            LANÇADAS NA CHROMA VÊM PRIMEIRO, acima das de mercado.
+            ----------------------------------------------------------------
+            São as únicas moedas do site que nasceram aqui: a plataforma tem
+            a curva delas, recebe a taxa de criador e paga o afiliado na
+            própria transação. Todo o resto da vitrine é mercado de fora,
+            listado por conveniência.
+
+            Se ainda não houver nenhuma, a faixa simplesmente não aparece —
+            uma seção vazia anunciando "lançadas aqui" diria a verdade mais
+            desanimadora possível na primeira tela.
+          */}
+          {lancadasNaChroma.length > 0 && (
+            <>
+              <Secao
+                titulo="Lançadas na Chroma"
+                resumo="Criadas aqui, na nossa curva. A plataforma paga o criador e o afiliado na própria transação."
+                cor="#a78bfa"
+              >
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {lancadasNaChroma.slice(0, QUANTAS_DA_CASA).map((token) => (
+                    <TokenCard key={token.address} token={token} />
+                  ))}
+                </div>
+              </Secao>
+
+              <div className="aresta" />
+            </>
+          )}
+
           {maiores.length > 0 && (
             <Secao
               titulo="Maiores"

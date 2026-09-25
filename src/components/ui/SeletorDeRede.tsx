@@ -8,7 +8,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount } from "wagmi";
 
 import { chainIcon } from "@/lib/chain-icons";
-import { CHAINS, CHAIN_IDS } from "@/lib/web3";
+import { CHAINS, CHAIN_IDS, REDE_PADRAO } from "@/lib/web3";
 import { cn } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 
@@ -57,7 +57,7 @@ export function SeletorDeRede() {
    * outra.
    */
   const daUrl = parametros.get("chain") as ChainId | null;
-  const atual: ChainId = daUrl && CHAIN_IDS.includes(daUrl) ? daUrl : "solana";
+  const atual: ChainId = daUrl && CHAIN_IDS.includes(daUrl) ? daUrl : REDE_PADRAO;
 
   const [aberto, setAberto] = useState(false);
   const caixaRef = useRef<HTMLDivElement>(null);

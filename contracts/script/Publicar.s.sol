@@ -49,6 +49,9 @@ contract Publicar is Script {
     uint256 internal constant ETH_VIRTUAL = 30 ether;
     uint256 internal constant TOKEN_VIRTUAL = 1_073_000_000 ether;
 
+    /** Cobrado de quem lança. Igual ao PONS, e igual a `NEXT_PUBLIC_LAUNCH_FEE_ETH`. */
+    uint256 internal constant TAXA_DE_LANCAMENTO = 0.0005 ether;
+
     /*
      * 1% de taxa e espaçamento 200: o par que a v4 usa pra moeda volátil.
      * Tem que bater com o que `MatematicaDaPool` assume ao calcular a posição
@@ -107,7 +110,17 @@ contract Publicar is Script {
                 tokenVirtualInicial: TOKEN_VIRTUAL,
                 tokenAVenda: A_VENDA,
                 emissaoTotal: EMISSAO,
-                taxaDeLancamento: 0,
+                /*
+                 * TEM QUE BATER COM `NEXT_PUBLIC_LAUNCH_FEE_ETH`.
+                 *
+                 * O contrato recusa a transação se o valor enviado não for
+                 * exatamente este, e quem envia é o site. Divergir aqui faz
+                 * todo lançamento falhar — ou, pior, faz a página de taxas
+                 * anunciar um preço que o contrato não cobra.
+                 *
+                 * 0,0005 ETH é o mesmo do PONS, o concorrente desta rede.
+                 */
+                taxaDeLancamento: TAXA_DE_LANCAMENTO,
                 taxaDaPool: TAXA_DA_POOL,
                 espacamentoDaPool: ESPACAMENTO_DA_POOL
             })

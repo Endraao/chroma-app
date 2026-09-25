@@ -98,15 +98,14 @@ export const CHAINS: Record<
     dexscreener: string;
   }
 > = {
-  solana: {
-    label: "Solana",
-    kind: "solana",
-    nativeSymbol: "SOL",
-    explorer: "https://solscan.io/token/",
-    accent: "text-chroma-violet",
-    gecko: "solana",
-    dexscreener: "solana",
-  },
+  /*
+   * A ORDEM AQUI É A ORDEM DA INTERFACE.
+   *
+   * `CHAIN_IDS` sai daqui, e com ele o seletor de rede, as abas do feed e as
+   * seções da página de taxas. A Robinhood vem primeiro porque é onde o
+   * launchpad funciona: é lá que dá pra criar moeda, e criar moeda é o que
+   * esta plataforma faz de diferente.
+   */
   robinhood: {
     label: "Robinhood Chain",
     kind: "evm",
@@ -116,9 +115,41 @@ export const CHAINS: Record<
     gecko: "robinhood",
     dexscreener: "robinhood",
   },
+  solana: {
+    label: "Solana",
+    kind: "solana",
+    nativeSymbol: "SOL",
+    explorer: "https://solscan.io/token/",
+    accent: "text-chroma-violet",
+    gecko: "solana",
+    dexscreener: "solana",
+  },
 };
 
 export const CHAIN_IDS = Object.keys(CHAINS) as ChainId[];
+
+/**
+ * A rede que o site abre quando ninguém pediu outra.
+ *
+ * Escrita UMA vez, em vez de `"robinhood"` repetido na home, no seletor e no
+ * formulário de criar. Espalhada, trocar a rede principal exigiria achar todas
+ * as cópias — e a que ficasse pra trás abriria numa rede diferente das demais,
+ * sem ninguém notar até alguém reclamar.
+ */
+export const REDE_PADRAO: ChainId = "robinhood";
+
+/**
+ * Dá pra LANÇAR moeda pela Chroma nesta rede?
+ *
+ * Hoje só na Robinhood. Na Solana o programa da curva ainda não está publicado,
+ * então a moeda nem chega a ser criada — negociar funciona nas duas, criar não.
+ *
+ * Quem consome usa isto pra explicar o que falta, em vez de oferecer um botão
+ * que montaria transação para um programa inexistente.
+ */
+export function podeLancarNaRede(chain: ChainId): boolean {
+  return chain === "robinhood";
+}
 
 /**
  * Chain ids que a GoPlus usa nas rotas EVM.

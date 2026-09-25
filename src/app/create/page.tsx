@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { TEXTO_DA_ETAPA, useLancarToken } from "@/hooks/useLancarToken";
 import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
-import { CHAINS, CHAIN_IDS } from "@/lib/web3";
+import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
 import { DEFAULT_PAIR, LIQUIDITY_PAIRS, pairLogo } from "@/lib/pairs";
 import {
   CHAIN_FEES,
@@ -72,7 +72,7 @@ export default function CreateTokenPage() {
   const lancamentoSolana = useLancarToken();
   const lancamentoEvm = useLancarTokenEvm();
 
-  const [chain, setChain] = useState<ChainId>("solana");
+  const [chain, setChain] = useState<ChainId>(REDE_PADRAO);
 
   /*
    * A partir daqui a tela não sabe mais em que rede está: ela fala com
@@ -82,10 +82,16 @@ export default function CreateTokenPage() {
   const lancamento = chain === "solana" ? lancamentoSolana : lancamentoEvm;
 
   /*
-   * A Solana está publicada; a Robinhood depende dos contratos estarem no ar.
-   * `disponivel` só existe no hook EVM — na Solana a resposta é sempre sim.
+   * Duas condições diferentes, e a tela precisa das duas.
+   *
+   * `podeLancarNaRede` é a regra do produto: na Solana o programa da curva não
+   * está publicado, então criar moeda não existe ali — só negociar.
+   *
+   * `lancamentoEvm.disponivel` é a realidade do ambiente: mesmo na Robinhood,
+   * enquanto os contratos não estiverem no ar com os endereços configurados,
+   * não há o que chamar.
    */
-  const redeDisponivel = chain === "solana" ? true : lancamentoEvm.disponivel;
+  const redeDisponivel = podeLancarNaRede(chain) && lancamentoEvm.disponivel;
 
   const [pair, setPair] = useState(DEFAULT_PAIR.solana);
   const [rewards, setRewards] = useState<CreatorRewardsMode>("creator");
@@ -137,6 +143,29 @@ export default function CreateTokenPage() {
           para compra e venda, com página própria e gráfico ao vivo.
         </p>
       </div>
+
+      {/*
+        A REDE QUE NÃO LANÇA AVISA ANTES DO FORMULÁRIO.
+        ------------------------------------------------------------------
+        Antes isso só aparecia no texto do botão, lá embaixo — depois de a
+        pessoa escolher a rede, preencher nome, símbolo, enviar imagem e
+        rolar a página inteira. Descobrir no fim que aquela rede não lança é
+        trabalho jogado fora.
+
+        O aviso leva junto o botão que resolve, em vez de só informar.
+      */}
+      {!podeLancarNaRede(chain) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/30 bg-warn/[0.07] p-3">
+          <p className="text-[12px] leading-relaxed text-warn">
+            <strong>Lançar moedas na {meta.label} ainda não está disponível.</strong> Nesta rede a
+            Chroma faz só compra e venda. Para criar a sua moeda, use a{" "}
+            {CHAINS[REDE_PADRAO].label}.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => selectChain(REDE_PADRAO)}>
+            Trocar para {CHAINS[REDE_PADRAO].label}
+          </Button>
+        </div>
+      )}
 
       {/* Aviso de imutabilidade — no topo, porque muda o que a pessoa preenche */}
       <div className="flex gap-2.5 rounded-xl border border-warn/25 bg-warn/[0.06] p-3">
