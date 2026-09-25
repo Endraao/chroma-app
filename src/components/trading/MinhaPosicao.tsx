@@ -1,0 +1,225 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAccount } from "wagmi";
+
+import { Card, CardBody } from "@/components/ui/Card";
+import { CHAINS } from "@/lib/web3";
+import { cn, formatPrice, formatUsd } from "@/lib/utils";
+import type { ChainId } from "@/lib/types";
+
+/**
+ * Quanto EU tenho desta moeda, e se estou ganhando ou perdendo.
+ *
+ * ---------------------------------------------------------------------------
+ * O CÁLCULO NÃO É REFEITO AQUI
+ * ---------------------------------------------------------------------------
+ * `agregarTraders` já apura posição, preço médio e lucro de todas as carteiras
+ * que apareceram nos negócios do par — é o que alimenta a tabela de traders.
+ * Este painel só procura a carteira conectada nessa lista.
+ *
+ * Refazer a conta daria um segundo número para a mesma pergunta, e dois
+ * números que discordam numa tela de dinheiro é pior do que um número só.
+ *
+ * ---------------------------------------------------------------------------
+ * QUANDO NÃO DÁ PRA SABER, A TELA DIZ QUE NÃO DÁ
+ * ---------------------------------------------------------------------------
+ * A janela de negócios é finita. Quem comprou antes dela aparece vendendo sem
+ * ter comprado, e aí o preço médio é desconhecido — `vindoDeAntes`.
+ *
+ * Nesse caso o painel mostra a posição e omite o lucro, em vez de inventar um
+ * custo. Um lucro calculado sobre preço médio errado é o tipo de número que
+ * faz alguém segurar uma perda achando que está no azul.
+ */
+
+interface Trader {
+  carteira: string;
+  saldo: number;
+  precoMedioUsd: number | null;
+  naoRealizadoUsd: number | null;
+  realizadoUsd: number | null;
+  lucroUsd: number | null;
+  vindoDeAntes: boolean;
+  compras: number;
+  vendas: number;
+}
+
+interface Quadro {
+  lista: Trader[];
+  precoUsd: number;
+}
+
+export function MinhaPosicao({
+  address,
+  symbol,
+  chain,
+}: {
+  address: string;
+  symbol: string;
+  chain: ChainId;
+}) {
+  const { publicKey } = useWallet();
+  const { address: enderecoEvm } = useAccount();
+
+  const minhaCarteira =
+    CHAINS[chain].kind === "solana" ? publicKey?.toBase58() : enderecoEvm;
+
+  const [eu, setEu] = useState<Trader | null>(null);
+  const [preco, setPreco] = useState(0);
+
+  useEffect(() => {
+    if (!minhaCarteira) {
+      setEu(null);
+      return;
+    }
+
+    let cancelado = false;
+
+    const ler = async () => {
+      try {
+        const res = await fetch(`/api/traders?address=${address}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const quadro = (await res.json()) as Quadro;
+        if (cancelado) return;
+
+        const meu =
+          quadro.lista?.find(
+            (t) => t.carteira?.toLowerCase() === minhaCarteira.toLowerCase(),
+          ) ?? null;
+
+        setEu(meu);
+        setPreco(quadro.precoUsd ?? 0);
+      } catch {
+        /* falha de leitura não apaga o que já está na tela */
+      }
+    };
+
+    void ler();
+    /*
+     * Meio minuto. O painel acompanha o mercado, mas não precisa correr: a
+     * fonte de negócios tem cache de 30s e pedir mais vezes devolveria o mesmo.
+     */
+    const timer = window.setInterval(ler, 30_000);
+
+    return () => {
+      cancelado = true;
+      window.clearInterval(timer);
+    };
+  }, [address, minhaCarteira]);
+
+  /* Sem carteira, ou sem posição nesta moeda: o painel não existe. */
+  if (!minhaCarteira || !eu || eu.saldo <= 0) return null;
+
+  const valorAtual = eu.saldo * preco;
+
+  /*
+   * O lucro no papel é o que interessa aqui: é o que a pessoa ganha ou perde
+   * se vender AGORA. O realizado entra à parte, porque já saiu da mesa.
+   */
+  const noPapel = eu.vindoDeAntes ? null : eu.naoRealizadoUsd;
+  const custo = eu.vindoDeAntes ? null : eu.precoMedioUsd;
+
+  const pct =
+    noPapel !== null && custo !== null && custo > 0 && eu.saldo > 0
+      ? (noPapel / (custo * eu.saldo)) * 100
+      : null;
+
+  const positivo = (noPapel ?? 0) >= 0;
+
+  return (
+    <Card className="overflow-hidden">
+      <CardBody className="space-y-2.5 p-3.5">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+            Sua posição
+          </span>
+          <span className="tnum text-[11px] text-zinc-600">
+            {eu.compras} {eu.compras === 1 ? "compra" : "compras"}
+            {eu.vendas > 0 && ` · ${eu.vendas} ${eu.vendas === 1 ? "venda" : "vendas"}`}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <div className="tnum text-xl font-black tracking-tight text-zinc-50">
+              {formatUsd(valorAtual)}
+            </div>
+            <div className="tnum mt-0.5 text-[11px] text-zinc-500">
+              {compacto(eu.saldo)} {symbol}
+            </div>
+          </div>
+
+          {noPapel !== null ? (
+            <div className="text-right">
+              <div
+                className={cn(
+                  "tnum text-lg font-black tracking-tight",
+                  positivo ? "text-bull" : "text-bear",
+                )}
+              >
+                {positivo ? "+" : "−"}
+                {formatUsd(Math.abs(noPapel))}
+              </div>
+              {pct !== null && (
+                <div
+                  className={cn(
+                    "tnum text-[11px] font-semibold",
+                    positivo ? "text-bull/80" : "text-bear/80",
+                  )}
+                >
+                  {positivo ? "+" : "−"}
+                  {Math.abs(pct).toFixed(1).replace(".", ",")}%
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="max-w-[190px] text-right text-[11px] leading-snug text-zinc-600">
+              Você já tinha esta moeda antes dos negócios que conseguimos ler, então não dá pra
+              calcular o seu preço médio.
+            </div>
+          )}
+        </div>
+
+        {custo !== null && (
+          <div className="flex items-center justify-between border-t border-white/[0.06] pt-2 text-[11px]">
+            <span className="text-zinc-600">Preço médio</span>
+            <span className="tnum text-zinc-400">
+              ${formatPrice(custo)}
+              <span className="ml-2 text-zinc-600">agora ${formatPrice(preco)}</span>
+            </span>
+          </div>
+        )}
+
+        {/*
+          O lucro já REALIZADO fica separado do lucro no papel.
+          Somar os dois num número só esconde a diferença entre dinheiro que
+          entrou na carteira e dinheiro que só existe enquanto o preço aguentar.
+        */}
+        {eu.realizadoUsd !== null && eu.vendas > 0 && (
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-zinc-600">Já realizado nas vendas</span>
+            <span
+              className={cn("tnum font-semibold", eu.realizadoUsd >= 0 ? "text-bull" : "text-bear")}
+            >
+              {eu.realizadoUsd >= 0 ? "+" : "−"}
+              {formatUsd(Math.abs(eu.realizadoUsd))}
+            </span>
+          </div>
+        )}
+
+        <p className="text-[10px] leading-relaxed text-zinc-700">
+          Calculado sobre os negócios recentes deste par. Não é aconselhamento.
+        </p>
+      </CardBody>
+    </Card>
+  );
+}
+
+/** 793.100.000 vira "793,1M": o número inteiro não cabe e não informa. */
+function compacto(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2).replace(".", ",")}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2).replace(".", ",")}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(2).replace(".", ",")}K`;
+  return n.toFixed(n >= 1 ? 2 : 6).replace(".", ",");
+}

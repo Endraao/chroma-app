@@ -644,7 +644,18 @@ async function lerNaPropriaRede(address: string, chain: ChainId): Promise<Securi
         : enderecoDoDono
           ? "Alguém ainda pode usar as funções restritas ao dono."
           : "O contrato não expõe função de dono.",
-      level: posseRenunciada ? "safe" : enderecoDoDono ? "danger" : "safe",
+      /*
+       * Dono ativo é ATENÇÃO, não perigo.
+       *
+       * Contrato com dono é o normal — inclusive em projeto sério, que precisa
+       * dele para corrigir parâmetro e responder a incidente. Marcar isso em
+       * vermelho acendia o painel em quase toda moeda e diluía o alerta que
+       * importa: liquidez removível, honeypot, emissão aberta.
+       *
+       * O que o dono pode FAZER de ruim já é verificado item a item. Este aqui
+       * só diz que ele existe.
+       */
+      level: posseRenunciada || !enderecoDoDono ? "safe" : "warn",
       value: posseRenunciada ? "renunciado" : enderecoDoDono ? "ativo" : "sem dono",
       aviso: "O contrato ainda tem dono: ele pode usar as funções restritas a ele.",
     },

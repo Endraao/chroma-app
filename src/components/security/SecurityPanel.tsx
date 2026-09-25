@@ -82,12 +82,21 @@ export function SecurityPanel({
   const tom = grave ? "bear" : alertas.length ? "warn" : "neutro";
 
   return (
+    /*
+      O PAINEL SÓ SE PINTA QUANDO É GRAVE.
+      ---------------------------------------------------------------------
+      Antes o fundo e a borda inteiros mudavam de cor em qualquer alerta, e
+      como quase toda meme coin tem alguma pendência, a coluna do swap vivia
+      com um bloco aceso competindo com o preço e com o botão.
+
+      Agora o vermelho é reservado a perigo crítico — liquidez removível,
+      honeypot, mint aberto. O resto fica com a moldura neutra e diz o que
+      tem pra dizer no texto, sem acender a tela.
+    */
     <div
       className={cn(
         "overflow-hidden rounded-2xl border",
-        tom === "bear" && "border-bear/30 bg-bear/[0.05]",
-        tom === "warn" && "border-warn/30 bg-warn/[0.05]",
-        tom === "neutro" && "border-white/[0.07] bg-white/[0.02]",
+        tom === "bear" ? "border-bear/25 bg-bear/[0.04]" : "border-white/[0.07] bg-white/[0.02]",
       )}
     >
       <button
@@ -98,10 +107,8 @@ export function SecurityPanel({
         <span className="min-w-0 flex-1">
           <span
             className={cn(
-              "block text-[13px] font-bold",
-              tom === "bear" && "text-bear",
-              tom === "warn" && "text-warn",
-              tom === "neutro" && "text-zinc-200",
+              "block text-[12.5px] font-semibold",
+              tom === "bear" ? "text-bear" : tom === "warn" ? "text-warn/90" : "text-zinc-300",
             )}
           >
             {alertas.length === 0
@@ -110,9 +117,18 @@ export function SecurityPanel({
                 ? "1 alerta neste token"
                 : `${alertas.length} alertas neste token`}
           </span>
-          <span className="block text-[11px] text-zinc-500">
+          {/*
+            "N fora do nosso alcance" saiu.
+
+            Era contagem de uma ausência: dizia que existem verificações que
+            não conseguimos fazer, sem dizer quais nem por quê. Quem lia ficava
+            com a impressão de risco escondido justamente nas moedas em que
+            nada de errado foi encontrado. O que não foi verificado continua
+            visível na lista, marcado item a item, que é onde a informação
+            significa alguma coisa.
+          */}
+          <span className="block text-[11px] text-zinc-600">
             {passaram.length} verificações no contrato passaram
-            {naoVerificados.length > 0 && ` · ${naoVerificados.length} fora do nosso alcance`}
           </span>
         </span>
         <Seta aberto={aberto} />
@@ -130,7 +146,8 @@ export function SecurityPanel({
               <div
                 className={cn(
                   "text-[12px] font-semibold",
-                  a.nivel === "danger" ? "text-bear" : "text-warn",
+                  /* Vermelho só no que zera o dinheiro; o resto informa em amarelo. */
+                  a.nivel === "danger" ? "text-bear" : "text-warn/85",
                 )}
               >
                 {a.titulo}

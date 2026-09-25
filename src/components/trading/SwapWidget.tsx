@@ -690,15 +690,32 @@ function EvmSwap({
       <Card className="overflow-hidden">
         <AbasDeLado side="buy" onChange={() => {}} disabled />
         <div className="space-y-3 px-4 pb-4 pt-1">
-          <div className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[12px] leading-relaxed text-warn">
-            <div className="mb-1 font-semibold">Negociação em {meta.label} em breve.</div>
-            Esta moeda não foi lançada na Chroma, e a negociação de moedas externas nesta rede ainda
-            não está disponível. Na {CHAINS.solana.label} funciona normalmente.
+          {/*
+            O texto dizia "na Solana funciona normalmente", o que virou
+            contradição quando a Robinhood passou a ser a rede principal: o
+            site manda a pessoa pra rede que ele mesmo trata como secundária.
+
+            Agora aponta pro que ela PODE fazer aqui — negociar as moedas
+            lançadas na Chroma — em vez de mandar embora.
+          */}
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] leading-relaxed text-zinc-400">
+            <div className="mb-1 font-semibold text-zinc-200">
+              Esta moeda não pode ser negociada aqui ainda
+            </div>
+            Ela não foi lançada na Chroma, e a negociação de moedas externas na {meta.label} está em
+            desenvolvimento. As moedas criadas na Chroma já negociam normalmente.
           </div>
           <RequireChainWallet chain={chain}>
-            <Button variant="outline" size="lg" className="w-full" disabled>
-              {symbol} — em breve
-            </Button>
+            <a
+              href={`${meta.explorer}${tokenAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <Button variant="outline" size="lg" className="w-full">
+                Ver no explorer ↗
+              </Button>
+            </a>
           </RequireChainWallet>
         </div>
       </Card>

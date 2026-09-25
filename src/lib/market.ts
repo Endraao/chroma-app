@@ -87,13 +87,76 @@ interface DexPair {
   };
 }
 
-async function getJson<T>(url: string, revalidateSeconds = 10): Promise<T> {
-  const res = await fetch(url, {
-    headers: { accept: "application/json" },
-    next: { revalidate: revalidateSeconds },
+/**
+ * A GeckoTerminal corta em ~30 requisições por minuto, e o site inteiro bebe
+ * dela: a vitrine da home faz várias leituras, cada página de moeda pede velas
+ * e negócios, e a tabela de traders recarrega sozinha.
+ *
+ * Sem controle, um punhado de abas abertas estoura o limite e a fonte passa a
+ * responder 429 para TUDO — inclusive para quem só abriu uma página. Foi o que
+ * derrubou de uma vez o gráfico, a tabela de traders e o painel de posição.
+ *
+ * Duas requisições por segundo deixam folga sobre o limite anunciado. Quem
+ * chega além disso espera na fila em vez de levar 429: um gráfico que demora
+ * meio segundo a mais é melhor que um gráfico que não carrega.
+ */
+const INTERVALO_MINIMO_MS = 500;
+let ultimaChamada = 0;
+let filaDaFonte: Promise<unknown> = Promise.resolve();
+
+function naFila<T>(tarefa: () => Promise<T>): Promise<T> {
+  const proxima = filaDaFonte.then(async () => {
+    const agora = Date.now();
+    const espera = Math.max(0, ultimaChamada + INTERVALO_MINIMO_MS - agora);
+    if (espera > 0) await new Promise((r) => setTimeout(r, espera));
+    ultimaChamada = Date.now();
+    return tarefa();
   });
-  if (!res.ok) throw new Error(`${url} respondeu ${res.status}`);
-  return (await res.json()) as T;
+
+  /*
+   * A fila não pode morrer quando uma tarefa falha: se `filaDaFonte` virasse
+   * uma promessa rejeitada, toda chamada seguinte rejeitaria junto e a fonte
+   * ficaria inacessível até reiniciar o servidor.
+   */
+  filaDaFonte = proxima.catch(() => undefined);
+  return proxima;
+}
+
+/** Espera crescente entre tentativas, para não insistir no mesmo instante. */
+const ESPERAS_APOS_429 = [400, 1200];
+
+async function getJson<T>(url: string, revalidateSeconds = 10): Promise<T> {
+  const daGecko = url.startsWith(GECKOTERMINAL);
+
+  const buscar = async () => {
+    const res = await fetch(url, {
+      headers: { accept: "application/json" },
+      next: { revalidate: revalidateSeconds },
+    });
+    if (!res.ok) {
+      const erro = new Error(`${url} respondeu ${res.status}`);
+      (erro as Error & { status?: number }).status = res.status;
+      throw erro;
+    }
+    return (await res.json()) as T;
+  };
+
+  if (!daGecko) return buscar();
+
+  /*
+   * 429 é temporário por definição: quer dizer "agora não, tente daqui a
+   * pouco". Desistir na primeira recusa transformava um soluço de segundos em
+   * tela vazia — enquanto duas tentativas espaçadas resolvem a maioria.
+   */
+  for (let tentativa = 0; ; tentativa++) {
+    try {
+      return await naFila(buscar);
+    } catch (erro) {
+      const status = (erro as Error & { status?: number }).status;
+      if (status !== 429 || tentativa >= ESPERAS_APOS_429.length) throw erro;
+      await new Promise((r) => setTimeout(r, ESPERAS_APOS_429[tentativa]));
+    }
+  }
 }
 
 /**

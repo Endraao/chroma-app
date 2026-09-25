@@ -8,6 +8,7 @@ import { SecurityPanel } from "@/components/security/SecurityPanel";
 import { CurvaPanel } from "@/components/trading/CurvaPanel";
 import { CurvaProvider } from "@/components/trading/CurvaProvider";
 import { TabelaDeTraders } from "@/components/trading/TabelaDeTraders";
+import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -157,25 +158,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             */}
           <CurvaPanel />
 
-          {/*
-            A AUDITORIA VEM ANTES DO BOTÃO DE COMPRAR.
-            -----------------------------------------------------------------
-            Estava depois. Quem abria a página via o campo de valor, o botão
-            verde e o preço subindo; o aviso de que a liquidez pode ser
-            retirada pelo dono ficava abaixo de tudo isso, fora da tela em
-            telas menores.
-
-            Aviso que chega depois da decisão não é aviso, é registro. Como o
-            painel se resume a uma linha quando não há nada a dizer, pôr ele
-            aqui não atrapalha as moedas limpas — e nas sujas ele aparece onde
-            precisa aparecer.
-          */}
-          <SecurityPanel
-            report={report}
-            carregando={auditando}
-            liquidityUsd={stats.liquidityUsd}
-          />
-
           <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
             <SwapWidget
               symbol={token.symbol}
@@ -184,6 +166,36 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
               priceUsd={price}
             />
           </Suspense>
+
+          {/*
+            A POSIÇÃO VEM LOGO ABAIXO DO BOTÃO, e não no fim da página.
+            -----------------------------------------------------------------
+            Quem já comprou volta à página da moeda por um motivo só: ver se
+            está ganhando ou perdendo. Esse número não pode estar embaixo da
+            tabela de traders.
+
+            O componente não desenha nada pra quem não tem a moeda, então não
+            ocupa espaço de quem está chegando agora.
+          */}
+          <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} />
+
+          {/*
+            A AUDITORIA FICA DEPOIS DO BOTÃO, e discreta.
+            -----------------------------------------------------------------
+            Esteve acima por um tempo, na ideia de que aviso tem que vir antes
+            da decisão. Na prática virou o elemento mais chamativo da coluna —
+            um bloco vermelho no topo, aceso também por coisa que não é grave,
+            competindo com o preço e com o botão.
+
+            Alerta que grita em toda moeda ensina a ignorar alerta. O que é de
+            fato grave continua marcado em vermelho aqui dentro; o resto ficou
+            em amarelo, que informa sem assustar.
+          */}
+          <SecurityPanel
+            report={report}
+            carregando={auditando}
+            liquidityUsd={stats.liquidityUsd}
+          />
 
           <Card>
             <CardBody className="space-y-2 text-[12px] text-zinc-500">
