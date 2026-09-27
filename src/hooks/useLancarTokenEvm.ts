@@ -12,6 +12,7 @@ import {
   curvaEvmDisponivel,
 } from "@/lib/chroma-evm";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
+import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import { robinhoodChain } from "@/lib/web3";
 import { TEXTO_DA_ETAPA, type DadosDoLancamento, type EtapaDoLancamento } from "@/hooks/useLancarToken";
 
@@ -306,6 +307,7 @@ export function useLancarTokenEvm() {
             });
             const reciboDaCompra = await esperarRecibo(publicClient, transacao);
             if (reciboDaCompra.status !== "success") throw new Error("a rede recusou a compra");
+            void reivindicarPontos(transacao, address);
           } catch (e) {
             const mensagem = e instanceof Error ? e.message : String(e);
             avisoDeCompra = /reject|denied|cancel|User rejected/i.test(mensagem)

@@ -14,6 +14,8 @@ import {
 import { SOL_MINT } from "@/lib/jupiter";
 import { assinaturaPlausivel } from "@/lib/validacao";
 import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
+import { negocioNaTransacaoEvm } from "@/lib/curva-evm";
+import { precosNativos } from "@/lib/precos-nativos";
 
 /**
  * O livro-razão do airdrop.
@@ -80,7 +82,8 @@ export async function creditar(l: Lancamento): Promise<boolean> {
      ON CONFLICT (tipo, referencia) DO NOTHING
      RETURNING id`,
     [
-      l.carteira,
+      /* EVM sempre em minúsculas: o mesmo endereço chega em checksum e não. */
+      /^0x/i.test(l.carteira) ? l.carteira.toLowerCase() : l.carteira,
       l.rede,
       l.tipo,
       Math.floor(l.pontos),
@@ -119,7 +122,7 @@ export async function saldoDe(carteira: string): Promise<SaldoDePontos> {
 
   const linhas = (await sql.query(
     `SELECT tipo, SUM(pontos)::int AS pontos, COUNT(*)::int AS quantos
-       FROM pontos WHERE carteira = $1 AND temporada = $2
+       FROM pontos WHERE CASE WHEN carteira LIKE '0x%' THEN LOWER(carteira) ELSE carteira END = $1 AND temporada = $2
       GROUP BY tipo`,
     [carteira, TEMPORADA_ATUAL],
   )) as { tipo: string; pontos: number; quantos: number }[];
@@ -156,9 +159,9 @@ export async function placar(limite = 100): Promise<LinhaDoPlacar[]> {
   await banco();
 
   const linhas = (await sql.query(
-    `SELECT carteira, SUM(pontos)::int AS pontos
+    `SELECT CASE WHEN carteira LIKE '0x%' THEN LOWER(carteira) ELSE carteira END AS carteira, SUM(pontos)::int AS pontos
        FROM pontos WHERE temporada = $1
-      GROUP BY carteira ORDER BY pontos DESC LIMIT $2`,
+      GROUP BY 1 ORDER BY pontos DESC LIMIT $2`,
     [TEMPORADA_ATUAL, limite],
   )) as { carteira: string; pontos: number }[];
 
@@ -170,7 +173,7 @@ export async function resumoDaTemporada() {
   await banco();
 
   const linhas = (await sql.query(
-    `SELECT COUNT(DISTINCT carteira)::int AS carteiras,
+    `SELECT COUNT(DISTINCT CASE WHEN carteira LIKE '0x%' THEN LOWER(carteira) ELSE carteira END)::int AS carteiras,
             COALESCE(SUM(pontos), 0)::int AS pontos
        FROM pontos WHERE temporada = $1`,
     [TEMPORADA_ATUAL],
@@ -316,6 +319,40 @@ export async function verificarSwapECreditar(
     pontos,
     /* A assinatura é única na rede: é a chave natural contra crédito duplo. */
     referencia: assinatura,
+    detalhe: `US$ ${volumeUsd.toFixed(2)}`,
+  });
+
+  return { ok: true, pontos, volumeUsd, jaCreditado: !creditou };
+}
+
+/**
+ * O mesmo, na Robinhood Chain.
+ *
+ * Até 27/09/2026 só a Solana pontuava — e a Robinhood é a rede principal.
+ * A regra mãe é a mesma: o navegador manda só o hash; a rede diz se a
+ * transação deu certo, se foi ESTA carteira que assinou e quanto ETH passou
+ * pela curva da Chroma (eventos `Negocio` do nosso contrato no recibo).
+ */
+export async function verificarSwapEvmECreditar(
+  hash: string,
+  carteira: string,
+): Promise<ResultadoDaVerificacao> {
+  const negocio = await negocioNaTransacaoEvm(hash, carteira);
+  if (!negocio) return { ok: false, motivo: "esta transação não negociou na Chroma" };
+
+  const precoEth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
+  if (precoEth <= 0) return { ok: false, motivo: "sem cotação do ETH agora" };
+
+  const volumeUsd = Math.min(negocio.ethLimpo * precoEth, TETO_POR_SWAP_USD);
+  const pontos = pontosDeVolume(volumeUsd);
+  if (pontos <= 0) return { ok: false, motivo: "operação pequena demais para pontuar" };
+
+  const creditou = await creditar({
+    carteira: carteira.toLowerCase(),
+    rede: "robinhood",
+    tipo: "volume",
+    pontos,
+    referencia: hash.toLowerCase(),
     detalhe: `US$ ${volumeUsd.toFixed(2)}`,
   });
 

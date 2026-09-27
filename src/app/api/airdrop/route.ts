@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { placar, resumoDaTemporada, saldoDe, verificarSwapECreditar } from "@/lib/airdrop";
-import { nivelDe } from "@/lib/airdrop-regras";
+import {
+  placar,
+  resumoDaTemporada,
+  saldoDe,
+  verificarSwapECreditar,
+  verificarSwapEvmECreditar,
+} from "@/lib/airdrop";
 
 /**
  * O endpoint do airdrop.
@@ -28,10 +33,23 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ENDERECO = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const ENDERECO_EVM = /^0x[0-9a-fA-F]{40}$/;
+const valido = (c: string) => ENDERECO.test(c) || ENDERECO_EVM.test(c);
+/* Pontos EVM são gravados em minúsculas; Solana, como vier (base58 tem caixa). */
+const normal = (c: string) => (ENDERECO_EVM.test(c) ? c.toLowerCase() : c);
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const dono = searchParams.get("dono")?.trim() ?? "";
+  /*
+   * Uma ou duas carteiras (a da Solana e a da Robinhood da mesma pessoa),
+   * separadas por vírgula. O saldo mostrado é a soma.
+   */
+  const donos = (searchParams.get("dono") ?? "")
+    .split(",")
+    .map((c) => c.trim())
+    .filter(valido)
+    .slice(0, 2)
+    .map(normal);
 
   const [tabela, temporada] = await Promise.all([placar(50), resumoDaTemporada()]);
 
@@ -40,21 +58,27 @@ export async function GET(request: Request) {
    * pra quem não conectou. Recusar com 400 deixaria a tela vazia justamente
    * pra quem ainda está decidindo se entra.
    */
-  if (!dono || !ENDERECO.test(dono)) {
-    return NextResponse.json({ saldo: null, nivel: null, placar: tabela, temporada });
+  if (donos.length === 0) {
+    return NextResponse.json({ pontos: null, placar: tabela, temporada });
   }
 
-  const saldo = await saldoDe(dono);
+  const saldos = await Promise.all(donos.map((d) => saldoDe(d)));
 
+  /*
+   * Só o TOTAL sai daqui, de propósito (27/09/2026, decisão do dono): quanto
+   * vale cada ação é segredo da temporada. Detalhar por tipo ensinaria a
+   * farmar a regra em vez de usar a plataforma.
+   */
   return NextResponse.json({
-    saldo,
-    nivel: nivelDe(saldo.total),
+    pontos: saldos.reduce((soma, s) => soma + s.total, 0),
     placar: tabela,
     temporada,
-    /* A posição sai da lista que já veio; `null` quando está fora do top. */
+    /* A melhor posição entre as carteiras da pessoa; null fora do top. */
     posicao: (() => {
-      const i = tabela.findIndex((l) => l.carteira === dono);
-      return i >= 0 ? i + 1 : null;
+      const posicoes = donos
+        .map((d) => tabela.findIndex((l) => l.carteira === d))
+        .filter((i) => i >= 0);
+      return posicoes.length ? Math.min(...posicoes) + 1 : null;
     })(),
   });
 }
@@ -70,12 +94,14 @@ export async function POST(request: Request) {
   const assinatura = typeof corpo.assinatura === "string" ? corpo.assinatura.trim() : "";
   const carteira = typeof corpo.carteira === "string" ? corpo.carteira.trim() : "";
 
-  if (!assinatura || !ENDERECO.test(carteira)) {
+  if (!assinatura || !valido(carteira)) {
     return NextResponse.json({ error: "assinatura e carteira são obrigatórias" }, { status: 400 });
   }
 
   try {
-    const r = await verificarSwapECreditar(assinatura, carteira);
+    const r = ENDERECO_EVM.test(carteira)
+      ? await verificarSwapEvmECreditar(assinatura, carteira)
+      : await verificarSwapECreditar(assinatura, carteira);
 
     /*
      * 422, não 400: o pedido estava bem formado, mas a rede não confirmou o

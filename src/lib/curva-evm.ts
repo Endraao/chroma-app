@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createPublicClient, erc20Abi, http, parseAbiItem, type Address } from "viem";
+import { createPublicClient, decodeEventLog, erc20Abi, http, parseAbiItem, type Address } from "viem";
 
 import { cached } from "@/lib/cache";
 import {
@@ -344,4 +344,37 @@ export async function negociosDaCurvaComoPool(moeda: string): Promise<NegocioDoP
     em: n.time * 1000,
     txHash: n.txHash,
   }));
+}
+
+/**
+ * O que uma transação fez na curva da Chroma, lido do RECIBO na rede.
+ *
+ * Usado pelo airdrop: o navegador só manda o hash; quem diz se houve negócio,
+ * de quem e de quanto é a rede. Devolve null se a transação não existe,
+ * falhou, não foi assinada por `carteira` ou não negociou na nossa curva.
+ */
+export async function negocioNaTransacaoEvm(
+  hash: string,
+  carteira: string,
+): Promise<{ ethLimpo: number } | null> {
+  if (!curvaEvmDisponivel() || !/^0x[0-9a-fA-F]{64}$/.test(hash)) return null;
+
+  const recibo = await cliente.getTransactionReceipt({ hash: hash as `0x${string}` }).catch(() => null);
+  if (!recibo || recibo.status !== "success") return null;
+  if (recibo.from.toLowerCase() !== carteira.toLowerCase()) return null;
+
+  let total = 0n;
+  for (const log of recibo.logs) {
+    if (log.address.toLowerCase() !== String(CHROMA_CURVE_EVM).toLowerCase()) continue;
+    try {
+      const ev = decodeEventLog({ abi: [EVENTO_NEGOCIO], data: log.data, topics: log.topics });
+      const a = ev.args;
+      if (a.trader.toLowerCase() !== carteira.toLowerCase()) continue;
+      const taxas = a.taxaCriador + a.taxaAfiliado + a.taxaPlataforma;
+      total += a.compra ? a.eth - taxas : a.eth + taxas;
+    } catch {
+      /* outro evento da curva (Lancada, CurvaEncheu): não é negócio */
+    }
+  }
+  return total > 0n ? { ethLimpo: Number(total) / ESCALA } : null;
 }

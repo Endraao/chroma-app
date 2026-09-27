@@ -2,36 +2,27 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { useWallet } from "@solana/wallet-adapter-react";
-
-import { NIVEIS, REGRAS, nivelDe, type TipoDePonto } from "@/lib/airdrop-regras";
-import { cn, formatUsd, shortenAddress } from "@/lib/utils";
+import { useChromaAccount } from "@/hooks/useChromaAccount";
+import { cn, shortenAddress } from "@/lib/utils";
 
 /**
- * O painel vivo do airdrop: o que a carteira conectada já acumulou.
+ * O painel vivo do airdrop.
  *
  * ---------------------------------------------------------------------------
- * A PÁGINA FUNCIONA SEM CARTEIRA
+ * AS REGRAS SÃO SEGREDO (decisão do dono, 27/09/2026)
  * ---------------------------------------------------------------------------
- * Quem chega pela primeira vez não tem carteira conectada — e é exatamente
- * essa pessoa que a página precisa convencer. Por isso o placar e o resumo da
- * temporada carregam sempre, e a área de saldo vira um convite em vez de um
- * vazio.
+ * A página mostrava quanto valia cada ação e uma escada de níveis. Isso ensina
+ * a farmar a regra — o menor esforço que rende o maior número — em vez de
+ * usar a plataforma. Agora a pessoa vê só o próprio total, a posição e o
+ * placar. O que conta e quanto conta não aparece em lugar nenhum, e a API
+ * também deixou de devolver o detalhamento.
  *
- * Exigir conexão pra ver qualquer coisa é o erro clássico dessas páginas: ela
- * só impressiona quem já está dentro.
+ * A página continua funcionando sem carteira: o placar é o que convence
+ * quem ainda não entrou.
  */
 
-interface Saldo {
-  total: number;
-  porTipo: Record<TipoDePonto, number>;
-  contagem: Record<TipoDePonto, number>;
-  volumeUsd: number;
-}
-
 interface Resposta {
-  saldo: Saldo | null;
-  nivel: ReturnType<typeof nivelDe> | null;
+  pontos: number | null;
   placar: { carteira: string; pontos: number }[];
   temporada: { carteiras: number; pontos: number; temporada: number };
   posicao?: number | null;
@@ -39,22 +30,34 @@ interface Resposta {
 
 const RECARREGA_MS = 60_000;
 
+/** Bloco que parece texto riscado: a regra existe, só não é pública. */
+function Censurado({ largura }: { largura: string }) {
+  return (
+    <span
+      aria-label="confidencial"
+      className={cn("inline-block h-[0.9em] translate-y-[0.1em] rounded-sm bg-zinc-700/70", largura)}
+    />
+  );
+}
+
 export function PainelDeAirdrop() {
-  const { publicKey } = useWallet();
-  const dono = publicKey?.toBase58() ?? null;
+  const account = useChromaAccount();
+  /* As duas carteiras da pessoa: pontos da Solana e da Robinhood somam. */
+  const minhas = [...new Set(Object.values(account.conectadas).filter(Boolean) as string[])];
+  const chave = minhas.join(",");
 
   const [dados, setDados] = useState<Resposta | null>(null);
 
   const ler = useCallback(async () => {
     try {
-      const url = dono ? `/api/airdrop?dono=${dono}` : "/api/airdrop";
+      const url = chave ? `/api/airdrop?dono=${chave}` : "/api/airdrop";
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) return;
       setDados((await res.json()) as Resposta);
     } catch {
       /* rede oscilou: mantém o último quadro conhecido */
     }
-  }, [dono]);
+  }, [chave]);
 
   useEffect(() => {
     void ler();
@@ -62,161 +65,79 @@ export function PainelDeAirdrop() {
     return () => window.clearInterval(id);
   }, [ler]);
 
-  const saldo = dados?.saldo ?? null;
-  const nivel = dados?.nivel ?? null;
+  const eu = new Set(minhas.map((c) => (c.startsWith("0x") ? c.toLowerCase() : c)));
+  const pontos = dados?.pontos ?? null;
 
   return (
     <div className="space-y-12">
       {/* ---------------- O seu saldo ---------------- */}
       <section>
-        <div className="faceta brilho glass relative overflow-hidden p-6 sm:p-8">
-          {saldo && nivel ? (
+        <div className="faceta brilho glass relative overflow-hidden p-6 text-center sm:p-10">
+          {chave && pontos !== null ? (
             <>
-              <div className="flex flex-wrap items-end justify-between gap-6">
-                <div>
-                  <p className="rotulo">Seus pontos</p>
-                  <p className="tnum mt-1 text-5xl font-black tracking-tight text-zinc-50">
-                    {saldo.total.toLocaleString("pt-BR")}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <p className="rotulo">Nível</p>
-                  <p className="text-chroma mt-1 text-2xl font-black tracking-tight">
-                    {nivel.atual}
-                  </p>
-                  {dados?.posicao && (
-                    <p className="tnum mt-0.5 text-[11px] text-zinc-600">
-                      #{dados.posicao} no placar
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* A barra de progresso pro próximo nível. */}
-              {nivel.proximo && (
-                <div className="mt-6">
-                  <div className="mb-1.5 flex items-baseline justify-between text-[11px]">
-                    <span className="text-zinc-600">
-                      faltam{" "}
-                      <span className="tnum font-bold text-zinc-400">
-                        {nivel.faltam.toLocaleString("pt-BR")}
-                      </span>{" "}
-                      pontos
-                    </span>
-                    <span className="font-semibold text-zinc-500">{nivel.proximo}</span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-800">
-                    <div
-                      className="h-full rounded-full bg-chroma-gradient transition-[width] duration-700"
-                      style={{
-                        width: `${Math.max(2, nivel.progresso * 100)}%`,
-                        backgroundSize: "200% 200%",
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* De onde vieram os pontos. */}
-              <div className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-ink-700 bg-ink-700 sm:grid-cols-4">
-                <Fatia
-                  rotulo="Negociando"
-                  pontos={saldo.porTipo.volume}
-                  nota={saldo.volumeUsd > 0 ? formatUsd(saldo.volumeUsd) : "—"}
-                />
-                <Fatia
-                  rotulo="Moedas"
-                  pontos={saldo.porTipo.moeda}
-                  nota={`${saldo.contagem.moeda} lançada${saldo.contagem.moeda === 1 ? "" : "s"}`}
-                />
-                <Fatia
-                  rotulo="Indicações"
-                  pontos={saldo.porTipo.indicacao}
-                  nota={`${saldo.contagem.indicacao} ativa${saldo.contagem.indicacao === 1 ? "" : "s"}`}
-                />
-                <Fatia
-                  rotulo="Bugs"
-                  pontos={saldo.porTipo.bug}
-                  nota={`${saldo.contagem.bug} aceito${saldo.contagem.bug === 1 ? "" : "s"}`}
-                />
-              </div>
+              <p className="rotulo">Seus pontos</p>
+              <p className="tnum mt-2 text-6xl font-black tracking-tight text-zinc-50 sm:text-7xl">
+                {pontos.toLocaleString("pt-BR")}
+              </p>
+              <p className="mt-3 text-[13px] text-zinc-500">
+                {dados?.posicao ? (
+                  <>
+                    Você está em <span className="font-bold text-marca">#{dados.posicao}</span> no
+                    placar.
+                  </>
+                ) : pontos > 0 ? (
+                  "Continue usando — o placar está logo ali."
+                ) : (
+                  "Ainda zerado. Tudo o que você fizer na Chroma a partir de agora conta."
+                )}
+              </p>
             </>
           ) : (
-            <div className="py-6 text-center">
+            <div className="py-4">
               <p className="text-[15px] font-bold text-zinc-100">
                 Conecte a carteira para ver seus pontos
               </p>
               <p className="mx-auto mt-2 max-w-[440px] text-[13px] leading-relaxed text-zinc-500">
-                Seus pontos são contados pelo endereço, direto da blockchain. Não precisa se
-                inscrever, não precisa assinar nada, não precisa cadastro.
+                Contados pelo seu endereço, direto da blockchain. Sem inscrição, sem formulário,
+                sem assinar nada.
               </p>
             </div>
           )}
         </div>
       </section>
 
-      {/* ---------------- Como pontuar ---------------- */}
-      <section>
-        <Titulo>Como acumular</Titulo>
+      {/* ---------------- As regras (que não são públicas) ---------------- */}
+      <section className="text-center">
+        <h2 className="text-2xl font-black tracking-tight text-zinc-100">
+          Quanto mais você usa, mais você leva.
+        </h2>
+        <p className="mx-auto mt-2 max-w-[520px] text-[13.5px] leading-relaxed text-zinc-500">
+          É só isso que vamos contar. O que pontua, quanto pontua e o que vale mais ficam em
+          segredo até o fim da temporada — assim ganha quem usa a Chroma de verdade, não quem
+          decora uma tabela.
+        </p>
 
-        <div className="mt-5 grid gap-px overflow-hidden rounded-xl border border-ink-700 bg-ink-700 sm:grid-cols-2">
-          {REGRAS.map((r) => (
-            <div key={r.tipo} className="faceta group relative bg-ink-900 p-5 transition-colors hover:bg-ink-800/60">
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-[15px] font-bold text-zinc-100">{r.titulo}</h3>
-                <span className="tnum shrink-0 rounded-full border border-marca/25 bg-marca/[0.07] px-2.5 py-1 text-[11px] font-bold text-marca">
-                  {r.valor}
-                </span>
-              </div>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-zinc-400">{r.comoGanhar}</p>
-              <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">{r.detalhe}</p>
+        <div className="mx-auto mt-7 grid max-w-[640px] gap-px overflow-hidden rounded-xl border border-ink-700 bg-ink-700 text-left sm:grid-cols-3">
+          {["Regra 01", "Regra 02", "Regra 03"].map((r, i) => (
+            <div key={r} className="bg-ink-900 p-4">
+              <p className="rotulo">{r}</p>
+              <p className="mt-2 space-y-1.5 text-[13px] leading-relaxed">
+                <Censurado largura={["w-24", "w-28", "w-20"][i]} />{" "}
+                <Censurado largura={["w-12", "w-16", "w-14"][i]} />
+                <br />
+                <Censurado largura={["w-16", "w-10", "w-24"][i]} />
+              </p>
+              <p className="tnum mt-3 text-[12px] font-bold text-marca">??? pts</p>
             </div>
           ))}
         </div>
-      </section>
-
-      {/* ---------------- Níveis ---------------- */}
-      <section>
-        <Titulo>Níveis</Titulo>
-        <p className="mt-1.5 text-[12.5px] text-zinc-600">
-          Os níveis sobem conforme você acumula pontos e servem para medir o seu progresso.
-        </p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {NIVEIS.map((n) => {
-            const alcancado = (saldo?.total ?? -1) >= n.minimo;
-            return (
-              <div
-                key={n.nome}
-                className={cn(
-                  "rounded-lg border px-3.5 py-2.5 transition-colors",
-                  alcancado
-                    ? "border-marca/30 bg-marca/[0.07]"
-                    : "border-ink-700 bg-ink-900",
-                )}
-              >
-                <p
-                  className={cn(
-                    "text-[13px] font-bold",
-                    alcancado ? "text-marca" : "text-zinc-400",
-                  )}
-                >
-                  {n.nome}
-                </p>
-                <p className="tnum mt-0.5 text-[10.5px] text-zinc-600">
-                  {n.minimo.toLocaleString("pt-BR")} pts
-                </p>
-              </div>
-            );
-          })}
-        </div>
+        <p className="mt-3 text-[11px] text-zinc-600">Classificado · temporada {dados?.temporada.temporada ?? 1}</p>
       </section>
 
       {/* ---------------- Placar ---------------- */}
       <section>
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <Titulo>Placar</Titulo>
+          <h2 className="text-lg font-black tracking-tight text-zinc-100">Placar</h2>
           {dados?.temporada && (
             <p className="tnum text-[11.5px] text-zinc-600">
               {dados.temporada.carteiras.toLocaleString("pt-BR")} carteiras ·{" "}
@@ -228,7 +149,7 @@ export function PainelDeAirdrop() {
         <div className="mt-5 overflow-hidden rounded-xl border border-ink-700">
           {dados && dados.placar.length > 0 ? (
             dados.placar.slice(0, 25).map((l, i) => {
-              const euMesmo = l.carteira === dono;
+              const euMesmo = eu.has(l.carteira);
               return (
                 <div
                   key={l.carteira}
@@ -267,24 +188,6 @@ export function PainelDeAirdrop() {
           )}
         </div>
       </section>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-
-function Titulo({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-lg font-black tracking-tight text-zinc-100">{children}</h2>;
-}
-
-function Fatia({ rotulo, pontos, nota }: { rotulo: string; pontos: number; nota: string }) {
-  return (
-    <div className="bg-ink-900 px-3.5 py-3">
-      <p className="rotulo">{rotulo}</p>
-      <p className="tnum mt-1 text-[17px] font-black text-zinc-100">
-        {pontos.toLocaleString("pt-BR")}
-      </p>
-      <p className="mt-0.5 truncate text-[10.5px] text-zinc-600">{nota}</p>
     </div>
   );
 }

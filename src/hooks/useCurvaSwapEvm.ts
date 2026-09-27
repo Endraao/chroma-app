@@ -8,6 +8,7 @@ import { ABI_DA_CURVA, CHROMA_CURVE_EVM, ENDERECO_ZERO } from "@/lib/chroma-evm"
 import type { EstadoDaCurvaEvm } from "@/lib/chroma-evm";
 import type { TradeSide } from "@/lib/types";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
+import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import { robinhoodChain } from "@/lib/web3";
 
 /**
@@ -188,6 +189,9 @@ export function useCurvaSwapEvm({
 
       const recibo = await esperarRecibo(publicClient, transacao);
       if (recibo.status !== "success") throw new Error("a rede recusou a transação");
+
+      /* Pontos do airdrop: o servidor confere o recibo na rede antes de creditar. */
+      void reivindicarPontos(transacao, address);
 
       setHash(transacao);
       setFase("pronto");

@@ -7,7 +7,7 @@ import { TEMPORADA_ATUAL } from "@/lib/airdrop-regras";
 export const metadata: Metadata = {
   title: "Airdrop — Chroma",
   description:
-    "Acumule pontos negociando, lançando moedas e trazendo gente para a Chroma. Sem inscrição, contado pelo seu endereço.",
+    "Quanto mais você usa a Chroma, mais pontos acumula. As regras são segredo. Sem inscrição, contado pelo seu endereço.",
 };
 
 /**
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
  *
  * Promessa vaga sobre token futuro é o que transforma uma campanha de adoção
  * em problema jurídico. A saída é a que está escrita abaixo: o que a pessoa
- * ganha AGORA é concreto e verificável — pontos contados na blockchain, nível,
- * posição no placar. O que vem depois é possibilidade declarada como
+ * ganha AGORA é concreto e verificável — pontos contados na blockchain e
+ * posição no placar. Quanto vale cada ação é segredo (ver PainelDeAirdrop). O que vem depois é possibilidade declarada como
  * possibilidade.
  *
  * Isso também protege o projeto de si mesmo: sem data anunciada, a temporada
@@ -49,8 +49,8 @@ export default function AirdropPage() {
         </h1>
 
         <p className="mx-auto mt-4 max-w-[520px] text-[14px] leading-relaxed text-zinc-400">
-          Cada operação, cada moeda lançada e cada pessoa que você traz conta pontos ligados ao
-          seu endereço. Sem inscrição, sem formulário, sem assinar nada.
+          Tudo o que você faz na Chroma pode valer pontos, ligados ao seu endereço. O quê e quanto,
+          a gente não conta.
         </p>
 
         <div className="aresta mx-auto mt-9 max-w-[420px]" />
@@ -69,7 +69,7 @@ export default function AirdropPage() {
           <li>
             <span className="text-zinc-300">Os pontos são reais e verificáveis.</span> Cada um
             nasce de um fato conferido na blockchain e fica registrado com a transação que o
-            gerou. Você pode auditar o seu saldo.
+            gerou.
           </li>
           <li>
             <span className="text-zinc-300">Nenhum token foi criado ou prometido.</span> Não
