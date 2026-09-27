@@ -1,5 +1,7 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+
 import { corrigirCapitalizacao, fetchPoolFeed, fetchToken, fetchTokenList } from "./market";
 import { moedasDaChroma } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
@@ -128,7 +130,7 @@ function sortTokens(list: TokenSummary[], sort: SortKey): TokenSummary[] {
  * Lição pra não repetir: quando uma rede aparece vazia, conferir a FONTE
  * antes de concluir que ela não tem dados.
  */
-async function universo(): Promise<TokenSummary[]> {
+async function montarUniverso(): Promise<TokenSummary[]> {
   const [novas, emAlta, grandes, novasRh, emAltaRh, grandesRh, perfis, daCasa] =
     await Promise.all([
       fetchPoolFeed("solana", "new_pools"),
@@ -211,6 +213,24 @@ async function universo(): Promise<TokenSummary[]> {
    */
   return corrigirCapitalizacao([...porChave.values()]);
 }
+
+/**
+ * A vitrine no cache COMPARTILHADO da Vercel, e não na memória.
+ *
+ * Montar a vitrine são oito consultas a fontes com limite de taxa, e a fila
+ * que protege esse limite levava ~15 s. Com o cache só em memória, cada
+ * servidor novo da Vercel (eles nascem e morrem sozinhos) pagava esses 15 s
+ * — medido em 27/09/2026: primeira abertura da home em 15,2 s, as seguintes
+ * em 0,6 s. O cache de dados da Vercel sobrevive entre servidores e, vencido,
+ * entrega o anterior enquanto renova por trás.
+ *
+ * Lançar moeda renova na hora (tag `universo`, ver POST /api/moedas).
+ */
+export const TAG_DO_UNIVERSO = "universo";
+const universo = unstable_cache(montarUniverso, ["universo-v1"], {
+  revalidate: 30,
+  tags: [TAG_DO_UNIVERSO],
+});
 
 export async function listTokens(
   sort: SortKey = "new",

@@ -5,6 +5,8 @@ import { enderecoDaCurva, lerCurva } from "@/lib/chroma-program";
 import { registrarMoeda } from "@/lib/db";
 import { creditarMoeda } from "@/lib/airdrop";
 import { lerMoedaDaCurvaEvm } from "@/lib/curva-evm";
+import { revalidateTag } from "next/cache";
+import { TAG_DO_UNIVERSO } from "@/lib/tokens";
 
 /**
  * POST /api/moedas — registra uma moeda recém-lançada na Chroma.
@@ -109,6 +111,9 @@ export async function POST(request: Request) {
    * não do corpo do pedido. Sem isso, qualquer um pediria pontos em nome de
    * qualquer endereço.
    */
+  /* A moeda nova aparece na home já, sem esperar o cache vencer. */
+  revalidateTag(TAG_DO_UNIVERSO, "max");
+
   try {
     await creditarMoeda(chaveDoMint.toBase58(), curva.criador, "solana");
   } catch (erro) {
@@ -162,6 +167,9 @@ async function registrarNaRobinhood(corpo: Record<string, unknown>) {
     console.warn("[moedas] falha ao registrar (robinhood):", erro);
     return NextResponse.json({ error: "Não foi possível registrar agora." }, { status: 500 });
   }
+
+  /* A moeda nova aparece na home já, sem esperar o cache vencer. */
+  revalidateTag(TAG_DO_UNIVERSO, "max");
 
   try {
     await creditarMoeda(endereco.toLowerCase(), criador, "robinhood");

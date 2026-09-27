@@ -46,6 +46,29 @@ export async function cached<T>(key: string, ttlMs: number, loader: () => Promis
   if (hit && hit.expiresAt > Date.now()) return hit.value;
 
   const running = inflight.get(key) as Promise<T> | undefined;
+
+  /*
+   * VENCIDO MAS AINDA ÚTIL: entrega o anterior e renova por trás.
+   *
+   * Antes, o primeiro pedido depois de vencer esperava a fonte inteira
+   * responder — e isso é o "site travado" de vez em quando. Até 10× o prazo,
+   * o valor velho ainda é melhor que uma tela esperando; depois disso, espera.
+   */
+  if (hit && Date.now() - hit.expiresAt < ttlMs * 10) {
+    if (!running) {
+      const renovacao = loader()
+        .then((value) => {
+          store.set(key, { value, expiresAt: Date.now() + ttlMs });
+          return value;
+        })
+        /* falhou: segue servindo o anterior até a próxima tentativa */
+        .catch(() => hit.value)
+        .finally(() => inflight.delete(key));
+      inflight.set(key, renovacao);
+    }
+    return hit.value;
+  }
+
   if (running) return running;
 
   const promise = loader()

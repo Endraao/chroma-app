@@ -1,5 +1,7 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+
 import { PublicKey } from "@solana/web3.js";
 
 import { cached } from "@/lib/cache";
@@ -48,7 +50,17 @@ const LAMPORTS = 1_000_000_000n;
 /** Curva anda a cada compra; 15s é o bastante pra vitrine parecer viva. */
 const TTL_CURVAS = 15_000;
 
-export async function moedasDaChroma(): Promise<TokenSummary[]> {
+/**
+ * No cache compartilhado da Vercel (15 s), pelo mesmo motivo da vitrine em
+ * `tokens.ts`: cada moeda são várias leituras de contrato, e servidor novo
+ * pagava todas de uma vez. Mesma tag da vitrine — lançar renova as duas.
+ */
+export const moedasDaChroma = unstable_cache(moedasDaChromaSemCache, ["moedas-da-chroma-v1"], {
+  revalidate: 15,
+  tags: ["universo"],
+});
+
+async function moedasDaChromaSemCache(): Promise<TokenSummary[]> {
   let registros: MoedaRegistrada[];
   try {
     registros = await listarMoedasDaChroma();
