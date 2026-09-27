@@ -339,13 +339,18 @@ export default function CreateTokenPage() {
           <CardTitle>Identidade</CardTitle>
         </CardHeader>
         <CardBody className="space-y-3">
-          <Field label="Nome" placeholder="Ex: Gato Turbo" value={form.name} onChange={(v) => set("name", v)} />
+          <Field
+            label="Nome"
+            placeholder="Ex: Gato Turbo"
+            value={form.name}
+            onChange={(v) => set("name", cortarEmBytes(v, 32))}
+          />
           <Field
             label="Símbolo"
             placeholder="Ex: TURBO"
             value={form.symbol}
             maxLength={10}
-            onChange={(v) => set("symbol", v.toUpperCase())}
+            onChange={(v) => set("symbol", cortarEmBytes(v.toUpperCase(), 10))}
           />
           <Field
             label="Descrição"
@@ -630,6 +635,24 @@ function RewardOption({
       </span>
     </button>
   );
+}
+
+/**
+ * Corta o texto no limite de BYTES do contrato, não de letras.
+ *
+ * O contrato da Robinhood aceita nome de até 32 bytes, e letra com acento
+ * ocupa 2. `maxLength` conta letras, então "Ação Coração Brasileira Oficial"
+ * passaria pelo campo e seria recusada pelo contrato — que foi um dos
+ * suspeitos do primeiro lançamento que falhou sem explicação (27/09/2026).
+ */
+function cortarEmBytes(texto: string, limite: number): string {
+  const codificador = new TextEncoder();
+  let saida = "";
+  for (const letra of texto) {
+    if (codificador.encode(saida + letra).length > limite) break;
+    saida += letra;
+  }
+  return saida;
 }
 
 function Field({

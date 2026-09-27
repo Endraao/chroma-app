@@ -165,7 +165,55 @@ export const ABI_DA_CURVA = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
   },
+
+  /*
+   * Os erros do contrato. Sem eles, uma recusa chega como "execution reverted"
+   * sem nome, e a tela não tem como dizer À PESSOA o que ela precisa mudar.
+   * Conferidos contra o build por `npm run test:abi`.
+   */
+  { type: "error", name: "ValorZero", inputs: [] },
+  { type: "error", name: "Pausado", inputs: [] },
+  { type: "error", name: "TextoLongoDemais", inputs: [] },
+  { type: "error", name: "MoedaDesconhecida", inputs: [] },
+  { type: "error", name: "CurvaConcluida", inputs: [] },
+  { type: "error", name: "AfiliadoEhOProprioTrader", inputs: [] },
+  { type: "error", name: "FalhaNoRepasse", inputs: [] },
+  { type: "error", name: "SaldoInsuficiente", inputs: [] },
+  {
+    type: "error",
+    name: "AbaixoDoMinimo",
+    inputs: [
+      { name: "recebido", type: "uint256" },
+      { name: "minimo", type: "uint256" },
+    ],
+  },
+  {
+    type: "error",
+    name: "AcimaDoMaximo",
+    inputs: [
+      { name: "gasto", type: "uint256" },
+      { name: "maximo", type: "uint256" },
+    ],
+  },
 ] as const;
+
+/**
+ * O que dizer à pessoa quando o contrato recusa, pelo nome do erro.
+ *
+ * `AcimaDoMaximo` no lançamento é a taxa enviada MENOR que a exigida — o
+ * contrato reaproveita o erro com os argumentos (enviado, exigido).
+ */
+export const MOTIVO_DO_ERRO: Record<string, string> = {
+  ValorZero: "O valor precisa ser maior que zero.",
+  Pausado: "As compras e os lançamentos estão pausados no momento. Vender continua liberado.",
+  TextoLongoDemais: "Nome até 32 caracteres e símbolo até 10 (letra com acento conta como 2).",
+  MoedaDesconhecida: "Esta moeda não foi lançada pela Chroma.",
+  CurvaConcluida: "A curva desta moeda já encheu; ela negocia na Uniswap agora.",
+  AfiliadoEhOProprioTrader: "Você não pode usar o seu próprio link de indicação.",
+  SaldoInsuficiente: "Saldo insuficiente na curva para esta operação.",
+  AbaixoDoMinimo: "O preço andou mais que a folga permitida. Tente de novo.",
+  AcimaDoMaximo: "O valor enviado não cobre a taxa de lançamento.",
+};
 
 /* ------------------------------------------------------------------ */
 /* Estado da curva                                                     */

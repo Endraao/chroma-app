@@ -2,12 +2,13 @@
 
 import { useCallback, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { decodeEventLog, parseEther, type Address } from "viem";
+import { BaseError, ContractFunctionRevertedError, decodeEventLog, parseEther, type Address } from "viem";
 
 import {
   ABI_DA_CURVA,
   CHROMA_CURVE_EVM,
   ENDERECO_ZERO,
+  MOTIVO_DO_ERRO,
   curvaEvmDisponivel,
 } from "@/lib/chroma-evm";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
@@ -70,6 +71,25 @@ const ABI_DO_EVENTO = [
   },
 ] as const;
 
+/**
+ * Traduz a recusa do contrato para o que a pessoa precisa mudar.
+ *
+ * O viem embrulha o erro em camadas; o nome do erro Solidity está numa delas.
+ * Sem nome conhecido, devolve a mensagem curta do viem em vez do texto
+ * gigante com o calldata inteiro.
+ */
+function explicarRecusa(e: unknown): string {
+  if (e instanceof BaseError) {
+    const recusa = e.walk((x) => x instanceof ContractFunctionRevertedError);
+    if (recusa instanceof ContractFunctionRevertedError) {
+      const nome = recusa.data?.errorName;
+      if (nome && MOTIVO_DO_ERRO[nome]) return MOTIVO_DO_ERRO[nome];
+    }
+    return e.shortMessage;
+  }
+  return e instanceof Error ? e.message : String(e);
+}
+
 export function useLancarTokenEvm() {
   const { address, obterCarteira } = useCarteiraRobinhood();
   const publicClient = usePublicClient({ chainId: robinhoodChain.id });
@@ -113,6 +133,55 @@ export function useLancarTokenEvm() {
         return null;
       }
 
+      if (!publicClient) {
+        setErro("Sem conexão com a Robinhood Chain agora. Tente de novo em instantes.");
+        return null;
+      }
+
+      /* --- 0. o contrato aceitaria? ------------------------------- */
+      /*
+       * A TAXA SAI DO CONTRATO, NÃO DO AMBIENTE.
+       *
+       * Antes vinha de NEXT_PUBLIC_LAUNCH_FEE_ETH. Se a variável faltar na
+       * Vercel, o site mandava zero, o contrato recusava, a MetaMask não
+       * conseguia estimar o gás e a transação morria sem explicação
+       * (27/09/2026). Quem cobra é o contrato; é dele que o número vem.
+       *
+       * E a simulação roda ANTES de subir a arte e de abrir a MetaMask: se o
+       * contrato vai recusar, a pessoa lê o motivo em português aqui, em vez de
+       * "Interaction failed" na carteira.
+       */
+      let taxaDeLancamento: bigint;
+      let gas: bigint;
+      try {
+        taxaDeLancamento = (await publicClient.readContract({
+          address: CHROMA_CURVE_EVM as Address,
+          abi: ABI_DA_CURVA,
+          functionName: "taxaDeLancamento",
+        })) as bigint;
+
+        const simulado = {
+          address: CHROMA_CURVE_EVM as Address,
+          abi: ABI_DA_CURVA,
+          functionName: "lancar",
+          /* A URI real só existe depois do upload; o tamanho é parecido. */
+          args: [dados.nome, dados.simbolo, "https://chroma.exemplo/metadados/0000000000000000.json"],
+          value: taxaDeLancamento,
+          account: address,
+        } as const;
+        await publicClient.simulateContract(simulado);
+
+        /*
+         * Gás estimado aqui e enviado pronto, com 30% de folga. Na Robinhood
+         * (Arbitrum) o limite também paga o dado postado na L1; se a carteira
+         * chutar baixo, a rede recusa a transação antes de incluí-la.
+         */
+        gas = ((await publicClient.estimateContractGas(simulado)) * 13n) / 10n;
+      } catch (e) {
+        setErro(explicarRecusa(e));
+        return null;
+      }
+
       try {
         /* --- 1. arte e metadados no ar ---------------------------- */
         setEtapa("publicando-arte");
@@ -137,13 +206,6 @@ export function useLancarTokenEvm() {
         /* --- 2. a transação --------------------------------------- */
         setEtapa("aguardando-assinatura");
 
-        /*
-         * A taxa de lançamento vai como `value`. O contrato recusa a
-         * transação se o valor enviado for menor que o que ele guarda — então
-         * o número sai da variável de ambiente, e não de um literal aqui.
-         */
-        const taxaDeLancamento = parseEther(process.env.NEXT_PUBLIC_LAUNCH_FEE_ETH || "0");
-
         const carteira = await obterCarteira();
         const hash = await carteira.writeContract({
           address: CHROMA_CURVE_EVM as Address,
@@ -151,12 +213,12 @@ export function useLancarTokenEvm() {
           functionName: "lancar",
           args: [dados.nome, dados.simbolo, uri],
           value: taxaDeLancamento,
+          gas,
         });
 
         /* --- 3. confirmação --------------------------------------- */
         setEtapa("confirmando");
 
-        if (!publicClient) throw new Error("sem conexão com a rede para confirmar");
         const recibo = await esperarRecibo(publicClient, hash);
         if (recibo.status !== "success") throw new Error("a rede recusou a transação");
 
@@ -242,7 +304,7 @@ export function useLancarTokenEvm() {
             const mensagem = e instanceof Error ? e.message : String(e);
             avisoDeCompra = /reject|denied|cancel|User rejected/i.test(mensagem)
               ? "A moeda foi criada. Você recusou a compra inicial — dá pra comprar pela página dela."
-              : `A moeda foi criada, mas a compra inicial falhou: ${mensagem}`;
+              : `A moeda foi criada, mas a compra inicial falhou: ${explicarRecusa(e)}`;
           }
         }
 
@@ -255,7 +317,7 @@ export function useLancarTokenEvm() {
         // Recusar na carteira é escolha da pessoa, não erro pra mostrar em vermelho.
         if (/reject|denied|cancel|User rejected/i.test(mensagem)) return null;
 
-        setErro(mensagem);
+        setErro(explicarRecusa(e));
         return null;
       }
     },

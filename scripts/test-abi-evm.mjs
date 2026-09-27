@@ -118,5 +118,18 @@ if (eventoReal) {
   }
 }
 
+/* --- erros ----------------------------------------------------------- */
+
+/*
+ * O seletor de um erro é o hash da assinatura. Um tipo errado aqui faz a recusa
+ * do contrato chegar sem nome, e a tela cai na mensagem genérica.
+ */
+console.log("\n=== erros declarados em chroma-evm.ts ===");
+
+for (const nosso of ABI_DA_CURVA.filter((x) => x.type === "error")) {
+  const deles = real.find((x) => x.type === "error" && assinatura(x) === assinatura(nosso));
+  ok(Boolean(deles), `${assinatura(nosso)}`);
+}
+
 console.log(falhas === 0 ? "\nTUDO PASSOU\n" : `\n${falhas} FALHA(S)\n`);
 process.exit(falhas === 0 ? 0 : 1);
