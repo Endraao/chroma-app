@@ -1,0 +1,416 @@
+{
+ "ETH": {
+  "symbol": "ETH",
+  "name": "ETH Robinhood",
+  "address": "0xd89a16372b3a88f1e1e42cc688bfc0114968e8a7",
+  "image": "https://assets.geckoterminal.com/2qjp0bj4c8jh1yabf7jgze6mcl40"
+ },
+ "SPCX": {
+  "symbol": "SPCX",
+  "name": "Space Exploration Technologies Corp.",
+  "address": "0x208920083a67b1c31aa63d78732780b527e7c6b4",
+  "image": null
+ },
+ "TSLA": {
+  "symbol": "TSLA",
+  "name": "Tesla • Robinhood Token",
+  "address": "0x322f0929c4625ed5bad873c95208d54e1c003b2d",
+  "image": "https://coin-images.coingecko.com/coins/images/102174112/large/0x322f0929c4625ed5bad873c95208d54e1c003b2d.png?1782444570"
+ },
+ "AAPL": {
+  "symbol": "AAPL",
+  "name": "Apple • Robinhood Token",
+  "address": "0xaf3d76f1834a1d425780943c99ea8a608f8a93f9",
+  "image": "https://coin-images.coingecko.com/coins/images/102174123/large/0xaf3d76f1834a1d425780943c99ea8a608f8a93f9.png?1782444598"
+ },
+ "SNDK": {
+  "symbol": "SNDK",
+  "name": "Sandisk Corporation • Robinhood Token",
+  "address": "0xb90a19ff0af67f7779aff50a882a9cff42446400",
+  "image": "https://coin-images.coingecko.com/coins/images/102174113/large/0xb90a19ff0af67f7779aff50a882a9cff42446400.png?1782444573"
+ },
+ "AMZN": {
+  "symbol": "AMZN",
+  "name": "Amazon • Robinhood Token",
+  "address": "0x12f190a9f9d7d37a250758b26824b97ce941bf54",
+  "image": "https://coin-images.coingecko.com/coins/images/102174126/large/0x12f190a9f9d7d37a250758b26824b97ce941bf54.png?1782444606"
+ },
+ "META": {
+  "symbol": "META",
+  "name": "Meta Platforms • Robinhood Token",
+  "address": "0xc0d6457c16cc70d6790dd43521c899c87ce02f35",
+  "image": "https://coin-images.coingecko.com/coins/images/102174122/large/0xc0d6457c16cc70d6790dd43521c899c87ce02f35.png?1782444595"
+ },
+ "MU": {
+  "symbol": "MU",
+  "name": "Micron Technology • Robinhood Token",
+  "address": "0xff080c8ce2e5feadaca0da81314ae59d232d4afd",
+  "image": "https://coin-images.coingecko.com/coins/images/102174111/large/0xff080c8ce2e5feadaca0da81314ae59d232d4afd.png?1782444567"
+ },
+ "TTWO": {
+  "symbol": "TTWO",
+  "name": "Take-Two Interactive Software • Robinhood Token",
+  "address": "0x5e81213613b6b86eab4c6c50d718d34359459786",
+  "image": "https://coin-images.coingecko.com/coins/images/102174176/large/0x5e81213613b6b86eab4c6c50d718d34359459786.png?1782444740"
+ },
+ "COST": {
+  "symbol": "COST",
+  "name": "Costco • Robinhood Token",
+  "address": "0x4ea005168d7f09a7a0ba9d1def21a479950e44c2",
+  "image": "https://coin-images.coingecko.com/coins/images/102174152/large/0x4ea005168d7f09a7a0ba9d1def21a479950e44c2.png?1782444675"
+ },
+ "MSTR": {
+  "symbol": "MSTR",
+  "name": "Strategy Inc. • Robinhood Token",
+  "address": "0xec262a75e413fafd0df80480274532c79d42da09",
+  "image": "https://coin-images.coingecko.com/coins/images/102174143/large/0xec262a75e413fafd0df80480274532c79d42da09.png?1782444651"
+ },
+ "HIMS": {
+  "symbol": "HIMS",
+  "name": "Hims & Hers Health • Robinhood Token",
+  "address": "0xccee82fe024c36fa15e1005ede3e9e4787e23d09",
+  "image": "https://coin-images.coingecko.com/coins/images/102175360/large/HIMS.png?1786131590"
+ },
+ "GLD": {
+  "symbol": "gld",
+  "name": "SPDR Gold Shares • Robinhood Token",
+  "address": "0xc9a981fee1f9dec688bb123ccdecc63d0debfc4e",
+  "image": "https://coin-images.coingecko.com/coins/images/102175452/large/GLD.png?1786367509"
+ },
+ "USDG": {
+  "symbol": "USDG",
+  "name": "Global Dollar",
+  "address": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+  "image": "https://coin-images.coingecko.com/coins/images/51281/large/GDN_USDG_Token_200x200.png?1730484111"
+ },
+ "WYFI": {
+  "symbol": "wyfi",
+  "name": "WhiteFiber, Inc. • Robinhood Token",
+  "address": "0x9e7abd3c9139d14e4c86dce0e455aab7a0c2fb3e",
+  "image": "https://coin-images.coingecko.com/coins/images/102175349/large/WYFI.png?1786124263"
+ },
+ "RBLX": {
+  "symbol": "RBLX",
+  "name": "Roblox • Robinhood Token",
+  "address": "0xf0c4bf4c582cb3836e98394b1d4e7b7281101be8",
+  "image": "https://coin-images.coingecko.com/coins/images/102174202/large/0xf0c4bf4c582cb3836e98394b1d4e7b7281101be8.png?1782444808"
+ },
+ "DELL": {
+  "symbol": "DELL",
+  "name": "Dell • Robinhood Token",
+  "address": "0x941ae714ec6d8130c7b75d67160ca08f1e7d11dd",
+  "image": "https://coin-images.coingecko.com/coins/images/102174139/large/0x941ae714ec6d8130c7b75d67160ca08f1e7d11dd.png?1782444640"
+ },
+ "SNAP": {
+  "symbol": "snap",
+  "name": "Snap Inc. • Robinhood Token",
+  "address": "0xf6589f11bc40b669e584073f428b05562f568733",
+  "image": "https://coin-images.coingecko.com/coins/images/102175399/large/SNAP.png?1786287522"
+ },
+ "FIG": {
+  "symbol": "fig",
+  "name": "Figma, Inc. • Robinhood Token",
+  "address": "0x41f4267525a8aff329540ef24fd83d9044758b33",
+  "image": "https://coin-images.coingecko.com/coins/images/102175289/large/FIG.png?1786070068"
+ },
+ "PFE": {
+  "symbol": "pfe",
+  "name": "Pfizer Inc. • Robinhood Token",
+  "address": "0x7066a64c24e4206cd62e83bf198c1e7eb361f51e",
+  "image": "https://coin-images.coingecko.com/coins/images/102175439/large/PFE.png?1786301478"
+ },
+ "MRVL": {
+  "symbol": "MRVL",
+  "name": "Marvell Technology • Robinhood Token",
+  "address": "0x62fd0668e10d8b72339be2dcf7643001688ff13b",
+  "image": "https://coin-images.coingecko.com/coins/images/102174140/large/0x62fd0668e10d8b72339be2dcf7643001688ff13b.png?1782444643"
+ },
+ "AMC": {
+  "symbol": "amc",
+  "name": "AMC Entertainment Holdings, Inc. • Robinhood Token",
+  "address": "0x05a3d1cd21d0c88145e82600e62e7e496e0f222b",
+  "image": "https://coin-images.coingecko.com/coins/images/102175476/large/AMC.png?1786375197"
+ },
+ "BABA": {
+  "symbol": "BABA",
+  "name": "Alibaba • Robinhood Token",
+  "address": "0xad25ac6c84d497db898fa1e8387bf6af3532a1c4",
+  "image": "https://coin-images.coingecko.com/coins/images/102174135/large/0xad25ac6c84d497db898fa1e8387bf6af3532a1c4.png?1782444629"
+ },
+ "IBM": {
+  "symbol": "ibm",
+  "name": "International Business Machines Corporation • Robinhood Token",
+  "address": "0x980dcf6766fa79f5cf0c4aadb3ab477ff15a9619",
+  "image": "https://coin-images.coingecko.com/coins/images/102175357/large/IBM.png?1786131546"
+ },
+ "SLV": {
+  "symbol": "SLV",
+  "name": "iShares Silver Trust • Robinhood Token",
+  "address": "0x411efb0e7f985935daec3d4c3ebaea0d0ad7d89f",
+  "image": "https://coin-images.coingecko.com/coins/images/102174120/large/0x411efb0e7f985935daec3d4c3ebaea0d0ad7d89f.png?1782444590"
+ },
+ "UPS": {
+  "symbol": "UPS",
+  "name": "UPS • Robinhood Token",
+  "address": "0xf23250dac154d05bb671cb0d0ebef3c635c79ce2",
+  "image": "https://coin-images.coingecko.com/coins/images/102174201/large/0xf23250dac154d05bb671cb0d0ebef3c635c79ce2.png?1782444806"
+ },
+ "TAO": {
+  "symbol": "TAO",
+  "name": "Bittensor",
+  "address": "0xf3081494b87e8d5fb7960f066e931d1d0e6e3d67",
+  "image": "https://coin-images.coingecko.com/coins/images/102178769/large/tao.png?1790233971"
+ },
+ "INTC": {
+  "symbol": "INTC",
+  "name": "Intel • Robinhood Token",
+  "address": "0xc72b96e0e48ecd4dc75e1e45396e26300bc39681",
+  "image": "https://coin-images.coingecko.com/coins/images/102174118/large/0xc72b96e0e48ecd4dc75e1e45396e26300bc39681.png?1782444585"
+ },
+ "BA": {
+  "symbol": "BA",
+  "name": "Boeing • Robinhood Token",
+  "address": "0x4d21483a44bf67a86b77e3da301411880797d452",
+  "image": "https://coin-images.coingecko.com/coins/images/102174190/large/0x4d21483a44bf67a86b77e3da301411880797d452.png?1782444776"
+ },
+ "EWY": {
+  "symbol": "EWY",
+  "name": "iShares MSCI South Korea fund • Robinhood Token",
+  "address": "0x7f0abef0c07280f82c6a08ead09ded6bae2c13fc",
+  "image": "https://coin-images.coingecko.com/coins/images/102174159/large/0x7f0abef0c07280f82c6a08ead09ded6bae2c13fc.png?1782444694"
+ },
+ "RCAT": {
+  "symbol": "rcat",
+  "name": "Red Cat Holdings, Inc. • Robinhood Token",
+  "address": "0xfde6b5d9bb419b10c23268c74e369abff39c0460",
+  "image": "https://coin-images.coingecko.com/coins/images/102175352/large/RCAT.png?1786124386"
+ },
+ "ORBIO": {
+  "symbol": "ORBIO",
+  "name": "Orbio.so",
+  "address": "0xaa07a0e9209e16ac99708c3ec70159c6ef3128a3",
+  "image": "https://coin-images.coingecko.com/coins/images/102176665/large/orbio.jpg?1788424660"
+ },
+ "BUN": {
+  "symbol": "BUN",
+  "name": "Bundle Cat",
+  "address": "0x07ebb29a38fbcb41563817e5e19f2cec619c90d2",
+  "image": "https://coin-images.coingecko.com/coins/images/102176682/large/catttyyy_%281%29.png?1788500479"
+ },
+ "NVDA": {
+  "symbol": "NVDA",
+  "name": "NVIDIA • Robinhood Token",
+  "address": "0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec",
+  "image": "https://coin-images.coingecko.com/coins/images/102174110/large/0xd0601ce157db5bdc3162bbac2a2c8af5320d9eec.png?1782444565"
+ },
+ "GOOGL": {
+  "symbol": "GOOGL",
+  "name": "Alphabet Class A • Robinhood Token",
+  "address": "0x2e0847e8910a9732eb3fb1bb4b70a580adad4fe3",
+  "image": "https://coin-images.coingecko.com/coins/images/102174124/large/0x2e0847e8910a9732eb3fb1bb4b70a580adad4fe3.png?1782444601"
+ },
+ "GME": {
+  "symbol": "GME",
+  "name": "GameStop • Robinhood Token",
+  "address": "0x1b0e319c6a659f002271b69db8a7df2f911c153e",
+  "image": "https://coin-images.coingecko.com/coins/images/102174150/large/0x1b0e319c6a659f002271b69db8a7df2f911c153e.png?1782444670"
+ },
+ "SPY": {
+  "symbol": "SPY",
+  "name": "SPDR S&P 500 ETF Trust • Robinhood Token",
+  "address": "0x117cc2133c37b721f49de2a7a74833232b3b4c0c",
+  "image": "https://coin-images.coingecko.com/coins/images/102174115/large/0x117cc2133c37b721f49de2a7a74833232b3b4c0c.png?1782444578"
+ },
+ "AMD": {
+  "symbol": "AMD",
+  "name": "AMD • Robinhood Token",
+  "address": "0x86923f96303d656e4aa86d9d42d1e57ad2023fdc",
+  "image": "https://coin-images.coingecko.com/coins/images/102174114/large/0x86923f96303d656e4aa86d9d42d1e57ad2023fdc.png?1782444575"
+ },
+ "MSFT": {
+  "symbol": "MSFT",
+  "name": "Microsoft • Robinhood Token",
+  "address": "0xe93237c50d904957cf27e7b1133b510c669c2e74",
+  "image": "https://coin-images.coingecko.com/coins/images/102174116/large/0xe93237c50d904957cf27e7b1133b510c669c2e74.png?1782444580"
+ },
+ "CRCL": {
+  "symbol": "CRCL",
+  "name": "Circle Internet Group • Robinhood Token",
+  "address": "0xdf0992e440dd0be65bd8439b609d6d4366bf1cb5",
+  "image": "https://coin-images.coingecko.com/coins/images/102174121/large/0xdf0992e440dd0be65bd8439b609d6d4366bf1cb5.png?1782444593"
+ },
+ "COIN": {
+  "symbol": "COIN",
+  "name": "Coinbase • Robinhood Token",
+  "address": "0x6330d8c3178a418788df01a47479c0ce7ccf450b",
+  "image": "https://coin-images.coingecko.com/coins/images/102174136/large/0x6330d8c3178a418788df01a47479c0ce7ccf450b.png?1782444632"
+ },
+ "PLTR": {
+  "symbol": "PLTR",
+  "name": "Palantir Technologies • Robinhood Token",
+  "address": "0x894e1ec2d74ffe5aef8dc8a9e84686accb964f2a",
+  "image": "https://coin-images.coingecko.com/coins/images/102174117/large/0x894e1ec2d74ffe5aef8dc8a9e84686accb964f2a.png?1782444583"
+ },
+ "RIVN": {
+  "symbol": "RIVN",
+  "name": "Rivian Automotive • Robinhood Token",
+  "address": "0xb1bf26c1d20ff267a4f93550d1e0d06ac40a114b",
+  "image": "https://coin-images.coingecko.com/coins/images/102174195/large/0xb1bf26c1d20ff267a4f93550d1e0d06ac40a114b.png?1782444790"
+ },
+ "DJT": {
+  "symbol": "djt",
+  "name": "Trump Media & Technology Group Corp. • Robinhood Token",
+  "address": "0x1d11f0496982706c5e14a514d4e79f2e6bde4516",
+  "image": "https://coin-images.coingecko.com/coins/images/102175474/large/DJT.png?1786375153"
+ },
+ "QQQ": {
+  "symbol": "QQQ",
+  "name": "Invesco QQQ • Robinhood Token",
+  "address": "0xd5f3879160bc7c32ebb4dc785f8a4f505888de68",
+  "image": "https://coin-images.coingecko.com/coins/images/102174119/large/0xd5f3879160bc7c32ebb4dc785f8a4f505888de68.png?1782444588"
+ },
+ "RDDT": {
+  "symbol": "RDDT",
+  "name": "Reddit • Robinhood Token",
+  "address": "0x05b37fb53a299a1b874a619e1c4c404d52c36f4c",
+  "image": "https://coin-images.coingecko.com/coins/images/102174197/large/0x05b37fb53a299a1b874a619e1c4c404d52c36f4c.png?1782444795"
+ },
+ "BB": {
+  "symbol": "bb",
+  "name": "BlackBerry Limited • Robinhood Token",
+  "address": "0x48e39e56acdba37b09020c0b734a613c9a2f100a",
+  "image": "https://coin-images.coingecko.com/coins/images/102175397/large/BB.png?1786287486"
+ },
+ "CBBTC": {
+  "symbol": "cbBTC",
+  "name": "Coinbase Wrapped BTC",
+  "address": "0xcec185eb182c47d1ba1efc84e6959e18cd620be4",
+  "image": "https://coin-images.coingecko.com/coins/images/40143/large/cbbtc.webp?1726136727"
+ },
+ "LLY": {
+  "symbol": "LLY",
+  "name": "Eli Lilly • Robinhood Token",
+  "address": "0x8005d266423c7ea827372c9c864491e5786600ea",
+  "image": "https://coin-images.coingecko.com/coins/images/102174175/large/0x8005d266423c7ea827372c9c864491e5786600ea.png?1782444737"
+ },
+ "TSM": {
+  "symbol": "TSM",
+  "name": "Taiwan Semiconductor Manufacturing • Robinhood Token",
+  "address": "0x58ffe4a942d3885baa22d7520691f611ef09e7aa",
+  "image": "https://coin-images.coingecko.com/coins/images/102174148/large/0x58ffe4a942d3885baa22d7520691f611ef09e7aa.png?1782444664"
+ },
+ "SKHY": {
+  "symbol": "SKHY",
+  "name": "SK hynix Inc. American Depositary Shares • Robinhood Token",
+  "address": "0x84cab63bc87912e71ad199ff14a0ba45de68fef8",
+  "image": "https://coin-images.coingecko.com/coins/images/102175527/large/SKYHY.png?1786610155"
+ },
+ "USO": {
+  "symbol": "USO",
+  "name": "United States Oil Fund • Robinhood Token",
+  "address": "0xa30fa36db767ad9ed3f7a60fc79526fb4d56d344",
+  "image": "https://coin-images.coingecko.com/coins/images/102174125/large/0xa30fa36db767ad9ed3f7a60fc79526fb4d56d344.png?1782444603"
+ },
+ "LULU": {
+  "symbol": "LULU",
+  "name": "Lululemon • Robinhood Token",
+  "address": "0x4e62068525ab11fe768e29dfd00ef909b9803016",
+  "image": "https://coin-images.coingecko.com/coins/images/102174187/large/0x4e62068525ab11fe768e29dfd00ef909b9803016.png?1782444768"
+ },
+ "MRNA": {
+  "symbol": "mrna",
+  "name": "Moderna, Inc. • Robinhood Token",
+  "address": "0x43b07d15ce533bec5476d70c22a78a1b2b662155",
+  "image": "https://coin-images.coingecko.com/coins/images/102175366/large/MRNA.png?1786131713"
+ },
+ "JNJ": {
+  "symbol": "jnj",
+  "name": "Johnson & Johnson • Robinhood Token",
+  "address": "0x03dfbbe0ac4e7bcdafd08ed41a400326b77d8c80",
+  "image": "https://coin-images.coingecko.com/coins/images/102175443/large/JNJ.png?1786301555"
+ },
+ "SGOV": {
+  "symbol": "SGOV",
+  "name": "iShares 0-3 Month Treasury Bond • Robinhood Token",
+  "address": "0x92fd66527192e3e61d4ddd13322aa222de86f9b5",
+  "image": "https://coin-images.coingecko.com/coins/images/102174130/large/0x92fd66527192e3e61d4ddd13322aa222de86f9b5.png?1782444616"
+ },
+ "INDA": {
+  "symbol": "inda",
+  "name": "iShares MSCI India ETF • Robinhood Token",
+  "address": "0xacef2e09adb47ad6abebad9ff06689e60615c2b6",
+  "image": "https://coin-images.coingecko.com/coins/images/102175449/large/INDA.png?1786367418"
+ },
+ "NFLX": {
+  "symbol": "NFLX",
+  "name": "Netflix • Robinhood Token",
+  "address": "0xe0444ef8bf4ed74f74fd73686e2ddf4c1c5591e8",
+  "image": "https://coin-images.coingecko.com/coins/images/102174165/large/0xe0444ef8bf4ed74f74fd73686e2ddf4c1c5591e8.png?1782444710"
+ },
+ "NU": {
+  "symbol": "NU",
+  "name": "Nu • Robinhood Token",
+  "address": "0x408c14038a04f7bd235329e26d2bf569ee20e250",
+  "image": "https://coin-images.coingecko.com/coins/images/102174171/large/0x408c14038a04f7bd235329e26d2bf569ee20e250.png?1782444726"
+ },
+ "F": {
+  "symbol": "F",
+  "name": "Ford Motor • Robinhood Token",
+  "address": "0x25c288e6d899b9bc30160965ad9644c67e73be0c",
+  "image": "https://coin-images.coingecko.com/coins/images/102174185/large/0x25c288e6d899b9bc30160965ad9644c67e73be0c.png?1782444763"
+ },
+ "SNOW": {
+  "symbol": "snow",
+  "name": "Snowflake Inc. • Robinhood Token",
+  "address": "0xba0cab75495255d0cb58e22b648bfed4ecd1f47e",
+  "image": "https://coin-images.coingecko.com/coins/images/102175401/large/SNOW.png?1786287558"
+ },
+ "LMT": {
+  "symbol": "lmt",
+  "name": "Lockheed Martin Corp. • Robinhood Token",
+  "address": "0x329fcaceb9ad6f9580dd5f643fed0646900d043c",
+  "image": "https://coin-images.coingecko.com/coins/images/102175412/large/LMT.png?1786295459"
+ },
+ "CEG": {
+  "symbol": "ceg",
+  "name": "Constellation Energy Corporation • Robinhood Token",
+  "address": "0xae517a2903e68bd929dfd15be875f8369d53e94a",
+  "image": "https://coin-images.coingecko.com/coins/images/102175413/large/CEG.png?1786295468"
+ },
+ "RKLB": {
+  "symbol": "RKLB",
+  "name": "Rocket Lab Corporation • Robinhood Token",
+  "address": "0x3b14c39e89d60d627b42a1a4ca45b5bb45fc12e2",
+  "image": "https://coin-images.coingecko.com/coins/images/102174133/large/0x3b14c39e89d60d627b42a1a4ca45b5bb45fc12e2.png?1782444624"
+ },
+ "QUBT": {
+  "symbol": "QUBT",
+  "name": "Quantum Computing • Robinhood Token",
+  "address": "0x59818904ab4ce163b3ce4ffb64f2d6ca02c434b4",
+  "image": "https://coin-images.coingecko.com/coins/images/102174141/large/0x59818904ab4ce163b3ce4ffb64f2d6ca02c434b4.png?1782444645"
+ },
+ "SHROOM": {
+  "symbol": "SHROOM",
+  "name": "MUSHROOM",
+  "address": "0xab093def657f15df31b33922a95e047add645b29",
+  "image": "https://coin-images.coingecko.com/coins/images/102176720/large/shroom.jpg?1788592860"
+ },
+ "INDEX": {
+  "symbol": "Index",
+  "name": "The Index",
+  "address": "0x56910d4409f3a0c78c64dd8d0545ff0705389870",
+  "image": "https://coin-images.coingecko.com/coins/images/102174740/large/qffiSdBd_400x400_%281%29.jpg?1784708104"
+ },
+ "BULL": {
+  "symbol": "bull",
+  "name": "Webull Corporation • Robinhood Token",
+  "address": "0xcef9027c7d6985b85f0ba431125073529a947a68",
+  "image": "https://coin-images.coingecko.com/coins/images/102175340/large/BULL.png?1786119809"
+ },
+ "NET": {
+  "symbol": "net",
+  "name": "Cloudflare, Inc. • Robinhood Token",
+  "address": "0x116f00968269b7bfbad4109ce591d6e74c0601d4",
+  "image": "https://coin-images.coingecko.com/coins/images/102175457/large/NET.png?1786367590"
+ }
+}
