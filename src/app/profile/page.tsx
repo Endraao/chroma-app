@@ -43,7 +43,7 @@ export default function ProfilePage() {
 
 function Perfil() {
   const account = useChromaAccount();
-  const { sol, usd } = useWalletBalance();
+  const { sol, eth, usd } = useWalletBalance();
 
   /*
    * A ABA VEM DA URL, e isso conserta um botão que não fazia nada.
@@ -190,6 +190,9 @@ function Perfil() {
             <div className="tnum text-xl font-black text-zinc-50">
               {usd !== null ? formatUsd(usd) : "—"}
             </div>
+            {eth !== null && (
+              <div className="tnum text-[11px] text-zinc-600">{eth.toFixed(5)} ETH</div>
+            )}
             {sol !== null && (
               <div className="tnum text-[11px] text-zinc-600">{sol.toFixed(4)} SOL</div>
             )}

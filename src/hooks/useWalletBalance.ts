@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useAccount } from "wagmi";
 
 /**
- * Quanto a carteira conectada vale: SOL MAIS as moedas que ela carrega.
+ * Quanto as carteiras conectadas valem: SOL e moedas da Solana, mais o ETH da
+ * Robinhood Chain.
  *
  * ---------------------------------------------------------------------------
  * POR QUE NÃO É SÓ O SOL
@@ -14,9 +16,15 @@ import { useWallet } from "@solana/wallet-adapter-react";
  * nenhum. O site dizia à pessoa que ela tinha perdido dinheiro toda vez que
  * ela comprava.
  *
- * Numa launchpad isso é pior que um número errado: o produto inteiro é
- * converter SOL em moeda nova, e o painel tratava essa conversão como
- * prejuízo.
+ * ---------------------------------------------------------------------------
+ * AS DUAS REDES ENTRAM NO TOTAL
+ * ---------------------------------------------------------------------------
+ * Com as duas carteiras conectadas, mostrar só a Solana fazia o saldo da
+ * Robinhood — que virou a rede principal — simplesmente não existir. O total
+ * em dólar soma as duas; o menu mostra cada uma na sua linha, na sua moeda.
+ *
+ * As moedas lançadas na Robinhood ainda não entram (ver `/api/carteira`): o
+ * que aparece lá é o ETH.
  *
  * ---------------------------------------------------------------------------
  * A CONTA É FEITA NO SERVIDOR
@@ -24,51 +32,38 @@ import { useWallet } from "@solana/wallet-adapter-react";
  * Uma carteira ativa carrega dezenas de moedas, cada uma precisando de preço.
  * Feito aqui seriam dezenas de requisições a cada visita; feito lá, é uma
  * chamada só, com cache compartilhado por todo mundo — ver `/api/carteira`.
- *
- * Só Solana por enquanto: é a rede onde o swap funciona. Em EVM devolve null e
- * o cabeçalho esconde a pílula, em vez de mostrar "0" — que seria mentira.
  */
 const RECARREGA_MS = 30_000;
 
-export function useWalletBalance() {
-  const { publicKey } = useWallet();
+interface SaldoSolana {
+  sol: number;
+  totalUsd: number;
+  tokensUsd: number;
+  moedas: number;
+}
 
-  const [sol, setSol] = useState<number | null>(null);
-  const [usd, setUsd] = useState<number | null>(null);
-  /** Quanto do total está em moedas, e não em SOL. */
-  const [emMoedas, setEmMoedas] = useState<number | null>(null);
-  const [quantasMoedas, setQuantasMoedas] = useState(0);
+interface SaldoEvm {
+  eth: number;
+  ethUsd: number | null;
+}
+
+/** Lê `/api/carteira` para um dono, repetindo a cada 30s. */
+function useLeitura<T>(dono: string | null): T | null {
+  const [dados, setDados] = useState<T | null>(null);
 
   useEffect(() => {
-    if (!publicKey) {
-      setSol(null);
-      setUsd(null);
-      setEmMoedas(null);
-      setQuantasMoedas(0);
+    if (!dono) {
+      setDados(null);
       return;
     }
 
     let cancelado = false;
-    const dono = publicKey.toBase58();
-
     const ler = async () => {
       try {
         const res = await fetch(`/api/carteira?dono=${dono}`, { cache: "no-store" });
         if (!res.ok || cancelado) return;
-
-        const dados = (await res.json()) as {
-          sol: number;
-          solUsd: number;
-          tokensUsd: number;
-          totalUsd: number;
-          moedas: number;
-        };
-        if (cancelado) return;
-
-        setSol(dados.sol);
-        setUsd(dados.totalUsd);
-        setEmMoedas(dados.tokensUsd);
-        setQuantasMoedas(dados.moedas);
+        const j = (await res.json()) as T;
+        if (!cancelado) setDados(j);
       } catch {
         /* rede oscilou: mantém o último valor conhecido */
       }
@@ -76,12 +71,40 @@ export function useWalletBalance() {
 
     void ler();
     const timer = window.setInterval(ler, RECARREGA_MS);
-
     return () => {
       cancelado = true;
       window.clearInterval(timer);
     };
-  }, [publicKey]);
+  }, [dono]);
 
-  return { sol, usd, emMoedas, quantasMoedas };
+  return dados;
+}
+
+export function useWalletBalance() {
+  const { publicKey } = useWallet();
+  const { address } = useAccount();
+
+  const solana = useLeitura<SaldoSolana>(publicKey?.toBase58() ?? null);
+  const evm = useLeitura<SaldoEvm>(address ?? null);
+
+  /*
+   * O total só existe se todas as partes conectadas tiverem valor em dólar.
+   * Somar uma parte e ignorar a outra (preço do ETH fora do ar, por exemplo)
+   * daria um número menor que o real com cara de certo.
+   */
+  const partes: (number | null)[] = [];
+  if (publicKey) partes.push(solana ? solana.totalUsd : null);
+  if (address) partes.push(evm ? evm.ethUsd : null);
+  const usd =
+    partes.length > 0 && partes.every((p) => p !== null)
+      ? partes.reduce<number>((soma, p) => soma + (p as number), 0)
+      : null;
+
+  return {
+    sol: solana?.sol ?? null,
+    eth: evm?.eth ?? null,
+    usd,
+    emMoedas: solana?.tokensUsd ?? null,
+    quantasMoedas: solana?.moedas ?? 0,
+  };
 }

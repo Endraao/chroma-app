@@ -1,7 +1,25 @@
 import { NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 
+import { formatEther, hexToBigInt, isAddress, type Hex } from "viem";
+
 import { valorDaCarteira } from "@/lib/carteira";
+import { precosNativos } from "@/lib/precos-nativos";
+import { robinhoodChain } from "@/lib/web3";
+
+/** Saldo nativo na Robinhood Chain, pelo mesmo nó que a ponte `/api/rpc/robinhood` usa. */
+async function saldoEth(dono: string): Promise<bigint> {
+  const no = process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0];
+  const r = await fetch(no, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [dono, "latest"] }),
+    cache: "no-store",
+  });
+  const j = (await r.json()) as { result?: Hex; error?: { message: string } };
+  if (!j.result) throw new Error(j.error?.message ?? `RPC respondeu ${r.status}`);
+  return hexToBigInt(j.result);
+}
 
 /**
  * GET /api/carteira?dono=… → quanto a carteira vale, somando SOL e tokens.
@@ -25,6 +43,30 @@ export async function GET(request: Request) {
 
   if (!dono) {
     return NextResponse.json({ error: "parâmetro 'dono' é obrigatório" }, { status: 400 });
+  }
+
+  /*
+   * Carteira EVM: só o ETH, por enquanto.
+   *
+   * As moedas lançadas na Robinhood ficam de fora deste número porque não há
+   * como listar o que a carteira carrega sem indexador — o Blockscout da rede
+   * está atrás da Cloudflare. A tela diz "em ETH", e não "total", por isso.
+   */
+  if (isAddress(dono)) {
+    try {
+      const [wei, precos] = await Promise.all([saldoEth(dono), precosNativos()]);
+      const eth = Number(formatEther(wei));
+      const preco = precos.robinhood;
+      return NextResponse.json({
+        eth,
+        /* Preço indisponível → null: melhor esconder o dólar que inventá-lo. */
+        ethUsd: preco > 0 ? eth * preco : null,
+        at: Date.now(),
+      });
+    } catch (erro) {
+      console.warn("[carteira] ETH falhou:", erro);
+      return NextResponse.json({ error: "Não foi possível ler o saldo em ETH." }, { status: 502 });
+    }
   }
 
   /* Valida antes de gastar RPC: endereço torto viraria erro lá dentro. */

@@ -29,7 +29,7 @@ export function AccountMenu() {
   const [saldoVisivel, setSaldoVisivel] = useState(true);
 
   const account = useChromaAccount();
-  const { sol, usd, emMoedas, quantasMoedas } = useWalletBalance();
+  const { sol, eth, usd, emMoedas, quantasMoedas } = useWalletBalance();
   const { wallet: solanaWallet, disconnect: disconnectSolana } = useWallet();
   const { disconnect: disconnectEvm } = useDisconnect();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -244,14 +244,25 @@ export function AccountMenu() {
               quando o SOL saiu da carteira — e a explicação é justamente que
               ele virou moeda.
             */}
-            {sol !== null && (
+            {(sol !== null || eth !== null) && (
               <div className="space-y-1.5 px-4 py-2.5 text-[12px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Em SOL</span>
-                  <span className="tnum font-semibold text-zinc-200">
-                    {saldoVisivel ? `${sol.toFixed(4)} SOL` : "••••"}
-                  </span>
-                </div>
+                {eth !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-500">Em ETH</span>
+                    <span className="tnum font-semibold text-zinc-200">
+                      {saldoVisivel ? `${eth.toFixed(5)} ETH` : "••••"}
+                    </span>
+                  </div>
+                )}
+
+                {sol !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-500">Em SOL</span>
+                    <span className="tnum font-semibold text-zinc-200">
+                      {saldoVisivel ? `${sol.toFixed(4)} SOL` : "••••"}
+                    </span>
+                  </div>
+                )}
 
                 {emMoedas !== null && emMoedas > 0 && (
                   <div className="flex items-center justify-between">
