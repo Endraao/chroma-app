@@ -15,6 +15,7 @@ import {
   type RecadoDaFoto,
 } from "@/components/profile/PhotoPicker";
 import { EarningsPanel } from "@/components/profile/EarningsPanel";
+import { MeusTokens } from "@/components/profile/MeusTokens";
 import type { AffiliateSummary } from "@/lib/affiliate-types";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
@@ -23,7 +24,7 @@ import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatUsd, shortenAddress } from "@/lib/utils";
 
-type Aba = "indicacoes" | "conta";
+type Aba = "tokens" | "indicacoes" | "conta";
 
 /**
  * A página inteira precisa de uma fronteira de Suspense por causa do
@@ -57,8 +58,9 @@ function Perfil() {
    * ferramenta de vincular estava na outra aba.
    */
   const parametros = useSearchParams();
+  const pedida = parametros.get("aba");
   const [aba, setAba] = useState<Aba>(
-    parametros.get("aba") === "conta" ? "conta" : "indicacoes",
+    pedida === "conta" || pedida === "indicacoes" ? pedida : "tokens",
   );
   const [ganhos, setGanhos] = useState<AffiliateSummary | null>(null);
   const [copiado, setCopiado] = useState(false);
@@ -224,6 +226,7 @@ function Perfil() {
       <div className="flex gap-1">
         {(
           [
+            ["tokens", "Meus tokens"],
             ["indicacoes", "Indicações"],
             ["conta", "Conta"],
           ] as [Aba, string][]
@@ -243,7 +246,14 @@ function Perfil() {
         ))}
       </div>
 
-      {aba === "indicacoes" ? (
+      {aba === "tokens" ? (
+        <MeusTokens
+          chaves={[
+            ...Object.values(account.conectadas),
+            ...Object.values(account.carteiras),
+          ].filter((c): c is string => Boolean(c))}
+        />
+      ) : aba === "indicacoes" ? (
         <>
           <EarningsPanel resumo={ganhos} />
 

@@ -69,17 +69,26 @@ export function SecurityPanel({
   report,
   carregando,
   liquidityUsd,
+  naCurva = false,
 }: {
   report: SecurityReport | null;
   carregando: boolean;
   liquidityUsd?: number;
+  /**
+   * Moeda na curva da Chroma. Não tem pool: a curva compra e vende sempre, e
+   * ninguém retira o ETH dela. Os alertas de liquidez partem de pool de DEX e
+   * não se aplicam — deram "difícil sair" na primeira moeda lançada.
+   */
+  naCurva?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
 
   if (carregando) return <Skeleton className="h-[86px] rounded-2xl" />;
   if (!report) return null;
 
-  const alertas = montarAlertas(report, { liquidityUsd });
+  const alertas = montarAlertas(report, { liquidityUsd }).filter(
+    (a) => !naCurva || !["liquidity", "liquidez_rasa", "lp_sem_prova"].includes(a.id),
+  );
   const passaram = report.checks.filter((c) => c.level === "safe");
   const naoVerificados = report.checks.filter((c) => c.level === "unknown");
 

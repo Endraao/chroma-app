@@ -4,6 +4,8 @@ import { corrigirCapitalizacao, fetchPoolFeed, fetchToken, fetchTokenList } from
 import { moedasDaChroma } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
+import { lerMoedaDaCurvaEvm, resumoDaMoedaEvm } from "./curva-evm";
+import { buscarMoedaDaChroma } from "./db";
 import type { ChainId, TokenSummary } from "./types";
 
 /**
@@ -223,6 +225,24 @@ export async function listTokens(
 }
 
 export async function getToken(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
+  /*
+   * Moeda da curva da Chroma na Robinhood: quem sabe dela é o contrato, não a
+   * DEX — ela ainda não tem pool. Lida primeiro, e só cai no mercado depois
+   * de migrar (aí a pool existe e o mercado sabe mais).
+   */
+  if (address.startsWith("0x")) {
+    const daCurva = await lerMoedaDaCurvaEvm(address).catch(() => null);
+    if (daCurva && !daCurva.curva.migrada) {
+      const registro = await buscarMoedaDaChroma(address).catch(() => null);
+      const token = await resumoDaMoedaEvm(address, {
+        imagem: registro?.imagem,
+        descricao: registro?.descricao,
+        criadaEm: registro?.criadaEm,
+      });
+      if (token) return { token, isDemo: false };
+    }
+  }
+
   const real = await fetchToken(address);
 
   if (real) {

@@ -258,7 +258,13 @@ export function useLancarTokenEvm() {
         void fetch("/api/moedas", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ address: moeda, chain: "robinhood", txHash: hash }),
+          body: JSON.stringify({
+            address: moeda,
+            chain: "robinhood",
+            txHash: hash,
+            descricao: dados.descricao,
+            imagem: publicado.imageUrl,
+          }),
         }).catch((erroDeCatalogo) => {
           console.warn("[lancamento-evm] moeda criada, mas não entrou no catálogo:", erroDeCatalogo);
         });

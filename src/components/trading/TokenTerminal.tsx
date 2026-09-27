@@ -195,6 +195,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             report={report}
             carregando={auditando}
             liquidityUsd={stats.liquidityUsd}
+            naCurva={token.bondingProgress !== null}
           />
 
           <Card>

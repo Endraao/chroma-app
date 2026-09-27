@@ -4,6 +4,7 @@ import { PublicKey } from "@solana/web3.js";
 import { enderecoDaCurva, lerCurva } from "@/lib/chroma-program";
 import { registrarMoeda } from "@/lib/db";
 import { creditarMoeda } from "@/lib/airdrop";
+import { lerMoedaDaCurvaEvm } from "@/lib/curva-evm";
 
 /**
  * POST /api/moedas — registra uma moeda recém-lançada na Chroma.
@@ -39,6 +40,8 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "corpo inválido" }, { status: 400 });
   }
+
+  if (corpo.chain === "robinhood") return registrarNaRobinhood(corpo);
 
   const mint = texto(corpo.mint, 64);
   if (!mint) return NextResponse.json({ error: "'mint' é obrigatório" }, { status: 400 });
@@ -116,6 +119,58 @@ export async function POST(request: Request) {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Registro de moeda lançada na curva da Robinhood.
+ *
+ * Existia só o caminho da Solana, e o lançamento EVM mandava pra cá um corpo
+ * que ele recusava em silêncio — a primeira moeda (SundayCat, 27/09/2026)
+ * nasceu na rede e ficou fora da vitrine e sem pontos de airdrop.
+ *
+ * A prova é a mesma ideia da Solana: a curva da Chroma conhece este endereço.
+ * Nome, símbolo e criador saem do CONTRATO; do corpo só se aceita o que a
+ * rede não guarda (imagem e descrição), com os mesmos filtros.
+ */
+async function registrarNaRobinhood(corpo: Record<string, unknown>) {
+  const endereco = texto(corpo.address, 42);
+  if (!/^0x[0-9a-fA-F]{40}$/.test(endereco)) {
+    return NextResponse.json({ error: "'address' não é um endereço EVM" }, { status: 400 });
+  }
+
+  const moeda = await lerMoedaDaCurvaEvm(endereco).catch(() => null);
+  if (!moeda) {
+    return NextResponse.json(
+      { error: "não existe curva da Chroma para este endereço" },
+      { status: 403 },
+    );
+  }
+
+  const criador = moeda.curva.criador;
+  try {
+    await registrarMoeda({
+      endereco: endereco.toLowerCase(),
+      rede: "robinhood",
+      nome: moeda.nome.slice(0, LIMITES.nome) || endereco.slice(0, 6),
+      simbolo: moeda.simbolo.slice(0, LIMITES.simbolo) || "?",
+      descricao: texto(corpo.descricao, LIMITES.descricao) || null,
+      imagem: urlSegura(corpo.imagem),
+      criador,
+      assinatura: texto(corpo.txHash, 128) || null,
+      criadaEm: Date.now(),
+    });
+  } catch (erro) {
+    console.warn("[moedas] falha ao registrar (robinhood):", erro);
+    return NextResponse.json({ error: "Não foi possível registrar agora." }, { status: 500 });
+  }
+
+  try {
+    await creditarMoeda(endereco.toLowerCase(), criador, "robinhood");
+  } catch (erro) {
+    console.warn("[moedas] falha ao pontuar o airdrop (robinhood):", erro);
+  }
+
+  return NextResponse.json({ ok: true, address: endereco });
+}
 
 interface LeituraDaCurva {
   existe: boolean;

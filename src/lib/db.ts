@@ -427,6 +427,37 @@ export async function listarMoedasDaChroma(limite = 60): Promise<MoedaRegistrada
   }));
 }
 
+/**
+ * Uma moeda do catálogo pelo endereço, ou null.
+ *
+ * Comparação sem caixa: endereço EVM chega em checksum (maiúsculas e
+ * minúsculas misturadas) do navegador e em minúsculas de outros lugares.
+ * Endereço Solana não colide por caixa — base58 distingue, mas dois mints
+ * que só diferem na caixa não existem na prática.
+ */
+export async function buscarMoedaDaChroma(endereco: string): Promise<MoedaRegistrada | null> {
+  await banco();
+  const linhas = (await sql.query(
+    `SELECT endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em
+       FROM moedas WHERE LOWER(endereco) = LOWER($1) LIMIT 1`,
+    [endereco],
+  )) as Record<string, unknown>[];
+
+  const l = linhas[0];
+  if (!l) return null;
+  return {
+    endereco: String(l.endereco),
+    rede: String(l.rede),
+    nome: String(l.nome),
+    simbolo: String(l.simbolo),
+    descricao: l.descricao == null ? null : String(l.descricao),
+    imagem: l.imagem == null ? null : String(l.imagem),
+    criador: String(l.criador),
+    assinatura: l.assinatura == null ? null : String(l.assinatura),
+    criadaEm: Number(l.criada_em),
+  };
+}
+
 /* ------------------------------------------------------------------ */
 
 /**

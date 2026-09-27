@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { fetchCandles, CANDLE_INTERVALS } from "@/lib/market";
+import { fetchCandles, CANDLE_INTERVALS, intervalSeconds } from "@/lib/market";
+import { lerMoedaDaCurvaEvm, velasDaCurvaEvm } from "@/lib/curva-evm";
 
 /** GET /api/candles?address=…&interval=1m → velas reais da GeckoTerminal. */
 export async function GET(request: Request) {
@@ -19,6 +20,20 @@ export async function GET(request: Request) {
   }
 
   try {
+    /*
+     * Moeda na curva da Chroma não tem pool em DEX: as velas saem dos
+     * negócios registrados no próprio contrato. Depois de migrar, ela passa a
+     * ter pool e o caminho de sempre volta a valer.
+     */
+    const daCurva = await lerMoedaDaCurvaEvm(address).catch(() => null);
+    if (daCurva && !daCurva.curva.migrada) {
+      const velas = await velasDaCurvaEvm(address, intervalSeconds(interval));
+      if (!velas.length) {
+        return NextResponse.json({ error: "sem velas para este par" }, { status: 404 });
+      }
+      return NextResponse.json(velas);
+    }
+
     const candles = await fetchCandles(address, interval);
     if (!candles.length) {
       return NextResponse.json({ error: "sem velas para este par" }, { status: 404 });

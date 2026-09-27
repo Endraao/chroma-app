@@ -15,7 +15,15 @@ import { formatUsd } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const SORTS: { key: SortKey; label: string }[] = [
+/**
+ * As abas da grade de Mercado. "chroma" não é ordenação: é o recorte das
+ * moedas criadas AQUI, que as fontes de mercado nem conhecem enquanto estão
+ * na curva. Fica em primeiro porque é o que só este site tem.
+ */
+type AbaDoMercado = SortKey | "chroma";
+
+const SORTS: { key: AbaDoMercado; label: string }[] = [
+  { key: "chroma", label: "Criadas na Chroma" },
   { key: "new", label: "Recentes" },
   { key: "gainers", label: "Maiores altas" },
   { key: "volume", label: "Volume 24h" },
@@ -53,7 +61,8 @@ export default async function HomePage({
   searchParams: Promise<{ sort?: string; chain?: string }>;
 }) {
   const filtros = await searchParams;
-  const sort = (filtros.sort as SortKey) || "new";
+  const sort = (filtros.sort as AbaDoMercado) || "new";
+  const ordem: SortKey = sort === "chroma" ? "new" : sort;
 
   /*
    * Rede vinda da URL, e não do estado da carteira: assim o link que a pessoa
@@ -90,7 +99,7 @@ export default async function HomePage({
    * obedecessem ao botão de ordenação da grade central.
    */
   const [principal, porValor, porVolume, porIdade, daCasa] = await Promise.all([
-    listTokens(sort, chain),
+    listTokens(ordem, chain),
     listTokens("marketCap", chain),
     listTokens("volume", chain),
     listTokens("new", chain),
@@ -116,7 +125,8 @@ export default async function HomePage({
    */
   const lancadasNaChroma = daCasa.filter((t) => t.chain === chain);
 
-  const { tokens, isDemo } = principal;
+  const { isDemo } = principal;
+  const tokens = sort === "chroma" ? lancadasNaChroma : principal.tokens;
   const totalVolume = tokens.reduce((acc, t) => acc + t.volume24hUsd, 0);
 
   const separar = tokens.length >= MINIMO_PRA_SEPARAR;
@@ -138,7 +148,7 @@ export default async function HomePage({
     : [];
 
   /** Preserva a rede ao trocar de ordenação, e vice-versa. */
-  const linkCom = (params: { sort?: SortKey; chain?: ChainId | null }) => {
+  const linkCom = (params: { sort?: AbaDoMercado; chain?: ChainId | null }) => {
     const proximoSort = params.sort ?? sort;
     const proximaChain = params.chain === undefined ? chain : params.chain;
     const q = new URLSearchParams();
@@ -213,6 +223,7 @@ export default async function HomePage({
                 titulo="Lançadas na Chroma"
                 resumo="Criadas aqui, na nossa curva. A plataforma paga o criador e o afiliado na própria transação."
                 cor="#a78bfa"
+                acao={{ rotulo: "Ver todas", href: linkCom({ sort: "chroma" }) }}
               >
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {lancadasNaChroma.slice(0, QUANTAS_DA_CASA).map((token) => (
@@ -272,7 +283,9 @@ export default async function HomePage({
                 ))}
               </div>
 
-              {tokens.length === 0 ? (
+              {tokens.length === 0 && sort === "chroma" ? (
+                <VazioDaChroma rede={CHAINS[chain].label} />
+              ) : tokens.length === 0 ? (
                 <Vazio
                   href={linkCom({ chain: chain === "solana" ? "robinhood" : "solana" })}
                   outraRede={CHAINS[chain === "solana" ? "robinhood" : "solana"].label}
@@ -330,6 +343,23 @@ export default async function HomePage({
  * em Solana. Um link pra um filtro que não existe mais devolveria a pessoa
  * exatamente pra lista vazia de onde ela saiu.
  */
+/** Aba da Chroma sem moeda: é convite, não erro. */
+function VazioDaChroma({ rede }: { rede: string }) {
+  return (
+    <div className="rounded-lg border border-ink-700 bg-ink-900 px-6 py-12 text-center">
+      <p className="text-[14px] font-semibold text-zinc-300">
+        Nenhuma moeda criada na Chroma na {rede} ainda.
+      </p>
+      <p className="mt-1 text-[12px] text-zinc-600">
+        <Link href="/create" className="text-marca hover:underline">
+          Crie a primeira
+        </Link>{" "}
+        — ela aparece aqui assim que nascer.
+      </p>
+    </div>
+  );
+}
+
 function Vazio({ href, outraRede }: { href: string; outraRede: string }) {
   return (
     <div className="rounded-lg border border-ink-700 bg-ink-900 px-6 py-12 text-center">

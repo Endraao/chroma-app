@@ -15,6 +15,7 @@ import {
   type EstadoDaCurva,
 } from "@/lib/chroma-program";
 import type { TokenSummary } from "@/lib/types";
+import { resumoDaMoedaEvm } from "@/lib/curva-evm";
 
 /**
  * As moedas lançadas na Chroma, prontas pra entrar na vitrine.
@@ -66,7 +67,21 @@ export async function moedasDaChroma(): Promise<TokenSummary[]> {
   ]);
 
   const saida = await Promise.all(
-    registros.map((m) => montar(m, estados.curvas.get(m.endereco), estados.config, precoDoSol)),
+    registros.map(async (m) => {
+      /*
+       * Robinhood: o estado sai do contrato EVM. Se a moeda já migrou (ou a
+       * leitura falhar), cai no mesmo caminho de mercado da Solana.
+       */
+      if (m.rede === "robinhood") {
+        const naCurva = await resumoDaMoedaEvm(m.endereco, {
+          imagem: m.imagem,
+          descricao: m.descricao,
+          criadaEm: m.criadaEm,
+        }).catch(() => null);
+        return naCurva ?? montar(m, undefined, estados.config, precoDoSol);
+      }
+      return montar(m, estados.curvas.get(m.endereco), estados.config, precoDoSol);
+    }),
   );
 
   return saida.filter((t): t is TokenSummary => t !== null);
