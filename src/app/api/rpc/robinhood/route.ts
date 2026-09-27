@@ -114,6 +114,16 @@ function recusar(chamada: Chamada): string | null {
     return `método não permitido: ${metodo || "(vazio)"}`;
   }
 
+  /*
+   * `params` AUSENTE é válido em JSON-RPC e significa lista vazia. O viem manda
+   * `eth_blockNumber` exatamente assim — e é o pedido que ele repete enquanto
+   * espera um recibo. Recusar isto fazia toda espera de confirmação estourar o
+   * prazo com a transação já na rede (27/09/2026: publicação dos contratos e
+   * primeiro lançamento). Objeto, texto ou número continuam recusados.
+   */
+  if (chamada.params === undefined) {
+    chamada.params = [];
+  }
   if (!Array.isArray(chamada.params)) {
     return "params precisa ser uma lista";
   }
