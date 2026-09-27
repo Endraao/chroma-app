@@ -58,20 +58,14 @@ export const LIQUIDITY_PAIRS: Record<ChainId, LiquidityPair[]> = {
       decimals: 18,
       hint: "Moeda de gás da Robinhood Chain. Par mais líquido da rede.",
     },
-    {
-      symbol: "NVDA",
-      name: "NVIDIA • Robinhood Token",
-      address: "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
-      decimals: 18,
-      hint: "Ação tokenizada da Nvidia. O preço do par acompanha a ação.",
-    },
-    {
-      symbol: "SPCX",
-      name: "Space Exploration Technologies Corp • Robinhood Token",
-      address: "0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa",
-      decimals: 18,
-      hint: "SpaceX tokenizada (empresa fechada). Liquidez menor que ETH.",
-    },
+    /*
+     * NVDA, SPCX e as outras ações tokenizadas saíram da lista em 27/09/2026:
+     * a ChromaCurve só aceita ETH. A tela oferecia NVDA, a pessoa escolhia, e
+     * a moeda nascia pareada com ETH do mesmo jeito — escolha que não fazia
+     * nada. Os endereços conferidos estão no histórico do git e em
+     * `scripts/gerar-pares-robinhood.mjs`; voltam quando a curva aceitar
+     * ERC-20 como par.
+     */
   ],
 };
 
