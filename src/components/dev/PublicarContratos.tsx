@@ -11,7 +11,9 @@ interface Contrato {
   nome: string;
   remetente: string;
   dados: Hex;
-  previsto: `0x${string}`;
+  previsto: `0x${string}` | null;
+  /** preenchido em chamada a contrato já publicado; null = publicação */
+  para: `0x${string}` | null;
   nonce: number;
 }
 
@@ -27,7 +29,12 @@ interface Publicado {
  * de novo publicaria uma SEGUNDA curva — pagando de novo e deixando um
  * contrato órfão com a carteira como autoridade.
  */
-const CHAVE = "chroma_publicacao_4663";
+/* O script vem da URL: /publicar (padrão) ou /publicar?script=Ajustar. */
+const SCRIPT =
+  typeof window === "undefined"
+    ? "Publicar"
+    : (new URLSearchParams(window.location.search).get("script") ?? "Publicar");
+const CHAVE = `chroma_${SCRIPT}_4663`;
 
 function lerSalvo(): Record<string, Publicado> {
   try {
@@ -64,7 +71,7 @@ export function PublicarContratos() {
 
   useEffect(() => {
     setPublicados(lerSalvo());
-    fetch("/api/dev/publicar")
+    fetch(`/api/dev/publicar?script=${SCRIPT}`)
       .then(async (r) => {
         const j = await r.json();
         if (!r.ok) throw new Error(j.error);
@@ -87,6 +94,7 @@ export function PublicarContratos() {
     (async () => {
       const achados: Record<string, Publicado> = {};
       for (const c of contratos) {
+        if (!c.previsto) continue;
         const codigo = await publicClient.getCode({ address: c.previsto }).catch(() => undefined);
         if (codigo && codigo !== "0x") achados[c.nome] = { endereco: c.previsto, hash: "" };
       }
@@ -139,7 +147,7 @@ export function PublicarContratos() {
         const hash = await walletClient.sendTransaction({
           account: address,
           chain: robinhoodChain,
-          to: null,
+          to: c.para,
           data: c.dados,
         });
 
@@ -154,11 +162,12 @@ export function PublicarContratos() {
           pollingInterval: 3_000,
         });
 
-        if (recibo.status !== "success" || !recibo.contractAddress) {
+        const endereco = c.para ?? recibo.contractAddress;
+        if (recibo.status !== "success" || !endereco) {
           throw new Error(`A rede recusou o ${c.nome} (transação ${hash}).`);
         }
 
-        feitos = { ...feitos, [c.nome]: { endereco: recibo.contractAddress, hash } };
+        feitos = { ...feitos, [c.nome]: { endereco, hash } };
         setPublicados(feitos);
         salvar(feitos);
       }

@@ -28,26 +28,31 @@ import { NextResponse } from "next/server";
  * Só existe em desenvolvimento. Em produção devolve 404.
  */
 
-const DRY_RUN = path.join(
-  process.cwd(),
-  "contracts/broadcast/Publicar.s.sol/4663/dry-run/run-latest.json",
-);
+/** Scripts cujo dry-run esta página sabe enviar. */
+const SCRIPTS = ["Publicar", "Ajustar"] as const;
+
+const dryRun = (script: string) =>
+  path.join(process.cwd(), `contracts/broadcast/${script}.s.sol/4663/dry-run/run-latest.json`);
 
 interface TransacaoDoForge {
   transactionType: string;
   contractName: string;
   contractAddress: string;
-  transaction: { from: string; input: string; nonce: string };
+  transaction: { from: string; to?: string | null; input: string; nonce: string };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return new NextResponse(null, { status: 404 });
   }
 
+  const pedido = new URL(request.url).searchParams.get("script") ?? "Publicar";
+  const script = SCRIPTS.find((s) => s === pedido);
+  if (!script) return NextResponse.json({ error: "script desconhecido" }, { status: 400 });
+
   let bruto: string;
   try {
-    bruto = await readFile(DRY_RUN, "utf8");
+    bruto = await readFile(dryRun(script), "utf8");
   } catch {
     return NextResponse.json(
       { error: "Simulação não encontrada. Rode o forge script sem --broadcast primeiro." },
@@ -61,10 +66,16 @@ export async function GET() {
     return NextResponse.json({ error: `A simulação é da rede ${execucao.chain}, não da 4663.` }, { status: 409 });
   }
 
+  /*
+   * CREATE publica contrato; CALL chama um já publicado (o ajuste da curva).
+   * Chamada não tem endereço previsto — quem impede o envio em dobro é a
+   * checagem de nonce na página.
+   */
   const contratos = execucao.transactions
-    .filter((t) => t.transactionType === "CREATE")
+    .filter((t) => t.transactionType === "CREATE" || t.transactionType === "CALL")
     .map((t) => ({
-      nome: t.contractName,
+      nome: t.transactionType === "CALL" ? `${script}: ${t.contractName ?? "chamada"}` : t.contractName,
+      para: t.transactionType === "CALL" ? (t.transaction.to ?? null) : null,
       remetente: t.transaction.from,
       dados: t.transaction.input,
       /*
@@ -72,7 +83,8 @@ export async function GET() {
        * código ali, esta simulação já foi publicada — e a tela pula o passo em
        * vez de publicar de novo.
        */
-      previsto: t.contractAddress,
+      /* Em CALL o forge põe aqui o contrato CHAMADO, que já tem código: não serve. */
+      previsto: t.transactionType === "CREATE" ? t.contractAddress : null,
       nonce: Number(t.transaction.nonce),
     }));
 
