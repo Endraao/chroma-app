@@ -293,8 +293,21 @@ Endereços verificados on-chain na rede 4663 (`eth_getCode` devolveu bytecode no
 
 `npm run contracts:test` — 19 testes, incluindo fuzz da divisão da taxa.
 
-**Ainda falta, e a interface continua dizendo "em breve" até lá:** montar a rota do swap na tela,
-publicar os contratos, e uma auditoria externa antes de qualquer dinheiro de verdade passar por eles.
+**Publicados em 27/09/2026**, pela carteira `0x49a83b8f7e1a353a9a967887e938eeb15e724e57`
+(autoridade dos dois), com a configuração conferida on-chain depois:
+
+| Contrato | Endereço |
+| --- | --- |
+| ChromaCurve | `0x3fb52955ba3394a237f803222110dac5b9d01501` |
+| ChromaRouter | `0x33c3994f52fc6aab04620ca904f93465e20c207e` |
+
+A publicação é assinada pela MetaMask, não pelo forge: `npm run dev` e abrir `/publicar`, que só
+existe em desenvolvimento e manda à carteira os bytes exatos do dry-run
+(`forge script script/Publicar.s.sol --rpc-url robinhood --sender <carteira>`, sem `--broadcast`).
+A chave nunca sai da carteira.
+
+**Ainda falta:** montar a rota do swap na tela e uma auditoria externa antes de volume de verdade
+passar por eles.
 
 ### Lançar na Robinhood Chain
 
