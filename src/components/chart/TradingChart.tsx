@@ -19,6 +19,7 @@ import {
   dispose,
   init,
   registerYAxis,
+  registerIndicator,
   type Chart,
   type KLineData,
 } from "klinecharts";
@@ -116,10 +117,48 @@ const pontePraEixo = { formatar: (v: number) => String(v) };
 
 registrarRegua();
 
+/*
+ * RÓTULOS QUE NÃO SE REPETEM.
+ *
+ * Com a faixa estreita, os marcadores caem em 74.812, 74.814, 74.816… e o
+ * formato compacto escrevia "$74.8K" em todos — oito rótulos iguais, que é o
+ * que fazia o gráfico parecer quebrado (27/09/2026). Se o formato padrão
+ * repete, o eixo passa a escrever o número inteiro com as casas que precisar.
+ */
 registerYAxis({
   name: EIXO_COMPACTO,
-  createTicks: ({ defaultTicks }) =>
-    defaultTicks.map((t) => ({ ...t, text: pontePraEixo.formatar(Number(t.value)) })),
+  createTicks: ({ defaultTicks }) => {
+    const textos = defaultTicks.map((t) => pontePraEixo.formatar(Number(t.value)));
+    if (new Set(textos).size === textos.length) {
+      return defaultTicks.map((t, i) => ({ ...t, text: textos[i] }));
+    }
+    const valores = defaultTicks.map((t) => Number(t.value));
+    const passo = Math.abs(valores[1] - valores[0]) || Math.abs(valores[0]) * 1e-4 || 1;
+    const casas = Math.min(10, Math.max(0, Math.ceil(-Math.log10(passo)) + 1));
+    return defaultTicks.map((t, i) => ({
+      ...t,
+      text: `${valores[i].toLocaleString("en-US", { minimumFractionDigits: casas, maximumFractionDigits: casas })}`,
+    }));
+  },
+});
+
+/**
+ * Faixa mínima do eixo vertical, como indicador invisível.
+ *
+ * Moeda recém-lançada tem um ou dois negócios quase no mesmo preço, e a
+ * escala automática dava zoom até 0,01% de variação: uma linha reta ocupando
+ * a tela inteira. Esta versão da biblioteca não aceita faixa direto no eixo,
+ * mas respeita `minValue`/`maxValue` de indicador — e este não desenha nada
+ * nem aparece na legenda. Os limites são ajustados a cada série (ver o efeito
+ * das velas): ±5% em volta do preço quando a variação real é menor que isso.
+ */
+const FAIXA_MINIMA = "CHROMA_FAIXA_MINIMA";
+registerIndicator({
+  name: FAIXA_MINIMA,
+  shortName: "",
+  figures: [],
+  calc: (lista) => lista.map(() => ({})),
+  createTooltipDataSource: () => ({ name: "", calcParamsText: "", values: [], icons: [] }),
 });
 /* ------------------------------------------------------------------ */
 
@@ -225,6 +264,7 @@ export function TradingChart({
     if (!chart) return;
 
     chart.setPaneOptions({ id: "candle_pane", axisOptions: { name: EIXO_COMPACTO } });
+    chart.createIndicator(FAIXA_MINIMA, true, { id: "candle_pane" });
 
     chartRef.current = chart;
     setPronto(true);
@@ -270,6 +310,20 @@ export function TradingChart({
      * preço de meme coin com 2 casas viraria "0,00" pra tudo.
      */
     chart.setPriceVolumePrecision(escala === "mcap" ? 2 : 10, 0);
+
+    /* Faixa mínima de ±5% quando a série quase não varia (ver FAIXA_MINIMA). */
+    const minimo = Math.min(...dados.map((d) => d.low));
+    const maximo = Math.max(...dados.map((d) => d.high));
+    const meio = (minimo + maximo) / 2;
+    const estreita = meio > 0 && (maximo - minimo) / meio < 0.1;
+    chart.overrideIndicator(
+      {
+        name: FAIXA_MINIMA,
+        minValue: estreita ? meio * 0.95 : null,
+        maxValue: estreita ? meio * 1.05 : null,
+      },
+      "candle_pane",
+    );
 
     if (serieAplicadaRef.current !== serie) {
       chart.applyNewData(dados);

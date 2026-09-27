@@ -169,7 +169,7 @@ export function useLiveChartData({
     let cancelled = false;
     setStatus("connecting");
 
-    const load = async (isRefresh = false) => {
+    const load = async (isRefresh = false, tentativa = 1): Promise<void> => {
       try {
         const res = await fetch(`/api/candles?address=${address}&interval=${interval}`, {
           cache: "no-store",
@@ -217,6 +217,16 @@ export function useLiveChartData({
          * seria piorar de propósito.
          */
         if (isRefresh) return;
+        /*
+         * A PRIMEIRA carga tenta de novo antes de desistir. Sem isto, uma
+         * oscilação de um segundo deixava a tela em erro até a próxima
+         * atualização automática — o "às vezes abre e não carrega o gráfico".
+         */
+        if (tentativa < 3) {
+          await new Promise((r) => setTimeout(r, 1500 * tentativa));
+          if (!cancelled) return load(false, tentativa + 1);
+          return;
+        }
         setStatus("erro");
       }
     };
