@@ -13,7 +13,8 @@ import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { TEXTO_DA_ETAPA, useLancarToken } from "@/hooks/useLancarToken";
 import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
 import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
-import { DEFAULT_PAIR, LIQUIDITY_PAIRS, pairLogo } from "@/lib/pairs";
+import { DEFAULT_PAIR, LIQUIDITY_PAIRS } from "@/lib/pairs";
+import { SeletorDePar } from "@/components/create/SeletorDePar";
 import {
   CHAIN_FEES,
   DEFAULT_CREATOR_TAX_BPS,
@@ -209,27 +210,15 @@ export default function CreateTokenPage() {
           <span className="text-[11px] text-zinc-600">contra o que seu token é cotado</span>
         </CardHeader>
         <CardBody className="space-y-2">
-          {pairs.map((option) => (
-            <button
-              key={option.symbol}
-              onClick={() => setPair(option.symbol)}
-              className={cn(
-                "flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-all",
-                pair === option.symbol
-                  ? "border-marca/50 bg-marca/[0.08]"
-                  : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.14]",
-              )}
-            >
-              <PairLogo chain={chain} symbol={option.symbol} active={pair === option.symbol} />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-zinc-100">{option.symbol}</span>
-                  <span className="truncate text-[11px] text-zinc-600">{option.name}</span>
-                </span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-zinc-500">{option.hint}</span>
-              </span>
-            </button>
-          ))}
+          {/*
+            Lista suspensa com busca, e não mais uma pilha de cartões.
+
+            Com três opções a pilha era o formato certo: tudo à vista, sem
+            clique. Com setenta ativos tokenizados na Robinhood, a mesma pilha
+            vira uma página de rolagem antes do formulário e empurra o resto
+            pra fora da tela.
+          */}
+          <SeletorDePar chain={chain} pares={pairs} valor={pair} onChange={setPair} />
 
           {chain === "robinhood" && (
             <p className="rounded-lg border border-white/[0.06] bg-ink-950/60 p-2.5 text-[11px] leading-relaxed text-zinc-600">
@@ -651,46 +640,3 @@ function Field({
 
 /* ------------------------------------------------------------------ */
 
-/**
- * Logo da moeda do par, baixado por `npm run tokens:icons`.
- *
- * Se o arquivo não existir (par novo sem logo baixado ainda), cai no
- * símbolo em texto — feio, mas nunca um quadrado quebrado na tela.
- */
-function PairLogo({
-  chain,
-  symbol,
-  active,
-}: {
-  chain: ChainId;
-  symbol: string;
-  active: boolean;
-}) {
-  const [broken, setBroken] = useState(false);
-  const src = pairLogo(chain, symbol);
-
-  if (!src || broken) {
-    return (
-      <span
-        className={cn(
-          "mt-0.5 grid size-9 shrink-0 place-items-center rounded-full text-[10px] font-black",
-          active ? "bg-chroma-gradient text-white" : "bg-ink-800 text-zinc-500",
-        )}
-      >
-        {symbol.slice(0, 4)}
-      </span>
-    );
-  }
-
-  return (
-     
-    <img
-      src={src}
-      alt=""
-      width={36}
-      height={36}
-      onError={() => setBroken(true)}
-      className="mt-0.5 size-9 shrink-0 rounded-full bg-ink-900 object-contain"
-    />
-  );
-}
