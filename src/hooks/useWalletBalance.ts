@@ -45,6 +45,8 @@ interface SaldoSolana {
 interface SaldoEvm {
   eth: number;
   ethUsd: number | null;
+  tokensUsd?: number;
+  moedas?: number;
 }
 
 /** Lê `/api/carteira` para um dono, repetindo a cada 30s. */
@@ -94,7 +96,7 @@ export function useWalletBalance() {
    */
   const partes: (number | null)[] = [];
   if (publicKey) partes.push(solana ? solana.totalUsd : null);
-  if (address) partes.push(evm ? evm.ethUsd : null);
+  if (address) partes.push(evm && evm.ethUsd !== null ? evm.ethUsd + (evm.tokensUsd ?? 0) : null);
   const usd =
     partes.length > 0 && partes.every((p) => p !== null)
       ? partes.reduce<number>((soma, p) => soma + (p as number), 0)
@@ -104,7 +106,8 @@ export function useWalletBalance() {
     sol: solana?.sol ?? null,
     eth: evm?.eth ?? null,
     usd,
-    emMoedas: solana?.tokensUsd ?? null,
-    quantasMoedas: solana?.moedas ?? 0,
+    emMoedas:
+      solana || evm ? (solana?.tokensUsd ?? 0) + (evm?.tokensUsd ?? 0) : null,
+    quantasMoedas: (solana?.moedas ?? 0) + (evm?.moedas ?? 0),
   };
 }

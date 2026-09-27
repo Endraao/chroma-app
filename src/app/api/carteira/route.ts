@@ -6,6 +6,8 @@ import { formatEther, hexToBigInt, isAddress, type Hex } from "viem";
 import { valorDaCarteira } from "@/lib/carteira";
 import { precosNativos } from "@/lib/precos-nativos";
 import { robinhoodChain } from "@/lib/web3";
+import { saldosNaCarteiraEvm } from "@/lib/curva-evm";
+import { moedasDaChroma } from "@/lib/moedas-da-chroma";
 
 /** Saldo nativo na Robinhood Chain, pelo mesmo nó que a ponte `/api/rpc/robinhood` usa. */
 async function saldoEth(dono: string): Promise<bigint> {
@@ -46,21 +48,41 @@ export async function GET(request: Request) {
   }
 
   /*
-   * Carteira EVM: só o ETH, por enquanto.
+   * Carteira EVM: o ETH mais as moedas da CHROMA que ela carrega.
    *
-   * As moedas lançadas na Robinhood ficam de fora deste número porque não há
-   * como listar o que a carteira carrega sem indexador — o Blockscout da rede
-   * está atrás da Cloudflare. A tela diz "em ETH", e não "total", por isso.
+   * Moedas de fora ficam de fora do número: listar tudo o que a carteira
+   * carrega exige indexador, e o Blockscout da rede está atrás da Cloudflare.
+   * As da Chroma dá pra consultar uma a uma, porque o catálogo é nosso.
    */
   if (isAddress(dono)) {
     try {
-      const [wei, precos] = await Promise.all([saldoEth(dono), precosNativos()]);
+      const [wei, precos, daChroma] = await Promise.all([
+        saldoEth(dono),
+        precosNativos(),
+        moedasDaChroma().catch(() => []),
+      ]);
       const eth = Number(formatEther(wei));
       const preco = precos.robinhood;
+
+      /* Moedas da Chroma na carteira entram no total (as de fora ainda não). */
+      const daRobinhood = daChroma.filter((t) => t.chain === "robinhood");
+      const saldos = await saldosNaCarteiraEvm(dono, daRobinhood.map((t) => t.address));
+      let tokensUsd = 0;
+      let moedas = 0;
+      for (const t of daRobinhood) {
+        const q = saldos.get(t.address.toLowerCase());
+        if (q) {
+          tokensUsd += q * t.priceUsd;
+          moedas++;
+        }
+      }
+
       return NextResponse.json({
         eth,
         /* Preço indisponível → null: melhor esconder o dólar que inventá-lo. */
         ethUsd: preco > 0 ? eth * preco : null,
+        tokensUsd,
+        moedas,
         at: Date.now(),
       });
     } catch (erro) {

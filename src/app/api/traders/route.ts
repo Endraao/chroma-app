@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { fetchToken } from "@/lib/market";
 import { agregarTraders } from "@/lib/traders";
+import { negociosDaCurvaComoPool, resumoDaMoedaEvm } from "@/lib/curva-evm";
 
 /**
  * GET /api/traders?address=… → quem está posicionado, quanto botou e quanto
@@ -18,6 +19,18 @@ export async function GET(request: Request) {
 
   if (!address) {
     return NextResponse.json({ error: "parâmetro 'address' é obrigatório" }, { status: 400 });
+  }
+
+  /* Moeda na curva da Chroma: negócios do próprio contrato. */
+  const daCurva = await resumoDaMoedaEvm(address).catch(() => null);
+  if (daCurva) {
+    const quadro = await agregarTraders({
+      address,
+      precoUsd: daCurva.priceUsd,
+      marketCapUsd: daCurva.marketCapUsd,
+      negocios: await negociosDaCurvaComoPool(address),
+    });
+    return NextResponse.json({ ...quadro, at: Date.now() });
   }
 
   const token = await fetchToken(address);

@@ -14,6 +14,7 @@ import {
 } from "@/lib/chroma-evm";
 import { precosNativos } from "@/lib/precos-nativos";
 import { robinhoodChain } from "@/lib/web3";
+import type { NegocioDoPool } from "@/lib/market";
 import type { Candle, TokenSummary } from "@/lib/types";
 
 /**
@@ -45,6 +46,38 @@ const ESCALA = 1e18;
 const EVENTO_NEGOCIO = parseAbiItem(
   "event Negocio(address indexed moeda, address indexed trader, bool compra, uint256 eth, uint256 tokens, uint256 taxaCriador, uint256 taxaAfiliado, uint256 taxaPlataforma, address afiliado)",
 );
+
+const EVENTO_TRANSFER = parseAbiItem(
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+);
+
+/**
+ * Quantas carteiras têm saldo da moeda, pelos eventos Transfer do token.
+ * A própria curva (que guarda o que não foi vendido) não conta.
+ */
+async function contarHolders(moeda: string): Promise<number> {
+  return cached(`holders-evm:${moeda.toLowerCase()}`, 30_000, async () => {
+    const logs = await cliente.getLogs({
+      address: moeda as Address,
+      event: EVENTO_TRANSFER,
+      fromBlock: BLOCO_DA_PUBLICACAO,
+      toBlock: "latest",
+    });
+    const saldos = new Map<string, bigint>();
+    for (const l of logs) {
+      const { from, to, value } = l.args;
+      if (from) saldos.set(from.toLowerCase(), (saldos.get(from.toLowerCase()) ?? 0n) - value!);
+      if (to) saldos.set(to.toLowerCase(), (saldos.get(to.toLowerCase()) ?? 0n) + value!);
+    }
+    const ignorar = new Set([
+      "0x0000000000000000000000000000000000000000",
+      String(CHROMA_CURVE_EVM).toLowerCase(),
+    ]);
+    let total = 0;
+    for (const [carteira, saldo] of saldos) if (saldo > 0n && !ignorar.has(carteira)) total++;
+    return total;
+  });
+}
 
 const cliente = createPublicClient({
   chain: robinhoodChain,
@@ -121,7 +154,11 @@ export async function resumoDaMoedaEvm(
   /* Migrada: o preço da curva congelou; quem sabe agora é o mercado. */
   if (!dados || dados.curva.migrada) return null;
 
-  const precoEth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
+  const [precos, holders] = await Promise.all([
+    precosNativos().catch(() => null),
+    contarHolders(moeda).catch(() => 0),
+  ]);
+  const precoEth = precos?.robinhood ?? 0;
   const { curva } = dados;
   const precoUsd = precoEmEth(curva) * precoEth;
 
@@ -140,7 +177,7 @@ export async function resumoDaMoedaEvm(
     liquidityUsd: (Number(curva.ethReal) / ESCALA) * precoEth,
     /* Acumulado desde o lançamento, não 24h: a curva não guarda por dia. */
     volume24hUsd: (Number(curva.volumeAcumulado) / ESCALA) * precoEth,
-    holders: 0,
+    holders,
     createdAt: extra?.criadaEm ?? Date.now(),
     bondingProgress: progressoDaCurvaEvm(curva, dados.tokenAVenda),
     creator: curva.criador,
@@ -150,6 +187,11 @@ export async function resumoDaMoedaEvm(
 interface NegocioDaCurva {
   /** segundos desde epoch */
   time: number;
+  carteira: string;
+  compra: boolean;
+  /** tokens que trocaram de mão, em unidades inteiras */
+  tokens: number;
+  txHash: string;
   /** ETH por token, sem taxa */
   precoEth: number;
   /** ETH que passou pela curva, sem taxa */
@@ -191,6 +233,10 @@ async function negociosDaCurvaEvm(moeda: string): Promise<NegocioDaCurva[]> {
       const tokens = Number(a.tokens!);
       return {
         time: tempos.get(l.blockNumber) ?? 0,
+        carteira: a.trader!,
+        compra: a.compra!,
+        tokens: tokens / ESCALA,
+        txHash: l.transactionHash,
         precoEth: tokens > 0 ? Number(ethLimpo) / tokens : 0,
         eth: Number(ethLimpo) / ESCALA,
       };
@@ -277,4 +323,25 @@ export async function saldosNaCarteiraEvm(
     }),
   );
   return saldos;
+}
+
+/**
+ * Os negócios da curva no formato da tabela de traders (o mesmo da
+ * GeckoTerminal), pra que traders, PnL e "meus swaps" funcionem igual nas
+ * moedas da curva. Dólar ao preço do ETH de agora — ver `velasDaCurvaEvm`.
+ */
+export async function negociosDaCurvaComoPool(moeda: string): Promise<NegocioDoPool[]> {
+  const [negocios, precos] = await Promise.all([
+    negociosDaCurvaEvm(moeda),
+    precosNativos().catch(() => null),
+  ]);
+  const precoEth = precos?.robinhood ?? 0;
+  return negocios.map((n) => ({
+    carteira: n.carteira.toLowerCase(),
+    lado: n.compra ? "compra" : "venda",
+    tokens: n.tokens,
+    usd: n.eth * precoEth,
+    em: n.time * 1000,
+    txHash: n.txHash,
+  }));
 }

@@ -86,12 +86,15 @@ export async function agregarTraders({
   address,
   precoUsd,
   marketCapUsd,
+  negocios: prontos,
 }: {
   address: string;
   precoUsd: number;
   marketCapUsd: number;
+  /** negócios já lidos (moeda da curva); sem isto, vêm da GeckoTerminal */
+  negocios?: NegocioDoPool[];
 }): Promise<QuadroDeTraders> {
-  const negocios = await fetchTrades(address);
+  const negocios = prontos ?? (await fetchTrades(address));
 
   /*
    * O fornecimento sai de capitalização ÷ preço.

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useAccount, usePublicClient } from "wagmi";
+import { erc20Abi, formatEther, formatUnits, type Address } from "viem";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +13,7 @@ import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
 import { useTradeSolana } from "@/hooks/useTradeSolana";
 import { useCurvaEvm } from "@/hooks/useCurvaEvm";
 import { useCurvaSwapEvm } from "@/hooks/useCurvaSwapEvm";
-import { CHAINS } from "@/lib/web3";
+import { CHAINS, robinhoodChain } from "@/lib/web3";
 import { cn, formatPrice, shortenAddress } from "@/lib/utils";
 import type { ChainId, TradeSide } from "@/lib/types";
 
@@ -51,6 +53,9 @@ const ATALHOS_EM_DOLAR = [25, 100, 250];
 const ATALHOS_EM_PORCENTAGEM = [25, 50, 100];
 
 const SLIPPAGES = [1, 3, 5, 10];
+
+/** ETH guardado pro gás quando a pessoa aperta "Máx" na compra da Robinhood. */
+const RESERVA_DE_REDE_ETH = 0.0002;
 const SLIPPAGE_PADRAO = 3;
 
 /**
@@ -666,6 +671,11 @@ function EvmSwap({
 }) {
   const meta = CHAINS[chain];
   const { curva, podeComprar, podeVender, carregando } = useCurvaEvm(tokenAddress);
+  const { affiliate } = useAffiliateTracking(chain);
+  const { address } = useAccount();
+  const publicClient = usePublicClient({ chainId: robinhoodChain.id });
+  const [saldoEth, setSaldoEth] = useState<number | null>(null);
+  const [saldoToken, setSaldoToken] = useState<number | null>(null);
 
   const [side, setSide] = useState<TradeSide>("buy");
   const [digitado, setDigitado] = useState("");
@@ -677,12 +687,59 @@ function EvmSwap({
     side,
     valor: digitado,
     slippageBps,
-    afiliado: null,
+    /* Sem isto a comissão do promotor nunca saía na Robinhood. */
+    afiliado: affiliate,
     habilitado: Boolean(curva),
   });
 
   const ehCompra = side === "buy";
   const podeOperar = ehCompra ? podeComprar : podeVender;
+
+  /*
+   * Saldo de ETH e da moeda, relido a cada 15s e logo depois de cada negócio
+   * (o hash muda). Sem isto a aba de vender não dizia quanto a pessoa tinha.
+   */
+  useEffect(() => {
+    if (!address || !publicClient) {
+      setSaldoEth(null);
+      setSaldoToken(null);
+      return;
+    }
+    let cancelado = false;
+    const ler = async () => {
+      try {
+        const [eth, tokens] = await Promise.all([
+          publicClient.getBalance({ address }),
+          publicClient.readContract({
+            address: tokenAddress as Address,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [address],
+          }),
+        ]);
+        if (cancelado) return;
+        setSaldoEth(Number(formatEther(eth)));
+        setSaldoToken(Number(formatUnits(tokens, 18)));
+      } catch {
+        /* rede oscilou: mantém o último */
+      }
+    };
+    void ler();
+    const id = window.setInterval(ler, 15_000);
+    return () => {
+      cancelado = true;
+      window.clearInterval(id);
+    };
+  }, [address, publicClient, tokenAddress, swap.hash]);
+
+  const saldo = ehCompra ? saldoEth : saldoToken;
+
+  /** Na compra, 100% deixa ETH pro gás; na venda, vende tudo (cortado pra baixo). */
+  function usarPorcentagem(pct: number) {
+    if (saldo === null) return;
+    const base = ehCompra ? Math.max(0, saldo - RESERVA_DE_REDE_ETH) : saldo;
+    setDigitado(cortar((base * pct) / 100, ehCompra ? 6 : 2));
+  }
 
   /* Moeda que não é da curva: o caminho por DEX ainda não existe aqui. */
   if (!carregando && !curva) {
@@ -739,6 +796,28 @@ function EvmSwap({
           <p className="tnum text-center text-[12px] text-zinc-500">
             ≈ {swap.saida} {ehCompra ? symbol : meta.nativeSymbol}
           </p>
+        )}
+
+        {address && (
+          <>
+            <p className="tnum text-center text-[12px] text-zinc-500">
+              Saldo:{" "}
+              {saldo === null
+                ? "…"
+                : `${saldo.toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 5 : 2 })} ${ehCompra ? meta.nativeSymbol : symbol}`}
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {[25, 50, 75, 100].map((v) => (
+                <Atalho
+                  key={v}
+                  rotulo={v === 100 ? "Máx" : `${v}%`}
+                  tom={ehCompra ? "buy" : "sell"}
+                  ligado={saldo !== null && saldo > 0}
+                  onClick={() => usarPorcentagem(v)}
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {curva?.concluida && !curva.migrada && (
