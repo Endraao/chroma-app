@@ -153,11 +153,28 @@ registerYAxis({
  * das velas): ±5% em volta do preço quando a variação real é menor que isso.
  */
 const FAIXA_MINIMA = "CHROMA_FAIXA_MINIMA";
-registerIndicator({
+registerIndicator<{ lo?: number; hi?: number }>({
   name: FAIXA_MINIMA,
   shortName: "",
-  figures: [],
-  calc: (lista) => lista.map(() => ({})),
+  /*
+   * Duas séries num indicador criado INVISÍVEL: a biblioteca não desenha nem
+   * põe etiqueta na borda, mas o cálculo da escala não olha visibilidade e
+   * leva as duas em conta. É o jeito de dar faixa
+   * mínima nesta versão: minValue/maxValue têm bug no 9.8 — ao aplicar, o
+   * máximo é gravado no campo do mínimo (conferido no código da biblioteca).
+   */
+  figures: [
+    { key: "lo", title: "", type: "line" },
+    { key: "hi", title: "", type: "line" },
+  ],
+  calc: (lista) => {
+    if (!lista.length) return [];
+    const minimo = Math.min(...lista.map((d) => d.low));
+    const maximo = Math.max(...lista.map((d) => d.high));
+    const meio = (minimo + maximo) / 2;
+    const estreita = meio > 0 && (maximo - minimo) / meio < 0.1;
+    return lista.map(() => (estreita ? { lo: meio * 0.95, hi: meio * 1.05 } : {}));
+  },
   createTooltipDataSource: () => ({ name: "", calcParamsText: "", values: [], icons: [] }),
 });
 /* ------------------------------------------------------------------ */
@@ -264,7 +281,7 @@ export function TradingChart({
     if (!chart) return;
 
     chart.setPaneOptions({ id: "candle_pane", axisOptions: { name: EIXO_COMPACTO } });
-    chart.createIndicator(FAIXA_MINIMA, true, { id: "candle_pane" });
+    chart.createIndicator({ name: FAIXA_MINIMA, visible: false }, true, { id: "candle_pane" });
 
     chartRef.current = chart;
     setPronto(true);
@@ -310,20 +327,6 @@ export function TradingChart({
      * preço de meme coin com 2 casas viraria "0,00" pra tudo.
      */
     chart.setPriceVolumePrecision(escala === "mcap" ? 2 : 10, 0);
-
-    /* Faixa mínima de ±5% quando a série quase não varia (ver FAIXA_MINIMA). */
-    const minimo = Math.min(...dados.map((d) => d.low));
-    const maximo = Math.max(...dados.map((d) => d.high));
-    const meio = (minimo + maximo) / 2;
-    const estreita = meio > 0 && (maximo - minimo) / meio < 0.1;
-    chart.overrideIndicator(
-      {
-        name: FAIXA_MINIMA,
-        minValue: estreita ? meio * 0.95 : null,
-        maxValue: estreita ? meio * 1.05 : null,
-      },
-      "candle_pane",
-    );
 
     if (serieAplicadaRef.current !== serie) {
       chart.applyNewData(dados);
