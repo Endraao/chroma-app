@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { TEXTO_DA_ETAPA, useLancarToken } from "@/hooks/useLancarToken";
 import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
+import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
 import { DEFAULT_PAIR, LIQUIDITY_PAIRS } from "@/lib/pairs";
 import { SeletorDePar } from "@/components/create/SeletorDePar";
@@ -23,7 +24,7 @@ import {
   feeLabelFor,
   validateCreatorTax,
 } from "@/lib/fees";
-import { cn } from "@/lib/utils";
+import { cn, formatUsd } from "@/lib/utils";
 import type { ChainId, CreatorRewardsMode } from "@/lib/types";
 
 /* ------------------------------------------------------------------ */
@@ -113,6 +114,17 @@ export default function CreateTokenPage() {
 
   const meta = CHAINS[chain];
   const pairs = LIQUIDITY_PAIRS[chain];
+  const precoNativo = usePrecoNativo(chain);
+  const compraInicial = Number(form.initialBuy);
+  const compraEmDolar =
+    precoNativo !== null && compraInicial > 0 ? compraInicial * precoNativo : null;
+
+  /*
+   * A moeda nasceu mas a compra inicial não aconteceu. A tela FICA aqui e diz
+   * isso, com link pra moeda — ir direto pra página dela esconderia que o que
+   * a pessoa pediu não foi feito.
+   */
+  const [criadaSemCompra, setCriadaSemCompra] = useState<{ moeda: string; aviso: string } | null>(null);
 
   const taxCheck = validateCreatorTax(creatorTaxBps);
   const taxWarning = taxCheck.ok ? null : taxCheck.error;
@@ -464,11 +476,21 @@ export default function CreateTokenPage() {
         </CardHeader>
         <CardBody className="space-y-3">
           <Field
-            label={`Quanto você quer comprar no lançamento (em ${pair})`}
+            label={`Quanto você quer comprar no lançamento (em ${meta.nativeSymbol})`}
             placeholder="0.5"
             value={form.initialBuy}
             onChange={(v) => set("initialBuy", v.replace(/[^0-9.]/g, ""))}
           />
+          {compraInicial > 0 && (
+            <p className="tnum -mt-1 text-[12px] text-zinc-400">
+              {compraEmDolar !== null ? <>≈ {formatUsd(compraEmDolar)}</> : "cotação do dólar indisponível agora"}
+              {chain === "robinhood" && (
+                <span className="text-zinc-600">
+                  {" "}· a carteira pede uma segunda confirmação para esta compra, logo depois de criar
+                </span>
+              )}
+            </p>
+          )}
           <p className="text-[11px] leading-relaxed text-zinc-500">
             A Chroma não faz custódia: a moeda é sua e a transação sai da sua carteira. A compra
             inicial paga o mesmo preço que qualquer outra pessoa — não existe reserva de tokens para
@@ -477,6 +499,15 @@ export default function CreateTokenPage() {
           </p>
         </CardBody>
       </Card>
+
+      {criadaSemCompra && (
+        <div className="rounded-xl border border-warn/30 bg-warn/[0.07] px-4 py-3 text-[12px] leading-relaxed text-warn">
+          {criadaSemCompra.aviso}{" "}
+          <Link href={`/token/${criadaSemCompra.moeda}`} className="font-bold underline">
+            Abrir a moeda
+          </Link>
+        </div>
+      )}
 
       {lancamento.erro && (
         <div className="rounded-xl border border-bear/30 bg-bear/[0.07] px-4 py-3 text-[12px] leading-relaxed text-bear">
@@ -506,6 +537,7 @@ export default function CreateTokenPage() {
             telegram: form.telegram.trim() || undefined,
             arte: media.file,
             banner: banner?.file ?? null,
+            compraInicial: form.initialBuy.trim() || undefined,
           });
 
           /*
@@ -519,6 +551,10 @@ export default function CreateTokenPage() {
            * precisa do endereço, não do nome que cada rede dá a ele.
            */
           if (!resultado) return;
+          if ("avisoDeCompra" in resultado && resultado.avisoDeCompra) {
+            setCriadaSemCompra({ moeda: resultado.moeda, aviso: resultado.avisoDeCompra });
+            return;
+          }
           router.push(`/token/${"mint" in resultado ? resultado.mint : resultado.moeda}`);
         }}
       >

@@ -30,6 +30,7 @@ export type EtapaDoLancamento =
   | "publicando-arte"
   | "aguardando-assinatura"
   | "confirmando"
+  | "comprando"
   | "pronto";
 
 /** O que a tela mostra em cada etapa. */
@@ -38,6 +39,7 @@ export const TEXTO_DA_ETAPA: Record<EtapaDoLancamento, string> = {
   "publicando-arte": "Publicando a arte…",
   "aguardando-assinatura": "Aprove na sua carteira…",
   confirmando: "Confirmando na rede…",
+  comprando: "Moeda criada. Aprove a compra inicial…",
   pronto: "Pronto!",
 };
 
@@ -51,6 +53,12 @@ export interface DadosDoLancamento {
   /** a arte principal, escolhida no formulário */
   arte: File;
   banner?: File | null;
+  /**
+   * Quanto comprar logo depois de lançar, na moeda nativa da rede (texto como
+   * foi digitado). Só a Robinhood usa por enquanto: o programa da Solana não
+   * está publicado na mainnet.
+   */
+  compraInicial?: string;
 }
 
 export function useLancarToken() {

@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import { erc20Abi, parseEther, parseUnits, formatEther, formatUnits, type Address } from "viem";
 
 import { ABI_DA_CURVA, CHROMA_CURVE_EVM, ENDERECO_ZERO } from "@/lib/chroma-evm";
 import type { EstadoDaCurvaEvm } from "@/lib/chroma-evm";
 import type { TradeSide } from "@/lib/types";
+import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
+import { robinhoodChain } from "@/lib/web3";
 
 /**
  * Comprar e vender direto na curva da Robinhood Chain.
@@ -58,9 +60,8 @@ export function useCurvaSwapEvm({
   afiliado,
   habilitado,
 }: Opcoes) {
-  const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const { address, obterCarteira } = useCarteiraRobinhood();
+  const publicClient = usePublicClient({ chainId: robinhoodChain.id });
 
   const [cotacao, setCotacao] = useState<bigint | null>(null);
   const [fase, setFase] = useState<FaseDoSwapEvm>("parado");
@@ -120,13 +121,15 @@ export function useCurvaSwapEvm({
     cotacao === null ? null : (cotacao * BigInt(10_000 - slippageBps)) / 10_000n;
 
   const executar = useCallback(async () => {
-    if (!address || !walletClient || !publicClient || cotacao === null || minimo === null) return;
+    if (!address || !publicClient || cotacao === null || minimo === null) return;
 
     setErro(null);
     setHash(null);
 
     try {
       const contrato = { address: CHROMA_CURVE_EVM as Address, abi: ABI_DA_CURVA } as const;
+      /* Troca a MetaMask pra Robinhood se ela estiver em outra rede. */
+      const walletClient = await obterCarteira();
 
       /*
        * Indicação de si mesmo é recusada pelo contrato, e com razão: senão
@@ -168,7 +171,7 @@ export function useCurvaSwapEvm({
             functionName: "approve",
             args: [CHROMA_CURVE_EVM as Address, bruto],
           });
-          await publicClient.waitForTransactionReceipt({ hash: aprovacao });
+          await esperarRecibo(publicClient, aprovacao);
         }
 
         setFase("assinando");
@@ -183,7 +186,7 @@ export function useCurvaSwapEvm({
       setFase("confirmando");
       setPasso("Confirmando na rede…");
 
-      const recibo = await publicClient.waitForTransactionReceipt({ hash: transacao });
+      const recibo = await esperarRecibo(publicClient, transacao);
       if (recibo.status !== "success") throw new Error("a rede recusou a transação");
 
       setHash(transacao);
@@ -201,7 +204,7 @@ export function useCurvaSwapEvm({
       setErro(mensagem);
       setFase("erro");
     }
-  }, [address, walletClient, publicClient, cotacao, minimo, ehCompra, moeda, bruto, afiliado]);
+  }, [address, obterCarteira, publicClient, cotacao, minimo, ehCompra, moeda, bruto, afiliado]);
 
   return {
     executar,
@@ -214,6 +217,6 @@ export function useCurvaSwapEvm({
     minimoGarantido:
       minimo === null ? null : ehCompra ? formatUnits(minimo, DECIMAIS_DO_TOKEN) : formatEther(minimo),
     ocupado: fase === "aprovando" || fase === "assinando" || fase === "confirmando",
-    pronto: Boolean(address && walletClient && cotacao !== null),
+    pronto: Boolean(address && cotacao !== null),
   };
 }

@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import { decodeEventLog, parseEther, type Address } from "viem";
 
 import {
   ABI_DA_CURVA,
   CHROMA_CURVE_EVM,
+  ENDERECO_ZERO,
   curvaEvmDisponivel,
 } from "@/lib/chroma-evm";
+import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
+import { robinhoodChain } from "@/lib/web3";
 import { TEXTO_DA_ETAPA, type DadosDoLancamento, type EtapaDoLancamento } from "@/hooks/useLancarToken";
 
 export { TEXTO_DA_ETAPA };
@@ -68,18 +71,19 @@ const ABI_DO_EVENTO = [
 ] as const;
 
 export function useLancarTokenEvm() {
-  const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const { address, obterCarteira } = useCarteiraRobinhood();
+  const publicClient = usePublicClient({ chainId: robinhoodChain.id });
 
   const [etapa, setEtapa] = useState<EtapaDoLancamento>("parado");
   const [erro, setErro] = useState<string | null>(null);
 
   const lancar = useCallback(
-    async (dados: DadosDoLancamento): Promise<{ moeda: string; hash: string } | null> => {
+    async (
+      dados: DadosDoLancamento,
+    ): Promise<{ moeda: string; hash: string; avisoDeCompra: string | null } | null> => {
       setErro(null);
 
-      if (!address || !walletClient) {
+      if (!address) {
         setErro("Conecte uma carteira da Robinhood Chain antes.");
         return null;
       }
@@ -93,6 +97,19 @@ export function useLancarTokenEvm() {
        */
       if (!curvaEvmDisponivel()) {
         setErro("O lançamento nesta rede ainda não está disponível.");
+        return null;
+      }
+
+      /*
+       * Compra inicial validada ANTES de subir arte e assinar: valor torto
+       * descoberto depois do lançamento deixaria a moeda criada e a compra
+       * que a pessoa pediu sem acontecer.
+       */
+      let compra = 0n;
+      try {
+        compra = dados.compraInicial ? parseEther(dados.compraInicial) : 0n;
+      } catch {
+        setErro("O valor da compra inicial não é um número válido.");
         return null;
       }
 
@@ -121,14 +138,14 @@ export function useLancarTokenEvm() {
         setEtapa("aguardando-assinatura");
 
         /*
-         * A taxa de lançamento vai como `value`. Hoje é zero na configuração
-         * publicada, mas o contrato recusa a transação se o valor enviado não
-         * bater com o que ele guarda — então o número sai da variável de
-         * ambiente, e não de um literal aqui.
+         * A taxa de lançamento vai como `value`. O contrato recusa a
+         * transação se o valor enviado for menor que o que ele guarda — então
+         * o número sai da variável de ambiente, e não de um literal aqui.
          */
         const taxaDeLancamento = parseEther(process.env.NEXT_PUBLIC_LAUNCH_FEE_ETH || "0");
 
-        const hash = await walletClient.writeContract({
+        const carteira = await obterCarteira();
+        const hash = await carteira.writeContract({
           address: CHROMA_CURVE_EVM as Address,
           abi: ABI_DA_CURVA,
           functionName: "lancar",
@@ -140,7 +157,7 @@ export function useLancarTokenEvm() {
         setEtapa("confirmando");
 
         if (!publicClient) throw new Error("sem conexão com a rede para confirmar");
-        const recibo = await publicClient.waitForTransactionReceipt({ hash });
+        const recibo = await esperarRecibo(publicClient, hash);
         if (recibo.status !== "success") throw new Error("a rede recusou a transação");
 
         /*
@@ -184,8 +201,53 @@ export function useLancarTokenEvm() {
           console.warn("[lancamento-evm] moeda criada, mas não entrou no catálogo:", erroDeCatalogo);
         });
 
+        /* --- 4. compra inicial ------------------------------------ */
+        /*
+         * O contrato não compra junto do lançamento: o que passa da taxa volta
+         * como troco. Então é uma SEGUNDA transação, e a MetaMask pede uma
+         * segunda confirmação.
+         *
+         * Falhar aqui NÃO desfaz nada — a moeda já existe. Por isso o erro vira
+         * aviso devolvido junto do resultado, e não exceção: "deu errado" pra
+         * quem acabou de criar a moeda seria mentira.
+         */
+        let avisoDeCompra: string | null = null;
+        if (compra > 0n) {
+          setEtapa("comprando");
+          try {
+            const cotado = (await publicClient.readContract({
+              address: CHROMA_CURVE_EVM as Address,
+              abi: ABI_DA_CURVA,
+              functionName: "cotarCompra",
+              args: [moeda as Address, compra],
+            })) as bigint;
+
+            /*
+             * 5% de folga: a curva acabou de nascer, mas alguém pode comprar
+             * entre as duas transações. Passando disso o contrato reverte em
+             * vez de entregar menos.
+             */
+            const minimo = (cotado * 9_500n) / 10_000n;
+
+            const transacao = await carteira.writeContract({
+              address: CHROMA_CURVE_EVM as Address,
+              abi: ABI_DA_CURVA,
+              functionName: "comprar",
+              args: [moeda as Address, minimo, ENDERECO_ZERO as Address],
+              value: compra,
+            });
+            const reciboDaCompra = await esperarRecibo(publicClient, transacao);
+            if (reciboDaCompra.status !== "success") throw new Error("a rede recusou a compra");
+          } catch (e) {
+            const mensagem = e instanceof Error ? e.message : String(e);
+            avisoDeCompra = /reject|denied|cancel|User rejected/i.test(mensagem)
+              ? "A moeda foi criada. Você recusou a compra inicial — dá pra comprar pela página dela."
+              : `A moeda foi criada, mas a compra inicial falhou: ${mensagem}`;
+          }
+        }
+
         setEtapa("pronto");
-        return { moeda, hash };
+        return { moeda, hash, avisoDeCompra };
       } catch (e) {
         const mensagem = e instanceof Error ? e.message : String(e);
         setEtapa("parado");
@@ -197,7 +259,7 @@ export function useLancarTokenEvm() {
         return null;
       }
     },
-    [address, walletClient, publicClient],
+    [address, obterCarteira, publicClient],
   );
 
   return {
