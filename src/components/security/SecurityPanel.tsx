@@ -326,9 +326,9 @@ function montarAlertas(
   if (!travaConfirmada && semProva && (mercado.liquidityUsd ?? 0) > 0) {
     alertas.push({
       id: "lp_sem_prova",
-      titulo: "Liquidez pode ser retirada",
-      detalhe:
-        "Não foi possível confirmar que a liquidez está travada. Em pools como as da Meteora e da Orca, quem a colocou costuma conseguir retirá-la a qualquer momento — e é assim que acontece a maior parte dos golpes.",
+      /* Curto por pedido do dono (28/09/2026): o fato e a recomendação, sem aula. */
+      titulo: "Liquidez não travada",
+      detalhe: "Não foi possível confirmar que a liquidez está travada. Opere com cautela.",
       nivel: "warn",
       destacar: true,
     });

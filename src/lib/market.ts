@@ -123,7 +123,13 @@ function naFila<T>(tarefa: () => Promise<T>): Promise<T> {
 }
 
 /** Espera crescente entre tentativas, para não insistir no mesmo instante. */
-const ESPERAS_APOS_429 = [400, 1200];
+/*
+ * Na Vercel o IP de saída é dividido com milhares de outros sites, e a
+ * GeckoTerminal limita por IP: 429 lá é a regra, não a exceção (28/09/2026 —
+ * a vitrine da Robinhood caía pra lista de exemplo). Esperas curtas não
+ * adiantavam; estas dão tempo de a janela do limite virar.
+ */
+const ESPERAS_APOS_429 = [1500, 4000, 8000];
 
 async function getJson<T>(url: string, revalidateSeconds = 10): Promise<T> {
   const daGecko = url.startsWith(GECKOTERMINAL);

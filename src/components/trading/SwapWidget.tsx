@@ -13,6 +13,8 @@ import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
 import { useTradeSolana } from "@/hooks/useTradeSolana";
 import { useCurvaEvm } from "@/hooks/useCurvaEvm";
 import { useCurvaSwapEvm } from "@/hooks/useCurvaSwapEvm";
+import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
+import { ABI_DA_CURVA, CHROMA_CURVE_EVM } from "@/lib/chroma-evm";
 import { CHAINS, robinhoodChain } from "@/lib/web3";
 import { cn, formatPrice, shortenAddress } from "@/lib/utils";
 import type { ChainId, TradeSide } from "@/lib/types";
@@ -734,6 +736,42 @@ function EvmSwap({
 
   const saldo = ehCompra ? saldoEth : saldoToken;
 
+  /*
+   * MIGRAÇÃO NA ROBINHOOD.
+   *
+   * A função `migrar` do contrato é aberta a qualquer carteira, mas nada no
+   * site a chamava: curva cheia ficava travada (compra e venda recusadas)
+   * esperando alguém que não existia (28/09/2026). Agora o botão aparece pra
+   * quem estiver na página.
+   */
+  const { obterCarteira } = useCarteiraRobinhood();
+  const [migrando, setMigrando] = useState(false);
+  const [erroDaMigracao, setErroDaMigracao] = useState<string | null>(null);
+
+  async function migrar() {
+    if (!publicClient) return;
+    setErroDaMigracao(null);
+    setMigrando(true);
+    try {
+      const carteira = await obterCarteira();
+      const hash = await carteira.writeContract({
+        address: CHROMA_CURVE_EVM as Address,
+        abi: ABI_DA_CURVA,
+        functionName: "migrar",
+        args: [tokenAddress as Address],
+      });
+      const recibo = await esperarRecibo(publicClient, hash);
+      if (recibo.status !== "success") throw new Error("a rede recusou a migração");
+      window.location.reload();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/reject|denied|cancel/i.test(msg)) setErroDaMigracao(msg.split("
+")[0]);
+    } finally {
+      setMigrando(false);
+    }
+  }
+
   /** Na compra, 100% deixa ETH pro gás; na venda, vende tudo (cortado pra baixo). */
   function usarPorcentagem(pct: number) {
     if (saldo === null) return;
@@ -821,9 +859,24 @@ function EvmSwap({
         )}
 
         {curva?.concluida && !curva.migrada && (
-          <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
-            A curva encheu. A negociação recomeça quando a liquidez migrar para a pool.
-          </p>
+          <div className="space-y-2 rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2.5 text-[11px] leading-snug text-warn">
+            <p>
+              A curva encheu. Falta levar a liquidez pra Uniswap — qualquer pessoa pode fazer isso,
+              custa só a taxa de rede. Depois disso a moeda negocia em qualquer lugar.
+            </p>
+            <RequireChainWallet chain={chain}>
+              <Button
+                variant="chroma"
+                size="md"
+                className="w-full"
+                disabled={migrando}
+                onClick={migrar}
+              >
+                {migrando ? "Levando pra Uniswap…" : "Levar pra Uniswap"}
+              </Button>
+            </RequireChainWallet>
+            {erroDaMigracao && <p className="text-bear">{erroDaMigracao}</p>}
+          </div>
         )}
 
         <RequireChainWallet chain={chain}>

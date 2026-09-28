@@ -239,7 +239,12 @@ async function montarUniverso(): Promise<TokenSummary[]> {
  */
 export const TAG_DO_UNIVERSO = "universo";
 const universoEmCache = unstable_cache(montarUniverso, ["universo-v2"], {
-  revalidate: 30,
+  /*
+   * 2 min: cada montagem são 12 consultas à GeckoTerminal. A 30 s isso comia
+   * quase todo o limite do IP. Moeda lançada aqui aparece na hora mesmo assim
+   * (a tag é renovada no lançamento).
+   */
+  revalidate: 120,
   tags: [TAG_DO_UNIVERSO],
 });
 

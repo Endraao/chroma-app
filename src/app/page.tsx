@@ -8,6 +8,7 @@ import { Secao } from "@/components/home/Secao";
 import { TokenCard } from "@/components/ui/TokenCard";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
+import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
 import { moedasDaChroma } from "@/lib/moedas-da-chroma";
 import { CHAIN_IDS, CHAINS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
 import type { ChainId, TokenSummary } from "@/lib/types";
@@ -160,6 +161,7 @@ export default async function HomePage({
 
   return (
     <div className="space-y-5">
+      <AtualizacaoAutomatica />
       <FaixaDeAbertura
         idioma={await idiomaAtual()}
         quantidadeDeTokens={String(tokens.length)}
