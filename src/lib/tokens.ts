@@ -131,14 +131,20 @@ function sortTokens(list: TokenSummary[], sort: SortKey): TokenSummary[] {
  * antes de concluir que ela não tem dados.
  */
 async function montarUniverso(): Promise<TokenSummary[]> {
-  const [novas, emAlta, grandes, novasRh, emAltaRh, grandesRh, perfis, daCasa] =
+  /*
+   * ROBINHOOD PRIMEIRO. As consultas à GeckoTerminal passam por uma fila e o
+   * limite por IP acaba no meio dela: quem vem por último é quem leva a
+   * recusa. A Robinhood é a rede principal e vinha por último — chegava com 3
+   * moedas enquanto a Solana vinha cheia (28/09/2026).
+   */
+  const [novasRh, emAltaRh, grandesRh, novas, emAlta, grandes, perfis, daCasa] =
     await Promise.all([
-      fetchPoolFeed("solana", "new_pools"),
-      fetchPoolFeed("solana", "trending_pools"),
-      fetchPoolFeed("solana", "pools"),
       fetchPoolFeed("robinhood", "new_pools"),
       fetchPoolFeed("robinhood", "trending_pools"),
       fetchPoolFeed("robinhood", "pools"),
+      fetchPoolFeed("solana", "new_pools"),
+      fetchPoolFeed("solana", "trending_pools"),
+      fetchPoolFeed("solana", "pools"),
       fetchTokenList(),
       moedasDaChroma(),
     ]);

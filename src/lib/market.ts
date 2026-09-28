@@ -2,6 +2,7 @@ import "server-only";
 
 import { fornecimentoDaRede } from "./fornecimento";
 import { cached, putStale, stale } from "./cache";
+import { gravarNoCacheDoBanco, lerDoCacheDoBanco } from "./db";
 import { CHAINS } from "./web3";
 import type { Candle, ChainId, TokenSummary } from "./types";
 
@@ -691,11 +692,17 @@ export async function fetchPoolFeed(chain: ChainId, feed: FeedDePool): Promise<T
                 `?include=base_token,quote_token&page=${i + 1}`,
               60,
             );
-            if (pagina.data?.length) putStale(chaveBoa, pagina, 6 * 60 * 60_000);
+            if (pagina.data?.length) {
+              putStale(chaveBoa, pagina, 6 * 60 * 60_000);
+              /* No banco também: servidor recém-ligado não tem memória. */
+              void gravarNoCacheDoBanco(chaveBoa, pagina).catch(() => {});
+            }
             return pagina;
           } catch {
+            type Pagina = { data: PoolGecko[]; included?: TokenGecko[] };
             return (
-              stale<{ data: PoolGecko[]; included?: TokenGecko[] }>(chaveBoa) ?? {
+              stale<Pagina>(chaveBoa) ??
+              (await lerDoCacheDoBanco<Pagina>(chaveBoa).catch(() => null)) ?? {
                 data: [] as PoolGecko[],
                 included: [] as TokenGecko[],
               }

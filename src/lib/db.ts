@@ -471,3 +471,35 @@ export async function buscarMoedaDaChroma(endereco: string): Promise<MoedaRegist
 export function chaveDoEndereco(endereco: string): string {
   return endereco.startsWith("0x") ? endereco.toLowerCase() : endereco;
 }
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Guarda um valor de cache no banco, visível por todos os servidores.
+ *
+ * Existe pela vitrine: a GeckoTerminal recusa consultas vindas dos IPs da
+ * Vercel com frequência, e servidor recém-ligado não tinha "última lista boa"
+ * na memória — a Robinhood aparecia com 3 moedas (28/09/2026). No banco, a
+ * lista boa conseguida por QUALQUER servidor fica disponível pra todos.
+ */
+export async function gravarNoCacheDoBanco(chave: string, valor: unknown): Promise<void> {
+  await banco();
+  await sql.query(
+    `INSERT INTO meta (chave, valor) VALUES ($1, $2)
+     ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor`,
+    [`cache:${chave}`, JSON.stringify(valor)],
+  );
+}
+
+export async function lerDoCacheDoBanco<T>(chave: string): Promise<T | null> {
+  await banco();
+  const linhas = (await sql.query(`SELECT valor FROM meta WHERE chave = $1`, [
+    `cache:${chave}`,
+  ])) as { valor: string }[];
+  if (!linhas[0]) return null;
+  try {
+    return JSON.parse(linhas[0].valor) as T;
+  } catch {
+    return null;
+  }
+}
