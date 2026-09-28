@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { Suspense, useCallback, useEffect, useState } from "react";
 
 import dynamic from "next/dynamic";
@@ -57,7 +60,14 @@ export interface StatsAoVivo {
   holders: number;
 }
 
+const TEXTOS = traducoes({
+  en: { demo: "There is no market data for this address yet. Price, liquidity and volume below are illustrative only. The contract audit is still real." },
+  pt: { demo: "Ainda não há dados de mercado para este endereço. Preço, liquidez e volume abaixo são apenas ilustrativos. A auditoria do contrato continua sendo real." },
+  zh: { demo: "该地址暂无市场数据。下方价格、流动性和交易量仅供示意，合约审计结果是真实的。" },
+});
+
 export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; isDemo?: boolean }) {
+  const t = useTextos(TEXTOS);
   const [price, setPrice] = useState(token.priceUsd);
   const [volumeDaSessao, setVolumeDaSessao] = useState(0);
   const [stats, setStats] = useState<StatsAoVivo>({
@@ -131,8 +141,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
     <div className="space-y-4">
       {isDemo && (
         <div className="rounded-xl border border-warn/25 bg-warn/[0.06] px-4 py-2.5 text-[12px] text-warn">
-          Ainda não há dados de mercado para este endereço. Preço, liquidez e volume abaixo são
-          apenas ilustrativos. A auditoria do contrato continua sendo real.
+          {t.demo}
         </div>
       )}
 

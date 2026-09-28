@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Card } from "@/components/ui/Card";
@@ -59,9 +62,9 @@ interface Quadro {
 type Ordem = "investido" | "posicao" | "lucro";
 
 const ORDENS: { chave: Ordem; rotulo: string }[] = [
-  { chave: "investido", rotulo: "Investido" },
-  { chave: "posicao", rotulo: "Posição" },
-  { chave: "lucro", rotulo: "Lucro" },
+  { chave: "investido", rotulo: "investido" },
+  { chave: "posicao", rotulo: "posicao" },
+  { chave: "lucro", rotulo: "lucro" },
 ];
 
 /** Quantas linhas antes do "mostrar mais". Vinte cabe numa tela sem rolar. */
@@ -70,7 +73,44 @@ const PRIMEIRA_LEVA = 20;
 /** A tabela repesca junto com o resto dos números de mercado. */
 const INTERVALO_MS = 30_000;
 
+const TEXTOS = traducoes({
+  en: {
+    investido: "Invested", posicao: "Position", lucro: "Profit", retirado: "Withdrawn", trader: "Trader", traders: "Traders",
+    falhouPar: "Could not load this pair's trades right now.", nenhumRecente: "No recent trades on this pair.",
+    mostrarMenos: "Show less", mostrarOutras: (n: number) => `Show the other ${n} wallets`, carteiras: (n: number) => `${n} wallets`,
+    carregando: "Loading recent trades…", falhou: "Could not load the trades. Retrying shortly.",
+    negocios: (n: number) => `${n} trades`,
+    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>Calculated from the last {n} of this pair — from {de} to {ate} ({dur}). Not the coin's full history nor the wallets' real balances.</>,
+    semNegocios: "No trades in this window.", c: "B", v: "S",
+    vendeuMais: "Sold more than bought in this window: already held tokens before it.",
+    comprouAntes: "Bought before this window, so the price paid is unknown.",
+  },
+  pt: {
+    investido: "Investido", posicao: "Posição", lucro: "Lucro", retirado: "Retirado", trader: "Trader", traders: "Traders",
+    falhouPar: "Não foi possível carregar as operações deste par agora.", nenhumRecente: "Nenhum negócio recente neste par.",
+    mostrarMenos: "Mostrar menos", mostrarOutras: (n: number) => `Mostrar as outras ${n} carteiras`, carteiras: (n: number) => `${n} carteiras`,
+    carregando: "Carregando as operações recentes…", falhou: "Não foi possível carregar as operações. Tentando novamente em instantes.",
+    negocios: (n: number) => `${n} negócios`,
+    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>Calculado sobre os últimos {n} deste par — de {de} até {ate} ({dur}). Não é o histórico da moeda nem o saldo real das carteiras.</>,
+    semNegocios: "Sem negócios na janela.", c: "C", v: "V",
+    vendeuMais: "Vendeu mais do que comprou na janela: já tinha token antes dela.",
+    comprouAntes: "Comprou antes da janela, então o preço que pagou é desconhecido.",
+  },
+  zh: {
+    investido: "投入", posicao: "持仓", lucro: "盈亏", retirado: "取出", trader: "交易者", traders: "交易者",
+    falhouPar: "暂时无法加载该交易对的交易。", nenhumRecente: "该交易对近期没有交易。",
+    mostrarMenos: "收起", mostrarOutras: (n: number) => `显示其余 ${n} 个钱包`, carteiras: (n: number) => `${n} 个钱包`,
+    carregando: "正在加载近期交易…", falhou: "无法加载交易，稍后自动重试。",
+    negocios: (n: number) => `${n} 笔交易`,
+    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>基于该交易对最近的 {n} 计算 —— 从 {de} 到 {ate}（{dur}）。并非代币的完整历史，也不是钱包的真实余额。</>,
+    semNegocios: "该时间段内没有交易。", c: "买", v: "卖",
+    vendeuMais: "该时间段内卖出多于买入：之前就已持有代币。",
+    comprouAntes: "在该时间段之前买入，因此买入价格未知。",
+  },
+});
+
 export function TabelaDeTraders({ address, symbol, chain }: { address: string; symbol: string; chain: ChainId }) {
+  const tr = useTextos(TEXTOS);
   const [quadro, setQuadro] = useState<Quadro | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [falhou, setFalhou] = useState(false);
@@ -130,11 +170,11 @@ export function TabelaDeTraders({ address, symbol, chain }: { address: string; s
         <Esqueleto />
       ) : falhou && !quadro ? (
         <p className="px-4 py-10 text-center text-[12px] text-zinc-600">
-          Não foi possível carregar as operações deste par agora.
+          {tr.falhouPar}
         </p>
       ) : lista.length === 0 ? (
         <p className="px-4 py-10 text-center text-[12px] text-zinc-600">
-          Nenhum negócio recente neste par.
+          {tr.nenhumRecente}
         </p>
       ) : (
         <>
@@ -155,12 +195,12 @@ export function TabelaDeTraders({ address, symbol, chain }: { address: string; s
               </colgroup>
               <thead>
                 <tr className="border-y border-ink-700 text-left">
-                  <Th className="pl-4">Trader</Th>
-                  <Th align="right">Posição</Th>
-                  <Th align="right">Investido</Th>
-                  <Th align="right">Retirado</Th>
+                  <Th className="pl-4">{tr.trader}</Th>
+                  <Th align="right">{tr.posicao}</Th>
+                  <Th align="right">{tr.investido}</Th>
+                  <Th align="right">{tr.retirado}</Th>
                   <Th align="right" className="pr-4">
-                    Lucro
+                    {tr.lucro}
                   </Th>
                 </tr>
               </thead>
@@ -184,9 +224,7 @@ export function TabelaDeTraders({ address, symbol, chain }: { address: string; s
               onClick={() => setTodos((v) => !v)}
               className="w-full border-t border-ink-700 py-2.5 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-ink-800 hover:text-marca"
             >
-              {todos
-                ? "Mostrar menos"
-                : `Mostrar as outras ${lista.length - PRIMEIRA_LEVA} carteiras`}
+              {todos ? tr.mostrarMenos : tr.mostrarOutras(lista.length - PRIMEIRA_LEVA)}
             </button>
           )}
         </>
@@ -210,16 +248,17 @@ function Cabecalho({
   carregando: boolean;
   falhou: boolean;
 }) {
+  const tr = useTextos(TEXTOS);
   return (
     <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <span aria-hidden className="h-3.5 w-[2px] shrink-0 rounded-full bg-chroma-gradient" />
           <h2 className="text-[13px] font-bold uppercase tracking-rotulo text-zinc-100">
-            Traders
+            {tr.traders}
           </h2>
           {quadro && (
-            <span className="tnum text-[11px] text-zinc-600">{quadro.lista.length} carteiras</span>
+            <span className="tnum text-[11px] text-zinc-600">{tr.carteiras(quadro.lista.length)}</span>
           )}
         </div>
 
@@ -229,26 +268,21 @@ function Cabecalho({
         */}
         <p className="mt-1.5 text-[11px] leading-snug text-zinc-500">
           {carregando ? (
-            "Carregando as operações recentes…"
+            tr.carregando
           ) : falhou ? (
             /* "Sem negócios" seria uma afirmação sobre o mercado; o que houve
                foi uma falha nossa em ler. São coisas diferentes e a tela não
                pode confundir as duas. */
-            "Não foi possível carregar as operações. Tentando novamente em instantes."
+            tr.falhou
           ) : quadro?.desde && quadro?.ate ? (
-            <>
-              Calculado sobre os últimos{" "}
-              <strong className="font-semibold text-zinc-400">
-                {quadro.negociosLidos} negócios
-              </strong>{" "}
-              deste par — de {hora(quadro.desde)} até {hora(quadro.ate)} ({duracao(
-                quadro.desde,
-                quadro.ate,
-              )}
-              ). Não é o histórico da moeda nem o saldo real das carteiras.
-            </>
+            tr.escopo(
+              <strong className="font-semibold text-zinc-400">{tr.negocios(quadro.negociosLidos)}</strong>,
+              hora(quadro.desde),
+              hora(quadro.ate),
+              duracao(quadro.desde, quadro.ate),
+            )
           ) : (
-            "Sem negócios na janela."
+            tr.semNegocios
           )}
         </p>
       </div>
@@ -265,7 +299,7 @@ function Cabecalho({
                 : "text-zinc-500 hover:text-zinc-300",
             )}
           >
-            {o.rotulo}
+            {tr[o.rotulo as "investido" | "posicao" | "lucro"]}
           </button>
         ))}
       </div>
@@ -286,6 +320,7 @@ function Linha({
   chain: ChainId;
   maiorPct: number;
 }) {
+  const tr = useTextos(TEXTOS);
   const t = trader;
   const lucrando = (t.lucroUsd ?? 0) >= 0;
 
@@ -319,7 +354,7 @@ function Linha({
             </a>
             <span className="flex items-center gap-1.5 text-[10px] text-zinc-600">
               <span className="tnum">
-                {t.compras}C · {t.vendas}V
+                {t.compras}{tr.c} · {t.vendas}{tr.v}
               </span>
               <span>·</span>
               <span className="tnum">{timeAgo(t.ultimoEm)}</span>
@@ -331,7 +366,7 @@ function Linha({
       {/* Posição */}
       <td className="px-2 py-2.5 text-right">
         {t.vindoDeAntes ? (
-          <Desconhecido motivo="Vendeu mais do que comprou na janela: já tinha token antes dela." />
+          <Desconhecido motivo={tr.vendeuMais} />
         ) : (
           <>
             <span className="tnum block text-[12px] font-bold text-zinc-200">
@@ -377,7 +412,7 @@ function Linha({
       {/* Lucro */}
       <td className="py-2.5 pl-2 pr-4 text-right">
         {t.lucroUsd === null ? (
-          <Desconhecido motivo="Comprou antes da janela, então o preço que pagou é desconhecido." />
+          <Desconhecido motivo={tr.comprouAntes} />
         ) : (
           <>
             <span
@@ -527,7 +562,7 @@ function precoCurto(n: number): string {
 }
 
 function hora(ms: number): string {
-  return new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function duracao(de: number, ate: number): string {

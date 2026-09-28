@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useState } from "react";
 
 import { refGuardado } from "@/hooks/useAffiliateTracking";
@@ -18,7 +21,14 @@ import { refGuardado } from "@/hooks/useAffiliateTracking";
  * Estes botões abrem a MESMA página dentro do app da carteira, com o \`?ref=\`
  * garantido (o da URL ou o que ficou guardado nesta visita).
  */
+const TEXTOS = traducoes({
+  en: { semCarteira: "This browser has no wallet. Open Chroma directly in your wallet app:" },
+  pt: { semCarteira: "Este navegador não tem carteira. Abra a Chroma direto no app da sua carteira:" },
+  zh: { semCarteira: "此浏览器没有钱包。请直接在钱包 App 中打开 Chroma：" },
+});
+
 export function AbrirNaCarteira() {
+  const t = useTextos(TEXTOS);
   const [alvo, setAlvo] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,7 +51,7 @@ export function AbrirNaCarteira() {
   return (
     <div className="rounded-lg border border-marca/25 bg-marca/[0.06] p-3">
       <p className="text-[12px] leading-snug text-zinc-300">
-        Este navegador não tem carteira. Abra a Chroma direto no app da sua carteira:
+        {t.semCarteira}
       </p>
       <div className="mt-2.5 grid grid-cols-2 gap-2">
         <a

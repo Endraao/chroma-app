@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount, usePublicClient } from "wagmi";
@@ -68,6 +71,75 @@ const SLIPPAGE_PADRAO = 3;
  */
 const RESERVA_DE_REDE_SOL = 0.02;
 
+const TEXTOS = traducoes({
+  en: {
+    usaSaldoMenos: (r: number) => `Uses your balance minus ${r} SOL, to keep network fee`,
+    venderTodos: (s: string) => `Sell all your ${s}`,
+    saldo: "balance", max: "max", maxMaiusc: "Max", curvaDaChroma: "Chroma curve", curvaDaChromaMaiusc: "Chroma curve",
+    impacto: (p: React.ReactNode) => <>This order moves the price by {p}. It is too large for the available liquidity: you buy at a worse price and whoever sells afterwards gets less.</>,
+    confirmado: "Confirmed!", verSolscan: "view on Solscan ↗", processando: "Processing…", informeValor: "Enter an amount",
+    cotando: "Quoting…", tentarDeNovo: "Try again", comprar: "Buy", vender: "Sell",
+    precisaCotacao: "Needs the SOL price, which did not load", conecteParaPct: "Connect your wallet to use a percentage of your balance",
+    procurandoRota: "finding route…", diretoNaCurva: "directly on the Chroma curve", viaJupiter: "routed via Jupiter",
+    semCotacaoSol: "SOL price unavailable right now — the amount above is in SOL",
+    ajustes: "Order settings", slippageMax: "Max slippage",
+    explicaSlippage: (c: React.ReactNode) => <>How much the price may get worse between signing and execution. Beyond this limit the transaction is {c} instead of going through at any price. It protects you from losing value in a sudden swing.</>,
+    cancelada: "cancelled", minimo: "Minimum received", rota: "Route",
+    naoNegocia: "This coin cannot be traded here yet",
+    naoNegociaTexto: (rede: string) => `It was not launched on Chroma, and trading external coins on ${rede} is in development. Coins created on Chroma already trade normally.`,
+    verExplorer: "View on explorer ↗", voceBaga: "You pay", saldoDois: "Balance:", voceRecebe: "You receive (estimated)",
+    slippage: "Slippage", taxa12: "1.2% fee",
+    curvaEncheu: "The curve is full. The liquidity still has to be moved to Uniswap — anyone can do it, it only costs the network fee. After that the coin trades anywhere.",
+    levando: "Moving to Uniswap…", levar: "Move to Uniswap", indisponivel: "Unavailable right now",
+    duasAssinaturas: "Selling asks for two signatures: one allowing the curve to take the tokens and one for the sale itself. The approval is for the exact amount, never unlimited.",
+    verTransacao: "view transaction",
+  },
+  pt: {
+    usaSaldoMenos: (r: number) => `Usa o saldo menos ${r} SOL, pra sobrar taxa de rede`,
+    venderTodos: (s: string) => `Vender todos os seus ${s}`,
+    saldo: "saldo", max: "máx", maxMaiusc: "Máx", curvaDaChroma: "curva da Chroma", curvaDaChromaMaiusc: "Curva da Chroma",
+    impacto: (p: React.ReactNode) => <>Esta ordem move o preço em {p}. É grande demais para a liquidez disponível: você compra a um preço pior e quem vender depois recebe menos.</>,
+    confirmado: "Confirmado!", verSolscan: "ver no Solscan ↗", processando: "Processando…", informeValor: "Informe um valor",
+    cotando: "Cotando…", tentarDeNovo: "Tentar de novo", comprar: "Comprar", vender: "Vender",
+    precisaCotacao: "Precisa da cotação do SOL, que não carregou", conecteParaPct: "Conecte a carteira pra usar porcentagem do saldo",
+    procurandoRota: "procurando rota…", diretoNaCurva: "direto na curva da Chroma", viaJupiter: "rota via Jupiter",
+    semCotacaoSol: "cotação do SOL indisponível no momento — o valor acima está em SOL",
+    ajustes: "Ajustes da ordem", slippageMax: "Slippage máximo",
+    explicaSlippage: (c: React.ReactNode) => <>O quanto o preço pode piorar entre você assinar e a ordem ser executada. Acima desse limite a transação é {c} em vez de sair a qualquer preço. É o que protege você de perder valor numa oscilação brusca.</>,
+    cancelada: "cancelada", minimo: "Mínimo garantido", rota: "Rota",
+    naoNegocia: "Esta moeda não pode ser negociada aqui ainda",
+    naoNegociaTexto: (rede: string) => `Ela não foi lançada na Chroma, e a negociação de moedas externas na ${rede} está em desenvolvimento. As moedas criadas na Chroma já negociam normalmente.`,
+    verExplorer: "Ver no explorer ↗", voceBaga: "Você paga", saldoDois: "Saldo:", voceRecebe: "Você recebe (estimado)",
+    slippage: "Slippage", taxa12: "taxa 1,2%",
+    curvaEncheu: "A curva encheu. Falta levar a liquidez pra Uniswap — qualquer pessoa pode fazer isso, custa só a taxa de rede. Depois disso a moeda negocia em qualquer lugar.",
+    levando: "Levando pra Uniswap…", levar: "Levar pra Uniswap", indisponivel: "Indisponível agora",
+    duasAssinaturas: "Vender pede duas assinaturas: uma autorizando a curva a retirar os tokens e outra da venda em si. A autorização é pelo valor exato, não infinita.",
+    verTransacao: "ver a transação",
+  },
+  zh: {
+    usaSaldoMenos: (r: number) => `使用余额减去 ${r} SOL，保留网络手续费`,
+    venderTodos: (s: string) => `卖出全部 ${s}`,
+    saldo: "余额", max: "最大", maxMaiusc: "最大", curvaDaChroma: "Chroma 曲线", curvaDaChromaMaiusc: "Chroma 曲线",
+    impacto: (p: React.ReactNode) => <>该订单会使价格变动 {p}。相对于现有流动性过大：你会以更差的价格买入，之后卖出的人获得更少。</>,
+    confirmado: "已确认！", verSolscan: "在 Solscan 查看 ↗", processando: "处理中…", informeValor: "请输入金额",
+    cotando: "报价中…", tentarDeNovo: "重试", comprar: "买入", vender: "卖出",
+    precisaCotacao: "需要 SOL 报价，但未能加载", conecteParaPct: "连接钱包后可按余额百分比下单",
+    procurandoRota: "正在寻找路由…", diretoNaCurva: "直接在 Chroma 曲线上成交", viaJupiter: "经由 Jupiter 路由",
+    semCotacaoSol: "暂时无法获取 SOL 报价 —— 上方金额以 SOL 计",
+    ajustes: "订单设置", slippageMax: "最大滑点",
+    explicaSlippage: (c: React.ReactNode) => <>从签名到执行之间价格可以变差的幅度。超过这个限度，交易会被{c}，而不是以任意价格成交。这能保护你免受剧烈波动带来的损失。</>,
+    cancelada: "取消", minimo: "最少获得", rota: "路由",
+    naoNegocia: "该代币暂时无法在这里交易",
+    naoNegociaTexto: (rede: string) => `它不是在 Chroma 上发行的，${rede} 外部代币交易功能正在开发中。在 Chroma 创建的代币已可正常交易。`,
+    verExplorer: "在浏览器中查看 ↗", voceBaga: "你支付", saldoDois: "余额：", voceRecebe: "你将获得（预估）",
+    slippage: "滑点", taxa12: "手续费 1.2%",
+    curvaEncheu: "曲线已满，还需把流动性迁移到 Uniswap —— 任何人都可以操作，只需支付网络手续费。之后代币可以在任何地方交易。",
+    levando: "正在迁移到 Uniswap…", levar: "迁移到 Uniswap", indisponivel: "暂不可用",
+    duasAssinaturas: "卖出需要两次签名：一次授权曲线转走代币，一次执行卖出本身。授权额度精确到本次数量，绝不无限授权。",
+    verTransacao: "查看交易",
+  },
+});
+
 export function SwapWidget({
   symbol,
   chain,
@@ -104,6 +176,7 @@ function SolanaSwap({
   tokenAddress: string;
   priceUsd: number;
 }) {
+  const t = useTextos(TEXTOS);
   const [side, setSide] = useState<TradeSide>("buy");
   const [digitado, setDigitado] = useState("");
   const [slippage, setSlippage] = useState(SLIPPAGE_PADRAO);
@@ -239,18 +312,16 @@ function SolanaSwap({
               disabled={swap.balance <= 0}
               className="group text-[11px] text-zinc-600 transition-colors hover:text-zinc-400 disabled:cursor-not-allowed"
               title={
-                comprando
-                  ? `Usa o saldo menos ${RESERVA_DE_REDE_SOL} SOL, pra sobrar taxa de rede`
-                  : `Vender todos os seus ${symbol}`
+                comprando ? t.usaSaldoMenos(RESERVA_DE_REDE_SOL) : t.venderTodos(symbol)
               }
             >
-              saldo{" "}
+              {t.saldo}{" "}
               <span className="tnum text-zinc-500 group-hover:text-zinc-300">
                 {formatPrice(swap.balance, comprando ? 4 : 2)} {comprando ? "SOL" : symbol}
               </span>
               {swap.balance > 0 && (
                 <span className="ml-1.5 rounded border border-marca/30 px-1 py-px text-[10px] font-bold uppercase text-marca group-hover:border-marca/60">
-                  máx
+                  {t.max}
                 </span>
               )}
             </button>
@@ -266,7 +337,7 @@ function SolanaSwap({
                 ? `${formatPrice(swap.minReceived, 6)} ${comprando ? symbol : "SOL"}`
                 : null
             }
-            rota={swap.naCurva ? "curva da Chroma" : swap.route || null}
+            rota={swap.naCurva ? t.curvaDaChroma : swap.route || null}
           />
         </div>
 
@@ -274,10 +345,7 @@ function SolanaSwap({
           {/* ------------- avisos que mudam a decisão ------------------- */}
           {impactoPerigoso && (
             <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
-              Esta ordem move o preço em{" "}
-              <strong className="font-semibold">{swap.priceImpactPct.toFixed(1)}%</strong>. É
-              grande demais para a liquidez disponível: você compra a um preço pior e quem vender
-              depois recebe menos.
+              {t.impacto(<strong className="font-semibold">{swap.priceImpactPct.toFixed(1)}%</strong>)}
             </p>
           )}
 
@@ -295,14 +363,14 @@ function SolanaSwap({
 
           {swap.signature && (
             <div className="rounded-lg border border-bull/25 bg-bull/[0.06] px-3 py-2 text-[11px] text-bull">
-              Confirmado!{" "}
+              {t.confirmado}{" "}
               <a
                 href={`https://solscan.io/tx/${swap.signature}`}
                 target="_blank"
                 rel="noreferrer"
                 className="underline underline-offset-2"
               >
-                ver no Solscan ↗
+                {t.verSolscan}
               </a>
             </div>
           )}
@@ -317,14 +385,14 @@ function SolanaSwap({
               onClick={swap.execute}
             >
               {swap.phase === "executing"
-                ? swap.step || "Processando…"
+                ? swap.step || t.processando
                 : semValor
-                  ? "Informe um valor"
+                  ? t.informeValor
                   : swap.phase === "quoting"
-                    ? "Cotando…"
+                    ? t.cotando
                     : swap.phase === "error"
-                      ? "Tentar de novo"
-                      : `${comprando ? "Comprar" : "Vender"} ${symbol}`}
+                      ? t.tentarDeNovo
+                      : `${comprando ? t.comprar : t.vender} ${symbol}`}
             </Button>
           </RequireChainWallet>
 
@@ -338,7 +406,7 @@ function SolanaSwap({
                 ligado={atalhoDolarLigado}
                 onClick={() => atalhoEmDolar(v)}
                 titulo={
-                  atalhoDolarLigado ? undefined : "Precisa da cotação do SOL, que não carregou"
+                  atalhoDolarLigado ? undefined : t.precisaCotacao
                 }
               />
             ))}
@@ -354,9 +422,9 @@ function SolanaSwap({
                 onClick={() => atalhoEmPorcentagem(v)}
                 titulo={
                   !atalhoPctLigado
-                    ? "Conecte a carteira pra usar porcentagem do saldo"
+                    ? t.conecteParaPct
                     : comprando && v === 100
-                      ? `Usa o saldo menos ${RESERVA_DE_REDE_SOL} SOL, pra sobrar taxa de rede`
+                      ? t.usaSaldoMenos(RESERVA_DE_REDE_SOL)
                       : undefined
                 }
               />
@@ -366,11 +434,7 @@ function SolanaSwap({
           {connected && publicKey && (
             <p className="pt-0.5 text-center text-[11px] text-zinc-600">
               {shortenAddress(publicKey.toBase58(), 6)} ·{" "}
-              {swap.carregandoRota
-                ? "procurando rota…"
-                : swap.naCurva
-                  ? "direto na curva da Chroma"
-                  : "rota via Jupiter"}
+              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.diretoNaCurva : t.viaJupiter}
             </p>
           )}
         </div>
@@ -408,6 +472,7 @@ function CampoDeValor({
   equivalenteUsd: number;
   simbolo: string;
 }) {
+  const t = useTextos(TEXTOS);
   const campo = useRef<HTMLInputElement>(null);
   const largura = Math.max(1, (valor || "0").length);
 
@@ -447,9 +512,7 @@ function CampoDeValor({
           emDolar ? (
             <>≈ {formatPrice(emSol, 4)} SOL</>
           ) : (
-            <span className="text-warn/80">
-              cotação do SOL indisponível no momento — o valor acima está em SOL
-            </span>
+            <span className="text-warn/80">{t.semCotacaoSol}</span>
           )
         ) : (
           <>≈ ${formatPrice(equivalenteUsd, 2)}</>
@@ -475,6 +538,7 @@ function AbasDeLado({
   onChange: (s: TradeSide) => void;
   disabled?: boolean;
 }) {
+  const t = useTextos(TEXTOS);
   return (
     <div className="grid grid-cols-2 gap-1.5 p-1.5">
       {(["buy", "sell"] as TradeSide[]).map((s) => {
@@ -493,7 +557,7 @@ function AbasDeLado({
                 : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300",
             )}
           >
-            {s === "buy" ? "Comprar" : "Vender"}
+            {s === "buy" ? t.comprar : t.vender}
           </button>
         );
       })}
@@ -554,6 +618,7 @@ function Engrenagem({
   minimoGarantido: string | null;
   rota: string | null;
 }) {
+  const t = useTextos(TEXTOS);
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
 
@@ -571,7 +636,7 @@ function Engrenagem({
     <div ref={caixa} className="relative">
       <button
         onClick={() => setAberto((v) => !v)}
-        aria-label="Ajustes da ordem"
+        aria-label={t.ajustes}
         aria-expanded={aberto}
         className={cn(
           "grid size-7 place-items-center rounded-lg transition-colors",
@@ -584,7 +649,7 @@ function Engrenagem({
       {aberto && (
         <div className="panel absolute right-0 top-9 z-30 w-[268px] p-3">
           <div className="flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-zinc-200">Slippage máximo</span>
+            <span className="text-[12px] font-semibold text-zinc-200">{t.slippageMax}</span>
             <span className="tnum text-[12px] font-bold text-marca">{slippage}%</span>
           </div>
 
@@ -606,17 +671,14 @@ function Engrenagem({
           </div>
 
           <p className="mt-2.5 text-[11px] leading-snug text-zinc-500">
-            O quanto o preço pode piorar entre você assinar e a ordem ser executada. Acima desse
-            limite a transação é <strong className="font-semibold text-zinc-400">cancelada</strong>{" "}
-            em vez de sair a qualquer preço. É o que protege você de perder valor numa oscilação
-            brusca.
+            {t.explicaSlippage(<strong className="font-semibold text-zinc-400">{t.cancelada}</strong>)}
           </p>
 
           {(minimoGarantido || rota) && (
             <div className="mt-3 space-y-1 border-t border-ink-700 pt-2.5 text-[11px]">
               {minimoGarantido && (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="shrink-0 text-zinc-500">Mínimo garantido</span>
+                  <span className="shrink-0 text-zinc-500">{t.minimo}</span>
                   <span className="tnum truncate font-semibold text-zinc-300">
                     {minimoGarantido}
                   </span>
@@ -624,7 +686,7 @@ function Engrenagem({
               )}
               {rota && (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="shrink-0 text-zinc-500">Rota</span>
+                  <span className="shrink-0 text-zinc-500">{t.rota}</span>
                   <span className="truncate text-zinc-400">{rota}</span>
                 </div>
               )}
@@ -671,6 +733,7 @@ function EvmSwap({
   chain: ChainId;
   tokenAddress: string;
 }) {
+  const t = useTextos(TEXTOS);
   const meta = CHAINS[chain];
   const { curva, podeComprar, podeVender, carregando } = useCurvaEvm(tokenAddress);
   const { affiliate } = useAffiliateTracking(chain);
@@ -794,10 +857,9 @@ function EvmSwap({
           */}
           <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-[12px] leading-relaxed text-zinc-400">
             <div className="mb-1 font-semibold text-zinc-200">
-              Esta moeda não pode ser negociada aqui ainda
+              {t.naoNegocia}
             </div>
-            Ela não foi lançada na Chroma, e a negociação de moedas externas na {meta.label} está em
-            desenvolvimento. As moedas criadas na Chroma já negociam normalmente.
+            {t.naoNegociaTexto(meta.label)}
           </div>
           <RequireChainWallet chain={chain}>
             <a
@@ -807,7 +869,7 @@ function EvmSwap({
               className="block"
             >
               <Button variant="outline" size="lg" className="w-full">
-                Ver no explorer ↗
+                {t.verExplorer}
               </Button>
             </a>
           </RequireChainWallet>
@@ -827,18 +889,18 @@ function EvmSwap({
           slippage, mínimo garantido e rota — tudo visível antes de assinar.
         */}
         <div className="flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          <span>Você paga</span>
+          <span>{t.voceBaga}</span>
           {address && (
             <button
               type="button"
               onClick={() => usarPorcentagem(100)}
               className="tnum normal-case tracking-normal text-zinc-500 hover:text-zinc-200"
             >
-              Saldo:{" "}
+              {t.saldoDois}{" "}
               {saldo === null
                 ? "…"
-                : `${saldo.toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 5 : 2 })} ${ehCompra ? meta.nativeSymbol : symbol}`}
-              <span className="ml-1 font-bold text-marca">Máx</span>
+                : `${saldo.toLocaleString(undefined, { maximumFractionDigits: ehCompra ? 5 : 2 })} ${ehCompra ? meta.nativeSymbol : symbol}`}
+              <span className="ml-1 font-bold text-marca">{t.maxMaiusc}</span>
             </button>
           )}
         </div>
@@ -860,7 +922,7 @@ function EvmSwap({
           {(ehCompra ? ["0.001", "0.005", "0.01", "0.05"] : ["25", "50", "75", "100"]).map((v) => (
             <Atalho
               key={v}
-              rotulo={ehCompra ? `${v} ${meta.nativeSymbol}` : v === "100" ? "Máx" : `${v}%`}
+              rotulo={ehCompra ? `${v} ${meta.nativeSymbol}` : v === "100" ? t.maxMaiusc : `${v}%`}
               tom={ehCompra ? "buy" : "sell"}
               ligado={ehCompra || (saldo !== null && saldo > 0)}
               onClick={() => (ehCompra ? setDigitado(v) : usarPorcentagem(Number(v)))}
@@ -870,7 +932,7 @@ function EvmSwap({
 
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            Você recebe (estimado)
+            {t.voceRecebe}
           </p>
           <div className="tnum rounded-lg border border-dashed border-ink-600 px-3 py-3 text-xl font-bold text-zinc-200">
             {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
@@ -879,7 +941,7 @@ function EvmSwap({
 
         <div className="space-y-1.5 text-[11.5px]">
           <div className="flex items-center justify-between">
-            <span className="text-zinc-500">Slippage</span>
+            <span className="text-zinc-500">{t.slippage}</span>
             <div className="flex gap-1">
               {[100, 300, 500].map((bps) => (
                 <button
@@ -899,7 +961,7 @@ function EvmSwap({
             </div>
           </div>
           <div className="flex justify-between">
-            <span className="text-zinc-500">Mínimo garantido</span>
+            <span className="text-zinc-500">{t.minimo}</span>
             <span className="tnum text-zinc-300">
               {swap.minimoGarantido
                 ? `${Number(swap.minimoGarantido).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}`
@@ -907,9 +969,9 @@ function EvmSwap({
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-zinc-500">Rota</span>
+            <span className="text-zinc-500">{t.rota}</span>
             <span className="text-zinc-300">
-              {curva?.migrada ? "Uniswap v4" : "Curva da Chroma"}, taxa 1,2%
+              {curva?.migrada ? "Uniswap v4" : t.curvaDaChromaMaiusc}, {t.taxa12}
             </span>
           </div>
         </div>
@@ -917,8 +979,7 @@ function EvmSwap({
         {curva?.concluida && !curva.migrada && (
           <div className="space-y-2 rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2.5 text-[11px] leading-snug text-warn">
             <p>
-              A curva encheu. Falta levar a liquidez pra Uniswap — qualquer pessoa pode fazer isso,
-              custa só a taxa de rede. Depois disso a moeda negocia em qualquer lugar.
+              {t.curvaEncheu}
             </p>
             <RequireChainWallet chain={chain}>
               <Button
@@ -928,7 +989,7 @@ function EvmSwap({
                 disabled={migrando}
                 onClick={migrar}
               >
-                {migrando ? "Levando pra Uniswap…" : "Levar pra Uniswap"}
+                {migrando ? t.levando : t.levar}
               </Button>
             </RequireChainWallet>
             {erroDaMigracao && <p className="text-bear">{erroDaMigracao}</p>}
@@ -944,10 +1005,10 @@ function EvmSwap({
             onClick={swap.executar}
           >
             {swap.ocupado
-              ? swap.passo || "Processando…"
+              ? swap.passo || t.processando
               : !podeOperar
-                ? "Indisponível agora"
-                : `${ehCompra ? "Comprar" : "Vender"} ${symbol}`}
+                ? t.indisponivel
+                : `${ehCompra ? t.comprar : t.vender} ${symbol}`}
           </Button>
         </RequireChainWallet>
 
@@ -957,8 +1018,7 @@ function EvmSwap({
 
         {!ehCompra && (
           <p className="text-[11px] leading-relaxed text-zinc-600">
-            Vender pede duas assinaturas: uma autorizando a curva a retirar os tokens e outra da
-            venda em si. A autorização é pelo valor exato, não infinita.
+            {t.duasAssinaturas}
           </p>
         )}
 
@@ -976,7 +1036,7 @@ function EvmSwap({
             rel="noopener noreferrer"
             className="block text-center text-[11px] font-semibold text-marca hover:underline"
           >
-            ver a transação
+            {t.verTransacao}
           </a>
         )}
       </div>

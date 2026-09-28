@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -18,7 +21,32 @@ import type { TokenSummary } from "@/lib/types";
  * Sem conta, o botão ainda copia o link da moeda — só que sem o `?ref=`, e a
  * interface avisa o que a pessoa está deixando na mesa.
  */
+const TEXTOS = traducoes({
+  en: {
+    texto: (n: string, s: string) => `${n} ($${s}) on Chroma`, compartilhar: "Share", link: "Link to this coin", comIndicacao: "with your referral",
+    copiado: "copied", copiar: "copy",
+    quemComprar: (p: React.ReactNode) => <>Whoever buys through this link pays you {p} of every trade — it comes from the platform&apos;s share, not from the buyer&apos;s pocket.</>,
+    entreNaConta: "Sign in",
+    entre: (s: React.ReactNode, p: string) => <>{s} to make this link yours: you then earn {p} of every trade from whoever comes through it.</>,
+  },
+  pt: {
+    texto: (n: string, s: string) => `${n} ($${s}) na Chroma`, compartilhar: "Compartilhar", link: "Link desta moeda", comIndicacao: "com sua indicação",
+    copiado: "copiado", copiar: "copiar",
+    quemComprar: (p: React.ReactNode) => <>Quem comprar por este link te paga {p} de cada operação — sai da parte da plataforma, não do bolso de quem compra.</>,
+    entreNaConta: "Entre na sua conta",
+    entre: (s: React.ReactNode, p: string) => <>{s} para este link virar seu: você passa a receber {p} de cada operação de quem entrar por ele.</>,
+  },
+  zh: {
+    texto: (n: string, s: string) => `${n} ($${s}) 在 Chroma`, compartilhar: "分享", link: "该代币链接", comIndicacao: "含你的推荐",
+    copiado: "已复制", copiar: "复制",
+    quemComprar: (p: React.ReactNode) => <>通过此链接买入的人，每笔交易都会支付你 {p} —— 来自平台的分成，不会增加买家的成本。</>,
+    entreNaConta: "登录",
+    entre: (s: React.ReactNode, p: string) => <>{s}后此链接即归你：通过它进入的人每笔交易你都能获得 {p}。</>,
+  },
+});
+
 export function ShareToken({ token }: { token: TokenSummary }) {
+  const t = useTextos(TEXTOS);
   const account = useChromaAccount();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -47,7 +75,7 @@ export function ShareToken({ token }: { token: TokenSummary }) {
     ? `${origin}${caminho}?ref=${account.referralId}`
     : `${origin}${caminho}`;
 
-  const texto = `${token.name} ($${token.symbol}) na Chroma`;
+  const texto = t.texto(token.name, token.symbol);
 
   async function copiar() {
     try {
@@ -63,16 +91,16 @@ export function ShareToken({ token }: { token: TokenSummary }) {
     <div className="relative" ref={boxRef}>
       <Button variant="outline" size="sm" onClick={() => setOpen((v) => !v)}>
         <ShareIcon />
-        Compartilhar
+        {t.compartilhar}
       </Button>
 
       {open && (
         <div className="panel absolute right-0 z-40 mt-2 w-[320px] p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-zinc-200">Link desta moeda</span>
+            <span className="text-[12px] font-semibold text-zinc-200">{t.link}</span>
             {account.referralId && (
               <span className="rounded-md bg-marca/15 px-1.5 py-0.5 text-[10px] font-bold text-marca">
-                com sua indicação
+                {t.comIndicacao}
               </span>
             )}
           </div>
@@ -85,7 +113,7 @@ export function ShareToken({ token }: { token: TokenSummary }) {
               className="tnum min-w-0 flex-1 rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 text-[11px] text-zinc-300 outline-none"
             />
             <Button variant="chroma" size="sm" onClick={copiar}>
-              {copied ? "copiado" : "copiar"}
+              {copied ? t.copiado : t.copiar}
             </Button>
           </div>
 
@@ -106,17 +134,9 @@ export function ShareToken({ token }: { token: TokenSummary }) {
 
           <p className="mt-2.5 border-t border-white/[0.06] pt-2.5 text-[11px] leading-relaxed text-zinc-500">
             {account.referralId ? (
-              <>
-                Quem comprar por este link te paga{" "}
-                <strong className="text-marca">{feeLabel.affiliate}</strong> de cada operação
-                — sai da parte da plataforma, não do bolso de quem compra.
-              </>
+              t.quemComprar(<strong className="text-marca">{feeLabel.affiliate}</strong>)
             ) : (
-              <>
-                <strong className="text-zinc-300">Entre na sua conta</strong> para este link virar
-                seu: você passa a receber {feeLabel.affiliate} de cada operação de quem entrar por
-                ele.
-              </>
+              t.entre(<strong className="text-zinc-300">{t.entreNaConta}</strong>, feeLabel.affiliate)
             )}
           </p>
         </div>

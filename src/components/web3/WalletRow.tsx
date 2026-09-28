@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
  
 import { useState } from "react";
 
@@ -26,12 +29,19 @@ export interface WalletOption {
 }
 
 const BADGE: Record<WalletState, { text: string; className: string } | null> = {
-  recent: { text: "recente", className: "bg-bull/10 text-bull ring-bull/25" },
-  detected: { text: "detectada", className: "bg-bull/10 text-bull ring-bull/25" },
-  "not-installed": { text: "instalar", className: "bg-white/5 text-zinc-500 ring-white/10" },
+  recent: { text: "recente" as const, className: "bg-bull/10 text-bull ring-bull/25" },
+  detected: { text: "detectada" as const, className: "bg-bull/10 text-bull ring-bull/25" },
+  "not-installed": { text: "instalar" as const, className: "bg-white/5 text-zinc-500 ring-white/10" },
 };
 
+const TEXTOS = traducoes({
+  en: { recente: "recent", detectada: "detected", instalar: "install" },
+  pt: { recente: "recente", detectada: "detectada", instalar: "instalar" },
+  zh: { recente: "最近使用", detectada: "已检测到", instalar: "安装" },
+});
+
 export function WalletRow({ option, subtitle }: { option: WalletOption; subtitle?: string }) {
+  const t = useTextos(TEXTOS);
   const badge = BADGE[option.state];
   const isInstalled = option.state !== "not-installed";
 
@@ -59,7 +69,7 @@ export function WalletRow({ option, subtitle }: { option: WalletOption; subtitle
           )}
         >
           {isInstalled && <span className="size-1.5 rounded-full bg-current" />}
-          {badge.text}
+          {t[badge.text as "recente" | "detectada" | "instalar"]}
         </span>
       )}
     </button>

@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
  
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
@@ -25,6 +28,60 @@ const REDE = {
   evm: { chain: "robinhood" as const, label: CHAINS.robinhood.label, logo: chainIcon("robinhood") },
 };
 
+const TEXTOS = traducoes({
+  en: {
+    entrarTitulo: "Sign in to Chroma", entrarSub: "Non-custodial: Chroma never holds your keys.",
+    carteiras: (rede: string) => `${rede} wallets`, carteirasSub: "Installed ones come first. The others open their install page.",
+    apelidoTitulo: "Choose your nickname", apelidoSub: "It is the name that shows up in your referral link.",
+    ouConecte: "or connect a wallet",
+    nenhumaCarteira: "No wallet was found in this browser. The options above open the install page. After installing, reload this page.",
+    aoEntrar: "By signing in you acknowledge that Chroma is a non-custodial interface: transactions come from your wallet and the platform never holds your funds. You can connect both networks at the same time.",
+    maisCarteiras: "More wallets", buscar: "Search wallet", limpar: "clear", semNome: "No wallet with that name.",
+    detectadas: "Detected", naoInstaladas: "Not installed",
+    googleIndisponivel: "Google sign-in is not available yet. For now, use one of the wallets listed above.",
+    google: "Continue with Google", emBreve: "soon",
+    apelido: "Nickname", seuNome: "yourname", sortearOutro: "Suggest another", sortear: "shuffle",
+    regras: (sub: React.ReactNode, link: React.ReactNode) => <>3 to 20 characters: letters, numbers and {sub} only. Your link will be {link}. You can change your nickname later in your profile, and old links keep working.</>,
+    soUmNome: (forte: React.ReactNode) => <>It is just a name for the site. {forte} — no signature, no fee, no access to your funds.</>,
+    naoPede: "Your wallet will not ask for anything",
+    aguardando: "Waiting for signature…", registrar: "Register nickname", outraCarteira: "use another wallet",
+  },
+  pt: {
+    entrarTitulo: "Entrar na Chroma", entrarSub: "Não-custodial: a Chroma nunca guarda suas chaves.",
+    carteiras: (rede: string) => `Carteiras ${rede}`, carteirasSub: "As instaladas aparecem primeiro. As demais abrem a página de instalação.",
+    apelidoTitulo: "Escolha seu apelido", apelidoSub: "É o nome que vai aparecer no seu link de indicação.",
+    ouConecte: "ou conecte uma carteira",
+    nenhumaCarteira: "Nenhuma carteira foi encontrada neste navegador. As opções acima abrem a página de instalação. Depois de instalar, recarregue esta página.",
+    aoEntrar: "Ao entrar, você reconhece que a Chroma é uma interface não custodial: as transações saem da sua carteira e a plataforma nunca tem posse dos seus fundos. Você pode conectar as duas redes ao mesmo tempo.",
+    maisCarteiras: "Mais carteiras", buscar: "Buscar carteira", limpar: "limpar", semNome: "Nenhuma carteira com esse nome.",
+    detectadas: "Detectadas", naoInstaladas: "Não instaladas",
+    googleIndisponivel: "A entrada com o Google ainda não está disponível. Por enquanto, use uma das carteiras listadas acima.",
+    google: "Continuar com o Google", emBreve: "em breve",
+    apelido: "Apelido", seuNome: "seunome", sortearOutro: "Sortear outro", sortear: "sortear",
+    regras: (sub: React.ReactNode, link: React.ReactNode) => <>3 a 20 caracteres, só letras, números e {sub}. Seu link fica {link}. Você pode trocar de apelido depois, no seu perfil, e os links antigos continuam funcionando.</>,
+    soUmNome: (forte: React.ReactNode) => <>É só um nome para o site. {forte} — nenhuma assinatura, nenhuma taxa, nenhum acesso aos seus fundos.</>,
+    naoPede: "Sua carteira não vai pedir nada",
+    aguardando: "Aguardando assinatura…", registrar: "Registrar apelido", outraCarteira: "usar outra carteira",
+  },
+  zh: {
+    entrarTitulo: "登录 Chroma", entrarSub: "非托管：Chroma 从不保管你的私钥。",
+    carteiras: (rede: string) => `${rede} 钱包`, carteirasSub: "已安装的钱包排在前面，其余会打开安装页面。",
+    apelidoTitulo: "选择你的昵称", apelidoSub: "这个名字会显示在你的推荐链接中。",
+    ouConecte: "或连接钱包",
+    nenhumaCarteira: "此浏览器中未检测到钱包。上方选项会打开安装页面，安装后请刷新本页。",
+    aoEntrar: "登录即表示你了解 Chroma 是非托管界面：交易从你的钱包发出，平台从不持有你的资金。你可以同时连接两条网络。",
+    maisCarteiras: "更多钱包", buscar: "搜索钱包", limpar: "清除", semNome: "没有找到该名称的钱包。",
+    detectadas: "已检测到", naoInstaladas: "未安装",
+    googleIndisponivel: "暂不支持 Google 登录，请先使用上方列出的钱包。",
+    google: "使用 Google 继续", emBreve: "即将推出",
+    apelido: "昵称", seuNome: "yourname", sortearOutro: "换一个", sortear: "随机",
+    regras: (sub: React.ReactNode, link: React.ReactNode) => <>3 到 20 个字符，仅限字母、数字和 {sub}。你的链接将是 {link}。之后可以在个人资料中修改昵称，旧链接仍然有效。</>,
+    soUmNome: (forte: React.ReactNode) => <>这只是站内名称。{forte} —— 无需签名、无需费用、不会访问你的资金。</>,
+    naoPede: "你的钱包不会弹出任何请求",
+    aguardando: "等待签名…", registrar: "注册昵称", outraCarteira: "使用其他钱包",
+  },
+});
+
 /**
  * Entrada única da plataforma.
  *
@@ -34,6 +91,7 @@ const REDE = {
  * Solana — numa lista única a pessoa escolhe errado e acha que quebrou.
  */
 export function SignInModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useTextos(TEXTOS);
   const account = useChromaAccount();
   const [view, setView] = useState<View>("main");
   const [scope, setScope] = useState<WalletNetwork>("solana");
@@ -67,15 +125,15 @@ export function SignInModal({ open, onClose }: { open: boolean; onClose: () => v
 
   const titulo =
     step === "main"
-      ? { title: "Entrar na Chroma", subtitle: "Não-custodial: a Chroma nunca guarda suas chaves." }
+      ? { title: t.entrarTitulo, subtitle: t.entrarSub }
       : step === "all"
         ? {
-            title: "Carteiras " + REDE[scope].label,
-            subtitle: "As instaladas aparecem primeiro. As demais abrem a página de instalação.",
+            title: t.carteiras(REDE[scope].label),
+            subtitle: t.carteirasSub,
           }
         : {
-            title: "Escolha seu apelido",
-            subtitle: "É o nome que vai aparecer no seu link de indicação.",
+            title: t.apelidoTitulo,
+            subtitle: t.apelidoSub,
           };
 
   /*
@@ -140,6 +198,7 @@ export function SignInModal({ open, onClose }: { open: boolean; onClose: () => v
 /* ------------------------------------------------------------------ */
 
 function MainStep({ onShowAll }: { onShowAll: (rede: WalletNetwork) => void }) {
+  const t = useTextos(TEXTOS);
   const { solana, evm, hasAny } = useWalletOptions();
 
   return (
@@ -147,7 +206,7 @@ function MainStep({ onShowAll }: { onShowAll: (rede: WalletNetwork) => void }) {
       <AbrirNaCarteira />
       <GoogleRow />
 
-      <Divider>ou conecte uma carteira</Divider>
+      <Divider>{t.ouConecte}</Divider>
 
       <ChainGroup
         rede="solana"
@@ -165,15 +224,12 @@ function MainStep({ onShowAll }: { onShowAll: (rede: WalletNetwork) => void }) {
 
       {!hasAny && (
         <p className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[12px] leading-snug text-warn">
-          Nenhuma carteira foi encontrada neste navegador. As opções acima abrem a página de
-          instalação. Depois de instalar, recarregue esta página.
+          {t.nenhumaCarteira}
         </p>
       )}
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
-        Ao entrar, você reconhece que a Chroma é uma interface não custodial: as transações saem da
-        sua carteira e a plataforma nunca tem posse dos seus fundos. Você pode conectar as duas redes
-        ao mesmo tempo.
+        {t.aoEntrar}
       </p>
     </div>
   );
@@ -190,6 +246,7 @@ function ChainGroup({
   total: number;
   onShowAll: () => void;
 }) {
+  const t = useTextos(TEXTOS);
   const info = REDE[rede];
 
   return (
@@ -211,7 +268,7 @@ function ChainGroup({
       >
         <span className="flex items-center gap-2.5">
           <GridIcon />
-          Mais carteiras
+          {t.maisCarteiras}
         </span>
         <span className="flex items-center gap-2 text-[11px] font-normal text-zinc-600">
           {total}
@@ -247,6 +304,7 @@ function ChainLogo({ src, label }: { src?: string; label: string }) {
 /* ------------------------------------------------------------------ */
 
 function AllWalletsStep({ scope }: { scope: WalletNetwork }) {
+  const t = useTextos(TEXTOS);
   const opcoes = useWalletOptions();
   const { detected, notInstalled } = opcoes[scope];
   const [query, setQuery] = useState("");
@@ -269,7 +327,7 @@ function AllWalletsStep({ scope }: { scope: WalletNetwork }) {
         <input
           autoFocus
           value={query}
-          placeholder="Buscar carteira"
+          placeholder={t.buscar}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full bg-transparent text-[13px] text-zinc-100 outline-none placeholder:text-zinc-700"
         />
@@ -278,17 +336,17 @@ function AllWalletsStep({ scope }: { scope: WalletNetwork }) {
             onClick={() => setQuery("")}
             className="shrink-0 text-[11px] text-zinc-600 transition-colors hover:text-zinc-300"
           >
-            limpar
+            {t.limpar}
           </button>
         )}
       </div>
 
       {vazio && (
-        <p className="py-6 text-center text-[12px] text-zinc-600">Nenhuma carteira com esse nome.</p>
+        <p className="py-6 text-center text-[12px] text-zinc-600">{t.semNome}</p>
       )}
 
-      <WalletGroup title="Detectadas" options={filtrado.detected} />
-      <WalletGroup title="Não instaladas" options={filtrado.notInstalled} muted />
+      <WalletGroup title={t.detectadas} options={filtrado.detected} />
+      <WalletGroup title={t.naoInstaladas} options={filtrado.notInstalled} muted />
     </div>
   );
 }
@@ -328,6 +386,7 @@ function WalletGroup({
 /* ------------------------------------------------------------------ */
 
 function GoogleRow() {
+  const t = useTextos(TEXTOS);
   const [message, setMessage] = useState<string | null>(null);
 
   return (
@@ -336,9 +395,7 @@ function GoogleRow() {
         onClick={() =>
           SOCIAL_LOGIN_ENABLED
             ? undefined
-            : setMessage(
-                "A entrada com o Google ainda não está disponível. Por enquanto, use uma das carteiras listadas acima.",
-              )
+            : setMessage(t.googleIndisponivel)
         }
         className={cn(
           "flex w-full items-center justify-center gap-2.5 rounded-xl px-3 py-3 text-[14px] font-semibold transition-all",
@@ -348,8 +405,8 @@ function GoogleRow() {
         )}
       >
         <GoogleMark />
-        Continuar com o Google
-        {!SOCIAL_LOGIN_ENABLED && <Badge tone="warn">em breve</Badge>}
+        {t.google}
+        {!SOCIAL_LOGIN_ENABLED && <Badge tone="warn">{t.emBreve}</Badge>}
       </button>
 
       {message && <p className="text-[11px] leading-snug text-warn">{message}</p>}
@@ -362,6 +419,7 @@ function GoogleRow() {
 /* ------------------------------------------------------------------ */
 
 function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount> }) {
+  const t = useTextos(TEXTOS);
   const [nickname, setNickname] = useState("");
   const [status, setStatus] = useState<{ available: boolean; reason: string | null } | null>(null);
   const [checking, setChecking] = useState(false);
@@ -408,14 +466,14 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
     <div className="space-y-3">
       <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
         <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-          Apelido
+          {t.apelido}
         </label>
         <div className="flex items-center gap-1">
           <span className="text-lg font-bold text-zinc-600">@</span>
           <input
             autoFocus
             value={nickname}
-            placeholder="seunome"
+            placeholder={t.seuNome}
             maxLength={20}
             onChange={(e) => setNickname(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
             onKeyDown={(e) => e.key === "Enter" && canSubmit && account.claim(nickname)}
@@ -425,10 +483,10 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
           {!checking && status?.available && <span className="shrink-0 text-bull">✓</span>}
           <button
             onClick={() => setNickname(suggestNickname())}
-            title="Sortear outro"
+            title={t.sortearOutro}
             className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-white/5 hover:text-marca"
           >
-            sortear
+            {t.sortear}
           </button>
         </div>
       </div>
@@ -439,15 +497,11 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
       {account.error && <p className="text-[12px] text-bear">{account.error}</p>}
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
-        3 a 20 caracteres, só letras, números e <code>_</code>. Seu link fica{" "}
-        <span className="text-marca">/?ref={nickname || "seunome"}</span>. Você pode trocar de
-        apelido depois, no seu perfil, e os links antigos continuam funcionando.
+        {t.regras(<code>_</code>, <span className="text-marca">/?ref={nickname || t.seuNome}</span>)}
       </p>
 
       <div className="rounded-xl border border-white/[0.06] bg-ink-950/60 p-3 text-[11px] leading-relaxed text-zinc-500">
-        É só um nome para o site.{" "}
-        <strong className="text-zinc-300">Sua carteira não vai pedir nada</strong> — nenhuma
-        assinatura, nenhuma taxa, nenhum acesso aos seus fundos.
+        {t.soUmNome(<strong className="text-zinc-300">{t.naoPede}</strong>)}
       </div>
 
       <Button
@@ -457,14 +511,14 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
         disabled={!canSubmit}
         onClick={() => account.claim(nickname)}
       >
-        {account.claiming ? "Aguardando assinatura…" : "Registrar apelido"}
+        {account.claiming ? t.aguardando : t.registrar}
       </Button>
 
       <button
         onClick={() => account.disconnectSolana?.()}
         className="w-full py-1 text-[11px] text-zinc-600 transition-colors hover:text-zinc-400"
       >
-        usar outra carteira
+        {t.outraCarteira}
       </button>
     </div>
   );

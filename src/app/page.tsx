@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { FaixaDeAbertura } from "@/components/home/FaixaDeAbertura";
 import { idiomaAtual } from "@/lib/idioma-servidor";
+import { traducoes } from "@/lib/idiomas";
 import { LinhaDeMoeda } from "@/components/home/LinhaDeMoeda";
 import { MoedasQuentes } from "@/components/home/MoedasQuentes";
 import { Secao } from "@/components/home/Secao";
@@ -16,6 +17,108 @@ import { formatUsd } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+const TEXTOS = traducoes({
+  en: {
+    abaChroma: "Created on Chroma",
+    abaRecentes: "Newest",
+    abaAltas: "Top gainers",
+    abaVolume: "24h volume",
+    abaMcap: "Market cap",
+    semDados:
+      "Market data could not be loaded right now. The list below is only an example. Reload the page in a few seconds.",
+    naoLanca: (rede: string) => (
+      <>
+        Creating coins on {rede} through Chroma is <strong>not available yet</strong>. You can still
+        buy and sell here.
+      </>
+    ),
+    verRede: (rede: string) => `See ${rede}`,
+    lancadasTitulo: "Launched on Chroma",
+    lancadasResumo:
+      "Created here, on our bonding curve. The platform pays the creator and the referrer in the same transaction.",
+    verTodas: "See all",
+    maioresTitulo: "Biggest",
+    maioresResumo: "Highest market cap on both networks.",
+    mercadoTitulo: "Market",
+    mercadoResumo: "Every listed coin. Use the filters to sort.",
+    novasTitulo: "Just launched",
+    novasResumo: "Coins created recently and still small. Risk is higher here.",
+    vazioChroma: (rede: string) => `No coins created on Chroma on ${rede} yet.`,
+    crieAPrimeira: "Create the first one",
+    apareceAqui: "— it shows up here as soon as it is born.",
+    vazio: "No coins on this network right now.",
+    vazioLista: "The list comes from the live market and changes all the time.",
+    verARede: (rede: string) => `See ${rede}`,
+    semSeparacao: (n: number) =>
+      `${n} ${n === 1 ? "coin" : "coins"} listed in this filter. The biggest and just-launched sections appear when there are more coins.`,
+  },
+  pt: {
+    abaChroma: "Criadas na Chroma",
+    abaRecentes: "Recentes",
+    abaAltas: "Maiores altas",
+    abaVolume: "Volume 24h",
+    abaMcap: "Market cap",
+    semDados:
+      "Não foi possível carregar os dados de mercado agora. A lista abaixo é apenas um exemplo. Recarregue a página em alguns segundos.",
+    naoLanca: (rede: string) => (
+      <>
+        Ainda não é possível <strong>criar moedas</strong> na {rede} pela Chroma. Aqui você pode
+        comprar e vender normalmente.
+      </>
+    ),
+    verRede: (rede: string) => `Ver a ${rede}`,
+    lancadasTitulo: "Lançadas na Chroma",
+    lancadasResumo:
+      "Criadas aqui, na nossa curva. A plataforma paga o criador e o afiliado na própria transação.",
+    verTodas: "Ver todas",
+    maioresTitulo: "Maiores",
+    maioresResumo: "As de maior valor de mercado nas duas redes.",
+    mercadoTitulo: "Mercado",
+    mercadoResumo: "Todas as moedas listadas. Use os filtros para ordenar.",
+    novasTitulo: "Recém-chegadas",
+    novasResumo: "Moedas criadas há pouco tempo e ainda pequenas. O risco aqui é maior.",
+    vazioChroma: (rede: string) => `Nenhuma moeda criada na Chroma na ${rede} ainda.`,
+    crieAPrimeira: "Crie a primeira",
+    apareceAqui: "— ela aparece aqui assim que nascer.",
+    vazio: "Nenhuma moeda nessa rede agora.",
+    vazioLista: "A lista vem do mercado ao vivo e muda o tempo todo.",
+    verARede: (rede: string) => `Ver a rede ${rede}`,
+    semSeparacao: (n: number) =>
+      `${n} ${n === 1 ? "moeda listada" : "moedas listadas"} neste filtro. As seções de maiores e de recém-chegadas aparecem quando houver mais moedas.`,
+  },
+  zh: {
+    abaChroma: "Chroma 发行",
+    abaRecentes: "最新",
+    abaAltas: "涨幅榜",
+    abaVolume: "24小时交易量",
+    abaMcap: "市值",
+    semDados: "暂时无法加载市场数据。下方列表仅为示例，请稍后刷新页面。",
+    naoLanca: (rede: string) => (
+      <>
+        暂不支持通过 Chroma 在 {rede} 上<strong>创建代币</strong>。你仍可以在这里正常买卖。
+      </>
+    ),
+    verRede: (rede: string) => `查看 ${rede}`,
+    lancadasTitulo: "Chroma 发行",
+    lancadasResumo: "在我们的联合曲线上创建。平台在同一笔交易中向创建者和推荐人付款。",
+    verTodas: "查看全部",
+    maioresTitulo: "市值最高",
+    maioresResumo: "两条网络中市值最高的代币。",
+    mercadoTitulo: "市场",
+    mercadoResumo: "所有上架代币，可使用筛选条件排序。",
+    novasTitulo: "新上线",
+    novasResumo: "刚创建、规模尚小的代币，风险更高。",
+    vazioChroma: (rede: string) => `${rede} 上还没有在 Chroma 创建的代币。`,
+    crieAPrimeira: "创建第一个",
+    apareceAqui: "— 创建后会立即显示在这里。",
+    vazio: "该网络暂时没有代币。",
+    vazioLista: "列表来自实时市场，随时变化。",
+    verARede: (rede: string) => `查看 ${rede} 网络`,
+    semSeparacao: (n: number) =>
+      `此筛选下共有 ${n} 个代币。代币更多时，会显示"市值最高"和"新上线"栏目。`,
+  },
+});
+
 /**
  * As abas da grade de Mercado. "chroma" não é ordenação: é o recorte das
  * moedas criadas AQUI, que as fontes de mercado nem conhecem enquanto estão
@@ -23,12 +126,15 @@ export const dynamic = "force-dynamic";
  */
 type AbaDoMercado = SortKey | "chroma";
 
-const SORTS: { key: AbaDoMercado; label: string }[] = [
-  { key: "chroma", label: "Criadas na Chroma" },
-  { key: "new", label: "Recentes" },
-  { key: "gainers", label: "Maiores altas" },
-  { key: "volume", label: "Volume 24h" },
-  { key: "marketCap", label: "Market cap" },
+const SORTS: {
+  key: AbaDoMercado;
+  rotulo: "abaChroma" | "abaRecentes" | "abaAltas" | "abaVolume" | "abaMcap";
+}[] = [
+  { key: "chroma", rotulo: "abaChroma" },
+  { key: "new", rotulo: "abaRecentes" },
+  { key: "gainers", rotulo: "abaAltas" },
+  { key: "volume", rotulo: "abaVolume" },
+  { key: "marketCap", rotulo: "abaMcap" },
 ];
 
 /*
@@ -161,19 +267,21 @@ export default async function HomePage({
     return s ? `/?${s}#mercado` : "/#mercado";
   };
 
+  const idioma = await idiomaAtual();
+  const t = TEXTOS[idioma];
+
   return (
     <div className="space-y-5">
       <AtualizacaoAutomatica />
       <FaixaDeAbertura
-        idioma={await idiomaAtual()}
+        idioma={idioma}
         quantidadeDeTokens={String(tokens.length)}
         volumeTotal={formatUsd(totalVolume)}
       />
 
       {isDemo && (
         <div className="rounded border border-warn/30 bg-warn/[0.06] px-3 py-2 text-[12px] text-warn">
-          Não foi possível carregar os dados de mercado agora. A lista abaixo é apenas um exemplo.
-          Recarregue a página em alguns segundos.
+          {t.semDados}
         </div>
       )}
 
@@ -187,15 +295,12 @@ export default async function HomePage({
       */}
       {!podeLancarNaRede(chain) && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded border border-warn/30 bg-warn/[0.06] px-3 py-2 text-[12px] text-warn">
-          <span>
-            Ainda não é possível <strong>criar moedas</strong> na {CHAINS[chain].label} pela Chroma.
-            Aqui você pode comprar e vender normalmente.
-          </span>
+          <span>{t.naoLanca(CHAINS[chain].label)}</span>
           <Link
             href={`/?chain=${REDE_PADRAO}`}
             className="font-semibold underline underline-offset-2 hover:text-warn/80"
           >
-            Ver a {CHAINS[REDE_PADRAO].label}
+            {t.verRede(CHAINS[REDE_PADRAO].label)}
           </Link>
         </div>
       )}
@@ -224,10 +329,10 @@ export default async function HomePage({
           {lancadasNaChroma.length > 0 && (
             <>
               <Secao
-                titulo="Lançadas na Chroma"
-                resumo="Criadas aqui, na nossa curva. A plataforma paga o criador e o afiliado na própria transação."
+                titulo={t.lancadasTitulo}
+                resumo={t.lancadasResumo}
                 cor="#a78bfa"
-                acao={{ rotulo: "Ver todas", href: linkCom({ sort: "chroma" }) }}
+                acao={{ rotulo: t.verTodas, href: linkCom({ sort: "chroma" }) }}
               >
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                   {lancadasNaChroma.slice(0, QUANTAS_DA_CASA).map((token) => (
@@ -242,10 +347,10 @@ export default async function HomePage({
 
           {maiores.length > 0 && (
             <Secao
-              titulo="Maiores"
-              resumo="As de maior valor de mercado nas duas redes."
+              titulo={t.maioresTitulo}
+              resumo={t.maioresResumo}
               cor="#fbbf24"
-              acao={{ rotulo: "Ver todas", href: linkCom({ sort: "marketCap" }) }}
+              acao={{ rotulo: t.verTodas, href: linkCom({ sort: "marketCap" }) }}
             >
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                 {maiores.map((token) => (
@@ -259,8 +364,8 @@ export default async function HomePage({
 
           <div id="mercado" className="scroll-mt-20">
             <Secao
-              titulo="Mercado"
-              resumo="Todas as moedas listadas. Use os filtros para ordenar."
+              titulo={t.mercadoTitulo}
+              resumo={t.mercadoResumo}
               cor="#22d3ee"
             >
               <ChainTabs ativa={chain} sort={sort} />
@@ -281,16 +386,17 @@ export default async function HomePage({
                           : "inline-flex border-b-2 border-transparent px-2.5 pb-1.5 pt-1 text-[13px] font-medium text-zinc-500 transition-colors hover:text-zinc-200"
                       }
                     >
-                      {s.label}
+                      {t[s.rotulo]}
                     </span>
                   </Link>
                 ))}
               </div>
 
               {tokens.length === 0 && sort === "chroma" ? (
-                <VazioDaChroma rede={CHAINS[chain].label} />
+                <VazioDaChroma rede={CHAINS[chain].label} t={t} />
               ) : tokens.length === 0 ? (
                 <Vazio
+                  t={t}
                   href={linkCom({ chain: chain === "solana" ? "robinhood" : "solana" })}
                   outraRede={CHAINS[chain === "solana" ? "robinhood" : "solana"].label}
                 />
@@ -309,10 +415,10 @@ export default async function HomePage({
               <div className="aresta" />
 
               <Secao
-                titulo="Recém-chegadas"
-                resumo="Moedas criadas há pouco tempo e ainda pequenas. O risco aqui é maior."
+                titulo={t.novasTitulo}
+                resumo={t.novasResumo}
                 cor="#34d399"
-                acao={{ rotulo: "Ver todas", href: linkCom({ sort: "new" }) }}
+                acao={{ rotulo: t.verTodas, href: linkCom({ sort: "new" }) }}
               >
                 {/*
                   Linha em vez de cartão.
@@ -333,7 +439,7 @@ export default async function HomePage({
             </>
           )}
 
-          {!separar && tokens.length > 0 && <SemSeparacao tokens={tokens} />}
+          {!separar && tokens.length > 0 && <SemSeparacao tokens={tokens} t={t} />}
         </div>
       </div>
     </div>
@@ -348,30 +454,32 @@ export default async function HomePage({
  * exatamente pra lista vazia de onde ela saiu.
  */
 /** Aba da Chroma sem moeda: é convite, não erro. */
-function VazioDaChroma({ rede }: { rede: string }) {
+type T = (typeof TEXTOS)["en"];
+
+function VazioDaChroma({ rede, t }: { rede: string; t: T }) {
   return (
     <div className="rounded-lg border border-ink-700 bg-ink-900 px-6 py-12 text-center">
       <p className="text-[14px] font-semibold text-zinc-300">
-        Nenhuma moeda criada na Chroma na {rede} ainda.
+        {t.vazioChroma(rede)}
       </p>
       <p className="mt-1 text-[12px] text-zinc-600">
         <Link href="/create" className="text-marca hover:underline">
-          Crie a primeira
+          {t.crieAPrimeira}
         </Link>{" "}
-        — ela aparece aqui assim que nascer.
+        {t.apareceAqui}
       </p>
     </div>
   );
 }
 
-function Vazio({ href, outraRede }: { href: string; outraRede: string }) {
+function Vazio({ href, outraRede, t }: { href: string; outraRede: string; t: T }) {
   return (
     <div className="rounded-lg border border-ink-700 bg-ink-900 px-6 py-12 text-center">
-      <p className="text-[14px] font-semibold text-zinc-300">Nenhuma moeda nessa rede agora.</p>
+      <p className="text-[14px] font-semibold text-zinc-300">{t.vazio}</p>
       <p className="mt-1 text-[12px] text-zinc-600">
-        A lista vem do mercado ao vivo e muda o tempo todo.{" "}
+        {t.vazioLista}{" "}
         <Link href={href} className="text-marca hover:underline">
-          Ver a rede {outraRede}
+          {t.verARede(outraRede)}
         </Link>
         .
       </p>
@@ -386,11 +494,10 @@ function Vazio({ href, outraRede }: { href: string; outraRede: string }) {
  * três faixas. Mercado magro é informação útil pra quem vai operar — e um site
  * que esconde isso com layout está mentindo por omissão.
  */
-function SemSeparacao({ tokens }: { tokens: TokenSummary[] }) {
+function SemSeparacao({ tokens, t }: { tokens: TokenSummary[]; t: T }) {
   return (
     <p className="text-[11px] text-zinc-600">
-      {tokens.length} {tokens.length === 1 ? "moeda listada" : "moedas listadas"} neste filtro. As
-      seções de maiores e de recém-chegadas aparecem quando houver mais moedas.
+      {t.semSeparacao(tokens.length)}
     </p>
   );
 }

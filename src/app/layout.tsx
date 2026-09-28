@@ -7,6 +7,7 @@ import { Header } from "@/components/ui/Header";
 import { Moldura } from "@/components/ui/Moldura";
 import { Rodape } from "@/components/ui/Rodape";
 import { idiomaAtual } from "@/lib/idioma-servidor";
+import { IdiomaProvider } from "@/components/IdiomaProvider";
 import { AffiliateBanner } from "@/components/web3/AffiliateBanner";
 import { RpcNotice } from "@/components/web3/RpcNotice";
 
@@ -63,6 +64,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
      */
     <html lang={idioma} className="dark">
       <body className={`${display.variable} ${mono.variable} min-h-screen font-sans`}>
+        <IdiomaProvider idioma={idioma}>
         <WalletProviders>
           {/* useSearchParams precisa de um limite de Suspense no App Router. */}
           <Suspense fallback={null}>
@@ -88,6 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           */}
           <Rodape idioma={idioma} />
         </WalletProviders>
+        </IdiomaProvider>
       </body>
     </html>
   );

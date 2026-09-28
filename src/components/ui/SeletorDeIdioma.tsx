@@ -98,7 +98,7 @@ export function SeletorDeIdioma({ atual }: { atual: Idioma }) {
         onClick={() => setAberto((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={aberto}
-        aria-label="Idioma"
+        aria-label="Language"
         className={cn(
           "flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-semibold transition-colors",
           aberto
@@ -172,9 +172,7 @@ export function SeletorDeIdioma({ atual }: { atual: Idioma }) {
             em português merece saber que é estado do produto, e não defeito
             do navegador dele.
           */}
-          <p className="border-t border-ink-700 px-2.5 pb-1 pt-2 text-[10px] leading-relaxed text-zinc-600">
-            Menu e início traduzidos. Páginas legais seguem em português.
-          </p>
+
         </div>
       )}
     </div>

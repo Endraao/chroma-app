@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -22,7 +25,14 @@ import { cn, formatUsd, shortenAddress } from "@/lib/utils";
  * um aviso de pendência; este bloco entrega as três ações que a pessoa logada
  * de fato usa — lançar moeda, conferir saldo e abrir o perfil.
  */
+const TEXTOS = traducoes({
+  en: { entrar: "Sign in", carteiraExterna: "external wallet", criar: "Create token", abrirMenu: "Open account menu", escolherApelido: "Choose a nickname", verPerfil: "View profile", suasRedes: "Your networks", esconderSaldo: "Hide balance", mostrarSaldo: "Show balance", naoPertence: "This wallet is not linked to your account yet", vincular: "link", conectar: "connect", emEth: "In ETH", emSol: "In SOL", emMoedas: "In coins", moeda: "coin", moedas: "coins", taxas: "Fees", indicacoes: "Referrals", sair: "Sign out" },
+  pt: { entrar: "Entrar", carteiraExterna: "carteira externa", criar: "Criar token", abrirMenu: "Abrir menu da conta", escolherApelido: "Escolher apelido", verPerfil: "Ver perfil", suasRedes: "Suas redes", esconderSaldo: "Esconder saldo", mostrarSaldo: "Mostrar saldo", naoPertence: "Esta carteira ainda não pertence à sua conta", vincular: "vincular", conectar: "conectar", emEth: "Em ETH", emSol: "Em SOL", emMoedas: "Em moedas", moeda: "moeda", moedas: "moedas", taxas: "Taxas", indicacoes: "Indicações", sair: "Sair" },
+  zh: { entrar: "登录", carteiraExterna: "外部钱包", criar: "创建代币", abrirMenu: "打开账户菜单", escolherApelido: "选择昵称", verPerfil: "查看资料", suasRedes: "你的网络", esconderSaldo: "隐藏余额", mostrarSaldo: "显示余额", naoPertence: "该钱包尚未关联到你的账户", vincular: "关联", conectar: "连接", emEth: "ETH 余额", emSol: "SOL 余额", emMoedas: "代币", moeda: "个代币", moedas: "个代币", taxas: "费用", indicacoes: "推荐", sair: "退出" },
+});
+
 export function AccountMenu() {
+  const t = useTextos(TEXTOS);
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -73,7 +83,7 @@ export function AccountMenu() {
     return (
       <>
         <Button variant="chroma" size="sm" className="h-[38px]" onClick={() => setModalOpen(true)}>
-          Sign in
+          {t.entrar}
         </Button>
         <SignInModal open={modalOpen} onClose={() => setModalOpen(false)} />
       </>
@@ -86,14 +96,14 @@ export function AccountMenu() {
     setMenuOpen(false);
   }
 
-  const nomeCarteira = solanaWallet?.adapter.name ?? "carteira externa";
+  const nomeCarteira = solanaWallet?.adapter.name ?? t.carteiraExterna;
 
   return (
     <div className="flex items-center gap-2" ref={boxRef}>
       {/* Criar token */}
       <Link
         href="/create"
-        title="Criar token"
+        title={t.criar}
         className="grid size-[38px] place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03] text-zinc-300 transition-colors hover:border-marca/40 hover:bg-marca/[0.08] hover:text-white"
       >
         <PlusIcon />
@@ -115,7 +125,7 @@ export function AccountMenu() {
         <button
           onClick={() => setMenuOpen((v) => !v)}
           className="block rounded-full ring-2 ring-transparent transition-all hover:ring-marca/40"
-          aria-label="Abrir menu da conta"
+          aria-label={t.abrirMenu}
         >
           <Avatar seed={account.wallet ?? "chroma"} src={account.account?.avatar} size={38} />
         </button>
@@ -131,14 +141,14 @@ export function AccountMenu() {
               <Avatar seed={account.wallet ?? "chroma"} src={account.account?.avatar} size={44} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-bold text-zinc-50">
-                  {account.account ? `@${account.account.displayName}` : "Escolher apelido"}
+                  {account.account ? `@${account.account.displayName}` : t.escolherApelido}
                 </span>
                 <span className="tnum block text-[12px] text-zinc-500">
                   {account.wallet ? shortenAddress(account.wallet, 4) : "—"}
                 </span>
               </span>
               <span className="flex shrink-0 items-center gap-1 text-[12px] font-semibold text-zinc-400">
-                Ver perfil <span className="text-zinc-600">›</span>
+                {t.verPerfil} <span className="text-zinc-600">›</span>
               </span>
             </Link>
 
@@ -151,11 +161,11 @@ export function AccountMenu() {
             <div className="border-y border-white/[0.06] bg-white/[0.015] px-4 py-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-                  Suas redes
+                  {t.suasRedes}
                 </span>
                 <button
                   onClick={() => setSaldoVisivel((v) => !v)}
-                  title={saldoVisivel ? "Esconder saldo" : "Mostrar saldo"}
+                  title={saldoVisivel ? t.esconderSaldo : t.mostrarSaldo}
                   className="shrink-0 text-zinc-600 transition-colors hover:text-zinc-300"
                 >
                   <EyeIcon aberto={saldoVisivel} />
@@ -209,10 +219,10 @@ export function AccountMenu() {
                             <Link
                               href="/profile?aba=conta"
                               onClick={() => setMenuOpen(false)}
-                              title="Esta carteira ainda não pertence à sua conta"
+                              title={t.naoPertence}
                               className="rounded-md border border-warn/40 px-1.5 py-0.5 text-[10px] font-bold text-warn transition-colors hover:bg-warn/10"
                             >
-                              vincular
+                              {t.vincular}
                             </Link>
                           )}
                           <span className="tnum text-[11px] text-zinc-500">
@@ -227,7 +237,7 @@ export function AccountMenu() {
                           }}
                           className="shrink-0 rounded-md border border-marca/30 px-1.5 py-0.5 text-[10px] font-bold text-marca transition-colors hover:bg-marca/10"
                         >
-                          conectar
+                          {t.conectar}
                         </button>
                       )}
                     </div>
@@ -248,7 +258,7 @@ export function AccountMenu() {
               <div className="space-y-1.5 px-4 py-2.5 text-[12px]">
                 {eth !== null && (
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">Em ETH</span>
+                    <span className="text-zinc-500">{t.emEth}</span>
                     <span className="tnum font-semibold text-zinc-200">
                       {saldoVisivel ? `${eth.toFixed(5)} ETH` : "••••"}
                     </span>
@@ -257,7 +267,7 @@ export function AccountMenu() {
 
                 {sol !== null && (
                   <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">Em SOL</span>
+                    <span className="text-zinc-500">{t.emSol}</span>
                     <span className="tnum font-semibold text-zinc-200">
                       {saldoVisivel ? `${sol.toFixed(4)} SOL` : "••••"}
                     </span>
@@ -267,9 +277,9 @@ export function AccountMenu() {
                 {emMoedas !== null && emMoedas > 0 && (
                   <div className="flex items-center justify-between">
                     <span className="text-zinc-500">
-                      Em moedas
+                      {t.emMoedas}
                       <span className="ml-1 text-zinc-600">
-                        ({quantasMoedas} {quantasMoedas === 1 ? "moeda" : "moedas"})
+                        ({quantasMoedas} {quantasMoedas === 1 ? t.moeda : t.moedas})
                       </span>
                     </span>
                     <span className="tnum font-semibold text-zinc-200">
@@ -283,10 +293,10 @@ export function AccountMenu() {
             {/* Ações */}
             <div className="grid grid-cols-2 gap-1 border-t border-white/[0.06] p-1">
               <MenuItem href="/fees" onClick={() => setMenuOpen(false)} icon={<HelpIcon />}>
-                Taxas
+                {t.taxas}
               </MenuItem>
               <MenuItem href="/affiliate" onClick={() => setMenuOpen(false)} icon={<LinkIcon />}>
-                Indicações
+                {t.indicacoes}
               </MenuItem>
             </div>
 
@@ -296,7 +306,7 @@ export function AccountMenu() {
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[13px] font-semibold text-zinc-400 transition-colors hover:bg-white/5 hover:text-bear"
               >
                 <ExitIcon />
-                Sair
+                {t.sair}
               </button>
             </div>
           </div>

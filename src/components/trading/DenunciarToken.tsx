@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useRef, useState } from "react";
 
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -43,7 +46,55 @@ const MOTIVOS = [
 
 type Estado = "form" | "enviando" | "pronto";
 
+type Motivos = Record<string, { rotulo: string; nota: string }>;
+
+const TEXTOS = traducoes({
+  en: {
+    naoRegistrou: "could not register right now", semConexao: "No connection to the server. Try again.",
+    denunciarMoeda: "Report this coin", registrada: "Report received", obrigado: "Our team will review it. Thanks for letting us know.",
+    denunciar: "Report", oQue: "What is wrong with this coin?", detalhe: "Details, if you want (optional)",
+    enviando: "Sending…", enviar: "Send report", falsas: "Mass false reports are also considered abuse and are logged.",
+    motivos: {
+      "conteudo-odioso": { rotulo: "Hate content", nota: "Racism, homophobia, nazism" },
+      "conteudo-sexual": { rotulo: "Sexual content", nota: "Pornography or nudity" },
+      golpe: { rotulo: "Scam", nota: "Fraud, rug pull, honeypot" },
+      falsificacao: { rotulo: "Impersonation", nota: "Poses as a brand or person" },
+      violencia: { rotulo: "Violence", nota: "Threats or glorification" },
+      outro: { rotulo: "Other reason", nota: "Describe below" },
+    } as Motivos,
+  },
+  pt: {
+    naoRegistrou: "não foi possível registrar agora", semConexao: "Sem conexão com o servidor. Tente novamente.",
+    denunciarMoeda: "Denunciar esta moeda", registrada: "Denúncia registrada", obrigado: "Nossa equipe vai analisar. Obrigado por avisar.",
+    denunciar: "Denunciar", oQue: "O que há de errado com esta moeda?", detalhe: "Detalhe, se quiser (opcional)",
+    enviando: "Enviando…", enviar: "Enviar denúncia", falsas: "Denúncias falsas em massa também são consideradas abuso e ficam registradas.",
+    motivos: {
+      "conteudo-odioso": { rotulo: "Conteúdo de ódio", nota: "Racismo, homofobia, nazismo" },
+      "conteudo-sexual": { rotulo: "Conteúdo sexual", nota: "Pornografia ou nudez" },
+      golpe: { rotulo: "Golpe", nota: "Fraude, rug pull, honeypot" },
+      falsificacao: { rotulo: "Falsificação", nota: "Se passa por marca ou pessoa" },
+      violencia: { rotulo: "Violência", nota: "Ameaça ou apologia" },
+      outro: { rotulo: "Outro motivo", nota: "Descreva abaixo" },
+    } as Motivos,
+  },
+  zh: {
+    naoRegistrou: "暂时无法提交", semConexao: "无法连接服务器，请重试。",
+    denunciarMoeda: "举报该代币", registrada: "举报已提交", obrigado: "我们的团队会进行审核，感谢你的提醒。",
+    denunciar: "举报", oQue: "这个代币有什么问题？", detalhe: "补充说明（可选）",
+    enviando: "提交中…", enviar: "提交举报", falsas: "大量虚假举报同样被视为滥用，并会被记录。",
+    motivos: {
+      "conteudo-odioso": { rotulo: "仇恨内容", nota: "种族歧视、恐同、纳粹" },
+      "conteudo-sexual": { rotulo: "色情内容", nota: "色情或裸露" },
+      golpe: { rotulo: "诈骗", nota: "欺诈、跑路、貔貅盘" },
+      falsificacao: { rotulo: "冒充", nota: "冒充品牌或个人" },
+      violencia: { rotulo: "暴力", nota: "威胁或美化暴力" },
+      outro: { rotulo: "其他原因", nota: "请在下方说明" },
+    } as Motivos,
+  },
+});
+
 export function DenunciarToken({ token }: { token: TokenSummary }) {
+  const t = useTextos(TEXTOS);
   const { publicKey } = useWallet();
 
   const [aberto, setAberto] = useState(false);
@@ -110,7 +161,7 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
 
       if (!res.ok) {
         const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
-        setErro(corpo?.error ?? "não foi possível registrar agora");
+        setErro(corpo?.error ?? t.naoRegistrou);
         setEstado("form");
         return;
       }
@@ -118,7 +169,7 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
       setEstado("pronto");
       window.setTimeout(() => setAberto(false), 2200);
     } catch {
-      setErro("Sem conexão com o servidor. Tente novamente.");
+      setErro(t.semConexao);
       setEstado("form");
     }
   }
@@ -127,8 +178,8 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
     <div className="relative" ref={caixaRef}>
       <button
         onClick={() => setAberto((v) => !v)}
-        title="Denunciar esta moeda"
-        aria-label="Denunciar esta moeda"
+        title={t.denunciarMoeda}
+        aria-label={t.denunciarMoeda}
         className={cn(
           "grid size-[22px] place-items-center rounded-md border border-white/[0.06] transition-colors",
           aberto ? "border-bear/40 text-bear" : "text-zinc-600 hover:border-bear/40 hover:text-bear",
@@ -146,16 +197,16 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
                   <path d="m5 13 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <p className="text-[13px] font-bold text-zinc-100">Denúncia registrada</p>
+              <p className="text-[13px] font-bold text-zinc-100">{t.registrada}</p>
               <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                Nossa equipe vai analisar. Obrigado por avisar.
+                {t.obrigado}
               </p>
             </div>
           ) : (
             <>
-              <p className="text-[13px] font-bold text-zinc-100">Denunciar ${token.symbol}</p>
+              <p className="text-[13px] font-bold text-zinc-100">{t.denunciar} ${token.symbol}</p>
               <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-500">
-                O que há de errado com esta moeda?
+                {t.oQue}
               </p>
 
               <div className="mt-2.5 space-y-1">
@@ -183,9 +234,9 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
                           motivo === m.chave ? "text-bear" : "text-zinc-200",
                         )}
                       >
-                        {m.rotulo}
+                        {t.motivos[m.chave].rotulo}
                       </span>
-                      <span className="block truncate text-[10px] text-zinc-600">{m.nota}</span>
+                      <span className="block truncate text-[10px] text-zinc-600">{t.motivos[m.chave].nota}</span>
                     </span>
                   </button>
                 ))}
@@ -194,7 +245,7 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
               <textarea
                 value={detalhe}
                 onChange={(e) => setDetalhe(e.target.value.slice(0, 1500))}
-                placeholder="Detalhe, se quiser (opcional)"
+                placeholder={t.detalhe}
                 rows={2}
                 className="mt-2 w-full resize-none rounded-lg border border-ink-600 bg-ink-800 px-2.5 py-2 text-[12px] text-zinc-200 placeholder:text-zinc-600 focus:border-bear/40 focus:outline-none"
               />
@@ -225,11 +276,11 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
                 disabled={!motivo || estado === "enviando"}
                 className="mt-2.5 w-full"
               >
-                {estado === "enviando" ? "Enviando…" : "Enviar denúncia"}
+                {estado === "enviando" ? t.enviando : t.enviar}
               </Button>
 
               <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
-                Denúncias falsas em massa também são consideradas abuso e ficam registradas.
+                {t.falsas}
               </p>
             </>
           )}

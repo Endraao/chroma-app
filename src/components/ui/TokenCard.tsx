@@ -1,4 +1,9 @@
+"use client";
+
 import Link from "next/link";
+
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
 
 import { Sparkline } from "@/components/ui/Sparkline";
 import { CHAINS } from "@/lib/web3";
@@ -14,7 +19,14 @@ import type { TokenSummary } from "@/lib/types";
  * quadrados cinza com duas letras. Na ficha, a arte é um avatar pequeno e o
  * que manda são os números — que toda moeda tem.
  */
+const TEXTOS = traducoes({
+  en: { curva: "Curve", preco: "Price", mcap: "Mcap", holders: "Holders", liquidez: "Liquidity" },
+  pt: { curva: "Curva", preco: "Preço", mcap: "Mcap", holders: "Holders", liquidez: "Liquidez" },
+  zh: { curva: "曲线", preco: "价格", mcap: "市值", holders: "持有人", liquidez: "流动性" },
+});
+
 export function TokenCard({ token }: { token: TokenSummary }) {
+  const t = useTextos(TEXTOS);
   const up = token.change24h >= 0;
   const meta = CHAINS[token.chain];
   const naCurva = token.bondingProgress !== null;
@@ -59,7 +71,7 @@ export function TokenCard({ token }: { token: TokenSummary }) {
             naCurva ? "border-marca/40 text-marca" : "border-ink-600 text-zinc-500",
           )}
         >
-          {naCurva ? "Curva" : meta.label}
+          {naCurva ? t.curva : meta.label}
         </span>
       </div>
 
@@ -75,12 +87,12 @@ export function TokenCard({ token }: { token: TokenSummary }) {
 
       {/* Números */}
       <div className="tnum mt-3 grid grid-cols-3 gap-2">
-        <Numero rotulo="Preço" valor={`$${formatPrice(token.priceUsd)}`} />
-        <Numero rotulo="Mcap" valor={formatUsd(token.marketCapUsd)} />
+        <Numero rotulo={t.preco} valor={`$${formatPrice(token.priceUsd)}`} />
+        <Numero rotulo={t.mcap} valor={formatUsd(token.marketCapUsd)} />
         {token.holders > 0 ? (
-          <Numero rotulo="Holders" valor={token.holders.toLocaleString("pt-BR")} />
+          <Numero rotulo={t.holders} valor={token.holders.toLocaleString("pt-BR")} />
         ) : (
-          <Numero rotulo="Liquidez" valor={formatUsd(token.liquidityUsd)} />
+          <Numero rotulo={t.liquidez} valor={formatUsd(token.liquidityUsd)} />
         )}
       </div>
 
@@ -89,7 +101,7 @@ export function TokenCard({ token }: { token: TokenSummary }) {
         {naCurva ? (
           <>
             <div className="mb-1 flex justify-between text-[10px] text-zinc-600">
-              <span className="uppercase tracking-wider">Curva</span>
+              <span className="uppercase tracking-wider">{t.curva}</span>
               <span className="tnum">{progresso.toFixed(progresso < 10 ? 1 : 0)}%</span>
             </div>
             <div className="h-1 overflow-hidden rounded-full bg-ink-700">

@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useState } from "react";
 
 import { Card } from "@/components/ui/Card";
@@ -23,6 +26,12 @@ import type { TokenSummary } from "@/lib/types";
  * devolveria o mesmo número. O volume é os dois somados: a base de 24h da
  * fonte, mais o que passou na nossa frente desde que a página abriu.
  */
+const TEXTOS = traducoes({
+  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders" },
+  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders" },
+  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人" },
+});
+
 export function TokenHeader({
   token,
   price,
@@ -36,6 +45,7 @@ export function TokenHeader({
   volumeDaSessao: number;
   top10Pct: number;
 }) {
+  const t = useTextos(TEXTOS);
   const [copied, setCopied] = useState(false);
   const meta = CHAINS[token.chain];
 
@@ -103,12 +113,12 @@ export function TokenHeader({
               */}
             {progressoDaCurva !== null ? (
               <Badge tone="chroma">
-                curva {progressoDaCurva.toFixed(0).replace(".", ",")}%
+                {t.curva} {progressoDaCurva.toFixed(0)}%
               </Badge>
             ) : token.bondingProgress !== null ? (
-              <Badge tone="chroma">bonding {token.bondingProgress}%</Badge>
+              <Badge tone="chroma">{t.curva} {token.bondingProgress}%</Badge>
             ) : (
-              <Badge tone="neutral">{token.dexId ?? "listado em DEX"}</Badge>
+              <Badge tone="neutral">{token.dexId ?? t.listado}</Badge>
             )}
           </div>
 
@@ -117,7 +127,7 @@ export function TokenHeader({
               onClick={copyAddress}
               className="tnum rounded-md border border-white/[0.06] px-2 py-0.5 transition-colors hover:border-marca/40 hover:text-marca"
             >
-              {copied ? "copiado!" : shortenAddress(token.address, 6)}
+              {copied ? t.copiado : shortenAddress(token.address, 6)}
             </button>
             {meta.explorer !== "#" && (
               <a
@@ -126,7 +136,7 @@ export function TokenHeader({
                 rel="noreferrer"
                 className="transition-colors hover:text-zinc-300"
               >
-                ver no explorer ↗
+                {t.verExplorer}
               </a>
             )}
             <span>criado {timeAgo(token.createdAt)} atrás</span>
@@ -142,13 +152,13 @@ export function TokenHeader({
               meme coin se repete às centenas e o resultado viria cheio de
               moeda homônima; o contrato é único, e quem fala dela cita ele.
             */}
-            {token.website && <EloExterno href={token.website} rotulo="site" />}
+            {token.website && <EloExterno href={token.website} rotulo={t.site} />}
             {token.twitter ? (
               <EloExterno href={token.twitter} rotulo="X" />
             ) : (
               <EloExterno
                 href={`https://x.com/search?q=${encodeURIComponent(token.address)}&f=live`}
-                rotulo="buscar no X"
+                rotulo={t.buscarNoX}
               />
             )}
             {token.telegram && <EloExterno href={token.telegram} rotulo="Telegram" />}
@@ -186,17 +196,17 @@ export function TokenHeader({
         cada pixel gasto aqui sai de lá.
       */}
       <div className="mt-2.5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/[0.06] pt-2.5">
-        <Numero rotulo="Market cap" valor={formatUsd(marketCapAoVivo)} />
+        <Numero rotulo={t.mcap} valor={formatUsd(marketCapAoVivo)} />
         <Numero
-          rotulo="Variação 24h"
+          rotulo={t.variacao}
           valor={formatPct(variacao)}
           cor={up ? "text-bull" : "text-bear"}
         />
-        <Numero rotulo="Volume 24h" valor={formatUsd(volumeTotal)} />
-        <Numero rotulo="Liquidez" valor={formatUsd(stats.liquidityUsd)} />
+        <Numero rotulo={t.volume} valor={formatUsd(volumeTotal)} />
+        <Numero rotulo={t.liquidez} valor={formatUsd(stats.liquidityUsd)} />
         <Numero
-          rotulo="Holders"
-          valor={stats.holders > 0 ? stats.holders.toLocaleString("pt-BR") : "—"}
+          rotulo={t.holders}
+          valor={stats.holders > 0 ? stats.holders.toLocaleString() : "—"}
         />
         {/*
           Só aparece quando existe. Na Robinhood Chain nenhum serviço publica a

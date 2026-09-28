@@ -1,3 +1,7 @@
+"use client";
+
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
 import Link from "next/link";
 
 import { LinhaDeMoeda } from "@/components/home/LinhaDeMoeda";
@@ -26,7 +30,14 @@ import type { TokenSummary } from "@/lib/types";
  * ser. Grudada, vira o painel lateral do terminal: você desce a lista inteira
  * e continua vendo o que está girando.
  */
+const TEXTOS = traducoes({
+  en: { titulo: "Trending", resumo: "Coins with the highest traded volume in the last 24 hours.", ranking: "See full ranking →" },
+  pt: { titulo: "Quentes", resumo: "As moedas com maior volume negociado nas últimas 24 horas.", ranking: "Ver ranking completo →" },
+  zh: { titulo: "热门", resumo: "过去 24 小时交易量最高的代币。", ranking: "查看完整排行 →" },
+});
+
 export function MoedasQuentes({ tokens }: { tokens: TokenSummary[] }) {
+  const t = useTextos(TEXTOS);
   if (tokens.length === 0) return null;
 
   return (
@@ -64,14 +75,14 @@ export function MoedasQuentes({ tokens }: { tokens: TokenSummary[] }) {
                 <span className="absolute inline-flex size-full animate-pulse-dot rounded-full bg-bull" />
               </span>
               <h2 className="text-[11px] font-bold uppercase tracking-rotulo text-zinc-200">
-                Quentes
+                {t.titulo}
               </h2>
             </div>
             <span className="rotulo">24h</span>
           </div>
 
           <p className="px-3 pb-2 text-[10px] leading-snug text-zinc-600">
-            As moedas com maior volume negociado nas últimas 24 horas.
+            {t.resumo}
           </p>
 
           <div className="relative z-[1] px-1 pb-1">
@@ -90,7 +101,7 @@ export function MoedasQuentes({ tokens }: { tokens: TokenSummary[] }) {
             href="/?sort=volume"
             className="block border-t border-ink-700 px-3 py-2.5 text-center text-[11px] font-semibold text-zinc-500 transition-colors hover:bg-ink-800 hover:text-marca"
           >
-            Ver ranking completo →
+            {t.ranking}
           </Link>
         </div>
       </div>

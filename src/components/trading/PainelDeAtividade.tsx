@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useState } from "react";
 
 import { TabelaDeTraders } from "@/components/trading/TabelaDeTraders";
@@ -19,6 +22,12 @@ interface Negocio {
 
 const RECARREGA_MS = 10_000;
 
+const TEXTOS = traducoes({
+  en: { transacoes: "Transactions", traders: "Traders", aoVivo: "live", carregando: "Loading…", nenhum: "No trades yet. The first one could be yours.", quando: "Time", lado: "Side", trader: "Trader", preco: "Price", compra: "Buy", venda: "Sell" },
+  pt: { transacoes: "Transações", traders: "Traders", aoVivo: "ao vivo", carregando: "Carregando…", nenhum: "Nenhum negócio ainda. O primeiro pode ser o seu.", quando: "Quando", lado: "Lado", trader: "Trader", preco: "Preço", compra: "Compra", venda: "Venda" },
+  zh: { transacoes: "交易记录", traders: "交易者", aoVivo: "实时", carregando: "加载中…", nenhum: "还没有交易。第一笔可能就是你的。", quando: "时间", lado: "方向", trader: "交易者", preco: "价格", compra: "买入", venda: "卖出" },
+});
+
 /**
  * Abas embaixo do gráfico: os negócios ao vivo e quem está na moeda.
  *
@@ -35,6 +44,7 @@ export function PainelDeAtividade({
   symbol: string;
   chain: ChainId;
 }) {
+  const t = useTextos(TEXTOS);
   const [aba, setAba] = useState<"negocios" | "holders">("negocios");
   const [negocios, setNegocios] = useState<Negocio[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -73,14 +83,14 @@ export function PainelDeAtividade({
       {/* Abas */}
       <div className="flex items-center gap-1 border-b border-ink-700 px-3">
         <Aba ativa={aba === "negocios"} onClick={() => setAba("negocios")}>
-          Transações {total > 0 && <Contador>{total}</Contador>}
+          {t.transacoes} {total > 0 && <Contador>{total}</Contador>}
         </Aba>
         <Aba ativa={aba === "holders"} onClick={() => setAba("holders")}>
-          Traders
+          {t.traders}
         </Aba>
         {aba === "negocios" && (
           <span className="ml-auto flex items-center gap-1.5 text-[11px] text-zinc-500">
-            <span className="size-1.5 animate-pulse rounded-full bg-bull" /> ao vivo
+            <span className="size-1.5 animate-pulse rounded-full bg-bull" /> {t.aoVivo}
           </span>
         )}
       </div>
@@ -90,23 +100,23 @@ export function PainelDeAtividade({
           <TabelaDeTraders address={address} symbol={symbol} chain={chain} />
         </div>
       ) : negocios === null ? (
-        <p className="px-4 py-10 text-center text-[13px] text-zinc-600">Carregando…</p>
+        <p className="px-4 py-10 text-center text-[13px] text-zinc-600">{t.carregando}</p>
       ) : negocios.length === 0 ? (
         <p className="px-4 py-10 text-center text-[13px] text-zinc-600">
-          Nenhum negócio ainda. O primeiro pode ser o seu.
+          {t.nenhum}
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="tnum w-full min-w-[720px] text-[12px]">
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-wider text-zinc-600">
-                <th className="px-4 py-2.5 font-semibold">Quando</th>
-                <th className="px-2 py-2.5 font-semibold">Lado</th>
-                <th className="px-2 py-2.5 font-semibold">Trader</th>
+                <th className="px-4 py-2.5 font-semibold">{t.quando}</th>
+                <th className="px-2 py-2.5 font-semibold">{t.lado}</th>
+                <th className="px-2 py-2.5 font-semibold">{t.trader}</th>
                 <th className="px-2 py-2.5 text-right font-semibold">{meta.nativeSymbol}</th>
                 <th className="px-2 py-2.5 text-right font-semibold">USD</th>
                 <th className="px-2 py-2.5 text-right font-semibold">{symbol}</th>
-                <th className="px-2 py-2.5 text-right font-semibold">Preço</th>
+                <th className="px-2 py-2.5 text-right font-semibold">{t.preco}</th>
                 <th className="px-4 py-2.5 text-right font-semibold">TX</th>
               </tr>
             </thead>
@@ -123,7 +133,7 @@ export function PainelDeAtividade({
                           compra ? "border-bull/40 text-bull" : "border-bear/40 text-bear",
                         )}
                       >
-                        {compra ? "Compra" : "Venda"}
+                        {compra ? t.compra : t.venda}
                       </span>
                     </td>
                     <td className="px-2 py-2.5 font-mono text-zinc-300">{shortenAddress(n.carteira, 4)}</td>

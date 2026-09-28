@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
@@ -25,6 +28,36 @@ import type { ChainId } from "@/lib/types";
  * ser um contrato diferente, de outro dono. Por isso a troca de rede é pedida
  * antes de qualquer ação — e é pedida, nunca feita à revelia.
  */
+const TEXTOS = traducoes({
+  en: {
+    outraRede: "Your wallet is on another network",
+    moedaDa: (rede: string) => `This coin is on ${rede}`,
+    precisaEstar: (rede: React.ReactNode) => <>To trade this coin your wallet must be on {rede}. Switch networks in your wallet to continue.</>,
+    conecteUma: (rede: React.ReactNode) => <>Connect a {rede} wallet to buy or sell. You can keep both networks connected at the same time: each coin uses the wallet of its own network.</>,
+    aguardando: "Waiting for the wallet…",
+    trocarPara: (rede: string) => `Switch to ${rede}`,
+    conectarCarteira: (rede: string) => `Connect ${rede} wallet`,
+  },
+  pt: {
+    outraRede: "Sua carteira está em outra rede",
+    moedaDa: (rede: string) => `Esta moeda é da ${rede}`,
+    precisaEstar: (rede: React.ReactNode) => <>Para negociar esta moeda, a sua carteira precisa estar na {rede}. Troque de rede na carteira para continuar.</>,
+    conecteUma: (rede: React.ReactNode) => <>Conecte uma carteira da {rede} para comprar ou vender. Você pode manter as duas redes conectadas ao mesmo tempo: cada moeda usa a carteira da sua rede.</>,
+    aguardando: "Aguardando a carteira…",
+    trocarPara: (rede: string) => `Trocar para ${rede}`,
+    conectarCarteira: (rede: string) => `Conectar carteira ${rede}`,
+  },
+  zh: {
+    outraRede: "你的钱包在其他网络上",
+    moedaDa: (rede: string) => `该代币属于 ${rede}`,
+    precisaEstar: (rede: React.ReactNode) => <>交易该代币需要钱包切换到 {rede}。请在钱包中切换网络后继续。</>,
+    conecteUma: (rede: React.ReactNode) => <>连接 {rede} 钱包即可买卖。两条网络可以同时连接：每个代币使用其所在网络的钱包。</>,
+    aguardando: "等待钱包…",
+    trocarPara: (rede: string) => `切换到 ${rede}`,
+    conectarCarteira: (rede: string) => `连接 ${rede} 钱包`,
+  },
+});
+
 export function RequireChainWallet({
   chain,
   children,
@@ -32,6 +65,7 @@ export function RequireChainWallet({
   chain: ChainId;
   children: React.ReactNode;
 }) {
+  const t = useTextos(TEXTOS);
   const [modalAberto, setModalAberto] = useState(false);
 
   const { connected: solanaConectada } = useWallet();
@@ -59,23 +93,15 @@ export function RequireChainWallet({
             className="size-5 rounded-full"
           />
           <span className="text-[13px] font-semibold text-zinc-200">
-            {redeErrada ? `Sua carteira está em outra rede` : `Esta moeda é da ${meta.label}`}
+            {redeErrada ? t.outraRede : t.moedaDa(meta.label)}
           </span>
         </div>
 
         <p className="text-[11px] leading-relaxed text-zinc-500">
           {redeErrada ? (
-            <>
-              Para negociar esta moeda, a sua carteira precisa estar na{" "}
-              <strong className="text-zinc-300">{meta.label}</strong>. Troque de rede na carteira
-              para continuar.
-            </>
+            t.precisaEstar(<strong className="text-zinc-300">{meta.label}</strong>)
           ) : (
-            <>
-              Conecte uma carteira da <strong className="text-zinc-300">{meta.label}</strong> para
-              comprar ou vender. Você pode manter as duas redes conectadas ao mesmo tempo: cada
-              moeda usa a carteira da sua rede.
-            </>
+            t.conecteUma(<strong className="text-zinc-300">{meta.label}</strong>)
           )}
         </p>
 
@@ -87,7 +113,7 @@ export function RequireChainWallet({
             disabled={trocando}
             onClick={() => switchChain({ chainId: robinhoodChain.id })}
           >
-            {trocando ? "Aguardando a carteira…" : `Trocar para ${meta.label}`}
+            {trocando ? t.aguardando : t.trocarPara(meta.label)}
           </Button>
         ) : (
           <Button
@@ -96,7 +122,7 @@ export function RequireChainWallet({
             className="w-full"
             onClick={() => setModalAberto(true)}
           >
-            Conectar carteira {meta.label}
+            {t.conectarCarteira(meta.label)}
           </Button>
         )}
       </div>

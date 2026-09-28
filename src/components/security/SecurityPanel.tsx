@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useState } from "react";
 
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -65,6 +68,122 @@ interface Alerta {
  * concentração do top 10). Cada um buscando por conta daria duas requisições
  * pro mesmo dado e, pior, duas chances de mostrarem números diferentes.
  */
+type Rotulos = Record<string, { label: string; description: string }>;
+
+const TEXTOS = traducoes({
+  en: {
+    nenhumSinal: "No danger signs found",
+    alertas: (n: number) => (n === 1 ? "1 alert on this token" : `${n} alerts on this token`),
+    passaram: (n: number) => `${n} contract checks passed`,
+    atencao: (n: number) => (n === 1 ? "1 point of attention" : `${n} points of attention`),
+    naoEGarantia: "Automated audits are not a guarantee. A contract can pass everything and the owner can still sell it all.",
+    lpTitulo: "Liquidity not locked",
+    lpDetalhe: "We could not confirm that the liquidity is locked. Trade with caution.",
+    rasaTitulo: "Hard to exit this coin",
+    rasaDetalhe: (pool: string, venda: string, pct: number) => `The pool holds ${pool}. A ${venda} sale would already drop the price about ${pct}% against you.`,
+    semLiquidez: "We found no tradable liquidity for this coin.",
+    checks: {
+      honeypot: { label: "Honeypot", description: "Can you sell after buying?" },
+      mintable: { label: "Mint authority", description: "The owner can create new tokens and dilute you." },
+      proxy: { label: "Proxy contract", description: "The code can be swapped after launch." },
+      hidden_owner: { label: "Hidden owner", description: "There is a hidden owner in the contract." },
+      can_take_back: { label: "Reclaim ownership", description: "The owner can take back control after renouncing." },
+      blacklist: { label: "Blacklist", description: "The contract can block your wallet." },
+      trading_cooldown: { label: "Trade cooldown", description: "Time limit between trades." },
+      open_source: { label: "Verified code", description: "The source code is published on the explorer." },
+      buy_tax: { label: "Buy tax", description: "Share kept by the contract on each trade." },
+      sell_tax: { label: "Sell tax", description: "Share kept by the contract on each trade." },
+      lp_locked: { label: "Liquidity locked", description: "If the owner can remove the liquidity, the price goes to zero." },
+      liquidity: { label: "DEX liquidity", description: "Pool found on known DEXs." },
+      freezable: { label: "Freeze authority", description: "If present, your token account can be frozen." },
+      metadata_mutable: { label: "Mutable metadata", description: "Name, symbol and image can be changed later." },
+      transfer_fee: { label: "Transfer fee", description: "Token-2022 can charge a fee on every transfer." },
+      transfer_hook: { label: "Transfer hook", description: "External code runs on every transfer." },
+      closable: { label: "Closable account", description: "The mint account can be closed by the owner." },
+      maior_detentor: { label: "Largest holder", description: "How much of the supply sits in a single wallet." },
+      trusted: { label: "Verified token", description: "Listed in known token lists." },
+      owner: { label: "Contract owner", description: "Who controls the contract." },
+      codigo: { label: "Published code", description: "Whether the contract code is public." },
+      supply: { label: "Supply", description: "Total minted, read from the contract itself." },
+    } as Rotulos,
+    valores: {
+      Sim: "Yes", Não: "No", sim: "yes", não: "no", "Vende ok": "Sells OK", "NÃO VENDE": "CAN'T SELL", Nenhuma: "None",
+      "sem pool": "no pool", "não confirmada": "not confirmed", "não verificado": "not verified", ativo: "active",
+      "sem dono": "no owner", renunciado: "renounced", Ativa: "Active", Revogada: "Revoked", Presente: "Present", Aguardando: "Waiting",
+    } as Record<string, string>,
+    pools: "pool(s)",
+  },
+  pt: {
+    nenhumSinal: "Nenhum sinal de perigo encontrado",
+    alertas: (n: number) => (n === 1 ? "1 alerta neste token" : `${n} alertas neste token`),
+    passaram: (n: number) => `${n} verificações no contrato passaram`,
+    atencao: (n: number) => (n === 1 ? "1 ponto de atenção" : `${n} pontos de atenção`),
+    naoEGarantia: "Auditoria automática não é garantia. Um contrato pode passar em tudo e o dono vender tudo mesmo assim.",
+    lpTitulo: "Liquidez não travada",
+    lpDetalhe: "Não foi possível confirmar que a liquidez está travada. Opere com cautela.",
+    rasaTitulo: "Difícil sair desta moeda",
+    rasaDetalhe: (pool: string, venda: string, pct: number) => `A pool tem ${pool}. Uma venda de ${venda} já derrubaria o preço uns ${pct}% contra você.`,
+    semLiquidez: "Não encontramos liquidez negociável para esta moeda.",
+    checks: {} as Rotulos,
+    valores: {} as Record<string, string>,
+    pools: "pool(s)",
+  },
+  zh: {
+    nenhumSinal: "未发现危险信号",
+    alertas: (n: number) => `该代币有 ${n} 条警报`,
+    passaram: (n: number) => `${n} 项合约检查通过`,
+    atencao: (n: number) => `${n} 个注意事项`,
+    naoEGarantia: "自动审计并不代表保证。合约即使通过所有检查，所有者仍可能全部卖出。",
+    lpTitulo: "流动性未锁定",
+    lpDetalhe: "无法确认流动性已锁定，请谨慎交易。",
+    rasaTitulo: "难以卖出该代币",
+    rasaDetalhe: (pool: string, venda: string, pct: number) => `池中只有 ${pool}。一笔 ${venda} 的卖单就会让价格对你不利地下跌约 ${pct}%。`,
+    semLiquidez: "没有找到该代币可交易的流动性。",
+    checks: {
+      honeypot: { label: "貔貅盘", description: "买入后能否卖出？" },
+      mintable: { label: "增发权限", description: "所有者可以增发代币稀释你的持仓。" },
+      proxy: { label: "代理合约", description: "上线后代码可以被替换。" },
+      hidden_owner: { label: "隐藏所有者", description: "合约中存在隐藏的所有者。" },
+      can_take_back: { label: "收回所有权", description: "所有者放弃后仍可收回控制权。" },
+      blacklist: { label: "黑名单", description: "合约可以封禁你的钱包。" },
+      trading_cooldown: { label: "交易冷却", description: "两次交易之间的时间限制。" },
+      open_source: { label: "代码已验证", description: "源代码已在浏览器上公开。" },
+      buy_tax: { label: "买入税", description: "每笔交易被合约扣留的比例。" },
+      sell_tax: { label: "卖出税", description: "每笔交易被合约扣留的比例。" },
+      lp_locked: { label: "流动性锁定", description: "如果所有者能撤走流动性，价格会归零。" },
+      liquidity: { label: "DEX 流动性", description: "在已知 DEX 上找到的池子。" },
+      freezable: { label: "冻结权限", description: "如果存在，你的代币账户可能被冻结。" },
+      metadata_mutable: { label: "元数据可修改", description: "名称、符号和图片之后可以更改。" },
+      transfer_fee: { label: "转账手续费", description: "Token-2022 可以对每次转账收费。" },
+      transfer_hook: { label: "转账钩子", description: "每次转账都会运行外部代码。" },
+      closable: { label: "账户可关闭", description: "铸币账户可被所有者关闭。" },
+      maior_detentor: { label: "最大持有人", description: "单个钱包持有的供应量占比。" },
+      trusted: { label: "认证代币", description: "已收录在知名代币列表中。" },
+      owner: { label: "合约所有者", description: "谁控制该合约。" },
+      codigo: { label: "代码公开", description: "合约代码是否公开。" },
+      supply: { label: "供应量", description: "从合约本身读取的总发行量。" },
+    } as Rotulos,
+    valores: {
+      Sim: "是", Não: "否", sim: "是", não: "否", "Vende ok": "可卖出", "NÃO VENDE": "无法卖出", Nenhuma: "无",
+      "sem pool": "无池子", "não confirmada": "未确认", "não verificado": "未验证", ativo: "有效",
+      "sem dono": "无所有者", renunciado: "已放弃", Ativa: "有效", Revogada: "已撤销", Presente: "存在", Aguardando: "等待中",
+    } as Record<string, string>,
+    pools: "个池子",
+  },
+});
+
+/** Troca rótulo, explicação e valor de cada verificação pelo idioma da página. */
+function traduzirRelatorio(report: SecurityReport, t: (typeof TEXTOS)["en"]): SecurityReport {
+  return {
+    ...report,
+    checks: report.checks.map((c) => {
+      const r = t.checks[c.id];
+      const valor = typeof c.value === "string" ? (t.valores[c.value] ?? c.value.replace("pool(s)", t.pools)) : c.value;
+      return { ...c, label: r?.label ?? c.label, description: r?.description ?? c.description, value: valor };
+    }),
+  };
+}
+
 export function SecurityPanel({
   report,
   carregando,
@@ -81,12 +200,16 @@ export function SecurityPanel({
    */
   naCurva?: boolean;
 }) {
+  const t = useTextos(TEXTOS);
   const [aberto, setAberto] = useState(false);
 
   if (carregando) return <Skeleton className="h-[86px] rounded-2xl" />;
   if (!report) return null;
 
-  const alertas = montarAlertas(report, { liquidityUsd }).filter(
+  /* A auditoria chega em português do servidor; aqui ela vira o idioma da página. */
+  report = traduzirRelatorio(report, t);
+
+  const alertas = montarAlertas(report, { liquidityUsd }, t).filter(
     (a) => !naCurva || !["liquidity", "liquidez_rasa", "lp_sem_prova"].includes(a.id),
   );
   const passaram = report.checks.filter((c) => c.level === "safe");
@@ -132,11 +255,7 @@ export function SecurityPanel({
               tom === "bear" ? "text-bear" : tom === "warn" ? "text-warn/90" : "text-zinc-300",
             )}
           >
-            {alertas.length === 0
-              ? "Nenhum sinal de perigo encontrado"
-              : alertas.length === 1
-                ? "1 alerta neste token"
-                : `${alertas.length} alertas neste token`}
+            {alertas.length === 0 ? t.nenhumSinal : t.alertas(alertas.length)}
           </span>
           {/*
             "N fora do nosso alcance" saiu.
@@ -153,9 +272,8 @@ export function SecurityPanel({
             painel continua dizendo que existem, sem ocupar a coluna com eles.
           */}
           <span className="block text-[11px] text-zinc-600">
-            {passaram.length} verificações no contrato passaram
-            {leves.length > 0 &&
-              ` · ${leves.length} ${leves.length === 1 ? "ponto de atenção" : "pontos de atenção"}`}
+            {t.passaram(passaram.length)}
+            {leves.length > 0 && ` · ${t.atencao(leves.length)}`}
           </span>
         </span>
         <Seta aberto={aberto} />
@@ -225,8 +343,7 @@ export function SecurityPanel({
             <Linha key={c.id} check={c} />
           ))}
           <p className="pt-1.5 text-[10px] leading-relaxed text-zinc-600">
-            Auditoria automática não é garantia. Um contrato pode passar em tudo e o dono vender
-            tudo mesmo assim.
+            {t.naoEGarantia}
           </p>
         </div>
       )}
@@ -262,6 +379,7 @@ const PISO_DE_LIQUIDEZ = 10_000;
 function montarAlertas(
   report: SecurityReport,
   mercado: { liquidityUsd?: number },
+  t: (typeof TEXTOS)["en"],
 ): Alerta[] {
   const alertas: Alerta[] = [];
 
@@ -327,8 +445,8 @@ function montarAlertas(
     alertas.push({
       id: "lp_sem_prova",
       /* Curto por pedido do dono (28/09/2026): o fato e a recomendação, sem aula. */
-      titulo: "Liquidez não travada",
-      detalhe: "Não foi possível confirmar que a liquidez está travada. Opere com cautela.",
+      titulo: t.lpTitulo,
+      detalhe: t.lpDetalhe,
       nivel: "warn",
       destacar: true,
     });
@@ -371,11 +489,11 @@ function montarAlertas(
     const impacto = liquidityUsd > 0 ? (2 * VENDA_DE_REFERENCIA) / liquidityUsd : 1;
     alertas.push({
       id: "liquidez_rasa",
-      titulo: "Difícil sair desta moeda",
+      titulo: t.rasaTitulo,
       detalhe:
         liquidityUsd > 0
-          ? `A pool tem ${formatUsd(liquidityUsd)}. Uma venda de ${formatUsd(VENDA_DE_REFERENCIA)} já derrubaria o preço uns ${Math.min(99, Math.round(impacto * 100))}% contra você.`
-          : "Não encontramos liquidez negociável para esta moeda.",
+          ? t.rasaDetalhe(formatUsd(liquidityUsd), formatUsd(VENDA_DE_REFERENCIA), Math.min(99, Math.round(impacto * 100)))
+          : t.semLiquidez,
       nivel: "danger",
     });
   }

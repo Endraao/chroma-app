@@ -5,6 +5,15 @@ import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
+/* Rótulos da barra, pelo texto em português (que é a chave em CATEGORIAS). */
+const TEXTOS = traducoes<Record<string, string>>({
+  en: { Tudo: "All", Quentes: "Trending", "Maiores altas": "Top gainers", Maiores: "Biggest", "Recém-chegadas": "Just launched", Afiliados: "Affiliates", Taxas: "Fees", "Criar token": "Create token", recolher: "Collapse categories", expandir: "Expand categories" },
+  pt: { Tudo: "Tudo", Quentes: "Quentes", "Maiores altas": "Maiores altas", Maiores: "Maiores", "Recém-chegadas": "Recém-chegadas", Afiliados: "Afiliados", Taxas: "Taxas", "Criar token": "Criar token", recolher: "Recolher categorias", expandir: "Expandir categorias" },
+  zh: { Tudo: "全部", Quentes: "热门", "Maiores altas": "涨幅榜", Maiores: "市值最高", "Recém-chegadas": "新上线", Afiliados: "推广伙伴", Taxas: "费用", "Criar token": "创建代币", recolher: "收起分类", expandir: "展开分类" },
+});
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 
@@ -149,6 +158,7 @@ export function BarraDeCategorias({
   aberta: boolean;
   alternar: () => void;
 }) {
+  const t = useTextos(TEXTOS);
   const pathname = usePathname();
   const params = useSearchParams();
   const sort = params.get("sort");
@@ -168,7 +178,7 @@ export function BarraDeCategorias({
         {/* -------- o botão de abrir ---------------------------------- */}
         <button
           onClick={alternar}
-          aria-label={aberta ? "Recolher categorias" : "Expandir categorias"}
+          aria-label={aberta ? t.recolher : t.expandir}
           aria-expanded={aberta}
           className={cn(
             "mx-2 mb-2 flex h-9 items-center rounded-lg text-zinc-600 transition-colors hover:bg-white/[0.04] hover:text-zinc-300",
@@ -191,14 +201,14 @@ export function BarraDeCategorias({
         <div className="px-2 pt-3">
           <Link
             href="/create"
-            title={aberta ? undefined : "Criar token"}
+            title={aberta ? undefined : t["Criar token"]}
             className={cn(
               "flex h-10 items-center gap-2.5 rounded-lg bg-bull font-bold text-ink-950 transition-colors hover:bg-bull/85",
               aberta ? "px-3" : "justify-center",
             )}
           >
             <IconeMais />
-            {aberta && <span className="truncate text-[13px]">Criar token</span>}
+            {aberta && <span className="truncate text-[13px]">{t["Criar token"]}</span>}
           </Link>
         </div>
 
@@ -222,6 +232,7 @@ function Grupo({
   aberta: boolean;
   ativo: (i: Item) => boolean;
 }) {
+  const t = useTextos(TEXTOS);
   return (
     <nav className="space-y-0.5 px-2">
       {itens.map((item) => {
@@ -235,7 +246,7 @@ function Grupo({
              * desenhos sem nome, e a pessoa tem que abrir pra descobrir o que
              * cada um faz — o que anula a barra fechada.
              */
-            title={aberta ? undefined : item.rotulo}
+            title={aberta ? undefined : (t[item.rotulo] ?? item.rotulo)}
             className={cn(
               "relative flex h-9 items-center gap-2.5 rounded-lg transition-colors",
               aberta ? "px-2.5" : "justify-center",
@@ -271,7 +282,7 @@ function Grupo({
               {item.icone}
             </span>
 
-            {aberta && <span className="truncate text-[13px] font-medium">{item.rotulo}</span>}
+            {aberta && <span className="truncate text-[13px] font-medium">{t[item.rotulo] ?? item.rotulo}</span>}
           </Link>
         );
       })}

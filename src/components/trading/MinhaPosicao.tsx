@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount } from "wagmi";
@@ -50,6 +53,24 @@ interface Quadro {
   precoUsd: number;
 }
 
+const TEXTOS = traducoes({
+  en: {
+    suaPosicao: "Your position", compras: (n: number) => `${n} ${n === 1 ? "buy" : "buys"}`, vendas: (n: number) => `${n} ${n === 1 ? "sell" : "sells"}`,
+    jaTinha: "You held this coin before the trades we can read, so your average price cannot be calculated.",
+    precoMedio: "Average price", agora: "now", realizado: "Realized on sells", calculado: "Calculated from this pair's recent trades. Not financial advice.",
+  },
+  pt: {
+    suaPosicao: "Sua posição", compras: (n: number) => `${n} ${n === 1 ? "compra" : "compras"}`, vendas: (n: number) => `${n} ${n === 1 ? "venda" : "vendas"}`,
+    jaTinha: "Você já tinha esta moeda antes dos negócios que conseguimos ler, então não dá pra calcular o seu preço médio.",
+    precoMedio: "Preço médio", agora: "agora", realizado: "Já realizado nas vendas", calculado: "Calculado sobre os negócios recentes deste par. Não é aconselhamento.",
+  },
+  zh: {
+    suaPosicao: "你的持仓", compras: (n: number) => `${n} 次买入`, vendas: (n: number) => `${n} 次卖出`,
+    jaTinha: "你在我们能读取的交易之前就已持有该代币，因此无法计算你的均价。",
+    precoMedio: "均价", agora: "当前", realizado: "卖出已实现", calculado: "根据该交易对的近期交易计算，不构成投资建议。",
+  },
+});
+
 export function MinhaPosicao({
   address,
   symbol,
@@ -59,6 +80,7 @@ export function MinhaPosicao({
   symbol: string;
   chain: ChainId;
 }) {
+  const t = useTextos(TEXTOS);
   const { publicKey } = useWallet();
   const { address: enderecoEvm } = useAccount();
 
@@ -132,11 +154,11 @@ export function MinhaPosicao({
       <CardBody className="space-y-2.5 p-3.5">
         <div className="flex items-baseline justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
-            Sua posição
+            {t.suaPosicao}
           </span>
           <span className="tnum text-[11px] text-zinc-600">
-            {eu.compras} {eu.compras === 1 ? "compra" : "compras"}
-            {eu.vendas > 0 && ` · ${eu.vendas} ${eu.vendas === 1 ? "venda" : "vendas"}`}
+            {t.compras(eu.compras)}
+            {eu.vendas > 0 && ` · ${t.vendas(eu.vendas)}`}
           </span>
         </div>
 
@@ -169,24 +191,23 @@ export function MinhaPosicao({
                   )}
                 >
                   {positivo ? "+" : "−"}
-                  {Math.abs(pct).toFixed(1).replace(".", ",")}%
+                  {Math.abs(pct).toFixed(1)}%
                 </div>
               )}
             </div>
           ) : (
             <div className="max-w-[190px] text-right text-[11px] leading-snug text-zinc-600">
-              Você já tinha esta moeda antes dos negócios que conseguimos ler, então não dá pra
-              calcular o seu preço médio.
+              {t.jaTinha}
             </div>
           )}
         </div>
 
         {custo !== null && (
           <div className="flex items-center justify-between border-t border-white/[0.06] pt-2 text-[11px]">
-            <span className="text-zinc-600">Preço médio</span>
+            <span className="text-zinc-600">{t.precoMedio}</span>
             <span className="tnum text-zinc-400">
               ${formatPrice(custo)}
-              <span className="ml-2 text-zinc-600">agora ${formatPrice(preco)}</span>
+              <span className="ml-2 text-zinc-600">{t.agora} ${formatPrice(preco)}</span>
             </span>
           </div>
         )}
@@ -198,7 +219,7 @@ export function MinhaPosicao({
         */}
         {eu.realizadoUsd !== null && eu.vendas > 0 && (
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-zinc-600">Já realizado nas vendas</span>
+            <span className="text-zinc-600">{t.realizado}</span>
             <span
               className={cn("tnum font-semibold", eu.realizadoUsd >= 0 ? "text-bull" : "text-bear")}
             >
@@ -209,7 +230,7 @@ export function MinhaPosicao({
         )}
 
         <p className="text-[10px] leading-relaxed text-zinc-700">
-          Calculado sobre os negócios recentes deste par. Não é aconselhamento.
+          {t.calculado}
         </p>
       </CardBody>
     </Card>
