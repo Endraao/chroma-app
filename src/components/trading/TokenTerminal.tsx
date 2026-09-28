@@ -7,7 +7,8 @@ import { SwapWidget } from "@/components/trading/SwapWidget";
 import { SecurityPanel } from "@/components/security/SecurityPanel";
 import { CurvaPanel } from "@/components/trading/CurvaPanel";
 import { CurvaProvider } from "@/components/trading/CurvaProvider";
-import { TabelaDeTraders } from "@/components/trading/TabelaDeTraders";
+import { PainelDeAtividade } from "@/components/trading/PainelDeAtividade";
+import { StatusDaCurva } from "@/components/trading/StatusDaCurva";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -157,6 +158,13 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             quotePriceUsd={token.quotePriceUsd}
             onTick={handleTick}
           />
+
+          {/*
+            Transações e traders logo abaixo do gráfico, na mesma coluna
+            (referência: PEAR, 28/09/2026). Antes a tabela de traders ficava
+            no pé da página, ocupando a largura toda.
+          */}
+          <PainelDeAtividade address={token.address} symbol={token.symbol} chain={token.chain} />
         </div>
 
         {/* Coluna direita: swap grudado no topo ao rolar a página */}
@@ -170,6 +178,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             * é a maioria — então nada muda na tela das moedas de mercado.
             */}
           <CurvaPanel />
+          <StatusDaCurva token={token} />
 
           <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
             <SwapWidget
@@ -220,15 +229,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
         </div>
       </div>
 
-      {/*
-        A tabela de traders fica EMBAIXO e ocupando a largura toda.
-
-        Não cabe na coluna do swap: são cinco colunas de número por linha. E
-        não deve ficar em cima — ela é pra depois da decisão, quando a pessoa
-        quer saber quem mais está dentro e em que preço. Acima do gráfico, ela
-        empurraria pra baixo justamente as duas coisas que a pessoa veio ver.
-      */}
-      <TabelaDeTraders address={token.address} symbol={token.symbol} chain={token.chain} />
     </div>
     </CurvaProvider>
   );

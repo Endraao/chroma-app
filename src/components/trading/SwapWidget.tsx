@@ -681,7 +681,7 @@ function EvmSwap({
 
   const [side, setSide] = useState<TradeSide>("buy");
   const [digitado, setDigitado] = useState("");
-  const [slippageBps] = useState(300);
+  const [slippageBps, setSlippageBps] = useState(300);
 
   const swap = useCurvaSwapEvm({
     moeda: tokenAddress,
@@ -821,41 +821,98 @@ function EvmSwap({
       <AbasDeLado side={side} onChange={setSide} disabled={swap.ocupado} />
 
       <div className="space-y-3 px-4 pb-4 pt-1">
-        <input
-          inputMode="decimal"
-          value={digitado}
-          onChange={(e) => setDigitado(saneia(e.target.value))}
-          placeholder={ehCompra ? `0.0 ${meta.nativeSymbol}` : `0.0 ${symbol}`}
-          className="w-full bg-transparent text-center text-3xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
-        />
-
-        {swap.saida && (
-          <p className="tnum text-center text-[12px] text-zinc-500">
-            ≈ {swap.saida} {ehCompra ? symbol : meta.nativeSymbol}
-          </p>
-        )}
-
-        {address && (
-          <>
-            <p className="tnum text-center text-[12px] text-zinc-500">
+        {/*
+          Formato da referência do dono (página de moeda da PEAR, 28/09/2026):
+          "você paga" com saldo, valores rápidos, "você recebe" estimado,
+          slippage, mínimo garantido e rota — tudo visível antes de assinar.
+        */}
+        <div className="flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <span>Você paga</span>
+          {address && (
+            <button
+              type="button"
+              onClick={() => usarPorcentagem(100)}
+              className="tnum normal-case tracking-normal text-zinc-500 hover:text-zinc-200"
+            >
               Saldo:{" "}
               {saldo === null
                 ? "…"
                 : `${saldo.toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 5 : 2 })} ${ehCompra ? meta.nativeSymbol : symbol}`}
-            </p>
-            <div className="grid grid-cols-4 gap-2">
-              {[25, 50, 75, 100].map((v) => (
-                <Atalho
-                  key={v}
-                  rotulo={v === 100 ? "Máx" : `${v}%`}
-                  tom={ehCompra ? "buy" : "sell"}
-                  ligado={saldo !== null && saldo > 0}
-                  onClick={() => usarPorcentagem(v)}
-                />
+              <span className="ml-1 font-bold text-marca">Máx</span>
+            </button>
+          )}
+        </div>
+
+        <label className="flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 py-3 focus-within:border-marca/50">
+          <input
+            inputMode="decimal"
+            value={digitado}
+            onChange={(e) => setDigitado(saneia(e.target.value))}
+            placeholder="0.0"
+            className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
+          />
+          <span className="shrink-0 text-[13px] font-bold text-zinc-400">
+            {ehCompra ? meta.nativeSymbol : symbol}
+          </span>
+        </label>
+
+        <div className="grid grid-cols-4 gap-2">
+          {(ehCompra ? ["0.001", "0.005", "0.01", "0.05"] : ["25", "50", "75", "100"]).map((v) => (
+            <Atalho
+              key={v}
+              rotulo={ehCompra ? `${v} ${meta.nativeSymbol}` : v === "100" ? "Máx" : `${v}%`}
+              tom={ehCompra ? "buy" : "sell"}
+              ligado={ehCompra || (saldo !== null && saldo > 0)}
+              onClick={() => (ehCompra ? setDigitado(v) : usarPorcentagem(Number(v)))}
+            />
+          ))}
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            Você recebe (estimado)
+          </p>
+          <div className="tnum rounded-lg border border-dashed border-ink-600 px-3 py-3 text-xl font-bold text-zinc-200">
+            {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
+          </div>
+        </div>
+
+        <div className="space-y-1.5 text-[11.5px]">
+          <div className="flex items-center justify-between">
+            <span className="text-zinc-500">Slippage</span>
+            <div className="flex gap-1">
+              {[100, 300, 500].map((bps) => (
+                <button
+                  key={bps}
+                  type="button"
+                  onClick={() => setSlippageBps(bps)}
+                  className={cn(
+                    "tnum rounded border px-2 py-0.5 text-[11px] font-semibold",
+                    slippageBps === bps
+                      ? "border-marca bg-marca/15 text-marca"
+                      : "border-ink-600 text-zinc-500 hover:text-zinc-200",
+                  )}
+                >
+                  {bps / 100}%
+                </button>
               ))}
             </div>
-          </>
-        )}
+          </div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">Mínimo garantido</span>
+            <span className="tnum text-zinc-300">
+              {swap.minimoGarantido
+                ? `${Number(swap.minimoGarantido).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}`
+                : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">Rota</span>
+            <span className="text-zinc-300">
+              {curva?.migrada ? "Uniswap v4" : "Curva da Chroma"}, taxa 1,2%
+            </span>
+          </div>
+        </div>
 
         {curva?.concluida && !curva.migrada && (
           <div className="space-y-2 rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2.5 text-[11px] leading-snug text-warn">
