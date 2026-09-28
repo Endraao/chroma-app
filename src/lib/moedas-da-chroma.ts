@@ -55,6 +55,15 @@ const TTL_CURVAS = 15_000;
  * `tokens.ts`: cada moeda são várias leituras de contrato, e servidor novo
  * pagava todas de uma vez. Mesma tag da vitrine — lançar renova as duas.
  */
+/**
+ * Moedas que não aparecem na VITRINE (home e listas), a pedido do dono.
+ * Continuam existindo, negociando e aparecendo no perfil de quem criou.
+ *
+ * SundayCat: a moeda de teste, lançada antes do ajuste de preço inicial —
+ * nasceu valendo ~US$ 75 mil e destoaria das novas (~US$ 5 mil).
+ */
+export const FORA_DA_VITRINE = new Set(["0x5b78097b8a5de294f93780abdff4ce7ac790ef63"]);
+
 export const moedasDaChroma = unstable_cache(moedasDaChromaSemCache, ["moedas-da-chroma-v1"], {
   revalidate: 15,
   tags: ["universo"],

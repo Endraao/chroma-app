@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 
 import { corrigirCapitalizacao, fetchPoolFeed, fetchToken, fetchTokenList } from "./market";
-import { moedasDaChroma } from "./moedas-da-chroma";
+import { FORA_DA_VITRINE, moedasDaChroma } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
 import { lerMoedaDaCurvaEvm, resumoDaMoedaEvm } from "./curva-evm";
@@ -218,6 +218,7 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    */
   const porChave = new Map(deMercado.map((t) => [`${t.chain}:${t.address.toLowerCase()}`, t]));
   for (const t of daCasa) {
+    if (FORA_DA_VITRINE.has(t.address.toLowerCase())) continue;
     porChave.set(`${t.chain}:${t.address.toLowerCase()}`, t);
   }
 

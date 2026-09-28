@@ -9,7 +9,7 @@ import { TokenCard } from "@/components/ui/TokenCard";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
-import { moedasDaChroma } from "@/lib/moedas-da-chroma";
+import { FORA_DA_VITRINE, moedasDaChroma } from "@/lib/moedas-da-chroma";
 import { CHAIN_IDS, CHAINS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
 import type { ChainId, TokenSummary } from "@/lib/types";
 import { formatUsd } from "@/lib/utils";
@@ -124,7 +124,9 @@ export default async function HomePage({
    * carteira dela não consegue negociar, vindo de uma tela que diz estar
    * filtrada.
    */
-  const lancadasNaChroma = daCasa.filter((t) => t.chain === chain);
+  const lancadasNaChroma = daCasa.filter(
+    (t) => t.chain === chain && !FORA_DA_VITRINE.has(t.address.toLowerCase()),
+  );
 
   const { isDemo } = principal;
   const tokens = sort === "chroma" ? lancadasNaChroma : principal.tokens;
