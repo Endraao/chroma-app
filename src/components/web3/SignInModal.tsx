@@ -14,6 +14,7 @@ import { SOCIAL_LOGIN_ENABLED } from "@/lib/social-login";
 import { chainIcon } from "@/lib/chain-icons";
 import { sugerirApelidoDisponivel, suggestNickname } from "@/lib/nickname-suggestions";
 import { CHAINS } from "@/lib/web3";
+import { AbrirNaCarteira } from "@/components/web3/AbrirNaCarteira";
 import { cn } from "@/lib/utils";
 
 type View = "main" | "all" | "nickname";
@@ -143,6 +144,7 @@ function MainStep({ onShowAll }: { onShowAll: (rede: WalletNetwork) => void }) {
 
   return (
     <div className="space-y-4">
+      <AbrirNaCarteira />
       <GoogleRow />
 
       <Divider>ou conecte uma carteira</Divider>
