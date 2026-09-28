@@ -39,7 +39,8 @@ export const metadata: Metadata = {
   },
   title: "Chroma — Launchpad & Terminal Web3",
   description:
-    "Lance e negocie tokens em Solana e EVM com gráfico ao vivo, auditoria de contrato e revenue-share de 0,5% para afiliados.",
+    "Lance e negocie meme coins na Robinhood Chain e na Solana, com gráfico ao vivo, auditoria de contrato e 0,30% de comissão para quem indica.",
+  twitter: { card: "summary_large_image", site: "@ChromaLaunch", creator: "@ChromaLaunch" },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
