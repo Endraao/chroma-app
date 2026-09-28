@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { cn, formatPct, formatUsd, timeAgo } from "@/lib/utils";
+import { cn, formatPct, formatUsd, timeAgo, miniatura } from "@/lib/utils";
 import { CHAINS } from "@/lib/web3";
 import type { ChainId, TokenSummary } from "@/lib/types";
 
@@ -98,7 +98,7 @@ export function LinhaDeMoeda({
 
       <span className="relative size-8 shrink-0 overflow-hidden rounded bg-ink-800">
         {token.imageUrl ? (
-          <img src={token.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
+          <img src={miniatura(token.imageUrl, 40)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
         ) : (
           <span className="grid size-full place-items-center text-[10px] font-bold text-zinc-600">
             {token.symbol.slice(0, 2)}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { CHAINS } from "@/lib/web3";
-import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
+import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo, miniatura } from "@/lib/utils";
 import type { TokenSummary } from "@/lib/types";
 
 /**
@@ -30,9 +30,10 @@ export function TokenCard({ token }: { token: TokenSummary }) {
            * com o fundo escuro atrás caso a imagem falhe.
            */
           <img
-            src={token.imageUrl}
+            src={miniatura(token.imageUrl, 128)}
             alt=""
             loading="lazy"
+            decoding="async"
             className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
         ) : (

@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 
-import { ChartPanel } from "@/components/chart/ChartPanel";
+import dynamic from "next/dynamic";
 import { SwapWidget } from "@/components/trading/SwapWidget";
 import { SecurityPanel } from "@/components/security/SecurityPanel";
 import { CurvaPanel } from "@/components/trading/CurvaPanel";
@@ -13,6 +13,19 @@ import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { SecurityReport, TokenSummary } from "@/lib/types";
+
+/*
+ * O GRÁFICO CARREGA DEPOIS DO RESTO.
+ *
+ * A biblioteca do gráfico são ~300 KB de JavaScript. Importada direto, a
+ * página inteira esperava por ela — preço, botão de comprar e tudo — e abria
+ * em ~6 s (medido em 28/09/2026). Carregada à parte, a página aparece primeiro
+ * e o gráfico entra no lugar do esqueleto logo em seguida.
+ */
+const ChartPanel = dynamic(
+  () => import("@/components/chart/ChartPanel").then((m) => m.ChartPanel),
+  { ssr: false, loading: () => <Skeleton className="h-[520px] rounded-xl" /> },
+);
 
 /**
  * A "tela única": gráfico à esquerda ocupando a altura toda, swap e alertas à

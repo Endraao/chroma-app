@@ -667,14 +667,35 @@ export async function fetchPoolFeed(chain: ChainId, feed: FeedDePool): Promise<T
 
   try {
     return await cached(key, TTL.list, async () => {
+      /*
+       * PÁGINA QUE FALHOU NÃO VIRA LISTA VAZIA.
+       *
+       * A GeckoTerminal aceita ~30 consultas por minuto e a home pede 12 de
+       * uma vez. Página recusada voltava `[]`, e esse vazio era guardado como
+       * se fosse a lista — em 28/09/2026 a vitrine da Robinhood caiu de 86
+       * moedas pra 4. Agora cada página lembra a última versão boa e a usa
+       * quando a fonte recusa.
+       */
       const paginas = await Promise.all(
-        Array.from({ length: PAGINAS_POR_FEED }, (_, i) =>
-          getJson<{ data: PoolGecko[]; included?: TokenGecko[] }>(
-            `${GECKOTERMINAL}/networks/${network}/${feed}` +
-              `?include=base_token,quote_token&page=${i + 1}`,
-            60,
-          ).catch(() => ({ data: [] as PoolGecko[], included: [] as TokenGecko[] })),
-        ),
+        Array.from({ length: PAGINAS_POR_FEED }, async (_, i) => {
+          const chaveBoa = `${key}:pagina-boa:${i}`;
+          try {
+            const pagina = await getJson<{ data: PoolGecko[]; included?: TokenGecko[] }>(
+              `${GECKOTERMINAL}/networks/${network}/${feed}` +
+                `?include=base_token,quote_token&page=${i + 1}`,
+              60,
+            );
+            if (pagina.data?.length) putStale(chaveBoa, pagina, 6 * 60 * 60_000);
+            return pagina;
+          } catch {
+            return (
+              stale<{ data: PoolGecko[]; included?: TokenGecko[] }>(chaveBoa) ?? {
+                data: [] as PoolGecko[],
+                included: [] as TokenGecko[],
+              }
+            );
+          }
+        }),
       );
 
       /* Os tokens vêm num bloco separado do JSON, referenciados por id. */

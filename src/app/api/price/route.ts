@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { fetchPrice } from "@/lib/market";
+import { lerMoedaDaCurvaEvm, precoEmEth } from "@/lib/curva-evm";
+import { precosNativos } from "@/lib/precos-nativos";
 
 /**
  * GET /api/price?address=… → só o preço em USD.
@@ -16,6 +18,17 @@ export async function GET(request: Request) {
 
   if (!address) {
     return NextResponse.json({ error: "parâmetro 'address' é obrigatório" }, { status: 400 });
+  }
+
+  /*
+   * Moeda na curva da Chroma: o preço é o da curva. Sem isto a rota devolvia
+   * 502, o gráfico pedia de novo a cada 3 s e a vela nunca andava ao vivo.
+   */
+  const daCurva = await lerMoedaDaCurvaEvm(address).catch(() => null);
+  if (daCurva && !daCurva.curva.migrada) {
+    const eth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
+    const priceUsd = precoEmEth(daCurva.curva) * eth;
+    if (priceUsd > 0) return NextResponse.json({ address, priceUsd, at: Date.now() });
   }
 
   const price = await fetchPrice(address);

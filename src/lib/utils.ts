@@ -80,3 +80,31 @@ export function formatUnits(value: bigint, decimals: number): number {
   const divisor = 10 ** decimals;
   return Number(value) / divisor;
 }
+
+/**
+ * A mesma arte, no tamanho em que ela aparece.
+ *
+ * A Dexscreener serve 800×800 por padrão (~65 KB) e a vitrine mostra mais de
+ * cem cartões: eram megabytes de imagem pra quadradinhos de 200 px, e parte
+ * das artes "não carregava" porque ainda estava chegando (28/09/2026). A
+ * CoinGecko tem versões menores no próprio caminho. Outras origens passam
+ * como vieram.
+ */
+export function miniatura(url: string | undefined, px: number): string | undefined {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    if (u.hostname === "cdn.dexscreener.com") {
+      u.searchParams.set("width", String(px * 2));
+      u.searchParams.set("height", String(px * 2));
+      u.searchParams.set("quality", "85");
+      return u.toString();
+    }
+    if (u.hostname === "coin-images.coingecko.com" && px <= 48) {
+      return url.replace("/large/", "/small/");
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}

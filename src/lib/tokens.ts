@@ -186,6 +186,17 @@ async function montarUniverso(): Promise<TokenSummary[]> {
   const deMercado = [...porEndereco.values()].filter((t) => t.liquidityUsd >= 1_000);
 
   /*
+   * Rede sem NENHUMA moeda de mercado é fonte recusando, não mercado vazio.
+   * Falhar aqui faz o cache compartilhado manter a vitrine anterior em vez de
+   * gravar a quebrada por 30 s (ver `universo`).
+   */
+  for (const rede of ["solana", "robinhood"] as const) {
+    if (!deMercado.some((t) => t.chain === rede)) {
+      throw new Error(`vitrine sem moedas de ${rede}: fonte recusou`);
+    }
+  }
+
+  /*
    * As nossas entram DEPOIS do filtro, e por cima.
    *
    * Duas razões, as duas importantes:
@@ -227,10 +238,20 @@ async function montarUniverso(): Promise<TokenSummary[]> {
  * Lançar moeda renova na hora (tag `universo`, ver POST /api/moedas).
  */
 export const TAG_DO_UNIVERSO = "universo";
-const universo = unstable_cache(montarUniverso, ["universo-v1"], {
+const universoEmCache = unstable_cache(montarUniverso, ["universo-v2"], {
   revalidate: 30,
   tags: [TAG_DO_UNIVERSO],
 });
+
+/** Sem nenhuma versão boa ainda, a home cai no exemplo em vez de quebrar. */
+async function universo(): Promise<TokenSummary[]> {
+  try {
+    return await universoEmCache();
+  } catch (erro) {
+    console.warn("[vitrine] sem versão boa:", erro);
+    return [];
+  }
+}
 
 export async function listTokens(
   sort: SortKey = "new",
