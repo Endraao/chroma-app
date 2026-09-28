@@ -788,7 +788,12 @@ function poolParaResumo(
     chain,
     name: moeda.name || moeda.symbol,
     symbol: moeda.symbol,
-    imageUrl: moeda.image_url ?? undefined,
+    /*
+     * Sem imagem na fonte, na Robinhood: a arte costuma estar no próprio
+     * contrato (`logo()` das moedas da PONS) — ver /api/logo.
+     */
+    imageUrl:
+      moeda.image_url ?? (chain === "robinhood" ? `/api/logo/${moeda.address}` : undefined),
     description: undefined,
     priceUsd: preco,
     change24h: pct("h24"),

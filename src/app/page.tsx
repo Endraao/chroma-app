@@ -227,7 +227,7 @@ export default async function HomePage({
                 cor="#a78bfa"
                 acao={{ rotulo: "Ver todas", href: linkCom({ sort: "chroma" }) }}
               >
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                   {lancadasNaChroma.slice(0, QUANTAS_DA_CASA).map((token) => (
                     <TokenCard key={token.address} token={token} />
                   ))}
@@ -245,7 +245,7 @@ export default async function HomePage({
               cor="#fbbf24"
               acao={{ rotulo: "Ver todas", href: linkCom({ sort: "marketCap" }) }}
             >
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                 {maiores.map((token) => (
                   <TokenCard key={token.address} token={token} />
                 ))}
@@ -293,7 +293,7 @@ export default async function HomePage({
                   outraRede={CHAINS[chain === "solana" ? "robinhood" : "solana"].label}
                 />
               ) : (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                   {tokens.map((token) => (
                     <TokenCard key={token.address} token={token} />
                   ))}

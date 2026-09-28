@@ -33,8 +33,27 @@ const nextConfig = {
    * pelo nosso servidor, remove o problema inteiro — e é o que as tags <img>
    * deste projeto já fazem.
    */
+  /*
+   * LIGADO DE NOVO, MAS SÓ PARA IMAGENS DO PRÓPRIO SITE (28/09/2026).
+   *
+   * `remotePatterns` continua VAZIO: o otimizador não busca nenhum endereço
+   * de fora, então o problema de proxy aberto descrito acima não volta. O
+   * ganho que motivou religar é o que sai de `/api/logo/` — arte lida do contrato da moeda, que
+   * chega do IPFS com centenas de KB e aparece num quadrado de 200 px.
+   */
   images: {
-    unoptimized: true,
+    /* Só imagem do próprio site (logo, ícones e /api/logo). Nada de fora. */
+    remotePatterns: [],
+    formats: ["image/webp"],
+    /*
+     * O avatar de iniciais que /api/logo gera é SVG. SVG de TERCEIRO nunca
+     * chega aqui (a rota recusa, e remotePatterns está vazio); mesmo assim
+     * ele sai com a política que o Next recomenda: sem script, em sandbox.
+     */
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "attachment",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    minimumCacheTTL: 31536000,
   },
   turbopack: {},
 };

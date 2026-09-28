@@ -92,6 +92,11 @@ export function formatUnits(value: bigint, decimals: number): number {
  */
 export function miniatura(url: string | undefined, px: number): string | undefined {
   if (!url) return url;
+  /* Arte lida do contrato (IPFS): passa pelo otimizador, que só aceita esta rota. */
+  if (url.startsWith("/api/logo/")) {
+    const largura = px <= 48 ? 96 : 256;
+    return `/_next/image?url=${encodeURIComponent(url)}&w=${largura}&q=75`;
+  }
   try {
     const u = new URL(url);
     if (u.hostname === "cdn.dexscreener.com") {
