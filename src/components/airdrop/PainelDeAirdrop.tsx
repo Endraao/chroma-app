@@ -85,16 +85,9 @@ export function PainelDeAirdrop() {
                 {pontos.toLocaleString("pt-BR")}
               </p>
               <p className="mt-3 text-[13px] text-zinc-500">
-                {dados?.posicao ? (
-                  <>
-                    Você está em{" "}
-                    <span className="font-bold text-marca">
-                      #{dados.posicao}
-                    </span>{" "}
-                    no placar.
-                  </>
-                ) : pontos > 0 ? (
-                  "Continue usando — o placar está logo ali."
+                {/* Sem posição no placar, por pedido do dono (28/09/2026). */}
+                {pontos > 0 ? (
+                  "Continue usando a Chroma para acumular mais."
                 ) : (
                   "Ainda zerado. Tudo o que você fizer na Chroma a partir de agora conta."
                 )}
