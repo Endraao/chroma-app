@@ -60,6 +60,7 @@ export function ChartPanel({
     tempoReal,
     volumeObservadoUsd,
     interval,
+    intervaloDasVelas,
     setInterval,
     lastCandle,
   } = useLiveChartData({ address, pool, chain, quoteAddress, quotePriceUsd });
@@ -490,7 +491,7 @@ export function ChartPanel({
          * aqui faria o gráfico saltar de volta a cada atualização — que era
          * exatamente o defeito da versão anterior.
          */
-        serie={`${address}:${interval}:${escalaEfetiva}`}
+        serie={`${address}:${intervaloDasVelas}:${escalaEfetiva}`}
         indicadores={indicadores}
         parametros={parametros}
       />

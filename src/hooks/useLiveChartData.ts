@@ -90,6 +90,12 @@ interface LiveChartData {
    */
   volumeObservadoUsd: number;
   interval: Interval;
+  /**
+   * O intervalo a que as velas de AGORA pertencem — atrasa em relação a
+   * `interval` enquanto as do novo intervalo não chegam. O gráfico usa este,
+   * e não o escolhido, pra decidir quando redesenhar tudo.
+   */
+  intervaloDasVelas: Interval;
   setInterval: (i: Interval) => void;
 }
 
@@ -158,6 +164,7 @@ export function useLiveChartData({
 }: Options): LiveChartData {
   const [interval, setIntervalState] = useState<Interval>(initial);
   const [candles, setCandles] = useState<Candle[]>([]);
+  const [intervaloDasVelas, setIntervaloDasVelas] = useState<Interval>(initial);
   const [status, setStatus] = useState<LiveChartData["status"]>("connecting");
   const [volumeObservadoUsd, setVolumeObservado] = useState(0);
 
@@ -191,6 +198,14 @@ export function useLiveChartData({
         }
 
         setStatus("live");
+        /*
+         * As velas chegam JUNTO com o intervalo a que pertencem. Antes, trocar
+         * de 1m pra 15m fazia o gráfico redesenhar na hora com as velas de 1m
+         * (o intervalo novo chegava antes delas) e depois ignorar as de 15m,
+         * achando que já tinha desenhado — "clico em 15m e nada muda"
+         * (28/09/2026).
+         */
+        setIntervaloDasVelas(interval);
         setCandles((prev) => {
           // Num refresh, preserva o preço ao vivo já aplicado na última vela.
           if (!isRefresh || !prev.length) return data;
@@ -464,6 +479,7 @@ export function useLiveChartData({
     tempoReal,
     volumeObservadoUsd,
     interval,
+    intervaloDasVelas,
     setInterval,
   };
 }
