@@ -765,8 +765,7 @@ function EvmSwap({
       window.location.reload();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (!/reject|denied|cancel/i.test(msg)) setErroDaMigracao(msg.split("
-")[0]);
+      if (!/reject|denied|cancel/i.test(msg)) setErroDaMigracao(msg.split(/\r?\n/)[0]);
     } finally {
       setMigrando(false);
     }
