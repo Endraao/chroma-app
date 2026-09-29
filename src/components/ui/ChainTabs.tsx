@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount } from "wagmi";
@@ -30,7 +33,14 @@ import type { ChainId } from "@/lib/types";
  * Component — e passar os dados em vez do comportamento é o que mantém o
  * componente utilizável em qualquer página que liste moedas.
  */
+const TEXTOS = traducoes({
+  en: { conectada: "wallet connected on this network" },
+  pt: { conectada: "carteira conectada nesta rede" },
+  zh: { conectada: "该网络已连接钱包" },
+});
+
 export function ChainTabs({ ativa, sort }: { ativa: ChainId; sort: string }) {
+  const t = useTextos(TEXTOS);
   const hrefDe = (chain: ChainId) => {
     const q = new URLSearchParams();
     if (sort && sort !== "new") q.set("sort", sort);
@@ -69,7 +79,7 @@ export function ChainTabs({ ativa, sort }: { ativa: ChainId; sort: string }) {
           {CHAINS[chain].label}
           {conectada[chain] && (
             <span
-              title="carteira conectada nesta rede"
+              title={t.conectada}
               className="size-1.5 rounded-full bg-bull"
             />
           )}

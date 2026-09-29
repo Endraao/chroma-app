@@ -148,7 +148,8 @@ export const REDE_PADRAO: ChainId = "robinhood";
  * que montaria transação para um programa inexistente.
  */
 export function podeLancarNaRede(chain: ChainId): boolean {
-  return chain === "robinhood";
+  // Solana: pela pump.fun (ver src/lib/pumpfun.ts). Robinhood: curva própria.
+  return chain === "robinhood" || chain === "solana";
 }
 
 /**

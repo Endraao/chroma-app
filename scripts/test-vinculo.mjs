@@ -52,15 +52,15 @@ try {
   /* 2. Monta a MESMA mensagem que a tela monta e assina com a carteira da conta. */
   const momento = Date.now();
   const mensagem = [
-    "Chroma — vincular carteira",
+    "Chroma — link wallet",
     "",
-    `Conta: @${MARCA}dono`,
-    `Rede: solana`,
-    `Carteira: ${SOL_NOVA}`,
-    `Momento: ${new Date(momento).toISOString()}`,
+    `Account: @${MARCA}dono`,
+    `Network: solana`,
+    `Wallet: ${SOL_NOVA}`,
+    `Time: ${new Date(momento).toISOString()}`,
     "",
-    "Assinar apenas comprova que esta carteira é sua.",
-    "Não move fundos e não dá permissão sobre eles.",
+    "Signing only proves this wallet is yours.",
+    "It does not move funds or grant any permission over them.",
   ].join("\n");
 
   const assinatura = await dono.signMessage({ message: mensagem });

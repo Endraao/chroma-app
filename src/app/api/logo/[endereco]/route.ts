@@ -40,14 +40,18 @@ function paraHttp(uri: string): string[] {
   return uri.startsWith("https://") ? [uri] : [];
 }
 
-function avatar(simbolo: string): Response {
+function avatar(simbolo: string, endereco = ""): Response {
+  let h = 0;
+  for (let i = 0; i < endereco.length; i++) h = (h * 31 + endereco.charCodeAt(i)) >>> 0;
+  const cor = `hsl(${h % 360} 70% 55%)`;
   const letras = (simbolo || "?").replace(/[^A-Za-z0-9$]/g, "").slice(0, 2).toUpperCase() || "?";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" fill="#15171c"/><text x="64" y="64" dy=".35em" text-anchor="middle" font-family="system-ui,sans-serif" font-size="44" font-weight="700" fill="#52525b">${letras}</text></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${cor}"/><stop offset="1" stop-color="#15171c"/></linearGradient></defs><rect width="128" height="128" fill="url(#g)"/><text x="64" y="64" dy=".35em" text-anchor="middle" font-family="system-ui,sans-serif" font-size="44" font-weight="700" fill="#ffffffcc">${letras}</text></svg>`;
   return new Response(svg, {
     headers: {
       "content-type": "image/svg+xml",
       /* Curto: a arte pode aparecer depois (IPFS voltar). */
-      "cache-control": `public, max-age=3600, s-maxage=3600`,
+      // curto: a arte pode aparecer depois (DexScreener, IPFS lento)
+      "cache-control": `public, max-age=300, s-maxage=300`,
     },
   });
 }
@@ -64,7 +68,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ enderec
     return { logo, simbolo };
   });
 
-  for (const url of paraHttp(dados.logo)) {
+  // Sem logo no contrato: a DexScreener costuma ter a arte que o time enviou.
+  const daDex = await cached(`logo-dex:${endereco.toLowerCase()}`, UM_DIA * 1000, async () => {
+    try {
+      const r = await fetch(`https://api.dexscreener.com/tokens/v1/robinhood/${endereco}`, { signal: AbortSignal.timeout(6_000) });
+      const pares = (await r.json()) as { info?: { imageUrl?: string } }[];
+      return pares.find((p) => p.info?.imageUrl)?.info?.imageUrl ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  for (const url of [...paraHttp(dados.logo), ...(daDex ? [daDex] : [])]) {
     try {
       const r = await fetch(url, { signal: AbortSignal.timeout(12_000) });
       const tipo = r.headers.get("content-type") ?? "";
@@ -82,5 +97,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ enderec
     }
   }
 
-  return avatar(dados.simbolo);
+  return avatar(dados.simbolo, endereco.toLowerCase());
 }

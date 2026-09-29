@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -47,7 +50,14 @@ import type { ChainId } from "@/lib/types";
  * A carteira conectada NÃO muda o filtro. Ela só acende um ponto na rede
  * correspondente, pra a pessoa saber onde consegue operar agora.
  */
+const TEXTOS = traducoes({
+  en: { conectada: "wallet connected", semCarteira: "no wallet" },
+  pt: { conectada: "carteira conectada", semCarteira: "sem carteira" },
+  zh: { conectada: "已连接钱包", semCarteira: "未连接钱包" },
+});
+
 export function SeletorDeRede() {
+  const t = useTextos(TEXTOS);
   const router = useRouter();
   const parametros = useSearchParams();
 
@@ -145,7 +155,7 @@ export function SeletorDeRede() {
             <Opcao
               key={chain}
               rotulo={CHAINS[chain].label}
-              nota={conectada[chain] ? "carteira conectada" : "sem carteira"}
+              nota={conectada[chain] ? t.conectada : t.semCarteira}
               ativa={atual === chain}
               destacada={conectada[chain]}
               onClick={() => escolher(chain)}

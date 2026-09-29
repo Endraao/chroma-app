@@ -93,7 +93,7 @@ export const CHAIN_FEES: Record<ChainId, ChainFeeConfig> = {
   solana: {
     curveTotalBps: 125,
     creatorTiers: tiers([30, 45, 60, 75]),
-    launchFee: Number(process.env.NEXT_PUBLIC_LAUNCH_FEE_SOL || 0),
+    launchFee: Number(process.env.NEXT_PUBLIC_LAUNCH_FEE_SOL || 0.005),
     reference: { name: "pump.fun", totalBps: 125, creatorBps: 30, launchFee: "grátis" },
   },
 
@@ -253,7 +253,7 @@ export function validateCreatorTax(bps: number): { ok: true; bps: number } | { o
 /* Rótulos prontos pra interface                                       */
 /* ------------------------------------------------------------------ */
 
-const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2).replace(".", ",")}%`;
+const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2)}%`;
 
 export { pct as formatBps };
 

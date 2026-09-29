@@ -59,21 +59,21 @@ export function mensagemDeVinculo(params: {
   momento: number;
 }): string {
   return [
-    "Chroma — vincular carteira",
+    "Chroma — link wallet",
     "",
-    `Conta: @${params.nickname}`,
-    `Rede: ${params.chain}`,
-    `Carteira: ${params.endereco}`,
-    `Momento: ${new Date(params.momento).toISOString()}`,
+    `Account: @${params.nickname}`,
+    `Network: ${params.chain}`,
+    `Wallet: ${params.endereco}`,
+    `Time: ${new Date(params.momento).toISOString()}`,
     "",
-    "Assinar apenas comprova que esta carteira é sua.",
-    "Não move fundos e não dá permissão sobre eles.",
+    "Signing only proves this wallet is yours.",
+    "It does not move funds or grant any permission over them.",
   ].join("\n");
 }
 
 /** Extrai o `Momento:` da mensagem pra checar se ainda está no prazo. */
 export function momentoDaMensagem(mensagem: string): number | null {
-  const linha = /^Momento: (.+)$/m.exec(mensagem);
+  const linha = /^Time: (.+)$/m.exec(mensagem);
   if (!linha) return null;
   const quando = Date.parse(linha[1]);
   return Number.isFinite(quando) ? quando : null;

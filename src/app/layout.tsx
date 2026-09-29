@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import NextTopLoader from "nextjs-toploader";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { Suspense } from "react";
 
@@ -64,6 +65,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
      */
     <html lang={idioma} className="dark">
       <body className={`${display.variable} ${mono.variable} min-h-screen font-sans`}>
+        {/* Barrinha de carregamento no topo ao trocar de página, como na pump.fun */}
+        <NextTopLoader color="#34d399" height={3} showSpinner={false} shadow="0 0 10px #34d399,0 0 5px #34d399" />
         <IdiomaProvider idioma={idioma}>
         <WalletProviders>
           {/* useSearchParams precisa de um limite de Suspense no App Router. */}

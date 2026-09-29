@@ -42,13 +42,7 @@ export const LIQUIDITY_PAIRS: Record<ChainId, LiquidityPair[]> = {
       decimals: 9,
       hint: "Padrão. Maior liquidez e o que todo comprador já tem na carteira.",
     },
-    {
-      symbol: "USDC",
-      name: "USD Coin",
-      address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-      decimals: 6,
-      hint: "Preço cotado em dólar. O valor do seu token não oscila junto com o SOL.",
-    },
+    // Só SOL: na pump.fun toda moeda nasce pareada com SOL (ver src/lib/pumpfun.ts).
   ],
   robinhood: [
     {

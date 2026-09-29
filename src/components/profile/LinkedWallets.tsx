@@ -160,15 +160,15 @@ export function LinkedWallets() {
       // eslint-disable-next-line react-hooks/purity
       const momento = Date.now();
       const mensagem = [
-        "Chroma — vincular carteira",
+        "Chroma — link wallet",
         "",
-        `Conta: @${nickname}`,
-        `Rede: ${chain}`,
-        `Carteira: ${endereco}`,
-        `Momento: ${new Date(momento).toISOString()}`,
+        `Account: @${nickname}`,
+        `Network: ${chain}`,
+        `Wallet: ${endereco}`,
+        `Time: ${new Date(momento).toISOString()}`,
         "",
-        "Assinar apenas comprova que esta carteira é sua.",
-        "Não move fundos e não dá permissão sobre eles.",
+        "Signing only proves this wallet is yours.",
+        "It does not move funds or grant any permission over them.",
       ].join("\n");
 
       const assinatura = await assinar(mensagem);

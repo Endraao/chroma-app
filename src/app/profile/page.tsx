@@ -32,7 +32,7 @@ type Aba = "tokens" | "indicacoes" | "conta";
 
 const TEXTOS = traducoes({
   en: {
-    perfil: "Profile", cliqueEm: (b: React.ReactNode) => <>Click {b} at the top of the page.</>, trocarCapa: "Change cover", semApelido: "No nickname",
+    perfil: "Profile", botaoEntrar: "Sign in", cliqueEm: (b: React.ReactNode) => <>Click {b} at the top of the page.</>, trocarCapa: "Change cover", semApelido: "No nickname",
     saldo: "Balance", fecharAviso: "Close notice", abaTokens: "My tokens", abaIndicacoes: "Referrals", abaConta: "Account",
     seuLink: "Your link", copiado: "Copied", copiar: "Copy", compartilhar: "Share",
     linkGeral: (b: React.ReactNode) => <>This is your general link. To promote a specific coin, use the {b} button on its page: the link already carries your referral.</>,
@@ -43,7 +43,7 @@ const TEXTOS = traducoes({
     trocarApelido: (b: React.ReactNode) => <>Changing your nickname {b}: old ones keep pointing to your wallet and nobody else can register them. The change needs no signature and costs no fee.</>,
   },
   pt: {
-    perfil: "Perfil", cliqueEm: (b: React.ReactNode) => <>Clique em {b} no topo da página.</>, trocarCapa: "Trocar capa", semApelido: "Sem apelido",
+    perfil: "Perfil", botaoEntrar: "Entrar", cliqueEm: (b: React.ReactNode) => <>Clique em {b} no topo da página.</>, trocarCapa: "Trocar capa", semApelido: "Sem apelido",
     saldo: "Saldo", fecharAviso: "Fechar aviso", abaTokens: "Meus tokens", abaIndicacoes: "Indicações", abaConta: "Conta",
     seuLink: "Seu link", copiado: "Copiado", copiar: "Copiar", compartilhar: "Compartilhar",
     linkGeral: (b: React.ReactNode) => <>Este é o seu link geral. Para divulgar uma moeda específica, use o botão {b} na página dela: o link já sai com a sua indicação.</>,
@@ -54,7 +54,7 @@ const TEXTOS = traducoes({
     trocarApelido: (b: React.ReactNode) => <>Trocar de apelido {b}: os antigos continuam apontando para a sua carteira e ninguém mais pode registrá-los. A troca não exige assinatura nem cobra taxa.</>,
   },
   zh: {
-    perfil: "个人资料", cliqueEm: (b: React.ReactNode) => <>点击页面顶部的 {b}。</>, trocarCapa: "更换封面", semApelido: "未设置昵称",
+    perfil: "个人资料", botaoEntrar: "登录", cliqueEm: (b: React.ReactNode) => <>点击页面顶部的 {b}。</>, trocarCapa: "更换封面", semApelido: "未设置昵称",
     saldo: "余额", fecharAviso: "关闭提示", abaTokens: "我的代币", abaIndicacoes: "推荐", abaConta: "账户",
     seuLink: "你的链接", copiado: "已复制", copiar: "复制", compartilhar: "分享",
     linkGeral: (b: React.ReactNode) => <>这是你的通用链接。要推广某个代币，请在其页面使用 {b} 按钮：链接会自动带上你的推荐。</>,
@@ -138,7 +138,7 @@ function Perfil() {
       <div className="mx-auto max-w-lg pt-16 text-center">
         <h1 className="text-2xl font-black tracking-tight text-zinc-50">{t.perfil}</h1>
         <p className="mt-2 text-[13px] text-zinc-500">
-          {t.cliqueEm(<strong className="text-zinc-300">Sign in</strong>)}
+          {t.cliqueEm(<strong className="text-zinc-300">{t.botaoEntrar}</strong>)}
         </p>
       </div>
     );

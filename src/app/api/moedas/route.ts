@@ -56,6 +56,34 @@ export async function POST(request: Request) {
   }
 
   /* --- a prova: a curva existe, e é do nosso programa? --------------- */
+  // Moeda lançada pela pump.fun: confere a transação de criação na rede.
+  const pump = await conferirLancamentoPump(chaveDoMint, texto(corpo.assinatura, 128));
+  if (pump.ok) {
+    try {
+      await registrarMoeda({
+        endereco: chaveDoMint.toBase58(),
+        rede: "solana",
+        nome: texto(corpo.nome, LIMITES.nome) || chaveDoMint.toBase58().slice(0, 6),
+        simbolo: texto(corpo.simbolo, LIMITES.simbolo) || "?",
+        descricao: texto(corpo.descricao, LIMITES.descricao) || null,
+        imagem: urlSegura(corpo.imagem),
+        criador: pump.criador,
+        assinatura: texto(corpo.assinatura, 128) || null,
+        criadaEm: Date.now(),
+      });
+    } catch (erro) {
+      console.warn("[moedas] falha ao registrar (pump):", erro);
+      return NextResponse.json({ error: "Não foi possível registrar agora." }, { status: 500 });
+    }
+    revalidateTag(TAG_DO_UNIVERSO, "max");
+    try {
+      await creditarMoeda(chaveDoMint.toBase58(), pump.criador, "solana");
+    } catch (erro) {
+      console.warn("[moedas] falha ao pontuar o airdrop (pump):", erro);
+    }
+    return NextResponse.json({ ok: true, mint: chaveDoMint.toBase58() });
+  }
+
   const curva = await lerCurvaNoNo(chaveDoMint);
 
   if (!curva.existe) {
@@ -260,5 +288,67 @@ function urlSegura(valor: unknown): string | null {
     return u.protocol === "https:" ? bruto : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Confere que `assinatura` é a transação que criou `mint` na pump.fun E
+ * pagou a taxa de lançamento da Chroma. Sem as duas coisas, qualquer um
+ * poderia pôr qualquer moeda da pump.fun na vitrine da Chroma.
+ */
+async function conferirLancamentoPump(
+  mint: PublicKey,
+  assinatura: string,
+): Promise<{ ok: true; criador: string } | { ok: false }> {
+  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  if (!rpc || !assinatura) return { ok: false };
+  const { PUMP_PROGRAM_ID } = await import("@pump-fun/pump-sdk");
+  const { PLATFORM_FEE_WALLET_SOL } = await import("@/lib/web3");
+  const { CHAIN_FEES } = await import("@/lib/fees");
+
+  try {
+    const resposta = await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "getTransaction",
+        params: [assinatura, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
+      }),
+    });
+    const json = (await resposta.json()) as {
+      result?: {
+        meta: { err: unknown; logMessages?: string[] };
+        transaction: {
+          message: {
+            accountKeys: { pubkey: string; signer: boolean }[];
+            instructions: { programId: string; parsed?: { type: string; info: Record<string, unknown> } }[];
+          };
+        };
+      } | null;
+    };
+    const tx = json.result;
+    if (!tx || tx.meta.err) return { ok: false };
+
+    const chaves = tx.transaction.message.accountKeys;
+    const mintAssinou = chaves.some((k) => k.pubkey === mint.toBase58() && k.signer);
+    const chamouPump = tx.transaction.message.instructions.some((i) => i.programId === PUMP_PROGRAM_ID.toBase58());
+    if (!mintAssinou || !chamouPump) return { ok: false };
+
+    const taxaExigida = Math.round(CHAIN_FEES.solana.launchFee * 1e9);
+    if (taxaExigida > 0) {
+      const pagou = tx.transaction.message.instructions.some(
+        (i) =>
+          i.parsed?.type === "transfer" &&
+          i.parsed.info.destination === PLATFORM_FEE_WALLET_SOL &&
+          Number(i.parsed.info.lamports) >= taxaExigida,
+      );
+      if (!pagou) return { ok: false };
+    }
+    return { ok: true, criador: chaves[0].pubkey };
+  } catch {
+    return { ok: false };
   }
 }

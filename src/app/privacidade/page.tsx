@@ -5,10 +5,25 @@ import { Aviso, PaginaLegal } from "@/components/ui/PaginaLegal";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — Chroma",
-  description: "What Chroma collects, why, who it shares it with and what your rights are.",
-};
+const METADADOS = {
+  "en": [
+    "Privacy Policy — Chroma",
+    "What Chroma collects, why, who it shares it with and what your rights are."
+  ],
+  "pt": [
+    "Política de Privacidade — Chroma",
+    "O que a Chroma coleta, por quê, com quem compartilha e quais são os seus direitos."
+  ],
+  "zh": [
+    "隐私政策 — Chroma",
+    "Chroma 收集什么、为什么收集、与谁共享以及你的权利。"
+  ]
+} as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [title, description] = METADADOS[await idiomaAtual()];
+  return { title, description };
+}
 
 /**
  * Política de Privacidade.

@@ -10,10 +10,25 @@ const TEXTOS = traducoes({
   zh: { titulo: "联系与支持", intro: "需要帮助、发现问题或有建议？请在下方填写。消息会直接发送给我们的团队，回复将发送到你填写的邮箱。" },
 });
 
-export const metadata: Metadata = {
-  title: "Contact & Support — Chroma",
-  description: "Get help, report a problem or send a suggestion to the Chroma team.",
-};
+const METADADOS = {
+  "en": [
+    "Contact & Support — Chroma",
+    "Get help, report a problem or send a suggestion to the Chroma team."
+  ],
+  "pt": [
+    "Contato & Suporte — Chroma",
+    "Peça ajuda, relate um problema ou mande uma sugestão para a equipe da Chroma."
+  ],
+  "zh": [
+    "联系与支持 — Chroma",
+    "获取帮助、报告问题或向 Chroma 团队提出建议。"
+  ]
+} as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [title, description] = METADADOS[await idiomaAtual()];
+  return { title, description };
+}
 
 /**
  * A página é servidor, o formulário é cliente.

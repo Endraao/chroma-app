@@ -14,15 +14,36 @@ import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 import { cn, formatUsd } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 import { idiomaAtual } from "@/lib/idioma-servidor";
+import { PARTE_DA_CHROMA_BPS } from "@/lib/pumpfun";
 import { traducoes } from "@/lib/idiomas";
 
-export const metadata: Metadata = {
-  title: "Fees and limits — Chroma",
-  description: "Every Chroma fee, network by network, nothing hidden in a tooltip.",
-};
+const METADADOS = {
+  "en": [
+    "Fees and limits — Chroma",
+    "Every Chroma fee, network by network, nothing hidden in a tooltip."
+  ],
+  "pt": [
+    "Taxas e limites — Chroma",
+    "Todas as taxas da Chroma, rede por rede, sem nada escondido em tooltip."
+  ],
+  "zh": [
+    "费用与限制 — Chroma",
+    "Chroma 的所有费用，按网络列出，没有隐藏在提示框里的内容。"
+  ]
+} as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [title, description] = METADADOS[await idiomaAtual()];
+  return { title, description };
+}
 
 const TEXTOS = traducoes({
   en: {
+    faixas: ["Launch", "Gaining traction", "Established", "Top"],
+    solLancarNota: "Coins are created on pump.fun and trade there and here. pump.fun itself charges nothing to create.",
+    solTrade: "Trade through Chroma", solTradeNota: "Charged on buys and sells made through Chroma, on any Solana coin — including the ones launched here.",
+    solDivisao: "pump.fun creator fee",
+    solDivisaoNota: (c: number, p: number) => `The creator fee pump.fun charges on every trade is split: ${c}% to the creator, ${p}% to Chroma. The creator manages this split on pump.fun.`,
     titulo: "Fees and limits", intro1: "Each network has its own table. Everything you pay on Chroma is on this page.", intro2: "No fee shows up only when you confirm a trade.",
     qualquerRede: "On every network",
     divisao: "Referrer's share", divisaoNota: "Comes out of the platform's cut, not the trader's pocket, and lands in the referrer's wallet in the same swap transaction. Without a referral, this share stays with the platform.",
@@ -30,7 +51,7 @@ const TEXTOS = traducoes({
     fora: "Coin launched outside Chroma", pagaMenos: "costs less", foraNota: "There is no creator fee on these coins, so it is not charged. You pay only the platform fee and the referrer's share.",
     estado: "current status", emVigor: "What is live today",
     vigorRobinhood: "all fees on this page are live, charged by the contract itself inside each transaction: trading, creator share, referrer share and launch fee.",
-    vigorSolana: "swap fee and referrer share are live, charged inside the swap transaction.",
+    vigorSolana: "launch fee, swap fee, referrer share and the pump.fun creator-fee split are live.",
     comparacao: (n: string, total: string, criador: string) => `comparison: ${n} charges ${total} in total, ${criador} to the creator`,
     tradeCurva: "Trade on the curve",
     igual: (n: string) => `Exactly what ${n} charges.`,
@@ -45,6 +66,11 @@ const TEXTOS = traducoes({
     semIndicacao: (b: React.ReactNode, p1: string, p2: string, total: string) => <>The table shows the case where the buy came through a referral link. {b} — which becomes {p1} in the first tier and {p2} at the top. Either way you pay {total}: a referral never makes your trade more expensive.</>,
   },
   pt: {
+    faixas: ["Lançamento", "Pegando tração", "Consolidada", "Topo"],
+    solLancarNota: "A moeda é criada na pump.fun e negocia lá e aqui. A própria pump.fun não cobra nada para criar.",
+    solTrade: "Operar pela Chroma", solTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Solana — inclusive as lançadas aqui.",
+    solDivisao: "Taxa de criador da pump.fun",
+    solDivisaoNota: (c: number, p: number) => `A taxa de criador que a pump.fun cobra em cada operação é dividida: ${c}% para o criador, ${p}% para a Chroma. Quem administra essa divisão na pump.fun é o criador.`,
     titulo: "Taxas e limites", intro1: "Cada rede tem a sua própria tabela. Tudo o que você paga na Chroma está nesta página.", intro2: "Nenhuma taxa aparece só na hora de confirmar a operação.",
     qualquerRede: "Vale em qualquer rede",
     divisao: "Divisão com quem indicou", divisaoNota: "Sai da parte da plataforma, não do bolso do trader, e cai na carteira de quem indicou na mesma transação do swap. Quando não há indicação, essa parte fica com a plataforma.",
@@ -52,7 +78,7 @@ const TEXTOS = traducoes({
     fora: "Moeda lançada fora da Chroma", pagaMenos: "paga menos", foraNota: "Não existe taxa de criador nessas moedas, então ela não é cobrada. Você paga apenas a taxa da plataforma e a parte de quem indicou.",
     estado: "estado atual", emVigor: "O que está em vigor hoje",
     vigorRobinhood: "todas as taxas desta página estão em vigor, cobradas pelo próprio contrato dentro de cada transação: negociação, parte do criador, parte de quem indicou e taxa de lançamento.",
-    vigorSolana: "taxa de swap e parte de quem indicou em vigor, cobradas dentro da transação de swap.",
+    vigorSolana: "taxa de lançamento, taxa de swap, parte de quem indicou e divisão da taxa de criador da pump.fun em vigor.",
     comparacao: (n: string, total: string, criador: string) => `comparação: ${n} cobra ${total} no total, ${criador} para o criador`,
     tradeCurva: "Trade na curva",
     igual: (n: string) => `Exatamente o que o ${n} cobra.`,
@@ -67,6 +93,11 @@ const TEXTOS = traducoes({
     semIndicacao: (b: React.ReactNode, p1: string, p2: string, total: string) => <>A tabela mostra o caso em que a compra veio por um link de indicação. {b} — que passa a {p1} na primeira faixa e {p2} no topo. Em qualquer caso você paga {total}: a indicação nunca encarece a sua operação.</>,
   },
   zh: {
+    faixas: ["发行期", "起势期", "成熟期", "顶级"],
+    solLancarNota: "代币在 pump.fun 上创建，可在那里和这里交易。pump.fun 本身创建免费。",
+    solTrade: "通过 Chroma 交易", solTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Solana 代币 —— 包括在这里发行的代币。",
+    solDivisao: "pump.fun 创作者费用",
+    solDivisaoNota: (c: number, p: number) => `pump.fun 每笔交易收取的创作者费用会被分成：${c}% 归创作者，${p}% 归 Chroma。该分成由创作者在 pump.fun 上管理。`,
     titulo: "费用与限制", intro1: "每条链都有自己的费率表。你在 Chroma 上支付的所有费用都在此页面。", intro2: "不会有任何费用只在确认交易时才出现。",
     qualquerRede: "所有网络通用",
     divisao: "推荐人分成", divisaoNota: "来自平台的份额，而不是交易者的口袋，并在同一笔兑换交易中进入推荐人的钱包。没有推荐时，这部分归平台所有。",
@@ -74,7 +105,7 @@ const TEXTOS = traducoes({
     fora: "在 Chroma 以外发行的代币", pagaMenos: "费用更低", foraNota: "这些代币没有创作者费用，因此不收取。你只需支付平台费和推荐人分成。",
     estado: "当前状态", emVigor: "目前已生效",
     vigorRobinhood: "本页所有费用均已生效，由合约在每笔交易中直接收取：交易费、创作者分成、推荐人分成和发行费。",
-    vigorSolana: "兑换费和推荐人分成已生效，在兑换交易中收取。",
+    vigorSolana: "发行费、兑换费、推荐人分成以及 pump.fun 创作者费用分成均已生效。",
     comparacao: (n: string, total: string, criador: string) => `对比：${n} 总共收取 ${total}，其中 ${criador} 给创作者`,
     tradeCurva: "曲线交易",
     igual: (n: string) => `与 ${n} 收费完全相同。`,
@@ -171,6 +202,30 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
   const config = CHAIN_FEES[chain];
   const diffBps = config.curveTotalBps - config.reference.totalBps;
 
+  // Na Solana a moeda nasce na pump.fun: não há curva da Chroma nem faixas.
+  if (chain === "solana") {
+    return (
+      <section>
+        <h2 className={cn("text-xl font-bold tracking-tight", meta.accent)}>{meta.label}</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <FeeCard
+            icon="box"
+            label={t.lancar}
+            value={labels.launchFee > 0 ? `${labels.launchFee} ${meta.nativeSymbol}` : t.gratis}
+            note={t.solLancarNota}
+          />
+          <FeeCard icon="percent" label={t.solTrade} value={labels.swap} note={t.solTradeNota} />
+          <FeeCard
+            icon="users"
+            label={t.solDivisao}
+            value={`${100 - PARTE_DA_CHROMA_BPS / 100}% / ${PARTE_DA_CHROMA_BPS / 100}%`}
+            note={t.solDivisaoNota(100 - PARTE_DA_CHROMA_BPS / 100, PARTE_DA_CHROMA_BPS / 100)}
+          />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section>
       <div className="flex flex-wrap items-baseline gap-3">
@@ -226,7 +281,7 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
 
               return (
                 <tr key={tier.label} className="text-[12px]">
-                  <td className="px-4 py-2.5 font-semibold text-zinc-300">{tier.label}</td>
+                  <td className="px-4 py-2.5 font-semibold text-zinc-300">{t.faixas[i] ?? tier.label}</td>
                   <td className="tnum px-4 py-2.5 text-zinc-500">
                     {!next
                       ? t.acimaDe(formatUsd(tier.fromVolumeUsd))

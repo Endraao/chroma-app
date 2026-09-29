@@ -2,14 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Keypair, Transaction } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 
-import {
-  enderecoDaConfig,
-  ixLancar,
-  lerConfig,
-  recusarDadosDoToken,
-} from "@/lib/chroma-program";
+import { recusarDadosDoToken } from "@/lib/chroma-program";
+import { esperarCurva, transacaoDeCriacao, transacaoDeDivisao } from "@/lib/pumpfun";
+import { CHAIN_FEES } from "@/lib/fees";
+import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
+import { useIdioma } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
 
 /**
  * Lança uma moeda: publica a arte, cria o token e abre a curva.
@@ -31,6 +31,7 @@ export type EtapaDoLancamento =
   | "aguardando-assinatura"
   | "confirmando"
   | "comprando"
+  | "dividindo"
   | "pronto";
 
 /** O que a tela mostra em cada etapa. */
@@ -40,6 +41,7 @@ export const TEXTO_DA_ETAPA: Record<EtapaDoLancamento, string> = {
   "aguardando-assinatura": "Aprove na sua carteira…",
   confirmando: "Confirmando na rede…",
   comprando: "Moeda criada. Aprove a compra inicial…",
+  dividindo: "Moeda criada. Aprove a última etapa na carteira…",
   pronto: "Pronto!",
 };
 
@@ -61,70 +63,68 @@ export interface DadosDoLancamento {
   compraInicial?: string;
 }
 
+const MENSAGENS = traducoes({
+  en: {
+    conecte: "Connect a Solana wallet first.", semCarteira: "Launching on Solana is not configured yet.",
+    compraInvalida: "The initial buy amount is not a valid number.", imagem: "Could not upload the image.",
+    recusou: "the network rejected the transaction", demorou: "The coin was created, but the network is slow to show it. Open its page in a minute.",
+    semDivisao: "The coin was created on pump.fun. The last step (fee split and initial buy) was not completed — you can buy it on its page.",
+  },
+  pt: {
+    conecte: "Conecte uma carteira Solana antes.", semCarteira: "O lançamento na Solana ainda não está configurado.",
+    compraInvalida: "O valor da compra inicial não é um número válido.", imagem: "Não foi possível enviar a imagem.",
+    recusou: "a rede recusou a transação", demorou: "A moeda foi criada, mas a rede está demorando para mostrá-la. Abra a página dela em um minuto.",
+    semDivisao: "A moeda foi criada na pump.fun. A última etapa (divisão da taxa e compra inicial) não foi concluída — dá pra comprar pela página dela.",
+  },
+  zh: {
+    conecte: "请先连接 Solana 钱包。", semCarteira: "Solana 发行尚未配置。",
+    compraInvalida: "首次买入金额不是有效数字。", imagem: "无法上传图片。",
+    recusou: "网络拒绝了该交易", demorou: "代币已创建，但网络显示较慢。请一分钟后打开其页面。",
+    semDivisao: "代币已在 pump.fun 创建。最后一步（费用分成和首次买入）未完成 —— 可以在代币页面购买。",
+  },
+});
+
 export function useLancarToken() {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
+  const idioma = useIdioma();
+  const m = MENSAGENS[idioma];
 
   const [etapa, setEtapa] = useState<EtapaDoLancamento>("parado");
   const [erro, setErro] = useState<string | null>(null);
 
   const lancar = useCallback(
-    async (dados: DadosDoLancamento): Promise<{ mint: string; assinatura: string } | null> => {
+    async (
+      dados: DadosDoLancamento,
+    ): Promise<{ moeda: string; mint: string; assinatura: string; avisoDeCompra: string | null } | null> => {
       setErro(null);
 
       if (!publicKey) {
-        setErro("Conecte uma carteira Solana antes.");
+        setErro(m.conecte);
+        return null;
+      }
+      if (!PLATFORM_FEE_WALLET_SOL) {
+        setErro(m.semCarteira);
+        return null;
+      }
+      const compraSol = dados.compraInicial ? Number(dados.compraInicial.replace(",", ".")) : 0;
+      if (!Number.isFinite(compraSol) || compraSol < 0) {
+        setErro(m.compraInvalida);
         return null;
       }
 
-      /*
-       * Os limites são conferidos aqui e de novo no servidor. Não é
-       * duplicação à toa: eles não são preferência nossa, são do formato
-       * on-chain, e uma transação que os viola é recusada pela rede DEPOIS de
-       * a pessoa aprovar e pagar a taxa.
-       */
-      const problema = recusarDadosDoToken({
-        nome: dados.nome,
-        simbolo: dados.simbolo,
-        // A URI só existe depois do envio; aqui só o que já dá pra checar.
-        uri: "",
-      });
+      const problema = recusarDadosDoToken({ nome: dados.nome, simbolo: dados.simbolo, uri: "" });
       if (problema) {
         setErro(problema);
         return null;
       }
 
+      const carteiraDaChroma = new PublicKey(PLATFORM_FEE_WALLET_SOL);
+      let mintCriado: string | null = null;
+
       try {
-        /* --- 1. o que a rede diz ---------------------------------- */
-        /*
-         * Lido da configuração NA REDE, não de variável de ambiente.
-         *
-         * O programa recusa a transação se a carteira da plataforma não bater
-         * com a que está gravada lá. Ler da fonte que o próprio programa usa
-         * elimina uma classe inteira de erro: site fora de sincronia com a rede.
-         *
-         * Vem ANTES do envio da arte de propósito. Os dois motivos de recusa
-         * conhecidos — plataforma não configurada e lançamentos pausados — dão
-         * pra descobrir aqui, e descobrir depois significaria ter publicado
-         * arquivos de uma moeda que não vai existir.
-         */
-        const contaDaConfig = await connection.getAccountInfo(enderecoDaConfig());
-        if (!contaDaConfig) {
-          throw new Error("a plataforma ainda não foi configurada nesta rede");
-        }
-
-        const config = lerConfig(contaDaConfig.data);
-
-        // A trava é decidida na rede; o programa confere de novo do lado dele.
-        if (config.pausado) {
-          throw new Error("os lançamentos estão pausados no momento");
-        }
-
-        const carteiraDaPlataforma = config.carteiraDaPlataforma;
-
-        /* --- 2. arte e metadados no ar ---------------------------- */
+        /* 1. Arte e metadados no ar ANTES da transação (ver nota no topo). */
         setEtapa("publicando-arte");
-
         const form = new FormData();
         form.append("name", dados.nome);
         form.append("symbol", dados.simbolo);
@@ -138,75 +138,42 @@ export function useLancarToken() {
 
         const resposta = await fetch("/api/token-media", { method: "POST", body: form });
         const publicado = await resposta.json();
-        if (!resposta.ok) throw new Error(publicado?.error ?? "Não foi possível enviar a imagem.");
+        if (!resposta.ok) throw new Error(publicado?.error ?? m.imagem);
 
         const uri: string = publicado.metadataUrl;
+        const problemaDaUri = recusarDadosDoToken({ nome: dados.nome, simbolo: dados.simbolo, uri });
+        if (problemaDaUri) throw new Error(problemaDaUri);
 
-        // Agora dá pra conferir o tamanho da URI, que é o terceiro limite.
-        const problemaDaUri = recusarDadosDoToken({
+        /* 2. Transação A: taxa da Chroma + criação na pump.fun. */
+        setEtapa("aguardando-assinatura");
+        const mint = Keypair.generate();
+        const txA = await transacaoDeCriacao({
+          conn: connection,
+          criador: publicKey,
+          mint: mint.publicKey,
           nome: dados.nome,
           simbolo: dados.simbolo,
           uri,
+          carteiraDaChroma,
+          taxaSol: CHAIN_FEES.solana.launchFee,
         });
-        if (problemaDaUri) throw new Error(problemaDaUri);
+        txA.sign([mint]);
+        const assinatura = await sendTransaction(txA, connection);
 
-        /* --- 3. a transação --------------------------------------- */
-        setEtapa("aguardando-assinatura");
-
-        /*
-         * O token ganha um par de chaves novo, e ele precisa ASSINAR: a conta
-         * do token nasce nesta transação, e criar conta exige a assinatura de
-         * quem vai ocupá-la. A chave é descartada logo depois — a autoridade
-         * de emissão é renunciada dentro do mesmo lançamento, então ela não
-         * serve pra mais nada.
-         */
-        const mint = Keypair.generate();
-
-        const transacao = new Transaction().add(
-          ixLancar({
-            criador: publicKey,
-            mint: mint.publicKey,
-            carteiraDaPlataforma,
-            nome: dados.nome,
-            simbolo: dados.simbolo,
-            uri,
-          }),
-        );
-
-        const assinatura = await sendTransaction(transacao, connection, {
-          signers: [mint],
-        });
-
-        /* --- 4. esperar a rede ------------------------------------ */
         setEtapa("confirmando");
-
         const bloco = await connection.getLatestBlockhash();
-        const resultado = await connection.confirmTransaction(
-          { signature: assinatura, ...bloco },
-          "confirmed",
-        );
-        if (resultado.value.err) {
-          throw new Error("a rede recusou a transação");
-        }
+        const resultado = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+        if (resultado.value.err) throw new Error(m.recusou);
+        mintCriado = mint.publicKey.toBase58();
 
-        /* --- 5. pôr na vitrine ------------------------------------ */
-        /*
-         * A moeda acabou de nascer e ainda não existe par em DEX nenhuma —
-         * então nenhuma fonte de mercado sabe dela. Sem este registro ela só
-         * apareceria na home depois de encher a curva e migrar, que é o
-         * contrário do que uma launchpad faz.
-         *
-         * Falhar aqui NÃO derruba o lançamento. A moeda já está na rede e é da
-         * pessoa; um erro nosso de catálogo não pode virar um "deu errado"
-         * depois de ela ter pago a taxa e assinado. O registro é idempotente e
-         * dá pra refazer — ver `POST /api/moedas`.
-         */
+        /* 3. Registra no catálogo da Chroma já — a moeda existe, com ou sem a etapa B. */
         try {
           await fetch("/api/moedas", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
-              mint: mint.publicKey.toBase58(),
+              chain: "solana",
+              mint: mintCriado,
               nome: dados.nome,
               simbolo: dados.simbolo,
               descricao: dados.descricao,
@@ -218,21 +185,37 @@ export function useLancarToken() {
           console.warn("[lancamento] moeda criada, mas não entrou no catálogo:", erroDeCatalogo);
         }
 
+        /* 4. Transação B: divisão da taxa de criador + compra inicial. */
+        let avisoDeCompra: string | null = null;
+        try {
+          await esperarCurva(connection, mint.publicKey);
+          setEtapa("dividindo");
+          const txB = await transacaoDeDivisao({
+            conn: connection,
+            criador: publicKey,
+            mint: mint.publicKey,
+            carteiraDaChroma,
+            compraSol,
+          });
+          const assinaturaB = await sendTransaction(txB, connection);
+          const blocoB = await connection.getLatestBlockhash();
+          const resB = await connection.confirmTransaction({ signature: assinaturaB, ...blocoB }, "confirmed");
+          if (resB.value.err) throw new Error(m.recusou);
+        } catch (e) {
+          console.warn("[lancamento] etapa B não concluída:", e);
+          avisoDeCompra = e instanceof Error && e.message === "curve-timeout" ? m.demorou : m.semDivisao;
+        }
+
         setEtapa("pronto");
-        return { mint: mint.publicKey.toBase58(), assinatura };
+        return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra };
       } catch (e) {
         setEtapa("parado");
-
         const mensagem = e instanceof Error ? e.message : String(e);
-        /*
-         * Recusar na carteira é escolha da pessoa, não erro. Mostrar "falhou"
-         * em vermelho depois de ela cancelar de propósito assusta à toa.
-         */
         setErro(/reject|denied|User rejected/i.test(mensagem) ? null : mensagem);
         return null;
       }
     },
-    [connection, publicKey, sendTransaction],
+    [connection, publicKey, sendTransaction, m],
   );
 
   return {
@@ -240,14 +223,6 @@ export function useLancarToken() {
     etapa,
     erro,
     ocupado: etapa !== "parado" && etapa !== "pronto",
-    /*
-     * A tela precisa saber disto ANTES do clique.
-     *
-     * Sem carteira conectada o lançamento não sai, e descobrir isso só depois
-     * de preencher o formulário inteiro e apertar o botão é a pior hora:
-     * parece que deu erro, quando na verdade faltava um passo que ninguém
-     * avisou. O botão usa isto pra pedir a carteira em vez de recusar.
-     */
     carteiraConectada: Boolean(publicKey),
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useTextos } from "@/components/IdiomaProvider";
-import { traducoes } from "@/lib/idiomas";
+import { useIdioma, useTextos } from "@/components/IdiomaProvider";
+import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
 
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -810,6 +810,7 @@ function EvmSwap({
   const { obterCarteira } = useCarteiraRobinhood();
   const [migrando, setMigrando] = useState(false);
   const [erroDaMigracao, setErroDaMigracao] = useState<string | null>(null);
+  const idioma = useIdioma();
 
   async function migrar() {
     if (!publicClient) return;
@@ -992,7 +993,7 @@ function EvmSwap({
                 {migrando ? t.levando : t.levar}
               </Button>
             </RequireChainWallet>
-            {erroDaMigracao && <p className="text-bear">{erroDaMigracao}</p>}
+            {erroDaMigracao && <p className="text-bear">{traduzirDoServidor(erroDaMigracao, idioma)}</p>}
           </div>
         )}
 

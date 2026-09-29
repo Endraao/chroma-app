@@ -46,6 +46,12 @@ export interface MetadadosDaMoeda {
     creators?: { address: string; share: number }[];
   };
   extensions?: Record<string, string>;
+  /* formato que a pump.fun lê */
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  showName?: boolean;
+  createdOn?: string;
 }
 
 /**
@@ -97,6 +103,11 @@ export function montarMetadados(dados: DadosDaMoeda, base: string): MetadadosDaM
       creators: dados.creator ? [{ address: dados.creator, share: 100 }] : undefined,
     },
     extensions: Object.keys(extensions).length > 0 ? extensions : undefined,
+    website: dados.website || undefined,
+    twitter: dados.twitter || undefined,
+    telegram: dados.telegram || undefined,
+    showName: true,
+    createdOn: base.replace(/\/$/, ""),
   };
 }
 

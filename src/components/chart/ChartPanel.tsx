@@ -116,7 +116,7 @@ const PARAMETROS_TRAD: Partial<Record<Idioma, Record<string, string>>> = {
 
 const TEXTOS = traducoes({
   en: {
-    tipoDeGrafico: "Chart type", sobreVelas: "On the candles", painelSeparado: "Separate pane", preco: "Price",
+    tipoDeGrafico: "Chart type", sobreposicoes: "Chart overlays", sobreVelas: "On the candles", painelSeparado: "Separate pane", preco: "Price",
     desfazer: "Undo drawing", apagar: "Delete all drawings", restaurarZoom: "Reset zoom", telaCheia: "Full screen",
     baixarImagem: "Download image", baixarGrafico: "Download chart image", voltar: "Back to latest candle",
     erroVelas: "Could not load candles right now.", semHistorico: "This coin has no trading history yet.",
@@ -128,7 +128,7 @@ const TEXTOS = traducoes({
     velas: { candle_solid: "Candles", candle_stroke: "Hollow candles", ohlc: "Bars", area: "Line" } as Record<string, string>,
   },
   pt: {
-    tipoDeGrafico: "Tipo de gráfico", sobreVelas: "Sobre as velas", painelSeparado: "Painel separado", preco: "Preço",
+    tipoDeGrafico: "Tipo de gráfico", sobreposicoes: "Sobreposições do gráfico", sobreVelas: "Sobre as velas", painelSeparado: "Painel separado", preco: "Preço",
     desfazer: "Desfazer desenho", apagar: "Apagar todos os desenhos", restaurarZoom: "Restaurar o zoom", telaCheia: "Tela cheia",
     baixarImagem: "Baixar imagem", baixarGrafico: "Baixar imagem do gráfico", voltar: "Voltar pra vela mais recente",
     erroVelas: "Não foi possível carregar as velas agora.", semHistorico: "Esta moeda ainda não tem histórico de negociação.",
@@ -140,7 +140,7 @@ const TEXTOS = traducoes({
     velas: {} as Record<string, string>,
   },
   zh: {
-    tipoDeGrafico: "图表类型", sobreVelas: "主图指标", painelSeparado: "副图指标", preco: "价格",
+    tipoDeGrafico: "图表类型", sobreposicoes: "图表叠加", sobreVelas: "主图指标", painelSeparado: "副图指标", preco: "价格",
     desfazer: "撤销绘图", apagar: "删除所有绘图", restaurarZoom: "重置缩放", telaCheia: "全屏",
     baixarImagem: "下载图片", baixarGrafico: "下载图表图片", voltar: "回到最新K线",
     erroVelas: "暂时无法加载K线。", semHistorico: "该代币还没有交易记录。",
@@ -677,7 +677,7 @@ export function ChartPanel({
         className="flex flex-wrap items-center gap-4 border-t px-3 py-2 text-[11px]"
         style={{ borderColor: BORDA }}
       >
-        <span className="text-[#868993]">Sobreposições do gráfico</span>
+        <span className="text-[#868993]">{tx.sobreposicoes}</span>
 
         <Caixa
           marcada={mostrarMeusSwaps}

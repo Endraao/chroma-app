@@ -6,11 +6,25 @@ import { TEMPORADA_ATUAL } from "@/lib/airdrop-regras";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
 
-export const metadata: Metadata = {
-  title: "Airdrop — Chroma",
-  description:
-    "The more you use Chroma, the more points you earn. The rules are secret. No sign-up, counted by your address.",
-};
+const METADADOS = {
+  "en": [
+    "Airdrop — Chroma",
+    "The more you use Chroma, the more points you earn. The rules are secret. No sign-up, counted by your address."
+  ],
+  "pt": [
+    "Airdrop — Chroma",
+    "Quanto mais você usa a Chroma, mais pontos acumula. As regras são segredo. Sem inscrição, contado pelo seu endereço."
+  ],
+  "zh": [
+    "空投 — Chroma",
+    "你在 Chroma 上用得越多，获得的积分就越多。规则保密。无需注册，按地址统计。"
+  ]
+} as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [title, description] = METADADOS[await idiomaAtual()];
+  return { title, description };
+}
 
 const TEXTOS = traducoes({
   en: {

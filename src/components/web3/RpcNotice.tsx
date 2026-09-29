@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 /**
  * Aviso honesto: sem RPC dedicado, o swap NÃO funciona.
  *
@@ -19,7 +22,14 @@
 const USING_PUBLIC_RPC = !process.env.NEXT_PUBLIC_SOLANA_RPC;
 const EM_DESENVOLVIMENTO = process.env.NODE_ENV === "development";
 
+const TEXTOS = traducoes({
+  en: { podemFalhar: "buys and sells may fail", instavel: (b: React.ReactNode) => <>The connection to the Solana network is unstable right now. You can see prices and charts normally, but {b}. We are working to restore it.</> },
+  pt: { podemFalhar: "compras e vendas podem falhar", instavel: (b: React.ReactNode) => <>A conexão com a rede Solana está instável no momento. Você consegue ver preços e gráficos normalmente, mas {b}. Estamos trabalhando para restabelecer.</> },
+  zh: { podemFalhar: "买卖可能会失败", instavel: (b: React.ReactNode) => <>Solana 网络连接目前不稳定。你可以正常查看价格和图表，但{b}。我们正在努力恢复。</> },
+});
+
 export function RpcNotice() {
+  const t = useTextos(TEXTOS);
   if (!USING_PUBLIC_RPC) return null;
 
   return (
@@ -37,12 +47,7 @@ export function RpcNotice() {
             </>
           ) : (
             <>
-              A conexão com a rede Solana está instável no momento. Você consegue ver preços e
-              gráficos normalmente, mas{" "}
-              <strong className="font-semibold text-warn">
-                compras e vendas podem falhar
-              </strong>
-              . Estamos trabalhando para restabelecer.
+              {t.instavel(<strong className="font-semibold text-warn">{t.podemFalhar}</strong>)}
             </>
           )}
         </span>

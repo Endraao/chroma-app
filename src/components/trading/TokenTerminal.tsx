@@ -61,9 +61,9 @@ export interface StatsAoVivo {
 }
 
 const TEXTOS = traducoes({
-  en: { demo: "There is no market data for this address yet. Price, liquidity and volume below are illustrative only. The contract audit is still real." },
-  pt: { demo: "Ainda não há dados de mercado para este endereço. Preço, liquidez e volume abaixo são apenas ilustrativos. A auditoria do contrato continua sendo real." },
-  zh: { demo: "该地址暂无市场数据。下方价格、流动性和交易量仅供示意，合约审计结果是真实的。" },
+  en: { demo: "There is no market data for this address yet. Price, liquidity and volume below are illustrative only. The contract audit is still real.", sobre: "About" },
+  pt: { demo: "Ainda não há dados de mercado para este endereço. Preço, liquidez e volume abaixo são apenas ilustrativos. A auditoria do contrato continua sendo real.", sobre: "Sobre" },
+  zh: { demo: "该地址暂无市场数据。下方价格、流动性和交易量仅供示意，合约审计结果是真实的。", sobre: "简介" },
 });
 
 export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; isDemo?: boolean }) {
@@ -231,7 +231,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
 
           <Card>
             <CardBody className="space-y-2 text-[12px] text-zinc-500">
-              <p className="font-semibold text-zinc-300">Sobre</p>
+              <p className="font-semibold text-zinc-300">{t.sobre}</p>
               <p className="leading-relaxed">{token.description}</p>
             </CardBody>
           </Card>

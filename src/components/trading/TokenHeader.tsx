@@ -27,9 +27,9 @@ import type { TokenSummary } from "@/lib/types";
  * fonte, mais o que passou na nossa frente desde que a página abriu.
  */
 const TEXTOS = traducoes({
-  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders" },
-  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders" },
-  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人" },
+  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders", criadoHa: (x: string) => `created ${x} ago` },
+  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders", criadoHa: (x: string) => `criado ${x} atrás` },
+  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人", criadoHa: (x: string) => `${x}前创建` },
 });
 
 export function TokenHeader({
@@ -139,7 +139,7 @@ export function TokenHeader({
                 {t.verExplorer}
               </a>
             )}
-            <span>criado {timeAgo(token.createdAt)} atrás</span>
+            <span>{t.criadoHa(timeAgo(token.createdAt))}</span>
 
             {/*
               SITE E X DA MOEDA — e, quando não há, uma busca no X.

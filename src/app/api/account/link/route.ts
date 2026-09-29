@@ -77,7 +77,7 @@ export async function POST(request: Request) {
    * assinar uma coisa e o servidor usar a assinatura pra outra — o texto é
    * parte do que está sendo autorizado, não enfeite.
    */
-  const momento = /^Momento: (.+)$/m.exec(mensagem);
+  const momento = /^Time: (.+)$/m.exec(mensagem);
   const esperada = momento
     ? mensagemDeVinculo({
         nickname: conta.nickname,

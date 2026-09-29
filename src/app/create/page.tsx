@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useLancarToken } from "@/hooks/useLancarToken";
+import { PARTE_DA_CHROMA_BPS } from "@/lib/pumpfun";
 import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
@@ -66,6 +67,7 @@ const TEXTOS = traducoes({
     identidade: "Identity", nome: "Name", nomeEx: "e.g. Turbo Cat", simbolo: "Symbol", simboloEx: "e.g. TURBO", descricao: "Description", descricaoEx: "What is this token?",
     redesSociais: "Social links", opcionalFixo: "optional · cannot be edited later", site: "Website",
     ganhoTitulo: "What you earn as the creator",
+    ganhoPump: (p: number) => `On Solana your coin is launched on pump.fun and trades there and here. You keep ${100 - p}% of the pump.fun creator fee, and ${p}% goes to Chroma. You will approve two steps in your wallet: creating the coin and the fee split (with your initial buy).`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
     verFaixas: "see the tiers",
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
@@ -77,7 +79,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Launch fee: ${fee} ${s}, paid on submission. Plus the ${rede} network fee.`,
     semTaxa: (rede: string) => `Launching has no Chroma fee — only the ${rede} network fee, paid from your wallet.`,
     semLimite: "There is no limit on how many tokens you can launch.", verTaxas: "see all fees",
-    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aguardando-assinatura": "Approve in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", pronto: "Done!" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aguardando-assinatura": "Approve in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", dividindo: "Coin created. Approve the last step in your wallet…", pronto: "Done!" } as Record<string, string>,
   },
   pt: {
     titulo: "Criar token", subtitulo: "Criação e negociação no mesmo lugar: assim que a moeda é criada, ela já fica disponível para compra e venda, com página própria e gráfico ao vivo.",
@@ -95,6 +97,7 @@ const TEXTOS = traducoes({
     identidade: "Identidade", nome: "Nome", nomeEx: "Ex: Gato Turbo", simbolo: "Símbolo", simboloEx: "Ex: TURBO", descricao: "Descrição", descricaoEx: "O que é esse token?",
     redesSociais: "Redes sociais", opcionalFixo: "opcional · não editável depois", site: "Site",
     ganhoTitulo: "O que você ganha como criador",
+    ganhoPump: (p: number) => `Na Solana a sua moeda é lançada na pump.fun e negocia lá e aqui. Você fica com ${100 - p}% da taxa de criador da pump.fun, e ${p}% vão para a Chroma. Você vai aprovar duas etapas na carteira: a criação da moeda e a divisão da taxa (junto com a sua compra inicial).`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
     verFaixas: "ver as faixas",
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
@@ -106,7 +109,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Taxa de lançamento: ${fee} ${s}, paga no envio. Mais a taxa de rede da ${rede}.`,
     semTaxa: (rede: string) => `Lançar não tem taxa da Chroma — só a taxa de rede da ${rede}, paga da sua carteira.`,
     semLimite: "Não há limite de quantos tokens você pode lançar.", verTaxas: "ver todas as taxas",
-    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aguardando-assinatura": "Aprove na sua carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", pronto: "Pronto!" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aguardando-assinatura": "Aprove na sua carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", dividindo: "Moeda criada. Aprove a última etapa na carteira…", pronto: "Pronto!" } as Record<string, string>,
   },
   zh: {
     titulo: "创建代币", subtitulo: "发行与交易一站完成：代币创建后立即可以买卖，拥有独立页面和实时图表。",
@@ -124,6 +127,7 @@ const TEXTOS = traducoes({
     identidade: "基本信息", nome: "名称", nomeEx: "例如：Turbo Cat", simbolo: "代号", simboloEx: "例如：TURBO", descricao: "简介", descricaoEx: "这个代币是什么？",
     redesSociais: "社交链接", opcionalFixo: "可选 · 之后无法修改", site: "官网",
     ganhoTitulo: "作为创建者你能获得什么",
+    ganhoPump: (p: number) => `在 Solana 上，你的代币会在 pump.fun 发行，并可在那里和这里交易。你保留 pump.fun 创作者费用的 ${100 - p}%，${p}% 归 Chroma。你需要在钱包中确认两步：创建代币，以及费用分成（连同你的首次买入）。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
     verFaixas: "查看档位",
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
@@ -135,7 +139,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `发行费：${fee} ${s}，提交时支付。另加 ${rede} 网络手续费。`,
     semTaxa: (rede: string) => `发行不收 Chroma 费用 —— 只需从钱包支付 ${rede} 网络手续费。`,
     semLimite: "发行代币数量不限。", verTaxas: "查看全部费用",
-    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aguardando-assinatura": "请在钱包中确认…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", pronto: "完成！" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aguardando-assinatura": "请在钱包中确认…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", dividindo: "代币已创建，请在钱包中确认最后一步…", pronto: "完成！" } as Record<string, string>,
   },
 });
 
@@ -183,7 +187,7 @@ export default function CreateTokenPage() {
    * enquanto os contratos não estiverem no ar com os endereços configurados,
    * não há o que chamar.
    */
-  const redeDisponivel = podeLancarNaRede(chain) && lancamentoEvm.disponivel;
+  const redeDisponivel = podeLancarNaRede(chain) && (chain === "solana" || lancamentoEvm.disponivel);
 
   const [pair, setPair] = useState(DEFAULT_PAIR.solana);
   const [media, setMedia] = useState<SelectedMedia | null>(null);
@@ -450,10 +454,16 @@ export default function CreateTokenPage() {
         </CardHeader>
         <CardBody>
           <p className="text-[12px] leading-relaxed text-zinc-400">
-            {t.ganhoTexto(chainLabels.creatorBase, chainLabels.creatorTop)}{" "}
-            <Link href="/fees" className="text-marca hover:text-chroma-cyan">
-              {t.verFaixas}
-            </Link>
+            {chain === "solana" ? (
+              t.ganhoPump(PARTE_DA_CHROMA_BPS / 100)
+            ) : (
+              <>
+                {t.ganhoTexto(chainLabels.creatorBase, chainLabels.creatorTop)}{" "}
+                <Link href="/fees" className="text-marca hover:text-chroma-cyan">
+                  {t.verFaixas}
+                </Link>
+              </>
+            )}
           </p>
         </CardBody>
       </Card>

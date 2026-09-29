@@ -192,6 +192,9 @@ export function textos(idioma: Idioma): Textos {
  * que não estiver aqui passa como veio.
  */
 const DO_SERVIDOR: Record<string, { en: string; zh: string }> = {
+  "Não foi possível abrir esta imagem.": { en: "Could not open this image.", zh: "无法打开这张图片。" },
+  "Não foi possível ler esta imagem.": { en: "Could not read this image.", zh: "无法读取这张图片。" },
+  "a rede recusou a migração": { en: "the network rejected the migration", zh: "网络拒绝了迁移" },
   "Preencha nome, e-mail e mensagem.": { en: "Fill in name, email and message.", zh: "请填写姓名、邮箱和消息。" },
   "E-mail inválido.": { en: "Invalid email.", zh: "邮箱无效。" },
   "Escreva um pouco mais na mensagem.": { en: "Please write a bit more in the message.", zh: "请在消息中多写一些内容。" },

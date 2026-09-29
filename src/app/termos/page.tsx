@@ -5,10 +5,25 @@ import { Aviso, PaginaLegal } from "@/components/ui/PaginaLegal";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
 
-export const metadata: Metadata = {
-  title: "Terms of Use — Chroma",
-  description: "Chroma's rules of use: risks, responsibilities and conduct.",
-};
+const METADADOS = {
+  "en": [
+    "Terms of Use — Chroma",
+    "Chroma's rules of use: risks, responsibilities and conduct."
+  ],
+  "pt": [
+    "Termos de Uso — Chroma",
+    "As regras de uso da Chroma: riscos, responsabilidades e conduta."
+  ],
+  "zh": [
+    "使用条款 — Chroma",
+    "Chroma 的使用规则：风险、责任与行为规范。"
+  ]
+} as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [title, description] = METADADOS[await idiomaAtual()];
+  return { title, description };
+}
 
 /**
  * Termos de Uso.

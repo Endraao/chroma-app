@@ -38,7 +38,7 @@ const TEXTOS = traducoes({
     p3: "Works on both networks", p3Texto: "Solana and Robinhood Chain, even if the person uses a different wallet on each.",
     compartilhar: "Share",
     abreInicial: (b: React.ReactNode) => <>This link opens the home page. To promote a specific coin, use the {b} button on its page: the link already carries your referral.</>,
-    entre: "Sign in to get your link", cliqueEm: (b: React.ReactNode) => <>Click {b} at the top of the page.</>,
+    entre: "Sign in to get your link", botaoEntrar: "Sign in", cliqueEm: (b: React.ReactNode) => <>Click {b} at the top of the page.</>,
     comoFunciona: "How it works", refExemplo: "?ref=yournickname",
     s1: "You share the coin", s1Texto: (b: React.ReactNode, c: React.ReactNode) => <>Open the coin and click {b}. You get a link with your nickname. Any Chroma page accepts {c}.</>,
     s2: "The referral is saved on their account", primeira: "The first referral is the one that counts",
@@ -56,7 +56,7 @@ const TEXTOS = traducoes({
     p3: "Vale nas duas redes", p3Texto: "Solana e Robinhood Chain, mesmo que a pessoa use uma carteira em cada.",
     compartilhar: "Compartilhar",
     abreInicial: (b: React.ReactNode) => <>Este link abre a página inicial. Para divulgar uma moeda específica, use o botão {b} na página dela: o link já sai com a sua indicação.</>,
-    entre: "Entre para gerar o seu link", cliqueEm: (b: React.ReactNode) => <>Clique em {b} no topo da página.</>,
+    entre: "Entre para gerar o seu link", botaoEntrar: "Entrar", cliqueEm: (b: React.ReactNode) => <>Clique em {b} no topo da página.</>,
     comoFunciona: "Como funciona", refExemplo: "?ref=seuapelido",
     s1: "Você divulga a moeda", s1Texto: (b: React.ReactNode, c: React.ReactNode) => <>Abra a moeda e clique em {b}. Sai um link com o seu apelido. Qualquer página da Chroma aceita {c}.</>,
     s2: "A indicação fica registrada na conta dela", primeira: "A primeira indicação é a que vale",
@@ -74,7 +74,7 @@ const TEXTOS = traducoes({
     p3: "两条链都有效", p3Texto: "Solana 和 Robinhood Chain，即使对方在每条链上使用不同的钱包。",
     compartilhar: "分享",
     abreInicial: (b: React.ReactNode) => <>此链接打开首页。要推广某个代币，请在其页面使用 {b} 按钮：链接会自动带上你的推荐。</>,
-    entre: "登录以获取你的链接", cliqueEm: (b: React.ReactNode) => <>点击页面顶部的 {b}。</>,
+    entre: "登录以获取你的链接", botaoEntrar: "登录", cliqueEm: (b: React.ReactNode) => <>点击页面顶部的 {b}。</>,
     comoFunciona: "运作方式", refExemplo: "?ref=你的昵称",
     s1: "你分享代币", s1Texto: (b: React.ReactNode, c: React.ReactNode) => <>打开代币并点击 {b}，即可获得带你昵称的链接。Chroma 的任何页面都支持 {c}。</>,
     s2: "推荐记录在对方账户中", primeira: "以第一次推荐为准",
@@ -204,7 +204,7 @@ export default function AffiliatePage() {
               {t.entre}
             </p>
             <p className="text-[12px] text-zinc-500">
-              {t.cliqueEm(<strong className="text-zinc-300">Sign in</strong>)}
+              {t.cliqueEm(<strong className="text-zinc-300">{t.botaoEntrar}</strong>)}
             </p>
           </CardBody>
         </Card>
