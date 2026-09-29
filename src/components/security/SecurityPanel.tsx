@@ -73,13 +73,15 @@ type Rotulos = Record<string, { label: string; description: string }>;
 const TEXTOS = traducoes({
   en: {
     nenhumSinal: "No danger signs found",
-    alertas: (n: number) => (n === 1 ? "1 alert on this token" : `${n} alerts on this token`),
+    alertas: (n: number) => (n === 1 ? "Warning: 1 problem" : `Warning: ${n} problems`),
+    zeroTitulo: "Zero liquidity",
+    zeroDetalhe: "There is no liquidity in this coin. Trading may be impossible.",
     passaram: (n: number) => `${n} contract checks passed`,
     atencao: (n: number) => (n === 1 ? "1 point of attention" : `${n} points of attention`),
     naoEGarantia: "Automated audits are not a guarantee. A contract can pass everything and the owner can still sell it all.",
     lpTitulo: "Liquidity not locked",
     lpDetalhe: "We could not confirm that the liquidity is locked. Trade with caution.",
-    rasaTitulo: "Hard to exit this coin",
+    rasaTitulo: "Low liquidity",
     rasaDetalhe: (pool: string, venda: string, pct: number) => `The pool holds ${pool}. A ${venda} sale would already drop the price about ${pct}% against you.`,
     semLiquidez: "We found no tradable liquidity for this coin.",
     checks: {
@@ -115,13 +117,15 @@ const TEXTOS = traducoes({
   },
   pt: {
     nenhumSinal: "Nenhum sinal de perigo encontrado",
-    alertas: (n: number) => (n === 1 ? "1 alerta neste token" : `${n} alertas neste token`),
+    alertas: (n: number) => (n === 1 ? "Aviso: 1 problema" : `Aviso: ${n} problemas`),
+    zeroTitulo: "Liquidez zero",
+    zeroDetalhe: "Não há liquidez nesta moeda. A negociação pode estar impossibilitada.",
     passaram: (n: number) => `${n} verificações no contrato passaram`,
     atencao: (n: number) => (n === 1 ? "1 ponto de atenção" : `${n} pontos de atenção`),
     naoEGarantia: "Auditoria automática não é garantia. Um contrato pode passar em tudo e o dono vender tudo mesmo assim.",
     lpTitulo: "Liquidez não travada",
     lpDetalhe: "Não foi possível confirmar que a liquidez está travada. Opere com cautela.",
-    rasaTitulo: "Difícil sair desta moeda",
+    rasaTitulo: "Liquidez baixa",
     rasaDetalhe: (pool: string, venda: string, pct: number) => `A pool tem ${pool}. Uma venda de ${venda} já derrubaria o preço uns ${pct}% contra você.`,
     semLiquidez: "Não encontramos liquidez negociável para esta moeda.",
     checks: {} as Rotulos,
@@ -130,13 +134,15 @@ const TEXTOS = traducoes({
   },
   zh: {
     nenhumSinal: "未发现危险信号",
-    alertas: (n: number) => `该代币有 ${n} 条警报`,
+    alertas: (n: number) => `警告：${n} 个问题`,
+    zeroTitulo: "零流动性",
+    zeroDetalhe: "该代币没有流动性，可能无法交易。",
     passaram: (n: number) => `${n} 项合约检查通过`,
     atencao: (n: number) => `${n} 个注意事项`,
     naoEGarantia: "自动审计并不代表保证。合约即使通过所有检查，所有者仍可能全部卖出。",
     lpTitulo: "流动性未锁定",
     lpDetalhe: "无法确认流动性已锁定，请谨慎交易。",
-    rasaTitulo: "难以卖出该代币",
+    rasaTitulo: "流动性低",
     rasaDetalhe: (pool: string, venda: string, pct: number) => `池中只有 ${pool}。一笔 ${venda} 的卖单就会让价格对你不利地下跌约 ${pct}%。`,
     semLiquidez: "没有找到该代币可交易的流动性。",
     checks: {
@@ -419,7 +425,10 @@ function montarAlertas(
      * errado é a auditoria. O caso de não haver pool DE VERDADE continua
      * coberto: aí a liquidez que lemos é zero e o alerta passa.
      */
-    if (c.id === "liquidity" && (mercado.liquidityUsd ?? 0) > 0) continue;
+    // A verificação "Liquidez na DEX" nunca vira alerta: o texto dela descreve
+    // a checagem, não o problema, e confundia. A falta de liquidez vira o
+    // alerta "Liquidez zero", logo abaixo, a partir dos nossos dados.
+    if (c.id === "liquidity") continue;
 
     alertas.push({ id: c.id, titulo: c.label, detalhe: c.description, nivel: c.level });
   }
@@ -490,15 +499,16 @@ function montarAlertas(
   const { liquidityUsd } = mercado;
   if (liquidityUsd !== undefined && liquidityUsd < PISO_DE_LIQUIDEZ) {
     const impacto = liquidityUsd > 0 ? (2 * VENDA_DE_REFERENCIA) / liquidityUsd : 1;
-    alertas.push({
-      id: "liquidez_rasa",
-      titulo: t.rasaTitulo,
-      detalhe:
-        liquidityUsd > 0
-          ? t.rasaDetalhe(formatUsd(liquidityUsd), formatUsd(VENDA_DE_REFERENCIA), Math.min(99, Math.round(impacto * 100)))
-          : t.semLiquidez,
-      nivel: "danger",
-    });
+    alertas.push(
+      liquidityUsd > 0
+        ? {
+            id: "liquidez_rasa",
+            titulo: t.rasaTitulo,
+            detalhe: t.rasaDetalhe(formatUsd(liquidityUsd), formatUsd(VENDA_DE_REFERENCIA), Math.min(99, Math.round(impacto * 100))),
+            nivel: "danger",
+          }
+        : { id: "liquidez_zero", titulo: t.zeroTitulo, detalhe: t.zeroDetalhe, nivel: "danger" },
+    );
   }
 
   return alertas;
