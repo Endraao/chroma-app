@@ -40,6 +40,8 @@ import { useEffect, useRef, useState } from "react";
 
 /** keccak256("Swap(bytes32,address,int128,int128,uint160,uint128,int24,uint24)") */
 const TOPICO_SWAP = "0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f";
+/* Swap da Uniswap v3 — amount0/amount1 nas mesmas posições do evento da v4. */
+const TOPICO_SWAP_V3 = "0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67";
 
 /** `decimals()` */
 const SELETOR_DECIMAIS = "0x313ce567";
@@ -89,13 +91,13 @@ export function useEvmPoolTicker({
     const valido =
       ligado &&
       poolId &&
-      /^0x[a-fA-F0-9]{64}$/.test(poolId) &&
+      /^0x([a-fA-F0-9]{64}|[a-fA-F0-9]{40})$/.test(poolId) &&
       quoteAddress &&
       quotePriceUsd &&
       quotePriceUsd > 0;
 
     if (!valido) {
-      setEstado(poolId && !/^0x[a-fA-F0-9]{64}$/.test(poolId) ? "indisponivel" : "desligado");
+      setEstado(poolId && !/^0x([a-fA-F0-9]{64}|[a-fA-F0-9]{40})$/.test(poolId) ? "indisponivel" : "desligado");
       return;
     }
 
@@ -128,11 +130,14 @@ export function useEvmPoolTicker({
          */
         const [decBase, decCot] = await Promise.all(
           [tokenAddress, quoteAddress].map(async (endereco) => {
+            // ETH puro (endereço zero) não é contrato: tem 18 casas, sempre.
+            // Perguntar a ele derrubava o tempo real nas pools com ETH.
+            if (/^0x0{40}$/i.test(endereco)) return 18;
             const r = (await chamar("eth_call", [
               { to: endereco, data: SELETOR_DECIMAIS },
               "latest",
             ])) as string;
-            return Number(BigInt(r));
+            return r && r !== "0x" ? Number(BigInt(r)) : 18;
           }),
         );
         if (cancelado) return;
@@ -158,7 +163,10 @@ export function useEvmPoolTicker({
               {
                 fromBlock: "0x" + (ultimoBlocoRef.current + 1n).toString(16),
                 toBlock: "latest",
-                topics: [TOPICO_SWAP, poolId],
+                // v4: todas as pools num contrato só, filtradas pelo id. v3: a pool é o contrato.
+                ...(poolId.length === 42
+                  ? { address: poolId, topics: [TOPICO_SWAP_V3] }
+                  : { topics: [TOPICO_SWAP, poolId] }),
               },
             ])) as { data: string; blockNumber: string }[];
 

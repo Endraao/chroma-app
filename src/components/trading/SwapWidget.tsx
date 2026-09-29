@@ -3,6 +3,7 @@
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
 import { feeLabelFor } from "@/lib/fees";
+import { anotarOperacao } from "@/lib/posicoes-locais";
 
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -230,6 +231,15 @@ function SolanaSwap({
     affiliate,
     affiliateRef,
   });
+
+  // Anota a operação pro painel "Sua posição" (preço médio em SOL).
+  useEffect(() => {
+    if (!swap.signature || !publicKey) return;
+    const tokens = comprando ? Number(swap.outAmount ?? 0) : Number(amount);
+    const sol = comprando ? Number(amount) : Number(swap.outAmount ?? 0);
+    anotarOperacao(publicKey.toBase58(), tokenAddress, side, tokens, sol);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só no momento em que a operação confirma
+  }, [swap.signature]);
 
   /* Trocar de lado zera o campo: 50 dólares e 50 milhões de tokens não são a
      mesma ordem, e reaproveitar o número faria alguém vender sem querer. */
@@ -838,6 +848,15 @@ function EvmSwap({
       window.clearInterval(id);
     };
   }, [address, publicClient, tokenAddress, swap.hash]);
+
+  // Anota a operação pro painel "Sua posição" (preço médio em ETH).
+  useEffect(() => {
+    if (!swap.hash || !address) return;
+    const tokens = ehCompra ? Number(swap.saida ?? 0) : Number(digitado);
+    const eth = ehCompra ? Number(digitado) : Number(swap.saida ?? 0);
+    anotarOperacao(address, tokenAddress, side, tokens, eth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só no momento em que a operação confirma
+  }, [swap.hash]);
 
   const saldo = ehCompra ? saldoEth : saldoToken;
 

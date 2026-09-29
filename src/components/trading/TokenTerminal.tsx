@@ -241,7 +241,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             O componente não desenha nada pra quem não tem a moeda, então não
             ocupa espaço de quem está chegando agora.
           */}
-          <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} />
+          <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} precoUsd={price} />
 
           {/*
             A AUDITORIA FICA DEPOIS DO BOTÃO, e discreta.

@@ -339,7 +339,10 @@ export function SecurityPanel({
             </div>
           )}
 
-          {report.checks.map((c) => (
+          {report.checks
+            // "Não verificado" em liquidez travada e honeypot só contradizia o alerta de cima.
+            .filter((c) => !(c.level === "unknown" && (c.id === "honeypot" || c.id === "lp_locked")))
+            .map((c) => (
             <Linha key={c.id} check={c} />
           ))}
           <p className="pt-1.5 text-[10px] leading-relaxed text-zinc-600">

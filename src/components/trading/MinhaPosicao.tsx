@@ -4,11 +4,16 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
 import { useEffect, useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
+import { usePublicClient } from "wagmi";
+import { erc20Abi, formatUnits, type Address } from "viem";
+import { usePrecoNativo } from "@/hooks/usePrecoNativo";
+import { posicaoLocal } from "@/lib/posicoes-locais";
 import { useAccount } from "wagmi";
 
 import { Card, CardBody } from "@/components/ui/Card";
-import { CHAINS } from "@/lib/web3";
+import { CHAINS, robinhoodChain } from "@/lib/web3";
 import { cn, formatPrice, formatUsd } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 
@@ -75,10 +80,13 @@ export function MinhaPosicao({
   address,
   symbol,
   chain,
+  precoUsd = 0,
 }: {
   address: string;
   symbol: string;
   chain: ChainId;
+  /** preço ao vivo da página (o mesmo do gráfico) */
+  precoUsd?: number;
 }) {
   const t = useTextos(TEXTOS);
   const { publicKey } = useWallet();
@@ -87,8 +95,45 @@ export function MinhaPosicao({
   const minhaCarteira =
     CHAINS[chain].kind === "solana" ? publicKey?.toBase58() : enderecoEvm;
 
-  const [eu, setEu] = useState<Trader | null>(null);
-  const [preco, setPreco] = useState(0);
+  const [doHistorico, setEu] = useState<Trader | null>(null);
+  const [precoDoQuadro, setPreco] = useState(0);
+  const precoNativo = usePrecoNativo(chain);
+  const [saldoNaRede, setSaldoNaRede] = useState<number | null>(null);
+  const { connection } = useConnection();
+  const publicClient = usePublicClient({ chainId: robinhoodChain.id });
+
+  /* O saldo de verdade, lido da rede — não depende do histórico público. */
+  useEffect(() => {
+    if (!minhaCarteira) {
+      setSaldoNaRede(null);
+      return;
+    }
+    let cancelado = false;
+    const ler = async () => {
+      try {
+        let saldo = 0;
+        if (CHAINS[chain].kind === "solana") {
+          const contas = await connection.getParsedTokenAccountsByOwner(new PublicKey(minhaCarteira), { mint: new PublicKey(address) });
+          saldo = contas.value.reduce((acc, c) => acc + Number(c.account.data.parsed.info.tokenAmount.uiAmount ?? 0), 0);
+        } else if (publicClient) {
+          const [bruto, dec] = await Promise.all([
+            publicClient.readContract({ address: address as Address, abi: erc20Abi, functionName: "balanceOf", args: [minhaCarteira as Address] }),
+            publicClient.readContract({ address: address as Address, abi: erc20Abi, functionName: "decimals" }).catch(() => 18),
+          ]);
+          saldo = Number(formatUnits(bruto, Number(dec)));
+        }
+        if (!cancelado) setSaldoNaRede(saldo);
+      } catch {
+        /* rede instável: fica com o histórico */
+      }
+    };
+    void ler();
+    const id = window.setInterval(ler, 15_000);
+    return () => {
+      cancelado = true;
+      window.clearInterval(id);
+    };
+  }, [minhaCarteira, address, chain, connection, publicClient]);
 
   useEffect(() => {
     if (!minhaCarteira) {
@@ -131,7 +176,26 @@ export function MinhaPosicao({
   }, [address, minhaCarteira]);
 
   /* Sem carteira, ou sem posição nesta moeda: o painel não existe. */
-  if (!minhaCarteira || !eu || eu.saldo <= 0) return null;
+  const saldoAtual = saldoNaRede ?? doHistorico?.saldo ?? 0;
+  if (!minhaCarteira || saldoAtual <= 0) return null;
+  const preco = precoUsd > 0 ? precoUsd : precoDoQuadro;
+
+  // Preço médio: primeiro o anotado nas operações feitas aqui; senão, o do histórico público.
+  const local = posicaoLocal(minhaCarteira, address);
+  const medioLocal =
+    local && local.tokens > 0 && precoNativo ? (local.custoNativo / local.tokens) * precoNativo : null;
+  const medio = medioLocal ?? (doHistorico && !doHistorico.vindoDeAntes ? doHistorico.precoMedioUsd : null);
+  const eu: Trader = {
+    carteira: minhaCarteira,
+    saldo: saldoAtual,
+    precoMedioUsd: medio,
+    naoRealizadoUsd: medio !== null ? saldoAtual * (preco - medio) : null,
+    realizadoUsd: doHistorico?.realizadoUsd ?? null,
+    lucroUsd: null,
+    vindoDeAntes: medio === null,
+    compras: local?.compras ?? doHistorico?.compras ?? 0,
+    vendas: local?.vendas ?? doHistorico?.vendas ?? 0,
+  };
 
   const valorAtual = eu.saldo * preco;
 
