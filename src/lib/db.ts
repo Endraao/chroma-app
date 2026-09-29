@@ -252,6 +252,8 @@ async function criarTabelas(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_moedas_criador ON moedas(criador)`,
     // site, X e Telegram informados no lançamento (JSON)
     `ALTER TABLE moedas ADD COLUMN IF NOT EXISTS links TEXT`,
+    // "detentores" quando a taxa de criador vai pros holders (Solana/pump.fun)
+    `ALTER TABLE moedas ADD COLUMN IF NOT EXISTS recompensas TEXT`,
 
     /*
      * Denúncias de moeda.
@@ -374,6 +376,7 @@ export interface MoedaRegistrada {
   assinatura: string | null;
   criadaEm: number;
   links?: { site?: string; twitter?: string; telegram?: string } | null;
+  recompensas?: "detentores" | null;
 }
 
 /**
@@ -391,8 +394,8 @@ export async function registrarMoeda(m: MoedaRegistrada): Promise<void> {
   await banco();
   await sql.query(
     `INSERT INTO moedas
-       (endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em, links)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em, links, recompensas)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      ON CONFLICT (endereco) DO NOTHING`,
     [
       m.endereco,
@@ -405,6 +408,7 @@ export async function registrarMoeda(m: MoedaRegistrada): Promise<void> {
       m.assinatura,
       m.criadaEm,
       m.links ? JSON.stringify(m.links) : null,
+      m.recompensas ?? null,
     ],
   );
 }
@@ -413,7 +417,7 @@ export async function registrarMoeda(m: MoedaRegistrada): Promise<void> {
 export async function listarMoedasDaChroma(limite = 60): Promise<MoedaRegistrada[]> {
   await banco();
   const linhas = (await sql.query(
-    `SELECT endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em, links
+    `SELECT endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em, links, recompensas
        FROM moedas ORDER BY criada_em DESC LIMIT $1`,
     [limite],
   )) as Record<string, unknown>[];
@@ -429,6 +433,7 @@ export async function listarMoedasDaChroma(limite = 60): Promise<MoedaRegistrada
     assinatura: l.assinatura == null ? null : String(l.assinatura),
     criadaEm: Number(l.criada_em),
     links: lerLinks(l.links),
+    recompensas: l.recompensas === "detentores" ? "detentores" : null,
   }));
 }
 
@@ -443,7 +448,7 @@ export async function listarMoedasDaChroma(limite = 60): Promise<MoedaRegistrada
 export async function buscarMoedaDaChroma(endereco: string): Promise<MoedaRegistrada | null> {
   await banco();
   const linhas = (await sql.query(
-    `SELECT endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em, links
+    `SELECT endereco, rede, nome, simbolo, descricao, imagem, criador, assinatura, criada_em, links, recompensas
        FROM moedas WHERE LOWER(endereco) = LOWER($1) LIMIT 1`,
     [endereco],
   )) as Record<string, unknown>[];
@@ -461,6 +466,7 @@ export async function buscarMoedaDaChroma(endereco: string): Promise<MoedaRegist
     assinatura: l.assinatura == null ? null : String(l.assinatura),
     criadaEm: Number(l.criada_em),
     links: lerLinks(l.links),
+    recompensas: l.recompensas === "detentores" ? "detentores" : null,
   };
 }
 

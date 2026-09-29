@@ -71,6 +71,7 @@ export async function POST(request: Request) {
         assinatura: texto(corpo.assinatura, 128) || null,
         criadaEm: Date.now(),
         links: linksDo(corpo),
+        recompensas: corpo.recompensas === "detentores" ? "detentores" : null,
       });
     } catch (erro) {
       console.warn("[moedas] falha ao registrar (pump):", erro);

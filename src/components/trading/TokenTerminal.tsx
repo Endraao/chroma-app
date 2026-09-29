@@ -16,6 +16,7 @@ import { PainelDeAtividade } from "@/components/trading/PainelDeAtividade";
 import { StatusDaCurva } from "@/components/trading/StatusDaCurva";
 import { ConviteParaCompartilhar } from "@/components/trading/ConviteParaCompartilhar";
 import { PainelSobre } from "@/components/trading/PainelSobre";
+import { AvisoRecompensas } from "@/components/trading/AvisoRecompensas";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -217,6 +218,8 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             */}
           <CurvaPanel />
           <StatusDaCurva token={token} />
+
+          {token.recompensasParaDetentores && <AvisoRecompensas />}
 
           <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
             <SwapWidget

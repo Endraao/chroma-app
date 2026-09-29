@@ -52,6 +52,8 @@ export interface TokenSummary {
   website?: string;
   twitter?: string;
   telegram?: string;
+  /** lançada na Chroma com a taxa de criador indo pros holders */
+  recompensasParaDetentores?: boolean;
 }
 
 export interface Candle {

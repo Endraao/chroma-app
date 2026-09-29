@@ -178,6 +178,7 @@ export function useLancarToken() {
               site: dados.site,
               twitter: dados.twitter,
               telegram: dados.telegram,
+              recompensas: dados.recompensas,
               chain: "solana",
               mint: mintCriado,
               nome: dados.nome,

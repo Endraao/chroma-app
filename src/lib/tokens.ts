@@ -300,8 +300,8 @@ export async function listTokens(
 export async function getToken(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
   const r = await getTokenBase(address);
   const registro = await buscarMoedaDaChroma(address).catch(() => null);
-  const l = registro?.links;
-  if (!l) return r;
+  const l = registro?.links ?? {};
+  if (!registro) return r;
   return {
     ...r,
     token: {
@@ -309,6 +309,7 @@ export async function getToken(address: string): Promise<{ token: TokenSummary; 
       website: r.token.website ?? l.site,
       twitter: r.token.twitter ?? l.twitter,
       telegram: r.token.telegram ?? l.telegram,
+      recompensasParaDetentores: registro.recompensas === "detentores",
     },
   };
 }
