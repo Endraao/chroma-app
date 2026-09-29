@@ -70,6 +70,7 @@ export async function transacaoDeCriacao({
   uri,
   carteiraDaChroma,
   taxaSol,
+  paraDetentores = false,
 }: {
   conn: Connection;
   criador: PublicKey;
@@ -79,6 +80,8 @@ export async function transacaoDeCriacao({
   uri: string;
   carteiraDaChroma: PublicKey;
   taxaSol: number;
+  /** recompensas do criador vão para quem segura a moeda, não pro criador */
+  paraDetentores?: boolean;
 }) {
   const { PUMP_SDK } = await sdk();
   const ixs: TransactionInstruction[] = [
@@ -103,6 +106,10 @@ export async function transacaoDeCriacao({
       creator: criador,
       user: criador,
       mayhemMode: false,
+      // Modo detentores: a pump.fun manda a taxa de criador pros holders.
+      // Nesse modo a divisão com a Chroma não existe (o criador vira a conta
+      // de recompensas e não pode ser alterado).
+      ...(paraDetentores ? { holderReward: true } : {}),
     }),
   );
   return montar(conn, criador, ixs);
@@ -119,17 +126,19 @@ export async function transacaoDeDivisao({
   mint,
   carteiraDaChroma,
   compraSol,
+  paraDetentores = false,
 }: {
   conn: Connection;
   criador: PublicKey;
   mint: PublicKey;
   carteiraDaChroma: PublicKey;
   compraSol: number;
+  paraDetentores?: boolean;
 }) {
   const { PUMP_SDK, OnlinePumpSdk, feeSharingConfigPda, getBuyTokenAmountFromSolAmount } = await sdk();
   const BN = (await import("bn.js")).default;
 
-  const ixs: TransactionInstruction[] = [
+  const ixs: TransactionInstruction[] = paraDetentores ? [] : [
     await PUMP_SDK.createFeeSharingConfig({ creator: criador, mint, pool: null }),
     await PUMP_SDK.updateFeeSharesV2({
       authority: criador,
@@ -150,7 +159,7 @@ export async function transacaoDeDivisao({
     const estado = await online.fetchBuyState(mint, criador, TOKEN_2022_PROGRAM_ID);
     // Depois da divisão, a taxa de criador vai para a conta de divisão, não
     // mais para o criador: a compra precisa apontar para ela.
-    estado.bondingCurve = { ...estado.bondingCurve, creator: feeSharingConfigPda(mint) };
+    if (!paraDetentores) estado.bondingCurve = { ...estado.bondingCurve, creator: feeSharingConfigPda(mint) };
     const solAmount = new BN(Math.round(compraSol * LAMPORTS_PER_SOL));
     const amount = getBuyTokenAmountFromSolAmount({
       global,

@@ -27,9 +27,9 @@ import type { TokenSummary } from "@/lib/types";
  * fonte, mais o que passou na nossa frente desde que a página abriu.
  */
 const TEXTOS = traducoes({
-  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders", criadoHa: (x: string) => `created ${x} ago` },
-  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders", criadoHa: (x: string) => `criado ${x} atrás` },
-  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人", criadoHa: (x: string) => `${x}前创建` },
+  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders", top10: "Top 10 hold", criadoHa: (x: string) => `created ${x} ago` },
+  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders", top10: "Top 10 detêm", criadoHa: (x: string) => `criado ${x} atrás` },
+  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人", top10: "前 10 持有", criadoHa: (x: string) => `${x}前创建` },
 });
 
 export function TokenHeader({
@@ -85,7 +85,7 @@ export function TokenHeader({
   }
 
   return (
-    <Card className="p-3">
+    <Card className="px-3 py-2">
       <div className="flex flex-wrap items-center gap-3">
         <ImagemDaMoedaGrande token={token} />
 
@@ -158,28 +158,8 @@ export function TokenHeader({
           </div>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
-          <div className="text-right">
-            <div className="tnum text-xl font-black text-zinc-50">${formatPrice(price)}</div>
-            <div className={cn("tnum text-sm font-semibold", up ? "text-bull" : "text-bear")}>
-              {formatPct(variacao)} <span className="text-zinc-600">24h</span>
-            </div>
-          </div>
-
-          {/*
-            O botão de compartilhar mora AQUI, não só no painel de afiliado:
-            ninguém divulga "a plataforma", as pessoas divulgam a moeda que
-            compraram. Se o link não sair daqui, o programa não roda.
-          */}
-
-        </div>
-      </div>
-
-      {/*
-        Uma faixa fina, não quatro caixas. O gráfico é o que a pessoa veio ver;
-        cada pixel gasto aqui sai de lá.
-      */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/[0.06] pt-2.5">
+        {/* Números na MESMA linha do nome: o cabeçalho fica baixo e sobra altura pro gráfico e pra compra. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:ml-4 lg:border-l lg:border-white/[0.06] lg:pl-5">
         <Numero rotulo={t.mcap} valor={formatUsd(marketCapAoVivo)} />
         <Numero
           rotulo={t.variacao}
@@ -199,12 +179,31 @@ export function TokenHeader({
         */}
         {top10Pct > 0 && (
           <Numero
-            rotulo="Top 10"
+            rotulo={t.top10}
             valor={`${top10Pct.toFixed(1)}%`}
             cor={top10Pct > 50 ? "text-bear" : top10Pct > 25 ? "text-warn" : undefined}
           />
         )}
+              </div>
+
+        <div className="ml-auto flex items-center gap-3">
+          <div className="text-right">
+            <div className="tnum text-lg font-black text-zinc-50">${formatPrice(price)}</div>
+            <div className={cn("tnum text-[12px] font-semibold", up ? "text-bull" : "text-bear")}>
+              {formatPct(variacao)} <span className="text-zinc-600">24h</span>
+            </div>
+          </div>
+
+          {/*
+            O botão de compartilhar mora AQUI, não só no painel de afiliado:
+            ninguém divulga "a plataforma", as pessoas divulgam a moeda que
+            compraram. Se o link não sair daqui, o programa não roda.
+          */}
+
+        </div>
       </div>
+
+
     </Card>
   );
 }

@@ -62,13 +62,13 @@ interface Grupo {
 const traco = {
   fill: "none",
   stroke: "currentColor",
-  strokeWidth: 1.3,
+  strokeWidth: 1.1,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
 };
 
 const I = ({ children }: { children: React.ReactNode }) => (
-  <svg viewBox="0 0 24 24" className="size-[19px]" {...traco}>
+  <svg viewBox="0 0 24 24" className="size-[22px]" {...traco}>
     {children}
   </svg>
 );
@@ -107,18 +107,22 @@ const IconeHorizontais = () => (
  */
 const IconeForquilha = () => (
   <I>
-    <path d="M5 19 12 9M12 9l7 10M12 9V4" />
-    <circle cx="12" cy="3" r="1.7" />
-    <circle cx="4" cy="20" r="1.7" />
-    <circle cx="20" cy="20" r="1.7" />
+    {/* padrões: vértices ligados em zigue-zague */}
+    <path d="M5.3 17.2 9.2 7.8M10.6 7.6l3 7.3M15 14.6l3.4-8" />
+    <circle cx="4.6" cy="18.8" r="1.6" />
+    <circle cx="9.9" cy="6.2" r="1.6" />
+    <circle cx="14.3" cy="16.5" r="1.6" />
+    <circle cx="19.1" cy="5" r="1.6" />
   </I>
 );
 
 /** Fibonacci: a barra vertical com os níveis saindo dela. */
 const IconeFibonacci = () => (
   <I>
-    <path d="M5 4v16" />
-    <path d="M5 7h14M5 11h10M5 15h14M5 19h7" />
+    {/* níveis horizontais com as pontas marcadas */}
+    <path d="M3 5.5h14M7 10h14M3 14.5h14M7 19h14" />
+    <circle cx="19" cy="5.5" r="1.5" />
+    <circle cx="5" cy="19" r="1.5" />
   </I>
 );
 
@@ -131,8 +135,9 @@ const IconeFibonacci = () => (
  */
 const IconeFormas = () => (
   <I>
-    <path d="M3 17c3.5 0 4-9 8-9s4.5 6 8 6" />
-    <circle cx="20.5" cy="13.6" r="1.7" />
+    {/* pincel */}
+    <path d="M19.5 4.5 11 13" />
+    <path d="M11 13c-1.6-.9-3.6.2-3.9 2.1-.2 1.4-.9 2.6-2.6 3.4 3.3.9 6.9-.2 7.6-2.6.3-1.1-.1-2.1-1.1-2.9z" />
   </I>
 );
 
@@ -461,7 +466,7 @@ export function BarraDeDesenho({
                 {grupoAberto === grupo.chave && (
                   <div
                     className="absolute left-full top-0 z-50 ml-1 w-[210px] rounded border p-1 shadow-xl"
-                    style={{ background: "#1e222d", borderColor: cores.borda }}
+                    style={{ background: "#1a1b1f", borderColor: cores.borda }}
                   >
                     {grupo.ferramentas.map((f) => (
                       <button
@@ -545,7 +550,7 @@ function Botao({
   const t = useTextos(TEXTOS);
   return (
     <div
-      className="group relative grid size-[32px] place-items-center rounded transition-colors hover:bg-white/[0.06]"
+      className="group relative grid size-[38px] place-items-center rounded transition-colors hover:bg-white/[0.06]"
       style={{ color: ativo ? cores.ativo : cores.apagado }}
     >
       <button

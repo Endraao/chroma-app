@@ -17,6 +17,7 @@ import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
 import { useTradeSolana } from "@/hooks/useTradeSolana";
 import { useCurvaEvm } from "@/hooks/useCurvaEvm";
 import { useCurvaSwapEvm } from "@/hooks/useCurvaSwapEvm";
+import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { useSwapExternoEvm } from "@/hooks/useSwapExternoEvm";
 import type { Negociavel } from "@/lib/negociavel-evm";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
@@ -56,9 +57,9 @@ import type { ChainId, TradeSide } from "@/lib/types";
  */
 
 /** Valores em dólar, do jeito que se pensa em tamanho de ordem. */
-const ATALHOS_EM_DOLAR = [25, 100, 250];
+const ATALHOS_EM_DOLAR = [10, 100, 500, 1000];
 /** Porcentagens do saldo — de SOL na compra, do token na venda. */
-const ATALHOS_EM_PORCENTAGEM = [25, 50, 100];
+const ATALHOS_EM_PORCENTAGEM = [25, 50, 75, 100];
 
 const SLIPPAGES = [1, 3, 5, 10];
 
@@ -240,7 +241,9 @@ function SolanaSwap({
 
   function atalhoEmDolar(usd: number) {
     if (comprando) {
+      // Campo em dólar: vai direto. Em SOL: converte pelo preço do SOL.
       if (emDolar) setDigitado(String(usd));
+      else if (precoDoSol && precoDoSol > 0) setDigitado(arredondar(usd / precoDoSol, 4));
       return;
     }
     if (priceUsd <= 0) return;
@@ -276,7 +279,7 @@ function SolanaSwap({
   }
 
   const semValor = digitadoNum <= 0;
-  const atalhoDolarLigado = comprando ? emDolar : priceUsd > 0;
+  const atalhoDolarLigado = comprando ? emDolar || Boolean(precoDoSol && precoDoSol > 0) : priceUsd > 0;
   const atalhoPctLigado = swap.balance !== null && swap.balance > 0;
 
   /*
@@ -408,39 +411,29 @@ function SolanaSwap({
             </Button>
           </RequireChainWallet>
 
-          {/* ------------- atalhos -------------------------------------- */}
-          <div className="grid grid-cols-3 gap-2">
-            {ATALHOS_EM_DOLAR.map((v) => (
-              <Atalho
-                key={v}
-                rotulo={`$${v}`}
-                tom={comprando ? "buy" : "sell"}
-                ligado={atalhoDolarLigado}
-                onClick={() => atalhoEmDolar(v)}
-                titulo={
-                  atalhoDolarLigado ? undefined : t.precisaCotacao
-                }
-              />
-            ))}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {ATALHOS_EM_PORCENTAGEM.map((v) => (
-              <Atalho
-                key={v}
-                rotulo={`${v}%`}
-                tom={comprando ? "buy" : "sell"}
-                ligado={atalhoPctLigado}
-                onClick={() => atalhoEmPorcentagem(v)}
-                titulo={
-                  !atalhoPctLigado
-                    ? t.conecteParaPct
-                    : comprando && v === 100
-                      ? t.usaSaldoMenos(RESERVA_DE_REDE_SOL)
-                      : undefined
-                }
-              />
-            ))}
+          {/* ------------- atalhos: dólar na compra, porcentagem na venda ---- */}
+          <div className="grid grid-cols-4 gap-2">
+            {comprando
+              ? ATALHOS_EM_DOLAR.map((v) => (
+                  <Atalho
+                    key={v}
+                    rotulo={`$${v}`}
+                    tom="buy"
+                    ligado={atalhoDolarLigado}
+                    onClick={() => atalhoEmDolar(v)}
+                    titulo={atalhoDolarLigado ? undefined : t.precisaCotacao}
+                  />
+                ))
+              : ATALHOS_EM_PORCENTAGEM.map((v) => (
+                  <Atalho
+                    key={v}
+                    rotulo={`${v}%`}
+                    tom="sell"
+                    ligado={atalhoPctLigado}
+                    onClick={() => atalhoEmPorcentagem(v)}
+                    titulo={atalhoPctLigado ? undefined : t.conecteParaPct}
+                  />
+                ))}
           </div>
 
           {connected && publicKey && (
@@ -759,6 +752,8 @@ function EvmSwap({
   const [side, setSide] = useState<TradeSide>("buy");
   const [digitado, setDigitado] = useState("");
   const [slippageBps, setSlippageBps] = useState(300);
+  // Atalhos da compra em dólar: convertidos pelo preço do ETH.
+  const precoDoEth = usePrecoNativo("robinhood") ?? 0;
 
   const swapDaCurva = useCurvaSwapEvm({
     moeda: tokenAddress,
@@ -975,13 +970,13 @@ function EvmSwap({
         </label>
 
         <div className="grid grid-cols-4 gap-2">
-          {(ehCompra ? ["0.001", "0.005", "0.01", "0.05"] : ["25", "50", "75", "100"]).map((v) => (
+          {(ehCompra ? ATALHOS_EM_DOLAR : ATALHOS_EM_PORCENTAGEM).map((v) => (
             <Atalho
               key={v}
-              rotulo={ehCompra ? `${v} ${meta.nativeSymbol}` : v === "100" ? t.maxMaiusc : `${v}%`}
+              rotulo={ehCompra ? `$${v}` : v === 100 ? t.maxMaiusc : `${v}%`}
               tom={ehCompra ? "buy" : "sell"}
-              ligado={ehCompra || (saldo !== null && saldo > 0)}
-              onClick={() => (ehCompra ? setDigitado(v) : usarPorcentagem(Number(v)))}
+              ligado={ehCompra ? precoDoEth > 0 : saldo !== null && saldo > 0}
+              onClick={() => (ehCompra ? precoDoEth > 0 && setDigitado(cortar(v / precoDoEth, 6)) : usarPorcentagem(v))}
             />
           ))}
         </div>

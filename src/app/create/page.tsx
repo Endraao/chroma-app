@@ -65,8 +65,13 @@ const TEXTOS = traducoes({
     bannerTexto: "Shown on the coin page, besides the coin image. Images or animated GIFs up to 4.5 MB; larger images are resized automatically, GIFs are not. 3:1 ratio, 1500x500px recommended. You can only do this when creating the coin and cannot change it later.",
     carregarArquivo: "Upload file…", bannerTamanho: "Image — max 4.5 MB (larger images are resized automatically, GIFs are not). Formats: '.jpg', '.png', '.webp' or '.gif'.",
     bannerResolucao: "3:1 aspect ratio, 1500x500px recommended.",
-    identidade: "Identity", nome: "Name", nomeEx: "e.g. Turbo Cat", simbolo: "Symbol", simboloEx: "e.g. TURBO", descricao: "Description", descricaoEx: "What is this token?",
+    identidade: "Identity", nome: "Coin name", nomeEx: "e.g. Turbo Cat", simbolo: "Ticker", simboloEx: "e.g. TURBO", descricao: "Description", descricaoEx: "What is this token?",
     redesSociais: "Social links", opcionalFixo: "optional · cannot be edited later", site: "Website",
+    recompensasTitulo: "Send creator rewards to", recCriador: "Creator", recDetentores: "Holders",
+    recCriadorNota: "The creator fee from every trade goes to your wallet.",
+    recDetentoresNota: "The creator fee from every trade is shared among everyone holding the coin — a reason for people to buy and hold. You do not receive the creator fee in this mode.",
+    ganhoDetentores: "As a holder you also get your share of the rewards for as long as you hold the coin — just like everyone else.",
+    recSoSolana: "Sending rewards to holders is available for Solana launches. On Robinhood Chain, rewards go to the creator.",
     ganhoTitulo: "What you earn as the creator",
     ganhoPump: (p: number) => `On Solana your coin is launched on pump.fun and trades there and here. You keep ${100 - p}% of the pump.fun creator fee, and ${p}% goes to Chroma. You will approve two steps in your wallet: creating the coin and the fee split (with your initial buy).`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
@@ -95,8 +100,13 @@ const TEXTOS = traducoes({
     bannerTexto: "Isso será exibido na página da moeda, além da imagem da moeda. Imagens ou GIFs animados de até 4,5 MB; imagens maiores são redimensionadas automaticamente, GIFs não. Proporção de 3:1, 1500x500px recomendado. Você só pode fazer isso ao criar a moeda e não poderá alterar posteriormente.",
     carregarArquivo: "Carregar arquivo…", bannerTamanho: "Imagem — máximo 4,5 MB (imagens maiores são redimensionadas automaticamente, GIFs não). Formatos: '.jpg', '.png', '.webp' ou '.gif'.",
     bannerResolucao: "Proporção de aspecto 3:1, resolução recomendada de 1500x500px.",
-    identidade: "Identidade", nome: "Nome", nomeEx: "Ex: Gato Turbo", simbolo: "Símbolo", simboloEx: "Ex: TURBO", descricao: "Descrição", descricaoEx: "O que é esse token?",
+    identidade: "Identidade", nome: "Nome da moeda", nomeEx: "Ex: Gato Turbo", simbolo: "Ticker", simboloEx: "Ex: TURBO", descricao: "Descrição", descricaoEx: "O que é esse token?",
     redesSociais: "Redes sociais", opcionalFixo: "opcional · não editável depois", site: "Site",
+    recompensasTitulo: "Enviar recompensas do criador para", recCriador: "Criador", recDetentores: "Detentores",
+    recCriadorNota: "A taxa de criador de cada operação vai para a sua carteira.",
+    recDetentoresNota: "A taxa de criador de cada operação é dividida entre todos que seguram a moeda — um motivo pra comprar e segurar. Nesse modo você não recebe a taxa de criador.",
+    ganhoDetentores: "Como detentor, você também recebe a sua parte das recompensas enquanto segurar a moeda — igual a todo mundo.",
+    recSoSolana: "Enviar as recompensas aos detentores está disponível nos lançamentos da Solana. Na Robinhood Chain, as recompensas vão para o criador.",
     ganhoTitulo: "O que você ganha como criador",
     ganhoPump: (p: number) => `Na Solana a sua moeda é lançada na pump.fun e negocia lá e aqui. Você fica com ${100 - p}% da taxa de criador da pump.fun, e ${p}% vão para a Chroma. Você vai aprovar duas etapas na carteira: a criação da moeda e a divisão da taxa (junto com a sua compra inicial).`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
@@ -125,8 +135,13 @@ const TEXTOS = traducoes({
     bannerTexto: "显示在代币页面上，与代币图片一起展示。图片或动图最大 4.5 MB；较大的图片会自动缩放，GIF 不会。推荐 3:1 比例、1500x500px。只能在创建时设置，之后无法修改。",
     carregarArquivo: "上传文件…", bannerTamanho: "图片 —— 最大 4.5 MB（较大图片会自动缩放，GIF 不会）。格式：'.jpg'、'.png'、'.webp' 或 '.gif'。",
     bannerResolucao: "3:1 比例，推荐 1500x500px。",
-    identidade: "基本信息", nome: "名称", nomeEx: "例如：Turbo Cat", simbolo: "代号", simboloEx: "例如：TURBO", descricao: "简介", descricaoEx: "这个代币是什么？",
+    identidade: "基本信息", nome: "代币名称", nomeEx: "例如：Turbo Cat", simbolo: "Ticker", simboloEx: "例如：TURBO", descricao: "简介", descricaoEx: "这个代币是什么？",
     redesSociais: "社交链接", opcionalFixo: "可选 · 之后无法修改", site: "官网",
+    recompensasTitulo: "创作者奖励发送给", recCriador: "创作者", recDetentores: "持有人",
+    recCriadorNota: "每笔交易的创作者费用都会进入你的钱包。",
+    recDetentoresNota: "每笔交易的创作者费用会分配给所有持有该代币的人 —— 让大家有理由买入并持有。此模式下你不会获得创作者费用。",
+    ganhoDetentores: "作为持有人，只要你持有该代币，也能和其他人一样获得你的那份奖励。",
+    recSoSolana: "将奖励发送给持有人仅适用于 Solana 发行。在 Robinhood Chain 上，奖励归创作者所有。",
     ganhoTitulo: "作为创建者你能获得什么",
     ganhoPump: (p: number) => `在 Solana 上，你的代币会在 pump.fun 发行，并可在那里和这里交易。你保留 pump.fun 创作者费用的 ${100 - p}%，${p}% 归 Chroma。你需要在钱包中确认两步：创建代币，以及费用分成（连同你的首次买入）。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
@@ -195,6 +210,8 @@ export default function CreateTokenPage() {
   const [banner, setBanner] = useState<SelectedMedia | null>(null);
   const [showBanner, setShowBanner] = useState(false);
 
+  // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
+  const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
   const [form, setForm] = useState({
     name: "",
     symbol: "",
@@ -450,6 +467,44 @@ export default function CreateTokenPage() {
         contrato: o criador recebe a fatia fixa das faixas, e é isso que a
         tela diz agora.
       */}
+      {/* Recompensas do criador: pro criador ou pros detentores */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t.recompensasTitulo}</CardTitle>
+        </CardHeader>
+        <CardBody className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/[0.06] p-1">
+            {(["criador", "detentores"] as const).map((op) => {
+              const bloqueada = op === "detentores" && chain !== "solana";
+              return (
+                <button
+                  key={op}
+                  type="button"
+                  disabled={bloqueada}
+                  onClick={() => setRecompensas(op)}
+                  className={cn(
+                    "rounded-lg py-2.5 text-[13px] font-bold transition-colors",
+                    (chain === "solana" ? recompensas : "criador") === op
+                      ? "bg-ink-700 text-zinc-50"
+                      : "text-zinc-500 hover:text-zinc-200",
+                    bloqueada && "cursor-not-allowed opacity-40 hover:text-zinc-500",
+                  )}
+                >
+                  {op === "criador" ? t.recCriador : t.recDetentores}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11.5px] leading-relaxed text-zinc-500">
+            {chain !== "solana"
+              ? t.recSoSolana
+              : recompensas === "criador"
+                ? t.recCriadorNota
+                : t.recDetentoresNota}
+          </p>
+        </CardBody>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>{t.ganhoTitulo}</CardTitle>
@@ -457,7 +512,7 @@ export default function CreateTokenPage() {
         <CardBody>
           <p className="text-[12px] leading-relaxed text-zinc-400">
             {chain === "solana" ? (
-              t.ganhoPump(PARTE_DA_CHROMA_BPS / 100)
+              recompensas === "detentores" ? t.ganhoDetentores : t.ganhoPump(PARTE_DA_CHROMA_BPS / 100)
             ) : (
               <>
                 {t.ganhoTexto(chainLabels.creatorBase, chainLabels.creatorTop)}{" "}
@@ -537,6 +592,7 @@ export default function CreateTokenPage() {
             arte: media.file,
             banner: banner?.file ?? null,
             compraInicial: form.initialBuy.trim() || undefined,
+            recompensas: chain === "solana" ? recompensas : "criador",
           });
 
           /*

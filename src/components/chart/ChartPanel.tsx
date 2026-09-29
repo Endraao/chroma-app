@@ -699,8 +699,8 @@ export function ChartPanel({
  * gráfico usa por dentro. A barra e a tela do gráfico precisam parecer uma
  * peça só: com a paleta do resto do site aqui, a emenda aparece.
  */
-const FUNDO = "#131722";
-const BORDA = "#2a2e39";
+const FUNDO = "#0e0f11";
+const BORDA = "#232429";
 const TEXTO = "#d1d4dc";
 const APAGADO = "#868993";
 const AZUL = "#2962ff";
@@ -853,7 +853,7 @@ function Menu({
       {aberto && (
         <div
           className="absolute left-0 z-40 mt-1 rounded border p-1 shadow-xl"
-          style={{ width: largura, background: "#1e222d", borderColor: BORDA }}
+          style={{ width: largura, background: "#1a1b1f", borderColor: BORDA }}
         >
           {children}
         </div>

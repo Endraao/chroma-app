@@ -1,5 +1,7 @@
 "use client";
 
+import { CHAINS } from "@/lib/web3";
+
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
@@ -71,6 +73,32 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
   const t = useTextos(TEXTOS);
   const [price, setPrice] = useState(token.priceUsd);
   const [volumeDaSessao, setVolumeDaSessao] = useState(0);
+  /*
+   * Holders pela GeckoTerminal, lido pelo navegador (cada visitante tem o
+   * próprio limite). As fontes do servidor quase nunca traziam esse número.
+   */
+  const [holdersDaGecko, setHoldersDaGecko] = useState(0);
+  const [top10DaGecko, setTop10DaGecko] = useState(0);
+  useEffect(() => {
+    const rede = CHAINS[token.chain]?.gecko;
+    if (!rede) return;
+    let cancelado = false;
+    fetch(`https://api.geckoterminal.com/api/v2/networks/${rede}/tokens/${token.address}/info`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const h = j?.data?.attributes?.holders;
+        const n = Number(h?.count ?? 0);
+        const top = Number(h?.distribution_percentage?.top_10 ?? 0);
+        if (cancelado) return;
+        if (n > 0) setHoldersDaGecko(n);
+        if (top > 0) setTop10DaGecko(top);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [token.address, token.chain]);
+
   const [stats, setStats] = useState<StatsAoVivo>({
     change24h: token.change24h,
     liquidityUsd: token.liquidityUsd,
@@ -149,9 +177,9 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
       <TokenHeader
         token={token}
         price={price}
-        stats={stats}
+        stats={{ ...stats, holders: stats.holders || holdersDaGecko }}
         volumeDaSessao={volumeDaSessao}
-        top10Pct={report?.holderConcentration.top10Pct ?? 0}
+        top10Pct={report?.holderConcentration.top10Pct || top10DaGecko}
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -178,7 +206,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
         </div>
 
         {/* Coluna direita: swap grudado no topo ao rolar a página */}
-        <div className="space-y-3 lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-84px)] lg:self-start lg:overflow-y-auto lg:pr-1 [scrollbar-width:thin]">
+        <div className="space-y-3 lg:self-start">
           {/*
             * Acima do painel de swap, e não abaixo: quanto falta pra curva
             * encher é o que decide se a pessoa compra AGORA. Enterrado no fim

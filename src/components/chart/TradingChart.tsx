@@ -694,7 +694,7 @@ export function TradingChart({
             type="button"
             title={legendaAberta ? "Recolher valores" : "Mostrar valores"}
             onClick={() => setLegendaAberta((v) => !v)}
-            className="pointer-events-auto mt-1 grid size-4 place-items-center rounded border border-[#2a2e39] bg-[#1e222d] text-[#868993] transition-colors hover:text-[#d1d4dc]"
+            className="pointer-events-auto mt-1 grid size-4 place-items-center rounded border border-[#232429] bg-[#1a1b1f] text-[#868993] transition-colors hover:text-[#d1d4dc]"
           >
             <svg viewBox="0 0 24 24" className="size-2.5" {...traco}>
               <path d={legendaAberta ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} />
@@ -727,7 +727,7 @@ export function TradingChart({
 
         {etiquetaDoCursor && (
           <div
-            className="pointer-events-none absolute right-0 z-10 rounded-[2px] bg-[#363a45] px-1.5 py-[2px] text-[11px] leading-none text-white"
+            className="pointer-events-none absolute right-0 z-10 rounded-[2px] bg-[#2d2e33] px-1.5 py-[2px] text-[11px] leading-none text-white"
             style={{ top: etiquetaDoCursor.y - 8, fontFamily: FONTE_TV }}
           >
             {formatar(etiquetaDoCursor.valor)}
@@ -824,14 +824,14 @@ function BotaoFerramenta({
  * As cores do tema ESCURO PADRÃO do TradingView, não uma aproximação.
  *
  * O verde e o vermelho são os mesmos que eles usam hoje (#089981 e #F23645),
- * o fundo é o #131722 clássico e as linhas de grade o #1e222d. Foi pedido
+ * o fundo é o #0e0f11 clássico e as linhas de grade o #1a1b1f. Foi pedido
  * assim de propósito: quem negocia reconhece esse conjunto de olho fechado, e
  * uma paleta "parecida" só faz o gráfico parecer imitação.
  */
 const VERDE = "#089981";
 const VERMELHO = "#F23645";
-const FUNDO = "#131722";
-const LINHA = "#2a2e39";
+const FUNDO = "#0e0f11";
+const LINHA = "#232429";
 const TEXTO = "#d1d4dc";
 const TEXTO_FRACO = "#868993";
 
@@ -848,8 +848,8 @@ export const FONTE_TV =
 
 const ESTILO_ESCURO = {
   grid: {
-    horizontal: { color: "#1e222d" },
-    vertical: { color: "#1e222d" },
+    horizontal: { color: "#1a1b1f" },
+    vertical: { color: "#1a1b1f" },
   },
   candle: {
     bar: {
@@ -900,7 +900,7 @@ const ESTILO_ESCURO = {
       text: { color: TEXTO, size: 11, family: FONTE_TV },
       rect: {
         color: "rgba(30,34,45,.95)",
-        borderColor: "#363a45",
+        borderColor: "#2d2e33",
         borderRadius: 4,
       },
     },
@@ -949,7 +949,7 @@ const ESTILO_ESCURO = {
     },
     vertical: {
       line: { color: "#9598a1", style: LineType.Dashed },
-      text: { backgroundColor: "#363a45", borderRadius: 2, size: 11, family: FONTE_TV },
+      text: { backgroundColor: "#2d2e33", borderRadius: 2, size: 11, family: FONTE_TV },
     },
   },
   overlay: {

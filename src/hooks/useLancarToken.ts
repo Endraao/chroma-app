@@ -61,6 +61,8 @@ export interface DadosDoLancamento {
    * está publicado na mainnet.
    */
   compraInicial?: string;
+  /** pra quem vão as recompensas de criador (só Solana por enquanto) */
+  recompensas?: "criador" | "detentores";
 }
 
 const MENSAGENS = traducoes({
@@ -156,6 +158,7 @@ export function useLancarToken() {
           uri,
           carteiraDaChroma,
           taxaSol: CHAIN_FEES.solana.launchFee,
+          paraDetentores: dados.recompensas === "detentores",
         });
         txA.sign([mint]);
         const assinatura = await sendTransaction(txA, connection);
@@ -190,7 +193,9 @@ export function useLancarToken() {
 
         /* 4. Transação B: divisão da taxa de criador + compra inicial. */
         let avisoDeCompra: string | null = null;
-        try {
+        const paraDetentores = dados.recompensas === "detentores";
+        // Modo detentores sem compra inicial: não há etapa B.
+        if (!(paraDetentores && compraSol <= 0)) try {
           await esperarCurva(connection, mint.publicKey);
           setEtapa("dividindo");
           const txB = await transacaoDeDivisao({
@@ -199,6 +204,7 @@ export function useLancarToken() {
             mint: mint.publicKey,
             carteiraDaChroma,
             compraSol,
+            paraDetentores,
           });
           const assinaturaB = await sendTransaction(txB, connection);
           const blocoB = await connection.getLatestBlockhash();
