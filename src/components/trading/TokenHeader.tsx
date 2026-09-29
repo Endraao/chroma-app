@@ -7,7 +7,6 @@ import { useState } from "react";
 
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { ShareToken } from "@/components/trading/ShareToken";
 import { DenunciarToken } from "@/components/trading/DenunciarToken";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
@@ -152,16 +151,7 @@ export function TokenHeader({
               meme coin se repete às centenas e o resultado viria cheio de
               moeda homônima; o contrato é único, e quem fala dela cita ele.
             */}
-            {token.website && <EloExterno href={token.website} rotulo={t.site} />}
-            {token.twitter ? (
-              <EloExterno href={token.twitter} rotulo="X" />
-            ) : (
-              <EloExterno
-                href={`https://x.com/search?q=${encodeURIComponent(`${token.address} OR $${token.symbol}`)}&f=live`}
-                rotulo={t.buscarNoX}
-              />
-            )}
-            {token.telegram && <EloExterno href={token.telegram} rotulo="Telegram" />}
+            {/* Site, X e Telegram agora ficam no painel "Sobre", como na Fomo Family. */}
 
             {/*
               A denúncia mora AQUI, na linha dos metadados, e não junto do
@@ -187,7 +177,7 @@ export function TokenHeader({
             ninguém divulga "a plataforma", as pessoas divulgam a moeda que
             compraram. Se o link não sair daqui, o programa não roda.
           */}
-          <ShareToken token={token} />
+
         </div>
       </div>
 
@@ -232,18 +222,6 @@ export function TokenHeader({
  * ganha uma referência de volta e pode redirecionar esta aqui — e a pessoa
  * volta achando que ainda está na Chroma.
  */
-function EloExterno({ href, rotulo }: { href: string; rotulo: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="transition-colors hover:text-zinc-300"
-    >
-      {rotulo} ↗
-    </a>
-  );
-}
 
 function Numero({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: string }) {
   return (

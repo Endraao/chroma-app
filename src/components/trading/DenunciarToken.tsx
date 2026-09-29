@@ -181,12 +181,11 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
         title={t.denunciarMoeda}
         aria-label={t.denunciarMoeda}
         className={cn(
-          "inline-flex h-[22px] items-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold text-bear transition-colors",
+          "grid size-[22px] place-items-center rounded-md border text-bear transition-colors",
           aberto ? "border-bear/60 bg-bear/10" : "border-bear/30 hover:border-bear/60 hover:bg-bear/10",
         )}
       >
         <IconeBandeira />
-        {t.denunciarMoeda}
       </button>
 
       {aberto && (

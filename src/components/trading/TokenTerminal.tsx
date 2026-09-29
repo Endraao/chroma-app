@@ -13,9 +13,9 @@ import { CurvaProvider } from "@/components/trading/CurvaProvider";
 import { PainelDeAtividade } from "@/components/trading/PainelDeAtividade";
 import { StatusDaCurva } from "@/components/trading/StatusDaCurva";
 import { ConviteParaCompartilhar } from "@/components/trading/ConviteParaCompartilhar";
+import { PainelSobre } from "@/components/trading/PainelSobre";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
 import { TokenHeader } from "@/components/trading/TokenHeader";
-import { Card, CardBody } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { SecurityReport, TokenSummary } from "@/lib/types";
 
@@ -212,8 +212,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
           */}
           <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} />
 
-          <ConviteParaCompartilhar token={token} />
-
           {/*
             A AUDITORIA FICA DEPOIS DO BOTÃO, e discreta.
             -----------------------------------------------------------------
@@ -233,12 +231,10 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             naCurva={token.bondingProgress !== null}
           />
 
-          <Card>
-            <CardBody className="space-y-2 text-[12px] text-zinc-500">
-              <p className="font-semibold text-zinc-300">{t.sobre}</p>
-              <p className="leading-relaxed">{token.description}</p>
-            </CardBody>
-          </Card>
+          {/* O convite vem DEPOIS do alerta: quem vai operar precisa ver o alerta primeiro. */}
+          <ConviteParaCompartilhar token={token} />
+
+          <PainelSobre token={token} />
         </div>
       </div>
 
