@@ -1,5 +1,8 @@
 "use client";
 
+import { useIdioma, useTextos } from "@/components/IdiomaProvider";
+import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
+
 import { useState } from "react";
 
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -33,18 +36,46 @@ import { cn } from "@/lib/utils";
  * pra chave privada.
  */
 
-const ASSUNTOS = [
-  { chave: "ajuda", rotulo: "Preciso de ajuda" },
-  { chave: "problema", rotulo: "Relatar um problema" },
-  { chave: "sugestao", rotulo: "Sugestão" },
-  { chave: "parceria", rotulo: "Parceria" },
-  { chave: "juridico", rotulo: "Assunto jurídico" },
-  { chave: "outro", rotulo: "Outro" },
-] as const;
+const ASSUNTOS = ["ajuda", "problema", "sugestao", "parceria", "juridico", "outro"] as const;
 
 const LIMITE_TEXTO = 4000;
 
+const TEXTOS = traducoes({
+  en: {
+    assuntos: { ajuda: "I need help", problema: "Report a problem", sugestao: "Suggestion", parceria: "Partnership", juridico: "Legal matter", outro: "Other" },
+    naoEnviou: "Could not send your message right now. Please try again.", semConexao: "No connection to the server. Please try again.",
+    enviada: "Message sent", outra: "Write another",
+    recebemos: (e: React.ReactNode) => <>We got your message and will reply to {e}. If it is about a trade, keep the transaction ID: it helps us find what happened.</>,
+    nome: "Your name", nomePh: "What should we call you", email: "Your email", emailDica: "This is where we reply", emailPh: "you@example.com",
+    carteira: "Public wallet", carteiraDica: "Optional — helps us find your trades", carteiraPh: "Public address, never the private key",
+    assunto: "Subject", mensagem: "Message", mensagemPh: "Describe what happened in as much detail as possible. If it is about a trade, include the transaction ID.",
+    enviando: "Sending…", enviar: "Send message", nunca: "We never ask for your recovery phrase or private key.",
+  },
+  pt: {
+    assuntos: { ajuda: "Preciso de ajuda", problema: "Relatar um problema", sugestao: "Sugestão", parceria: "Parceria", juridico: "Assunto jurídico", outro: "Outro" },
+    naoEnviou: "Não foi possível enviar a sua mensagem agora. Tente novamente.", semConexao: "Sem conexão com o servidor. Tente novamente.",
+    enviada: "Mensagem enviada", outra: "Escrever outra",
+    recebemos: (e: React.ReactNode) => <>Recebemos a sua mensagem e vamos responder em {e}. Se for sobre uma operação, guarde o identificador da transação: ele ajuda a localizar o que aconteceu.</>,
+    nome: "Seu nome", nomePh: "Como podemos te chamar", email: "Seu e-mail", emailDica: "É por aqui que respondemos", emailPh: "voce@exemplo.com",
+    carteira: "Carteira pública", carteiraDica: "Opcional — ajuda a localizar suas operações", carteiraPh: "Endereço público, nunca a chave privada",
+    assunto: "Assunto", mensagem: "Mensagem", mensagemPh: "Descreva o que aconteceu com o máximo de detalhes possível. Se for sobre uma operação, informe o identificador da transação.",
+    enviando: "Enviando…", enviar: "Enviar mensagem", nunca: "Nunca pedimos frase de recuperação ou chave privada.",
+  },
+  zh: {
+    assuntos: { ajuda: "我需要帮助", problema: "报告问题", sugestao: "建议", parceria: "合作", juridico: "法律事务", outro: "其他" },
+    naoEnviou: "暂时无法发送你的消息，请重试。", semConexao: "无法连接服务器，请重试。",
+    enviada: "消息已发送", outra: "再写一条",
+    recebemos: (e: React.ReactNode) => <>我们已收到你的消息，将回复至 {e}。如果与交易有关，请保留交易 ID：它有助于我们查明情况。</>,
+    nome: "你的名字", nomePh: "我们该怎么称呼你", email: "你的邮箱", emailDica: "我们会通过这里回复", emailPh: "you@example.com",
+    carteira: "公开钱包地址", carteiraDica: "可选 —— 帮助我们查找你的交易", carteiraPh: "公开地址，绝不是私钥",
+    assunto: "主题", mensagem: "消息", mensagemPh: "请尽可能详细地描述发生了什么。如果与交易有关，请提供交易 ID。",
+    enviando: "发送中…", enviar: "发送消息", nunca: "我们绝不会索要你的助记词或私钥。",
+  },
+});
+
 export function FormularioDeContato() {
+  const t = useTextos(TEXTOS);
+  const idioma = useIdioma();
   const { publicKey } = useWallet();
 
   const [nome, setNome] = useState("");
@@ -95,14 +126,14 @@ export function FormularioDeContato() {
 
       if (!res.ok) {
         const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
-        setErro(corpo?.error ?? "Não foi possível enviar a sua mensagem agora. Tente novamente.");
+        setErro(corpo?.error ? traduzirDoServidor(corpo.error, idioma) : t.naoEnviou);
         setEnviando(false);
         return;
       }
 
       setPronto(true);
     } catch {
-      setErro("Sem conexão com o servidor. Tente novamente.");
+      setErro(t.semConexao);
       setEnviando(false);
     }
   }
@@ -115,11 +146,9 @@ export function FormularioDeContato() {
             <path d="m5 13 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <p className="text-[15px] font-bold text-zinc-100">Mensagem enviada</p>
+        <p className="text-[15px] font-bold text-zinc-100">{t.enviada}</p>
         <p className="mx-auto mt-1.5 max-w-[420px] text-[13px] leading-relaxed text-zinc-400">
-          Recebemos a sua mensagem e vamos responder em{" "}
-          <strong className="text-zinc-300">{email}</strong>. Se for sobre uma operação, guarde o
-          identificador da transação: ele ajuda a localizar o que aconteceu.
+          {t.recebemos(<strong className="text-zinc-300">{email}</strong>)}
         </p>
         <Button
           variant="outline"
@@ -132,7 +161,7 @@ export function FormularioDeContato() {
             setAssunto("ajuda");
           }}
         >
-          Escrever outra
+          {t.outra}
         </Button>
       </div>
     );
@@ -141,70 +170,70 @@ export function FormularioDeContato() {
   return (
     <form onSubmit={enviar} className="mt-7 space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Seu nome" obrigatorio>
+        <Campo rotulo={t.nome} obrigatorio>
           <input
             value={nome}
             onChange={(e) => setNome(e.target.value.slice(0, 80))}
             required
             autoComplete="name"
-            placeholder="Como podemos te chamar"
+            placeholder={t.nomePh}
             className={entrada}
           />
         </Campo>
 
-        <Campo rotulo="Seu e-mail" obrigatorio dica="É por aqui que respondemos">
+        <Campo rotulo={t.email} obrigatorio dica={t.emailDica}>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value.slice(0, 160))}
             required
             type="email"
             autoComplete="email"
-            placeholder="voce@exemplo.com"
+            placeholder={t.emailPh}
             className={entrada}
           />
         </Campo>
       </div>
 
       <Campo
-        rotulo="Carteira pública"
-        dica="Opcional — ajuda a localizar suas operações"
+        rotulo={t.carteira}
+        dica={t.carteiraDica}
       >
         <input
           value={carteiraVisivel}
           onChange={(e) => setCarteira(e.target.value.slice(0, 64))}
           spellCheck={false}
-          placeholder="Endereço público, nunca a chave privada"
+          placeholder={t.carteiraPh}
           className={cn(entrada, "tnum font-mono text-[12px]")}
         />
       </Campo>
 
-      <Campo rotulo="Assunto" obrigatorio>
+      <Campo rotulo={t.assunto} obrigatorio>
         <div className="flex flex-wrap gap-1.5">
           {ASSUNTOS.map((a) => (
             <button
-              key={a.chave}
+              key={a}
               type="button"
-              onClick={() => setAssunto(a.chave)}
+              onClick={() => setAssunto(a)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors",
-                assunto === a.chave
+                assunto === a
                   ? "border-marca/50 bg-marca/12 text-marca"
                   : "border-ink-600 bg-ink-800 text-zinc-400 hover:border-marca/30 hover:text-zinc-200",
               )}
             >
-              {a.rotulo}
+              {t.assuntos[a]}
             </button>
           ))}
         </div>
       </Campo>
 
-      <Campo rotulo="Mensagem" obrigatorio>
+      <Campo rotulo={t.mensagem} obrigatorio>
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value.slice(0, LIMITE_TEXTO))}
           required
           rows={7}
-          placeholder="Descreva o que aconteceu com o máximo de detalhes possível. Se for sobre uma operação, informe o identificador da transação."
+          placeholder={t.mensagemPh}
           className={cn(entrada, "resize-y leading-relaxed")}
         />
         <div className="mt-1 text-right text-[10px] tabular-nums text-zinc-600">
@@ -237,10 +266,10 @@ export function FormularioDeContato() {
 
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <Button type="submit" variant="chroma" size="lg" disabled={enviando}>
-          {enviando ? "Enviando…" : "Enviar mensagem"}
+          {enviando ? t.enviando : t.enviar}
         </Button>
         <p className="text-[11px] leading-relaxed text-zinc-600">
-          Nunca pedimos frase de recuperação ou chave privada.
+          {t.nunca}
         </p>
       </div>
     </form>

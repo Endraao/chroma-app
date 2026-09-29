@@ -262,14 +262,6 @@ export default function CreateTokenPage() {
         </div>
       )}
 
-      {/* Aviso de imutabilidade — no topo, porque muda o que a pessoa preenche */}
-      <div className="flex gap-2.5 rounded-xl border border-warn/25 bg-warn/[0.06] p-3">
-        <span className="mt-0.5 shrink-0 text-warn">⚠</span>
-        <p className="text-[12px] leading-relaxed text-warn">
-          {t.imutavel(<strong>{t.agora}</strong>)}
-        </p>
-      </div>
-
       {/* Rede */}
       <Card>
         <CardHeader>
@@ -315,6 +307,11 @@ export default function CreateTokenPage() {
 
         </CardBody>
       </Card>
+
+      {/* Aviso de imutabilidade — logo acima da mídia, que é o que não dá pra trocar depois */}
+      <p className="px-1 text-[11px] leading-relaxed text-zinc-200">
+        {t.imutavel(<strong>{t.agora}</strong>)}
+      </p>
 
       {/* Mídia da moeda */}
       <Card>

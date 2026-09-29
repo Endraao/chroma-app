@@ -19,6 +19,7 @@ import {
 } from "@/components/profile/PhotoPicker";
 import { EarningsPanel } from "@/components/profile/EarningsPanel";
 import { MeusTokens } from "@/components/profile/MeusTokens";
+import { EditorDeApelido } from "@/components/profile/EditorDeApelido";
 import type { AffiliateSummary } from "@/lib/affiliate-types";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
@@ -334,43 +335,7 @@ function Perfil() {
 
 function ContaTab({ account }: { account: ReturnType<typeof useChromaAccount> }) {
   const t = useTextos(TEXTOS);
-  const idioma = useIdioma();
-  const [editando, setEditando] = useState(false);
-  const [nickname, setNickname] = useState("");
-  const [status, setStatus] = useState<{ available: boolean; reason: string | null } | null>(null);
-  const [checking, setChecking] = useState(false);
   const [salvo, setSalvo] = useState(false);
-
-  const atual = account.account?.displayName ?? null;
-  const { checkAvailability } = account;
-
-  // Consulta com atraso, pra não bater no servidor a cada tecla.
-  useEffect(() => {
-    if (!editando || !nickname.trim() || nickname === atual) {
-      setStatus(null);
-      return;
-    }
-    setChecking(true);
-    const timer = window.setTimeout(async () => {
-      setStatus(await checkAvailability(nickname));
-      setChecking(false);
-    }, 400);
-
-    return () => {
-      window.clearTimeout(timer);
-      setChecking(false);
-    };
-  }, [nickname, editando, atual, checkAvailability]);
-
-  const podeSalvar = Boolean(status?.available) && !account.claiming && nickname !== atual;
-
-  async function salvar() {
-    if (await account.claim(nickname)) {
-      setEditando(false);
-      setSalvo(true);
-      setTimeout(() => setSalvo(false), 2500);
-    }
-  }
 
   return (
     <Card>
@@ -380,63 +345,13 @@ function ContaTab({ account }: { account: ReturnType<typeof useChromaAccount> })
       </CardHeader>
 
       <CardBody className="space-y-3">
-        {!editando ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-xl font-bold text-zinc-100">
-              @{atual ?? <span className="text-zinc-600">{t.semApelidoMin}</span>}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setNickname(atual ?? suggestNickname());
-                setEditando(true);
-              }}
-            >
-              {atual ? t.trocar : t.escolher}
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-              <div className="flex items-center gap-1">
-                <span className="text-lg font-bold text-zinc-600">@</span>
-                <input
-                  autoFocus
-                  value={nickname}
-                  maxLength={20}
-                  onChange={(e) =>
-                    setNickname(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))
-                  }
-                  onKeyDown={(e) => e.key === "Enter" && podeSalvar && salvar()}
-                  className="w-full bg-transparent text-lg font-semibold text-zinc-100 outline-none"
-                />
-                {checking && <span className="shrink-0 text-[11px] text-zinc-600">…</span>}
-                {!checking && status?.available && <span className="shrink-0 text-bull">✓</span>}
-                <button
-                  onClick={() => setNickname(suggestNickname())}
-                  className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-white/5 hover:text-marca"
-                >
-                  {t.sortear}
-                </button>
-              </div>
-            </div>
-
-            {status && !status.available && status.reason && (
-              <p className="text-[12px] text-bear">{traduzirDoServidor(status.reason, idioma)}</p>
-            )}
-            {account.error && <p className="text-[12px] text-bear">{traduzirDoServidor(account.error, idioma)}</p>}
-
-            <div className="flex gap-2">
-              <Button variant="chroma" className="flex-1" disabled={!podeSalvar} onClick={salvar}>
-                {account.claiming ? t.salvando : t.salvar}
-              </Button>
-              <Button variant="ghost" onClick={() => setEditando(false)}>
-                {t.cancelar}
-              </Button>
-            </div>
-          </>
-        )}
+        <EditorDeApelido
+          account={account}
+          onSalvo={() => {
+            setSalvo(true);
+            setTimeout(() => setSalvo(false), 2500);
+          }}
+        />
 
         {/*
           As medidas ficam escritas aqui, e não só no aviso de erro: descobrir a

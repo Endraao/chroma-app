@@ -192,6 +192,11 @@ export function textos(idioma: Idioma): Textos {
  * que não estiver aqui passa como veio.
  */
 const DO_SERVIDOR: Record<string, { en: string; zh: string }> = {
+  "Preencha nome, e-mail e mensagem.": { en: "Fill in name, email and message.", zh: "请填写姓名、邮箱和消息。" },
+  "E-mail inválido.": { en: "Invalid email.", zh: "邮箱无效。" },
+  "Escreva um pouco mais na mensagem.": { en: "Please write a bit more in the message.", zh: "请在消息中多写一些内容。" },
+  "Endereço de carteira inválido.": { en: "Invalid wallet address.", zh: "钱包地址无效。" },
+  "Você enviou muitas mensagens em pouco tempo. Tente novamente mais tarde.": { en: "You sent too many messages in a short time. Please try again later.", zh: "你在短时间内发送了太多消息，请稍后再试。" },
   "A assinatura não confere. Tente novamente.": { en: "The signature does not match. Try again.", zh: "签名不匹配，请重试。" },
   "A assinatura é inválida ou expirou. Tente novamente.": { en: "The signature is invalid or expired. Try again.", zh: "签名无效或已过期，请重试。" },
   "Apelido não encontrado.": { en: "Nickname not found.", zh: "未找到该昵称。" },

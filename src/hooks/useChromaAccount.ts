@@ -41,6 +41,8 @@ export interface ChromaAccount {
  * Registrar NÃO pede assinatura da carteira — é só um nome de exibição. Ver
  * `src/lib/accounts.ts` para o raciocínio e os limites disso.
  */
+const EVENTO_CONTA = "chroma:conta";
+
 export function useChromaAccount() {
   const { publicKey, disconnect: disconnectSolana, connected } = useWallet();
   const { address: evmAddress, isConnected: evmConnected } = useWagmiAccount();
@@ -159,6 +161,12 @@ export function useChromaAccount() {
     }
   }, []);
 
+  useEffect(() => {
+    const ouvir = (e: Event) => setAccount((e as CustomEvent<ChromaAccount>).detail);
+    window.addEventListener(EVENTO_CONTA, ouvir);
+    return () => window.removeEventListener(EVENTO_CONTA, ouvir);
+  }, []);
+
   /* --- Registra o apelido ------------------------------------------ */
   const claim = useCallback(
     async (nickname: string): Promise<boolean> => {
@@ -191,6 +199,10 @@ export function useChromaAccount() {
         if (!res.ok) throw new Error(data?.error ?? "Não foi possível concluir o registro.");
 
         setAccount(data.account);
+        // Outras instâncias do hook (menu do topo, perfil) guardam a conta
+        // em estado próprio: sem este aviso, mostravam o apelido antigo até
+        // recarregar a página.
+        window.dispatchEvent(new CustomEvent(EVENTO_CONTA, { detail: data.account }));
         return true;
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));

@@ -32,7 +32,7 @@ export function PaginaLegal({
       <header className="border-b border-ink-700 pb-5">
         <h1 className="text-2xl font-black tracking-tight text-zinc-50">{titulo}</h1>
         <p className="mt-1 text-[11px] uppercase tracking-wider text-zinc-600">
-          Atualizado em {atualizadoEm}
+          {atualizadoEm}
         </p>
         <p className="mt-3 rounded-lg border border-marca/20 bg-marca/[0.06] px-3 py-2.5 text-[13px] leading-relaxed text-zinc-300">
           {resumo}
