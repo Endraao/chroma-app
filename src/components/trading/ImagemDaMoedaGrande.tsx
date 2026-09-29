@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { TokenSummary } from "@/lib/types";
 import { urlsDaImagem } from "@/lib/utils";
@@ -18,6 +18,13 @@ export function ImagemDaMoedaGrande({ token }: { token: TokenSummary }) {
   const [indice, setIndice] = useState(0);
   const [aberta, setAberta] = useState(false);
   const atual = candidatas[indice];
+  const ref = useRef<HTMLImageElement>(null);
+
+  // Falha antes da página acordar não dispara onError: confere a cada troca.
+  useEffect(() => {
+    const img = ref.current;
+    if (img && img.complete && img.naturalWidth === 0) setIndice((i) => i + 1);
+  }, [indice]);
 
   useEffect(() => {
     if (!aberta) return;
@@ -38,6 +45,7 @@ export function ImagemDaMoedaGrande({ token }: { token: TokenSummary }) {
     <>
       <button onClick={() => setAberta(true)} className="shrink-0 cursor-zoom-in" aria-label={token.name}>
         <img
+          ref={ref}
           src={atual}
           alt=""
           onError={() => setIndice((i) => i + 1)}

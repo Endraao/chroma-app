@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { useTextos } from "@/components/IdiomaProvider";
@@ -102,6 +102,14 @@ export function CardDaMoeda({ token, destaque = false }: { token: TokenSummary; 
  */
 export function ImagemDaMoeda({ token, px = 256 }: { token: TokenSummary; px?: number }) {
   const [falhou, setFalhou] = useState(false);
+  const ref = useRef<HTMLImageElement>(null);
+
+  // Imagem que falhou ANTES da página acordar no navegador não dispara o
+  // onError — confere na montagem.
+  useEffect(() => {
+    const img = ref.current;
+    if (img && img.complete && img.naturalWidth === 0) setFalhou(true);
+  }, []);
 
   if (!token.imageUrl || falhou) {
     return (
@@ -119,6 +127,7 @@ export function ImagemDaMoeda({ token, px = 256 }: { token: TokenSummary; px?: n
       alt=""
       loading="lazy"
       decoding="async"
+      ref={ref}
       onError={() => setFalhou(true)}
       className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
     />

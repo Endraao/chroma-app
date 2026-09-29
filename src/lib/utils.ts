@@ -95,10 +95,9 @@ export function miniatura(url: string | undefined, px: number): string | undefin
   // IPFS: troca por um portão que serve a imagem direto (ver urlsDaImagem).
   if (/ipfs/i.test(url)) url = urlsDaImagem(url)[0];
   /* Arte lida do contrato (IPFS): passa pelo otimizador, que só aceita esta rota. */
-  if (url.startsWith("/api/logo/")) {
-    const largura = px <= 48 ? 96 : 256;
-    return `/_next/image?url=${encodeURIComponent(url)}&w=${largura}&q=75`;
-  }
+  // Direto, sem o otimizador do Next: quando não há arte, a rota devolve um
+  // SVG de iniciais, e o otimizador recusa SVG — a imagem aparecia quebrada.
+  if (url.startsWith("/api/logo/")) return url;
   try {
     const u = new URL(url);
     if (u.hostname === "cdn.dexscreener.com") {
