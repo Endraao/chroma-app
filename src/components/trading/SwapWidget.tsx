@@ -893,7 +893,7 @@ function EvmSwap({
   if (precisaDeDex && (externo === "verificando" || externo === null)) {
     return (
       <Card className="overflow-hidden">
-        <div className="px-4 py-8 text-center text-[12px] text-zinc-500">{t.verificando}</div>
+        <div className="h-[420px] animate-pulse bg-white/[0.02]" />
       </Card>
     );
   }
