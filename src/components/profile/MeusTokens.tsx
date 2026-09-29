@@ -8,7 +8,7 @@ import Link from "next/link";
 
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TokenCard } from "@/components/ui/TokenCard";
-import { formatUsd } from "@/lib/utils";
+import { formatUsd, miniatura } from "@/lib/utils";
 import type { TokenSummary } from "@/lib/types";
 
 interface Resposta {
@@ -87,15 +87,17 @@ export function MeusTokens({ chaves }: { chaves: string[] }) {
                 <li key={token.address}>
                   <Link
                     href={`/token/${token.address}`}
-                    className="flex items-center justify-between gap-3 py-2.5 text-[13px] hover:text-white"
+                    className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-white/[0.03]"
                   >
-                    <span className="font-semibold text-zinc-100">
-                      {token.name} <span className="text-zinc-500">${token.symbol}</span>
+                    <FotoPequena token={token} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] font-bold text-zinc-100">{token.name}</span>
+                      <span className="block text-[11.5px] text-zinc-500">${token.symbol}</span>
                     </span>
-                    <span className="tnum text-right">
-                      <span className="block text-zinc-200">{formatUsd(valorUsd)}</span>
+                    <span className="tnum shrink-0 text-right">
+                      <span className="block text-[13.5px] font-bold text-zinc-100">{formatUsd(valorUsd)}</span>
                       <span className="block text-[11px] text-zinc-500">
-                        {quantidade.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        {quantidade.toLocaleString(undefined, { notation: quantidade >= 1e6 ? "compact" : "standard", maximumFractionDigits: quantidade < 1 ? 4 : 2 })} {token.symbol}
                       </span>
                     </span>
                   </Link>
@@ -107,4 +109,18 @@ export function MeusTokens({ chaves }: { chaves: string[] }) {
       </Card>
     </div>
   );
+}
+
+/** Foto da moeda na lista; se não carregar, as iniciais sobre uma cor da moeda. */
+function FotoPequena({ token }: { token: TokenSummary }) {
+  const [falhou, setFalhou] = useState(false);
+  const src = miniatura(token.imageUrl ?? `/api/logo/${token.address}`, 48);
+  if (falhou || !src) {
+    return (
+      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-ink-700 text-[13px] font-black text-zinc-300">
+        {token.symbol.slice(0, 2).toUpperCase()}
+      </span>
+    );
+  }
+  return <img src={src} alt="" onError={() => setFalhou(true)} className="size-10 shrink-0 rounded-lg bg-ink-800 object-cover" />;
 }
