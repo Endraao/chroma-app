@@ -210,7 +210,7 @@ function SolanaSwap({
    * cotação não dá pra converter. Nesse caso o campo passa a pedir SOL e diz
    * isso na tela, em vez de inventar um câmbio.
    */
-  const emDolar = comprando && precoDoSol !== null;
+  const emDolar = false;
   const digitadoNum = Number(digitado) || 0;
 
   /*
@@ -222,7 +222,7 @@ function SolanaSwap({
    * um valor diferente do que leu.
    */
   const amount =
-    digitadoNum > 0 ? String(emDolar ? digitadoNum / precoDoSol : digitadoNum) : "";
+    digitadoNum > 0 ? String(emDolar && precoDoSol ? digitadoNum / precoDoSol : digitadoNum) : "";
 
   const swap = useTradeSolana({
     tokenMint: tokenAddress,
@@ -271,7 +271,7 @@ function SolanaSwap({
         pct === 100 ? Math.max(0, swap.balance - RESERVA_DE_REDE_SOL) : swap.balance;
       const parte = (disponivel * pct) / 100;
       if (parte <= 0) return setDigitado("");
-      setDigitado(emDolar ? arredondar(parte * precoDoSol, 2) : arredondar(parte, 4));
+      setDigitado(emDolar && precoDoSol ? arredondar(parte * precoDoSol, 2) : arredondar(parte, 4));
       return;
     }
 
@@ -301,160 +301,140 @@ function SolanaSwap({
    * pessoa aprende a ignorar — e aí não serve pra nada no dia em que estiver
    * em 18%. Calado abaixo de 2%, ele volta a ser um aviso.
    */
-  const impactoPerigoso = swap.quote !== null && swap.priceImpactPct >= 2;
 
   return (
     <Card className="overflow-hidden">
       <AbasDeLado side={side} onChange={trocarLado} />
-
-      <div className="px-4 pb-4">
-        {/* ------------- o valor, que é a única pergunta ---------------- */}
-        <CampoDeValor
-          valor={digitado}
-          onChange={setDigitado}
-          emDolar={emDolar}
-          comprando={comprando}
-          emSol={emDolar ? digitadoNum / precoDoSol : digitadoNum}
-          equivalenteUsd={comprando ? digitadoNum * (precoDoSol ?? 0) : digitadoNum * priceUsd}
-          simbolo={symbol}
-        />
-
-        {/* ------------- saldo à esquerda, ajustes à direita ------------ */}
-        <div className="mt-2 flex items-center justify-between">
-          {/*
-            O saldo é um BOTÃO, não um texto.
-
-            Vender tudo é o gesto mais comum de quem está saindo de uma posição,
-            e antes ele só existia escondido no atalho de 100% — que numa fileira
-            de seis botões iguais ninguém lê como "vender tudo". Clicar no
-            próprio saldo é o caminho curto que todo terminal tem.
-
-            Na compra ele também vale, e aí desconta a reserva de taxa de rede:
-            gastar o saldo inteiro deixaria a carteira sem como pagar a própria
-            transação, que falha DEPOIS de assinada.
-          */}
-          {swap.balance !== null ? (
+      {/* Mesmo formato do painel da Robinhood: as duas redes com a mesma cara. */}
+      <div className="space-y-3 px-4 pb-4 pt-1">
+        <div className="flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <span>{t.voceBaga}</span>
+          {swap.balance !== null && (
             <button
+              type="button"
               onClick={() => atalhoEmPorcentagem(100)}
               disabled={swap.balance <= 0}
-              className="group text-[11px] text-zinc-600 transition-colors hover:text-zinc-400 disabled:cursor-not-allowed"
-              title={
-                comprando ? t.usaSaldoMenos(RESERVA_DE_REDE_SOL) : t.venderTodos(symbol)
-              }
+              title={comprando ? t.usaSaldoMenos(RESERVA_DE_REDE_SOL) : t.venderTodos(symbol)}
+              className="tnum normal-case tracking-normal text-zinc-500 hover:text-zinc-200 disabled:cursor-not-allowed"
             >
-              {t.saldo}{" "}
-              <span className="tnum text-zinc-500 group-hover:text-zinc-300">
-                <Preco valor={swap.balance} casas={comprando ? 4 : 2} /> {comprando ? "SOL" : symbol}
-              </span>
-              {swap.balance > 0 && (
-                <span className="ml-1.5 rounded border border-marca/30 px-1 py-px text-[10px] font-bold uppercase text-marca group-hover:border-marca/60">
-                  {t.max}
-                </span>
-              )}
+              {t.saldoDois} <Preco valor={swap.balance} casas={comprando ? 4 : 2} /> {comprando ? "SOL" : symbol}
+              <span className="ml-1 font-bold text-marca">{t.maxMaiusc}</span>
             </button>
-          ) : (
-            <span />
           )}
+        </div>
 
-          <Engrenagem
-            slippage={slippage}
-            setSlippage={setSlippage}
-            minimoGarantido={
-              swap.quote
-                ? `${formatPrice(swap.minReceived, 6)} ${comprando ? symbol : "SOL"}`
-                : null
-            }
-            rota={swap.naCurva ? t.curvaDaChroma : swap.route || null}
+        <label className="flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 py-3 focus-within:border-marca/50">
+          <input
+            inputMode="decimal"
+            value={digitado}
+            onChange={(e) => setDigitado(saneia(e.target.value))}
+            placeholder="0.0"
+            className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
           />
+          <span className="shrink-0 text-[13px] font-bold text-zinc-400">{comprando ? "SOL" : symbol}</span>
+        </label>
+
+        <div className="grid grid-cols-4 gap-2">
+          {comprando
+            ? ATALHOS_EM_DOLAR.map((v) => (
+                <Atalho
+                  key={v}
+                  rotulo={`$${v}`}
+                  tom="buy"
+                  ligado={atalhoDolarLigado}
+                  onClick={() => atalhoEmDolar(v)}
+                  titulo={atalhoDolarLigado ? undefined : t.precisaCotacao}
+                />
+              ))
+            : ATALHOS_EM_PORCENTAGEM.map((v) => (
+                <Atalho
+                  key={v}
+                  rotulo={v === 100 ? t.maxMaiusc : `${v}%`}
+                  tom="sell"
+                  ligado={atalhoPctLigado}
+                  onClick={() => atalhoEmPorcentagem(v)}
+                  titulo={atalhoPctLigado ? undefined : t.conecteParaPct}
+                />
+              ))}
         </div>
 
-        <div className="space-y-2 pt-3">
-          {/* ------------- avisos que mudam a decisão ------------------- */}
-          {impactoPerigoso && (
-            <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
-              {t.impacto(<strong className="font-semibold">{swap.priceImpactPct.toFixed(1)}%</strong>)}
-            </p>
-          )}
-
-          {swap.motivoTravado && (
-            <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">
-              {swap.motivoTravado}
-            </p>
-          )}
-
-          {swap.error && (
-            <p className="rounded-lg border border-bear/25 bg-bear/[0.06] px-3 py-2 text-[11px] leading-snug text-bear">
-              {traduzirDoServidor(swap.error, idiomaSol)}
-            </p>
-          )}
-
-          {swap.signature && (
-            <div className="rounded-lg border border-bull/25 bg-bull/[0.06] px-3 py-2 text-[11px] text-bull">
-              {t.confirmado}{" "}
-              <a
-                href={`https://solscan.io/tx/${swap.signature}`}
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2"
-              >
-                {t.verSolscan}
-              </a>
-            </div>
-          )}
-
-          {/* ------------- o botão -------------------------------------- */}
-          <RequireChainWallet chain="solana">
-            <Button
-              variant={comprando ? "buy" : "sell"}
-              size="lg"
-              className="h-12 w-full text-[15px]"
-              disabled={!swap.canSwap || swap.phase === "executing"}
-              onClick={swap.execute}
-            >
-              {swap.phase === "executing"
-                ? swap.step || t.processando
-                : semValor
-                  ? t.informeValor
-                  : swap.phase === "quoting"
-                    ? t.cotando
-                    : swap.phase === "error"
-                      ? t.tentarDeNovo
-                      : `${comprando ? t.comprar : t.vender} ${symbol}`}
-            </Button>
-          </RequireChainWallet>
-
-          {/* ------------- atalhos: dólar na compra, porcentagem na venda ---- */}
-          <div className="grid grid-cols-4 gap-2">
-            {comprando
-              ? ATALHOS_EM_DOLAR.map((v) => (
-                  <Atalho
-                    key={v}
-                    rotulo={`$${v}`}
-                    tom="buy"
-                    ligado={atalhoDolarLigado}
-                    onClick={() => atalhoEmDolar(v)}
-                    titulo={atalhoDolarLigado ? undefined : t.precisaCotacao}
-                  />
-                ))
-              : ATALHOS_EM_PORCENTAGEM.map((v) => (
-                  <Atalho
-                    key={v}
-                    rotulo={`${v}%`}
-                    tom="sell"
-                    ligado={atalhoPctLigado}
-                    onClick={() => atalhoEmPorcentagem(v)}
-                    titulo={atalhoPctLigado ? undefined : t.conecteParaPct}
-                  />
-                ))}
+        <div>
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.voceRecebe}</p>
+          <div className="tnum px-1 py-1 text-xl font-bold text-zinc-200">
+            {swap.quote && Number(swap.outAmount) > 0
+              ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
+              : "—"}
           </div>
-
-          {connected && publicKey && (
-            <p className="pt-0.5 text-center text-[11px] text-zinc-600">
-              {shortenAddress(publicKey.toBase58(), 6)} ·{" "}
-              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.diretoNaCurva : t.viaJupiter}
-            </p>
-          )}
         </div>
+
+        <div className="space-y-1.5 text-[11.5px]">
+          <div className="flex items-center justify-between">
+            <span className="text-zinc-500">{t.slippage}</span>
+            <div className="flex gap-1">
+              {[1, 3, 5].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => setSlippage(pct)}
+                  className={cn(
+                    "tnum rounded border px-2 py-0.5 text-[11px] font-semibold",
+                    slippage === pct ? "border-marca bg-marca/15 text-marca" : "border-ink-600 text-zinc-500 hover:text-zinc-200",
+                  )}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">{t.minimo}</span>
+            <span className="tnum text-zinc-300">
+              {swap.quote ? `${Number(swap.minReceived).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}` : "—"}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-zinc-500">{t.rota}</span>
+            <span className="text-zinc-300">
+              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.curvaDaChromaMaiusc : `Jupiter, ${t.taxaDe(feeLabelFor("solana").swap)}`}
+            </span>
+          </div>
+        </div>
+
+        {swap.motivoTravado && (
+          <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">{swap.motivoTravado}</p>
+        )}
+
+        <RequireChainWallet chain="solana">
+          <Button
+            variant={comprando ? "buy" : "sell"}
+            size="lg"
+            className="w-full"
+            disabled={!swap.canSwap || swap.phase === "executing"}
+            onClick={swap.execute}
+          >
+            {swap.phase === "executing"
+              ? swap.step || t.processando
+              : semValor
+                ? t.informeValor
+                : swap.phase === "quoting"
+                  ? t.cotando
+                  : swap.phase === "error"
+                    ? t.tentarDeNovo
+                    : `${comprando ? t.comprar : t.vender} ${symbol}`}
+          </Button>
+        </RequireChainWallet>
+
+        {swap.error && <p className="text-[11px] leading-relaxed text-bear">{traduzirDoServidor(swap.error, idiomaSol)}</p>}
+        {swap.signature && (
+          <a
+            href={`https://solscan.io/tx/${swap.signature}`}
+            target="_blank"
+            rel="noreferrer"
+            className="block text-center text-[11px] font-semibold text-marca hover:underline"
+          >
+            {t.verSolscan}
+          </a>
+        )}
       </div>
     </Card>
   );
@@ -1006,7 +986,7 @@ function EvmSwap({
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             {t.voceRecebe}
           </p>
-          <div className="tnum rounded-lg border border-dashed border-ink-600 px-3 py-3 text-xl font-bold text-zinc-200">
+          <div className="tnum px-1 py-1 text-xl font-bold text-zinc-200">
             {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
           </div>
         </div>
