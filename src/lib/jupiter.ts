@@ -111,6 +111,9 @@ export interface JupiterTokenMeta {
   usdPrice?: number;
   mcap?: number;
   liquidity?: number;
+  twitter?: string;
+  telegram?: string;
+  website?: string;
 }
 
 /**

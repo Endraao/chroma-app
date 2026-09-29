@@ -12,6 +12,7 @@ import { CurvaPanel } from "@/components/trading/CurvaPanel";
 import { CurvaProvider } from "@/components/trading/CurvaProvider";
 import { PainelDeAtividade } from "@/components/trading/PainelDeAtividade";
 import { StatusDaCurva } from "@/components/trading/StatusDaCurva";
+import { ConviteParaCompartilhar } from "@/components/trading/ConviteParaCompartilhar";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -210,6 +211,8 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             ocupa espaço de quem está chegando agora.
           */}
           <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} />
+
+          <ConviteParaCompartilhar token={token} />
 
           {/*
             A AUDITORIA FICA DEPOIS DO BOTÃO, e discreta.

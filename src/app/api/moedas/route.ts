@@ -70,6 +70,7 @@ export async function POST(request: Request) {
         criador: pump.criador,
         assinatura: texto(corpo.assinatura, 128) || null,
         criadaEm: Date.now(),
+        links: linksDo(corpo),
       });
     } catch (erro) {
       console.warn("[moedas] falha ao registrar (pump):", erro);
@@ -122,6 +123,7 @@ export async function POST(request: Request) {
       criador: curva.criador,
       assinatura: texto(corpo.assinatura, 128) || null,
       criadaEm: Date.now(),
+      links: linksDo(corpo),
     });
   } catch (erro) {
     console.warn("[moedas] falha ao registrar:", erro);
@@ -190,6 +192,7 @@ async function registrarNaRobinhood(corpo: Record<string, unknown>) {
       criador,
       assinatura: texto(corpo.txHash, 128) || null,
       criadaEm: Date.now(),
+      links: linksDo(corpo),
     });
   } catch (erro) {
     console.warn("[moedas] falha ao registrar (robinhood):", erro);
@@ -351,4 +354,23 @@ async function conferirLancamentoPump(
   } catch {
     return { ok: false };
   }
+}
+
+/** Site, X e Telegram informados no lançamento — só URLs http(s) válidas. */
+function linksDo(corpo: Record<string, unknown>) {
+  const url = (v: unknown, base?: string) => {
+    let t = texto(v, 200);
+    if (!t) return undefined;
+    if (base && !/^https?:\/\//i.test(t)) {
+      t = base + t.replace(/^@/, "").replace(/^(www\.)?(x|twitter)\.com\//i, "").replace(/^t\.me\//i, "");
+    }
+    if (!/^https?:\/\//i.test(t)) t = "https://" + t;
+    try {
+      return new URL(t).toString();
+    } catch {
+      return undefined;
+    }
+  };
+  const links = { site: url(corpo.site), twitter: url(corpo.twitter, "https://x.com/"), telegram: url(corpo.telegram, "https://t.me/") };
+  return links.site || links.twitter || links.telegram ? links : null;
 }

@@ -172,6 +172,9 @@ export function useLancarToken() {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
+              site: dados.site,
+              twitter: dados.twitter,
+              telegram: dados.telegram,
               chain: "solana",
               mint: mintCriado,
               nome: dados.nome,

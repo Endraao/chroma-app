@@ -45,6 +45,7 @@ const TEXTOS = traducoes({
     vazio: "No coins on this network right now.",
     vazioLista: "The list comes from the live market and changes all the time.",
     verARede: (rede: string) => `See ${rede}`,
+    todasAsRedes: "all networks",
     semSeparacao: (n: number) =>
       `${n} ${n === 1 ? "coin" : "coins"} listed in this filter. The biggest and just-launched sections appear when there are more coins.`,
   },
@@ -78,7 +79,8 @@ const TEXTOS = traducoes({
     apareceAqui: "— ela aparece aqui assim que nascer.",
     vazio: "Nenhuma moeda nessa rede agora.",
     vazioLista: "A lista vem do mercado ao vivo e muda o tempo todo.",
-    verARede: (rede: string) => `Ver a rede ${rede}`,
+    verARede: (rede: string) => `Ver ${rede}`,
+    todasAsRedes: "todas as redes",
     semSeparacao: (n: number) =>
       `${n} ${n === 1 ? "moeda listada" : "moedas listadas"} neste filtro. As seções de maiores e de recém-chegadas aparecem quando houver mais moedas.`,
   },
@@ -109,7 +111,8 @@ const TEXTOS = traducoes({
     apareceAqui: "— 创建后会立即显示在这里。",
     vazio: "该网络暂时没有代币。",
     vazioLista: "列表来自实时市场，随时变化。",
-    verARede: (rede: string) => `查看 ${rede} 网络`,
+    verARede: (rede: string) => `查看${rede}`,
+    todasAsRedes: "全部网络",
     semSeparacao: (n: number) =>
       `此筛选下共有 ${n} 个代币。代币更多时，会显示"市值最高"和"新上线"栏目。`,
   },
@@ -143,31 +146,45 @@ const SORTS: {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; chain?: string }>;
+  searchParams: Promise<{ sort?: string; chain?: string; q?: string }>;
 }) {
   const filtros = await searchParams;
   const sort = (filtros.sort as AbaDoMercado) || "new";
   const ordem: SortKey = sort === "chroma" ? "new" : sort;
-  const chain: ChainId = CHAIN_IDS.includes(filtros.chain as ChainId)
-    ? (filtros.chain as ChainId)
-    : REDE_PADRAO;
+  const chain: ChainId | "todas" =
+    filtros.chain === "todas"
+      ? "todas"
+      : CHAIN_IDS.includes(filtros.chain as ChainId)
+        ? (filtros.chain as ChainId)
+        : REDE_PADRAO;
+  const busca = (filtros.q ?? "").trim().toLowerCase();
 
   const [principal, daCasa] = await Promise.all([
-    listTokens(ordem, chain),
+    listTokens(ordem, chain === "todas" ? null : chain),
     moedasDaChroma().catch(() => [] as TokenSummary[]),
   ]);
 
   // Todas as redes: o painel da Chroma não segue a rede escolhida.
   const lancadasNaChroma = daCasa.filter((t) => !FORA_DA_VITRINE.has(t.address.toLowerCase()));
-  const daChromaNaRede = lancadasNaChroma.filter((t) => t.chain === chain);
+  const daChromaNaRede = lancadasNaChroma.filter((t) => chain === "todas" || t.chain === chain);
 
   const { isDemo } = principal;
-  const tokens = sort === "chroma" ? daChromaNaRede : principal.tokens;
+  const todasAsMoedas = sort === "chroma" ? daChromaNaRede : principal.tokens;
+  // Busca do cabeçalho: nome, símbolo ou começo do endereço.
+  const tokens = busca
+    ? todasAsMoedas.filter(
+        (t) =>
+          t.name.toLowerCase().includes(busca) ||
+          t.symbol.toLowerCase().includes(busca.replace(/^$/, "")) ||
+          t.address.toLowerCase().startsWith(busca),
+      )
+    : todasAsMoedas;
 
-  const linkCom = (params: { sort?: AbaDoMercado; chain?: ChainId | null }) => {
+  const linkCom = (params: { sort?: AbaDoMercado; chain?: ChainId | "todas" | null }) => {
     const proximoSort = params.sort ?? sort;
     const proximaChain = params.chain === undefined ? chain : params.chain;
     const q = new URLSearchParams();
+    if (busca && params.chain === undefined) q.set("q", busca);
     if (proximoSort !== "new") q.set("sort", proximoSort);
     if (proximaChain) q.set("chain", proximaChain);
     const s = q.toString();
@@ -211,12 +228,12 @@ export default async function HomePage({
         </div>
 
         {tokens.length === 0 && sort === "chroma" ? (
-          <VazioDaChroma rede={CHAINS[chain].label} t={t} />
+          <VazioDaChroma rede={chain === "todas" ? "Chroma" : CHAINS[chain].label} t={t} />
         ) : tokens.length === 0 ? (
           <Vazio
             t={t}
-            href={linkCom({ chain: chain === "solana" ? "robinhood" : "solana" })}
-            outraRede={CHAINS[chain === "solana" ? "robinhood" : "solana"].label}
+            href={linkCom({ chain: "todas" })}
+            outraRede={t.todasAsRedes}
           />
         ) : (
           <Grade tokens={tokens} destaque={sort === "chroma"} />

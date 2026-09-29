@@ -1,4 +1,6 @@
 import "server-only";
+import { after } from "next/server";
+import { classificarPendentes, soNegociaveis } from "@/lib/negociaveis";
 
 import { unstable_cache } from "next/cache";
 
@@ -273,11 +275,42 @@ export async function listTokens(
   const base = real.length ? real : FALLBACK;
   const isDemo = real.length === 0;
 
-  const filtradas = chain ? base.filter((t) => t.chain === chain) : base;
+  const daRede = chain ? base.filter((t) => t.chain === chain) : base;
+
+  // Robinhood: só entra moeda confirmada como negociável aqui; as que ainda
+  // não foram checadas são checadas depois da resposta, sem ninguém esperar.
+  const filtradas = isDemo ? daRede : await soNegociaveis(daRede).catch(() => daRede);
+  if (!isDemo) {
+    try {
+      after(() => classificarPendentes(base));
+    } catch {
+      /* fora de uma requisição (scripts): sem classificação em segundo plano */
+    }
+  }
   return { tokens: sortTokens(filtradas, sort), isDemo };
 }
 
+/**
+ * A moeda, com os links (site, X, Telegram) informados no lançamento quando
+ * ela nasceu na Chroma — o mercado só conhece os que o time pagou pra exibir.
+ */
 export async function getToken(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
+  const r = await getTokenBase(address);
+  const registro = await buscarMoedaDaChroma(address).catch(() => null);
+  const l = registro?.links;
+  if (!l) return r;
+  return {
+    ...r,
+    token: {
+      ...r.token,
+      website: r.token.website ?? l.site,
+      twitter: r.token.twitter ?? l.twitter,
+      telegram: r.token.telegram ?? l.telegram,
+    },
+  };
+}
+
+async function getTokenBase(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
   /*
    * Moeda da curva da Chroma na Robinhood: quem sabe dela é o contrato, não a
    * DEX — ela ainda não tem pool. Lida primeiro, e só cai no mercado depois
@@ -296,7 +329,13 @@ export async function getToken(address: string): Promise<{ token: TokenSummary; 
     }
   }
 
-  const real = await fetchToken(address);
+  const doMercado = await fetchToken(address);
+  // Moeda nova que a DEX ainda não indexou: usa o que a vitrine já sabe dela.
+  const daVitrine = doMercado ? null : (await universo()).find((t) => t.address.toLowerCase() === address.toLowerCase());
+  const achado = doMercado ?? daVitrine ?? null;
+  const real = achado && achado.chain === "robinhood" && !achado.imageUrl
+    ? { ...achado, imageUrl: `/api/logo/${achado.address}` }
+    : achado;
 
   if (real) {
     // A Dexscreener não tem holders nem criador; a Jupiter tem, para Solana.
@@ -310,6 +349,9 @@ export async function getToken(address: string): Promise<{ token: TokenSummary; 
               holders: meta.holderCount ?? real.holders,
               creator: meta.dev ?? real.creator,
               imageUrl: real.imageUrl ?? meta.icon,
+              website: real.website ?? meta.website,
+              twitter: real.twitter ?? meta.twitter,
+              telegram: real.telegram ?? meta.telegram,
             },
             isDemo: false,
           };

@@ -84,8 +84,38 @@ async function acharSlots(c: PublicClient, moeda: Address) {
   return null;
 }
 
-export async function verificarNegociavel(c: PublicClient, moeda: Address, idDaPool?: string | null): Promise<Negociavel> {
-  const pool = await acharPool(c, moeda, idDaPool);
+/** Alguém que recebeu a moeda há pouco, ainda tem saldo e já liberou o Permit2. */
+async function donoComPermissao(c: PublicClient, moeda: Address): Promise<{ quem: Address; saldo: bigint } | null> {
+  const TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+  const fim = await c.getBlockNumber();
+  const logs = (await c
+    .request({
+      method: "eth_getLogs",
+      params: [{ address: moeda, topics: [TRANSFER], fromBlock: `0x${(fim - 200_000n).toString(16)}`, toBlock: "latest" }],
+    })
+    .catch(() => [])) as { topics: Hex[] }[];
+  const vistos = new Set<string>();
+  for (const l of logs.reverse()) {
+    const quem = ("0x" + (l.topics[2] ?? "").slice(26)) as Address;
+    if (quem.length !== 42 || vistos.has(quem)) continue;
+    vistos.add(quem);
+    if (vistos.size > 15) break;
+    const [saldo, liberado] = await Promise.all([
+      c.readContract({ address: moeda, abi: erc20Abi, functionName: "balanceOf", args: [quem] }).catch(() => 0n),
+      c.readContract({ address: moeda, abi: erc20Abi, functionName: "allowance", args: [quem, PERMIT2] }).catch(() => 0n),
+    ]);
+    if (saldo > 0n && liberado >= saldo) return { quem, saldo };
+  }
+  return null;
+}
+
+export async function verificarNegociavel(
+  c: PublicClient,
+  moeda: Address,
+  idDaPool?: string | null,
+  criadaEm?: number,
+): Promise<Negociavel> {
+  const pool = await acharPool(c, moeda, idDaPool, criadaEm);
   if (!pool) return { ok: false, motivo: "sem-pool" };
 
   const decimais = await c.readContract({ address: moeda, abi: erc20Abi, functionName: "decimals" }).catch(() => 18);
@@ -107,9 +137,30 @@ export async function verificarNegociavel(c: PublicClient, moeda: Address, idDaP
   }
 
   /* venda do equivalente a ~0,001 ETH */
-  const slots = await acharSlots(c, moeda);
-  if (!slots) return { ok: false, motivo: "token-estranho" };
   const moedas = BigInt(Math.max(1, Math.floor(porEth * 1e15)));
+  const slots = await acharSlots(c, moeda);
+  if (!slots) {
+    // Memória do token fora dos padrões: simula com um dono REAL que já
+    // liberou o Permit2 — aí só a permissão do Permit2 precisa ser forjada.
+    const dono = await donoComPermissao(c, moeda);
+    if (!dono) return { ok: false, motivo: "token-estranho" };
+    const qtd = dono.saldo < moedas ? dono.saldo : moedas;
+    const slotP2 = keccak256(
+      encodeAbiParameters([{ type: "bytes32" }, { type: "bytes32" }], [pad(ROTEADOR), mapaDuplo(pad(moeda), pad(dono.quem), 1n)]),
+    );
+    const dados = montarVenda({ pool, moeda, vendedor: dono.quem, moedas: qtd, minimoLiquido: 1n, porcoes: porcoesSequenciais([{ para: TAXA, bps: 75 }]) });
+    try {
+      await c.call({
+        account: dono.quem,
+        to: ROTEADOR,
+        data: dados,
+        stateOverride: [{ address: PERMIT2, stateDiff: [{ slot: slotP2, value: pad(toHex((((1n << 48n) - 1n) << 160n) | ((1n << 160n) - 1n))) }] }],
+      });
+      return { ok: true, pool, decimais: Number(decimais) };
+    } catch {
+      return { ok: false, motivo: "venda-bloqueada" };
+    }
+  }
   const permit2Slot = keccak256(
     encodeAbiParameters([{ type: "bytes32" }, { type: "bytes32" }], [pad(ROTEADOR), mapaDuplo(pad(moeda), pad(QUEM), 1n)]),
   );

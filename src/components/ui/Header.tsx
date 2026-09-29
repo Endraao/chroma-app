@@ -8,6 +8,7 @@ import { AccountMenu } from "@/components/web3/AccountMenu";
 import { ChromaMark } from "@/components/ui/ChromaMark";
 import { SeletorDeIdioma } from "@/components/ui/SeletorDeIdioma";
 import { SeletorDeRede } from "@/components/ui/SeletorDeRede";
+import { BuscaDeMoedas } from "@/components/ui/BuscaDeMoedas";
 import { textos, type Idioma } from "@/lib/idiomas";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +71,8 @@ export function Header({ idioma }: { idioma: Idioma }) {
             Chroma
           </span>
         </Link>
+
+        <BuscaDeMoedas />
 
         {/* Navegação em telas largas */}
         <nav className="hidden items-center gap-1 md:flex">

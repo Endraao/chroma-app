@@ -291,6 +291,9 @@ export function useLancarTokenEvm() {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
+            site: dados.site,
+            twitter: dados.twitter,
+            telegram: dados.telegram,
             address: moeda,
             chain: "robinhood",
             txHash: hash,

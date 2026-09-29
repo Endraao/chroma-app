@@ -81,7 +81,35 @@ const ABI_EXTSLOAD = parseAbi(["function extsload(bytes32 slot) view returns (by
 const minusculo = (a: string) => a.toLowerCase() as Address;
 const POOLS_ACHADAS = new Map<string, PoolDaMoeda>();
 
-async function buscarLogs(cliente: PublicClient, topics: (Hex | null)[]) {
+let ritmo: { bloco: bigint; hora: number; porSegundo: number } | null = null;
+
+/** Estima o bloco de um momento (ms), pelo ritmo medido da rede. */
+async function blocoDoMomento(cliente: PublicClient, momentoMs: number): Promise<bigint> {
+  if (!ritmo) {
+    const ultimo = await cliente.getBlock();
+    const antigo = await cliente.getBlock({ blockNumber: ultimo.number - 1_000_000n });
+    ritmo = {
+      bloco: ultimo.number,
+      hora: Number(ultimo.timestamp),
+      porSegundo: 1_000_000 / Math.max(1, Number(ultimo.timestamp - antigo.timestamp)),
+    };
+  }
+  const atras = Math.max(0, ritmo.hora - momentoMs / 1000);
+  const estimado = ritmo.bloco - BigInt(Math.floor(atras * ritmo.porSegundo));
+  return estimado > 0n ? estimado : 0n;
+}
+
+async function buscarLogs(cliente: PublicClient, topics: (Hex | null)[], perto?: bigint) {
+  // Com a data de criação da moeda, uma consulta numa faixa perto dela
+  // costuma bastar — poupa o RPC público, que recusa rajadas.
+  if (perto !== undefined) {
+    const MARGEM = 3_000_000n;
+    const logs = (await cliente.request({
+      method: "eth_getLogs",
+      params: [{ address: POOL_MANAGER, fromBlock: `0x${(perto > MARGEM ? perto - MARGEM : 0n).toString(16)}`, toBlock: "latest", topics }],
+    }).catch(() => [])) as { topics: Hex[]; data: Hex }[];
+    if (logs.length) return logs;
+  }
   // O RPC da Robinhood aceita no máximo 10 milhões de blocos por consulta:
   // procura em janelas, das mais recentes pras mais antigas.
   const JANELA = 9_900_000n;
@@ -106,6 +134,7 @@ export async function acharPool(
   cliente: PublicClient,
   moeda: Address,
   idDaPool?: string | null,
+  criadaEm?: number,
 ): Promise<PoolDaMoeda | null> {
   const chaveDoCache = `${minusculo(moeda)}:${idDaPool ?? ""}`;
   const guardada = POOLS_ACHADAS.get(chaveDoCache);
@@ -121,8 +150,9 @@ export async function acharPool(
   // Um mesmo par pode ter várias pools (taxas e hooks diferentes, muitas
   // vazias). Fica com a de MAIS liquidez — a primeira criada costuma ser lixo.
   const candidatas: PoolDaMoeda[] = [];
+  const perto = criadaEm ? await blocoDoMomento(cliente, criadaEm).catch(() => undefined) : undefined;
   for (const topics of tentativas) {
-    for (const log of await buscarLogs(cliente, topics)) {
+    for (const log of await buscarLogs(cliente, topics, perto)) {
       const currency0 = minusculo("0x" + log.topics[2].slice(26));
       const currency1 = minusculo("0x" + log.topics[3].slice(26));
       const moedaEhZero = currency0 === minusculo(moeda);

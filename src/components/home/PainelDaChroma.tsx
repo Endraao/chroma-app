@@ -36,7 +36,7 @@ const POR_PAGINA = 14;
  */
 export function PainelDaChroma({ moedas }: { moedas: TokenSummary[] }) {
   const t = useTextos(TEXTOS);
-  const [aba, setAba] = useState<"novas" | "maiores">("novas");
+  const [aba, setAba] = useState<"novas" | "maiores">("maiores");
   const [tudo, setTudo] = useState(false);
 
   const ordenadas = [...moedas].sort((a, b) =>
@@ -52,7 +52,7 @@ export function PainelDaChroma({ moedas }: { moedas: TokenSummary[] }) {
           <span className="relative inline-flex size-2 rounded-full bg-bull" />
         </span>
         <h2 className="mr-2 text-[16px] font-black tracking-tight text-zinc-50">{t.titulo}</h2>
-        {(["novas", "maiores"] as const).map((a) => (
+        {(["maiores", "novas"] as const).map((a) => (
           <button
             key={a}
             onClick={() => setAba(a)}

@@ -34,14 +34,14 @@ import type { ChainId } from "@/lib/types";
  * componente utilizável em qualquer página que liste moedas.
  */
 const TEXTOS = traducoes({
-  en: { conectada: "wallet connected on this network" },
-  pt: { conectada: "carteira conectada nesta rede" },
-  zh: { conectada: "该网络已连接钱包" },
+  en: { conectada: "wallet connected on this network", todas: "All" },
+  pt: { conectada: "carteira conectada nesta rede", todas: "Todas" },
+  zh: { conectada: "该网络已连接钱包", todas: "全部" },
 });
 
-export function ChainTabs({ ativa, sort }: { ativa: ChainId; sort: string }) {
+export function ChainTabs({ ativa, sort }: { ativa: ChainId | "todas"; sort: string }) {
   const t = useTextos(TEXTOS);
-  const hrefDe = (chain: ChainId) => {
+  const hrefDe = (chain: ChainId | "todas") => {
     const q = new URLSearchParams();
     if (sort && sort !== "new") q.set("sort", sort);
     // Sempre na URL: a rede padrão mudou pra Robinhood, e "/" sem rede
@@ -68,6 +68,9 @@ export function ChainTabs({ ativa, sort }: { ativa: ChainId; sort: string }) {
         enquanto a lista mostraria as duas redes misturadas. Os dois controles
         mexem no MESMO `?chain=`, então precisam oferecer as mesmas escolhas.
       */}
+      <Aba href={hrefDe("todas")} selecionada={ativa === "todas"}>
+        {t.todas}
+      </Aba>
       {CHAIN_IDS.map((chain) => (
         <Aba key={chain} href={hrefDe(chain)} selecionada={ativa === chain}>
           <img
