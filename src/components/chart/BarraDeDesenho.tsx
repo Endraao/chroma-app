@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -330,6 +333,38 @@ const GRUPOS: Grupo[] = [
 
 /* ------------------------------------------------------------------ */
 
+const TEXTOS = traducoes({
+  en: {
+    cursor: "Cursor", recolher: "Collapse tools", mostrar: "Show tools", verTodas: "see all",
+    grupos: {
+      tendencia: "Trend lines", horizontais: "Horizontal and vertical lines", canais: "Parallel channels", fibonacci: "Fibonacci",
+      formas: "Shapes", texto: "Text and notes", marcas: "Marks", regua: "Ruler: measures the change between two points",
+    } as Record<string, string>,
+    ferramentas: {
+      segment: "Trend line", rayLine: "Ray", straightLine: "Extended line", horizontalStraightLine: "Horizontal line",
+      horizontalRayLine: "Horizontal ray", priceLine: "Price line", verticalStraightLine: "Vertical line",
+      parallelStraightLine: "Parallel channel", priceChannelLine: "Price channel", fibonacciLine: "Fibonacci retracement",
+      rect: "Rectangle", circle: "Circle", polygon: "Polygon", arc: "Arc", text: "Text", simpleAnnotation: "Annotation",
+      simpleTag: "Price tag", "chroma-regua": "Ruler",
+    } as Record<string, string>,
+  },
+  pt: { cursor: "Cursor", recolher: "Recolher ferramentas", mostrar: "Mostrar ferramentas", verTodas: "ver todas", grupos: {} as Record<string, string>, ferramentas: {} as Record<string, string> },
+  zh: {
+    cursor: "光标", recolher: "收起工具", mostrar: "显示工具", verTodas: "查看全部",
+    grupos: {
+      tendencia: "趋势线", horizontais: "水平与垂直线", canais: "平行通道", fibonacci: "斐波那契",
+      formas: "几何图形", texto: "文字与标注", marcas: "标记", regua: "测量尺：测量两点间的变化",
+    } as Record<string, string>,
+    ferramentas: {
+      segment: "趋势线", rayLine: "射线", straightLine: "延长线", horizontalStraightLine: "水平线",
+      horizontalRayLine: "水平射线", priceLine: "价格线", verticalStraightLine: "垂直线",
+      parallelStraightLine: "平行通道", priceChannelLine: "价格通道", fibonacciLine: "斐波那契回撤",
+      rect: "矩形", circle: "圆形", polygon: "多边形", arc: "弧线", text: "文字", simpleAnnotation: "注释",
+      simpleTag: "价格标签", "chroma-regua": "测量尺",
+    } as Record<string, string>,
+  },
+});
+
 export function BarraDeDesenho({
   ferramenta,
   aoEscolher,
@@ -347,6 +382,7 @@ export function BarraDeDesenho({
   aoAproximar: () => void;
   cores: { borda: string; fundo: string; texto: string; apagado: string; ativo: string };
 }) {
+  const t = useTextos(TEXTOS);
   const [aberta, setAberta] = useState(true);
   const [grupoAberto, setGrupoAberto] = useState<string | null>(null);
 
@@ -393,7 +429,7 @@ export function BarraDeDesenho({
       {aberta && (
         <>
           <Botao
-            titulo="Cursor"
+            titulo={t.cursor}
             ativo={ferramenta === null}
             onClick={() => aoEscolher(null)}
             cores={cores}
@@ -410,7 +446,7 @@ export function BarraDeDesenho({
             return (
               <div key={grupo.chave} className="relative">
                 <Botao
-                  titulo={grupo.titulo}
+                  titulo={t.grupos[grupo.chave] ?? grupo.titulo}
                   ativo={ativo}
                   cores={cores}
                   seta={grupo.ferramentas.length > 1}
@@ -438,7 +474,7 @@ export function BarraDeDesenho({
                         <span className="grid size-5 shrink-0 place-items-center">
                           {grupo.icones?.[f.id] ?? grupo.icone}
                         </span>
-                        {f.nome}
+                        {t.ferramentas[f.id] ?? f.nome}
                       </button>
                     ))}
                   </div>
@@ -470,7 +506,7 @@ export function BarraDeDesenho({
 
       <button
         type="button"
-        title={aberta ? "Recolher ferramentas" : "Mostrar ferramentas"}
+        title={aberta ? t.recolher : t.mostrar}
         onClick={() => setAberta((v) => !v)}
         className="mt-auto grid h-6 w-full place-items-center transition-colors"
         style={{ color: cores.apagado }}
@@ -506,6 +542,7 @@ function Botao({
   cores: { texto: string; apagado: string; ativo: string };
   children: React.ReactNode;
 }) {
+  const t = useTextos(TEXTOS);
   return (
     <div
       className="group relative grid size-[32px] place-items-center rounded transition-colors hover:bg-white/[0.06]"
@@ -530,7 +567,7 @@ function Botao({
       {seta && (
         <button
           type="button"
-          title={`${titulo} — ver todas`}
+          title={`${titulo} — ${t.verTodas}`}
           onClick={(e) => {
             e.stopPropagation();
             onSeta?.();

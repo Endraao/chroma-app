@@ -1,5 +1,8 @@
 "use client";
 
+import { useIdioma, useTextos } from "@/components/IdiomaProvider";
+import { traducoes, type Idioma } from "@/lib/idiomas";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CandleType } from "klinecharts";
@@ -29,6 +32,127 @@ import {
 import { cn, formatPrice, formatUsd } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 
+/*
+ * Nomes e notas dos indicadores por idioma. O catálogo (lib/indicadores.ts)
+ * guarda o português; aqui ficam inglês e chinês, pela chave do indicador.
+ */
+const INDICADORES_TRAD: Partial<Record<Idioma, Record<string, [string, string]>>> = {
+  en: {
+    MA: ["Simple moving average", "The average price over the last N bars"],
+    EMA: ["Exponential moving average", "Like the simple one, but weights recent prices more"],
+    SMA: ["Smoothed moving average", "An average that reacts more slowly to jolts"],
+    BOLL: ["Bollinger Bands", "A corridor around the average; price outside it is extreme"],
+    BBI: ["Bull and Bear Index", "Four averages condensed into a single line"],
+    SAR: ["Parabolic SAR", "Dots marking where the trend may reverse"],
+    AVP: ["Volume-weighted average price", "Average price weighted by traded volume"],
+    VOL: ["Volume", "How much was traded in each bar"],
+    MACD: ["MACD", "The distance between two averages; measures trend strength"],
+    RSI: ["Relative Strength Index", "0 to 100: above 70 is stretched, below 30 is beaten down"],
+    KDJ: ["Stochastic KDJ", "Where the price closed within the recent range"],
+    WR: ["Williams %R", "Similar to the stochastic, inverted scale"],
+    CCI: ["Commodity Channel Index", "How far the price moved away from its own average"],
+    BIAS: ["Bias", "In %, how far the price is from the average"],
+    MTM: ["Momentum", "The speed of the price change"],
+    ROC: ["Rate of change", "How much the price changed, in %, versus N bars ago"],
+    TRIX: ["Triple smoothed average", "Filters short-term noise; good for long trends"],
+    DMI: ["Directional Movement Index", "Tells whether there is a trend, and in which direction"],
+    DMA: ["Difference of moving averages", "The distance between a short and a long average"],
+    OBV: ["On-balance volume", "Adds volume on up bars and subtracts on down bars"],
+    PVT: ["Price volume trend", "Like OBV, but weighted by the price change"],
+    VR: ["Volume ratio", "Ratio between up and down volume"],
+    EMV: ["Ease of movement", "How much volume it took to move the price"],
+    PSY: ["Psychological line", "In how many of the last N bars the price rose"],
+    AO: ["Awesome oscillator", "Two averages of the bar midpoint against each other"],
+    BRAR: ["BRAR", "Compares the strength of buyers and sellers"],
+    CR: ["CR energy index", "Market energy with four average windows"],
+  },
+  zh: {
+    MA: ["简单移动平均", "最近 N 根K线的平均价格"],
+    EMA: ["指数移动平均", "与简单均线类似，但更重视近期价格"],
+    SMA: ["平滑移动平均", "对剧烈波动反应更慢的均线"],
+    BOLL: ["布林带", "围绕均线的通道；价格超出即为极端"],
+    BBI: ["多空指数", "把四条均线浓缩成一条"],
+    SAR: ["抛物线转向", "标记趋势可能反转的位置"],
+    AVP: ["成交量加权均价", "按成交量加权的平均价格"],
+    VOL: ["成交量", "每根K线的成交量"],
+    MACD: ["MACD", "两条均线之间的距离，衡量趋势强度"],
+    RSI: ["相对强弱指数", "0 到 100：高于 70 为超买，低于 30 为超卖"],
+    KDJ: ["随机指标 KDJ", "收盘价在近期区间中的位置"],
+    WR: ["威廉指标", "类似随机指标，刻度相反"],
+    CCI: ["顺势指标", "价格偏离自身均线的程度"],
+    BIAS: ["乖离率", "价格偏离均线的百分比"],
+    MTM: ["动量指标", "价格变化的速度"],
+    ROC: ["变动率", "与 N 根K线前相比价格变化的百分比"],
+    TRIX: ["三重指数平滑", "过滤短期噪音，适合长期趋势"],
+    DMI: ["趋向指标", "判断是否存在趋势以及方向"],
+    DMA: ["平均差", "短期与长期均线之间的差距"],
+    OBV: ["能量潮", "上涨累加成交量，下跌扣减成交量"],
+    PVT: ["价量趋势", "类似能量潮，但按价格变化加权"],
+    VR: ["成交量比率", "上涨与下跌成交量之比"],
+    EMV: ["简易波动指标", "推动价格所需的成交量"],
+    PSY: ["心理线", "最近 N 根K线中上涨的比例"],
+    AO: ["动量震荡指标", "两条K线中点均线的对比"],
+    BRAR: ["人气意愿指标", "比较买方与卖方的力量"],
+    CR: ["能量指标 CR", "用四个均线窗口衡量市场能量"],
+  },
+};
+
+const PARAMETROS_TRAD: Partial<Record<Idioma, Record<string, string>>> = {
+  en: {
+    Período: "Period", "Período 1": "Period 1", "Período 2": "Period 2", "Período 3": "Period 3", "Período 4": "Period 4",
+    Média: "Average", "Média 1": "Average 1", "Média 2": "Average 2", "Média 3": "Average 3", "Média 4": "Average 4",
+    Curta: "Short", Longa: "Long", Lenta: "Slow", Rápida: "Fast", Sinal: "Signal", Suavização: "Smoothing",
+    "Suavização K": "K smoothing", "Suavização D": "D smoothing", Desvios: "Deviations", Peso: "Weight",
+    Início: "Start", Passo: "Step", Máximo: "Maximum",
+  },
+  zh: {
+    Período: "周期", "Período 1": "周期 1", "Período 2": "周期 2", "Período 3": "周期 3", "Período 4": "周期 4",
+    Média: "均线", "Média 1": "均线 1", "Média 2": "均线 2", "Média 3": "均线 3", "Média 4": "均线 4",
+    Curta: "短期", Longa: "长期", Lenta: "慢线", Rápida: "快线", Sinal: "信号", Suavização: "平滑",
+    "Suavização K": "K 平滑", "Suavização D": "D 平滑", Desvios: "标准差", Peso: "权重",
+    Início: "起始", Passo: "步长", Máximo: "最大值",
+  },
+};
+
+const TEXTOS = traducoes({
+  en: {
+    tipoDeGrafico: "Chart type", sobreVelas: "On the candles", painelSeparado: "Separate pane", preco: "Price",
+    desfazer: "Undo drawing", apagar: "Delete all drawings", restaurarZoom: "Reset zoom", telaCheia: "Full screen",
+    baixarImagem: "Download image", baixarGrafico: "Download chart image", voltar: "Back to latest candle",
+    erroVelas: "Could not load candles right now.", semHistorico: "This coin has no trading history yet.",
+    tempoReal: "Real time: the candle moves with every trade, read from the chain.", aoVivo: "Live: the price is checked every 3 seconds.",
+    carregando: "Loading chart…", velasAparecem: "As soon as trades are recorded on the pair, candles appear here.",
+    limitando: "The market data source is rate-limiting us. Retrying automatically.",
+    escalaPct: "Percentage scale", escalaLog: "Logarithmic scale", escalaAuto: "Auto scale",
+    meusSwaps: "My swaps", meusSwapsDica: "Marks your buys and sells of this coin on the chart", ajustar: "Adjust", restaurarPadrao: "restore default",
+    velas: { candle_solid: "Candles", candle_stroke: "Hollow candles", ohlc: "Bars", area: "Line" } as Record<string, string>,
+  },
+  pt: {
+    tipoDeGrafico: "Tipo de gráfico", sobreVelas: "Sobre as velas", painelSeparado: "Painel separado", preco: "Preço",
+    desfazer: "Desfazer desenho", apagar: "Apagar todos os desenhos", restaurarZoom: "Restaurar o zoom", telaCheia: "Tela cheia",
+    baixarImagem: "Baixar imagem", baixarGrafico: "Baixar imagem do gráfico", voltar: "Voltar pra vela mais recente",
+    erroVelas: "Não foi possível carregar as velas agora.", semHistorico: "Esta moeda ainda não tem histórico de negociação.",
+    tempoReal: "Tempo real: a vela anda a cada negócio, lido da própria rede.", aoVivo: "Ao vivo: o preço é conferido a cada 3 segundos.",
+    carregando: "Carregando o gráfico…", velasAparecem: "Assim que houver negócios registrados no par, as velas aparecem aqui.",
+    limitando: "A fonte de mercado está limitando as consultas. Estamos tentando de novo sozinhos.",
+    escalaPct: "Escala em porcentagem", escalaLog: "Escala logarítmica", escalaAuto: "Escala automática",
+    meusSwaps: "Meus swaps", meusSwapsDica: "Marca no gráfico as suas compras e vendas desta moeda", ajustar: "Ajustar", restaurarPadrao: "restaurar padrão",
+    velas: {} as Record<string, string>,
+  },
+  zh: {
+    tipoDeGrafico: "图表类型", sobreVelas: "主图指标", painelSeparado: "副图指标", preco: "价格",
+    desfazer: "撤销绘图", apagar: "删除所有绘图", restaurarZoom: "重置缩放", telaCheia: "全屏",
+    baixarImagem: "下载图片", baixarGrafico: "下载图表图片", voltar: "回到最新K线",
+    erroVelas: "暂时无法加载K线。", semHistorico: "该代币还没有交易记录。",
+    tempoReal: "实时：K线随每笔链上交易更新。", aoVivo: "实时：每 3 秒核对一次价格。",
+    carregando: "图表加载中…", velasAparecem: "一旦该交易对有交易记录，K线就会显示在这里。",
+    limitando: "行情数据源正在限流，系统会自动重试。",
+    escalaPct: "百分比坐标", escalaLog: "对数坐标", escalaAuto: "自动缩放",
+    meusSwaps: "我的交易", meusSwapsDica: "在图表上标记你对该代币的买入和卖出", ajustar: "调整", restaurarPadrao: "恢复默认",
+    velas: { candle_solid: "K线", candle_stroke: "空心K线", ohlc: "美国线", area: "折线" } as Record<string, string>,
+  },
+});
+
 export function ChartPanel({
   address,
   symbol,
@@ -52,6 +176,7 @@ export function ChartPanel({
   /** preço ao vivo e volume somado na sessão, pro cabeçalho acompanhar */
   onTick?: (dados: { price: number; volumeObservadoUsd: number }) => void;
 }) {
+  const tx = useTextos(TEXTOS);
   const {
     candles,
     price,
@@ -281,7 +406,7 @@ export function ChartPanel({
           icone={<IconeVela />}
           aberto={menu === "vela"}
           onToggle={() => abrir("vela")}
-          titulo="Tipo de gráfico"
+          titulo={tx.tipoDeGrafico}
         >
           {TIPOS_DE_VELA.map((t) => (
             <ItemDeMenu
@@ -293,7 +418,7 @@ export function ChartPanel({
                 setMenu(null);
               }}
             >
-              {t.nome}
+              {tx.velas[t.id] ?? t.nome}
             </ItemDeMenu>
           ))}
         </Menu>
@@ -312,7 +437,7 @@ export function ChartPanel({
             ficariam fora do alcance em tela de notebook.
           */}
           <div className="max-h-[min(58vh,420px)] overflow-y-auto pr-0.5">
-            <Secao titulo="Sobre as velas" />
+            <Secao titulo={tx.sobreVelas} />
             {SOBRE_AS_VELAS.map((ind) => (
               <ItemIndicador
                 key={ind.chave}
@@ -330,7 +455,7 @@ export function ChartPanel({
               />
             ))}
 
-            <Secao titulo="Painel separado" />
+            <Secao titulo={tx.painelSeparado} />
             {EM_PAINEL_PROPRIO.map((ind) => (
               <ItemIndicador
                 key={ind.chave}
@@ -360,7 +485,7 @@ export function ChartPanel({
         {temMcap && (
           <div className="flex items-center px-1 text-[12px]">
             <BotaoDeTexto ativo={escalaEfetiva === "preco"} onClick={() => setEscala("preco")}>
-              Preço
+              {tx.preco}
             </BotaoDeTexto>
             <span className="px-0.5 text-[#4a4e5a]">/</span>
             <BotaoDeTexto ativo={escalaEfetiva === "mcap"} onClick={() => setEscala("mcap")}>
@@ -369,10 +494,10 @@ export function ChartPanel({
           </div>
         )}
 
-        <BotaoDeIcone titulo="Desfazer desenho" onClick={() => grafico.current?.desfazerDesenho()}>
+        <BotaoDeIcone titulo={tx.desfazer} onClick={() => grafico.current?.desfazerDesenho()}>
           <IconeDesfazer />
         </BotaoDeIcone>
-        <BotaoDeIcone titulo="Apagar todos os desenhos" onClick={() => grafico.current?.limparDesenhos()}>
+        <BotaoDeIcone titulo={tx.apagar} onClick={() => grafico.current?.limparDesenhos()}>
           <IconeRefazer />
         </BotaoDeIcone>
 
@@ -384,16 +509,16 @@ export function ChartPanel({
           largura={180}
         >
           <ItemDeMenu ativo={false} onClick={() => { grafico.current?.voltarAoAgora(); setMenu(null); }}>
-            Restaurar o zoom
+            {tx.restaurarZoom}
           </ItemDeMenu>
           <ItemDeMenu ativo={false} onClick={() => { alternarTelaCheia(); setMenu(null); }}>
-            Tela cheia
+            {tx.telaCheia}
           </ItemDeMenu>
           <ItemDeMenu
             ativo={false}
             onClick={() => { grafico.current?.baixarImagem(`${symbol}-${interval}`); setMenu(null); }}
           >
-            Baixar imagem
+            {tx.baixarImagem}
           </ItemDeMenu>
         </Menu>
 
@@ -410,12 +535,12 @@ export function ChartPanel({
           <BotaoDeIcone
             titulo={
               status === "erro"
-                ? "Não foi possível carregar as velas agora."
+                ? tx.erroVelas
                 : status === "vazio"
-                  ? "Esta moeda ainda não tem histórico de negociação."
+                  ? tx.semHistorico
                   : tempoReal
-                    ? "Tempo real: a vela anda a cada negócio, lido da própria rede."
-                    : "Ao vivo: o preço é conferido a cada 3 segundos."
+                    ? tx.tempoReal
+                    : tx.aoVivo
             }
             cor={
               status === "erro" || status === "vazio"
@@ -428,16 +553,16 @@ export function ChartPanel({
             <IconeRaio />
           </BotaoDeIcone>
 
-          <BotaoDeIcone titulo="Voltar pra vela mais recente" onClick={() => grafico.current?.voltarAoAgora()}>
+          <BotaoDeIcone titulo={tx.voltar} onClick={() => grafico.current?.voltarAoAgora()}>
             <IconeAlvo />
           </BotaoDeIcone>
 
-          <BotaoDeIcone titulo="Tela cheia" onClick={alternarTelaCheia}>
+          <BotaoDeIcone titulo={tx.telaCheia} onClick={alternarTelaCheia}>
             <IconeTelaCheia />
           </BotaoDeIcone>
 
           <BotaoDeIcone
-            titulo="Baixar imagem do gráfico"
+            titulo={tx.baixarGrafico}
             onClick={() => grafico.current?.baixarImagem(`${symbol}-${interval}`)}
           >
             <IconeCamera />
@@ -468,14 +593,10 @@ export function ChartPanel({
         <div className="grid h-[420px] place-items-center px-6 text-center">
           <div>
             <p className="text-[13px] font-semibold text-zinc-300">
-              {status === "vazio"
-                ? "Esta moeda ainda não tem histórico de negociação"
-                : "Carregando o gráfico…"}
+              {status === "vazio" ? tx.semHistorico : tx.carregando}
             </p>
             <p className="mx-auto mt-1.5 max-w-[340px] text-[12px] leading-relaxed text-zinc-600">
-              {status === "vazio"
-                ? "Assim que houver negócios registrados no par, as velas aparecem aqui."
-                : "A fonte de mercado está limitando as consultas. Estamos tentando de novo sozinhos."}
+              {status === "vazio" ? tx.velasAparecem : tx.limitando}
             </p>
           </div>
         </div>
@@ -525,14 +646,14 @@ export function ChartPanel({
           <BotaoDeTexto
             ativo={eixo === "percentage"}
             onClick={() => trocarEixo(eixo === "percentage" ? "normal" : "percentage")}
-            titulo="Escala em porcentagem"
+            titulo={tx.escalaPct}
           >
             %
           </BotaoDeTexto>
           <BotaoDeTexto
             ativo={eixo === "log"}
             onClick={() => trocarEixo(eixo === "log" ? "normal" : "log")}
-            titulo="Escala logarítmica"
+            titulo={tx.escalaLog}
           >
             log
           </BotaoDeTexto>
@@ -542,7 +663,7 @@ export function ChartPanel({
               trocarEixo("normal");
               grafico.current?.voltarAoAgora();
             }}
-            titulo="Escala automática"
+            titulo={tx.escalaAuto}
           >
             auto
           </BotaoDeTexto>
@@ -561,8 +682,8 @@ export function ChartPanel({
         <Caixa
           marcada={mostrarMeusSwaps}
           onChange={setMostrarMeusSwaps}
-          rotulo="Meus swaps"
-          titulo="Marca no gráfico as suas compras e vendas desta moeda"
+          rotulo={tx.meusSwaps}
+          titulo={tx.meusSwapsDica}
         />
       </div>
     </div>
@@ -934,6 +1055,8 @@ function ItemIndicador({
   onTrocar: (posicao: number, valor: number) => void;
   onRestaurar: () => void;
 }) {
+  const tx = useTextos(TEXTOS);
+  const idioma = useIdioma();
   const temAjuste = indicador.parametros.length > 0;
 
   return (
@@ -988,15 +1111,15 @@ function ItemIndicador({
                 </span>
               )}
             </span>
-            <span className="block truncate text-[10px] text-zinc-600">{indicador.rotulo}</span>
+            <span className="block truncate text-[10px] text-zinc-600">{INDICADORES_TRAD[idioma]?.[indicador.chave]?.[0] ?? indicador.rotulo}</span>
           </span>
         </button>
 
         {temAjuste && (
           <button
             onClick={onAjustar}
-            title={`Ajustar ${indicador.chave}`}
-            aria-label={`Ajustar ${indicador.chave}`}
+            title={`${tx.ajustar} ${indicador.chave}`}
+            aria-label={`${tx.ajustar} ${indicador.chave}`}
             className={cn(
               "mr-1 grid size-6 shrink-0 place-items-center rounded-md transition-colors",
               ajustando ? "bg-white/10 text-marca" : "text-zinc-600 hover:bg-white/5 hover:text-zinc-300",
@@ -1012,13 +1135,13 @@ function ItemIndicador({
 
       {ajustando && temAjuste && (
         <div className="border-t border-white/[0.06] px-2 pb-2 pt-2">
-          <p className="mb-1.5 text-[10px] leading-relaxed text-zinc-600">{indicador.nota}</p>
+          <p className="mb-1.5 text-[10px] leading-relaxed text-zinc-600">{INDICADORES_TRAD[idioma]?.[indicador.chave]?.[1] ?? indicador.nota}</p>
 
           <div className="grid grid-cols-2 gap-1.5">
             {indicador.parametros.map((p, i) => (
               <label key={p.rotulo} className="block">
                 <span className="mb-0.5 block truncate text-[9.5px] uppercase tracking-wider text-zinc-600">
-                  {p.rotulo}
+                  {PARAMETROS_TRAD[idioma]?.[p.rotulo] ?? p.rotulo}
                 </span>
                 <input
                   type="number"
@@ -1037,7 +1160,7 @@ function ItemIndicador({
               onClick={onRestaurar}
               className="mt-1.5 text-[10px] text-zinc-500 underline underline-offset-2 transition-colors hover:text-marca"
             >
-              restaurar padrão
+              {tx.restaurarPadrao}
             </button>
           )}
         </div>

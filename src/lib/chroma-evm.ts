@@ -203,7 +203,30 @@ export const ABI_DA_CURVA = [
  * `AcimaDoMaximo` no lançamento é a taxa enviada MENOR que a exigida — o
  * contrato reaproveita o erro com os argumentos (enviado, exigido).
  */
-export const MOTIVO_DO_ERRO: Record<string, string> = {
+export const MOTIVO_DO_ERRO: Record<"en" | "pt" | "zh", Record<string, string>> = {
+  en: {
+    ValorZero: "The amount must be greater than zero.",
+    Pausado: "Buying and launching are paused right now. Selling is still open.",
+    TextoLongoDemais: "Name up to 32 characters and symbol up to 10 (accented letters count as 2).",
+    MoedaDesconhecida: "This coin was not launched by Chroma.",
+    CurvaConcluida: "This coin's curve is already full; it trades on Uniswap now.",
+    AfiliadoEhOProprioTrader: "You cannot use your own referral link.",
+    SaldoInsuficiente: "Not enough balance in the curve for this trade.",
+    AbaixoDoMinimo: "The price moved more than the allowed slippage. Try again.",
+    AcimaDoMaximo: "The amount sent does not cover the launch fee.",
+  },
+  zh: {
+    ValorZero: "金额必须大于零。",
+    Pausado: "买入和发行暂时暂停，卖出不受影响。",
+    TextoLongoDemais: "名称最多 32 个字符，代号最多 10 个（带重音的字母算 2 个）。",
+    MoedaDesconhecida: "该代币不是由 Chroma 发行的。",
+    CurvaConcluida: "该代币的曲线已满，现在在 Uniswap 上交易。",
+    AfiliadoEhOProprioTrader: "不能使用你自己的推荐链接。",
+    SaldoInsuficiente: "曲线余额不足以完成此交易。",
+    AbaixoDoMinimo: "价格变动超过允许的滑点，请重试。",
+    AcimaDoMaximo: "发送的金额不足以支付发行费。",
+  },
+  pt: {
   ValorZero: "O valor precisa ser maior que zero.",
   Pausado: "As compras e os lançamentos estão pausados no momento. Vender continua liberado.",
   TextoLongoDemais: "Nome até 32 caracteres e símbolo até 10 (letra com acento conta como 2).",
@@ -213,6 +236,7 @@ export const MOTIVO_DO_ERRO: Record<string, string> = {
   SaldoInsuficiente: "Saldo insuficiente na curva para esta operação.",
   AbaixoDoMinimo: "O preço andou mais que a folga permitida. Tente de novo.",
   AcimaDoMaximo: "O valor enviado não cobre a taxa de lançamento.",
+  },
 };
 
 /* ------------------------------------------------------------------ */

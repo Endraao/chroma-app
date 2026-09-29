@@ -1,7 +1,7 @@
 "use client";
 
-import { useTextos } from "@/components/IdiomaProvider";
-import { traducoes } from "@/lib/idiomas";
+import { useIdioma, useTextos } from "@/components/IdiomaProvider";
+import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
 
  
 import { useEffect, useMemo, useState } from "react";
@@ -420,6 +420,7 @@ function GoogleRow() {
 
 function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount> }) {
   const t = useTextos(TEXTOS);
+  const idioma = useIdioma();
   const [nickname, setNickname] = useState("");
   const [status, setStatus] = useState<{ available: boolean; reason: string | null } | null>(null);
   const [checking, setChecking] = useState(false);
@@ -492,9 +493,9 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
       </div>
 
       {status && !status.available && status.reason && (
-        <p className="text-[12px] text-bear">{status.reason}</p>
+        <p className="text-[12px] text-bear">{traduzirDoServidor(status.reason, idioma)}</p>
       )}
-      {account.error && <p className="text-[12px] text-bear">{account.error}</p>}
+      {account.error && <p className="text-[12px] text-bear">{traduzirDoServidor(account.error, idioma)}</p>}
 
       <p className="text-[11px] leading-relaxed text-zinc-600">
         {t.regras(<code>_</code>, <span className="text-marca">/?ref={nickname || t.seuNome}</span>)}

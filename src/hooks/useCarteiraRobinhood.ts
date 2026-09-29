@@ -26,7 +26,7 @@ export function useCarteiraRobinhood() {
   const { switchChainAsync } = useSwitchChain();
 
   const obterCarteira = useCallback(async () => {
-    if (!address) throw new Error("Conecte uma carteira da Robinhood Chain antes.");
+    if (!address) throw new Error("Connect a Robinhood Chain wallet first.");
     if (chainId !== robinhoodChain.id) {
       await switchChainAsync({ chainId: robinhoodChain.id });
     }

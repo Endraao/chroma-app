@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
  
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -58,7 +61,7 @@ function readDimensions(file: File, url: string): Promise<{ width: number; heigh
       video.preload = "metadata";
       video.onloadedmetadata = () =>
         resolve({ width: video.videoWidth, height: video.videoHeight, kind: "video" });
-      video.onerror = () => reject(new Error("Não foi possível ler este vídeo."));
+      video.onerror = () => reject(new Error("video"));
       video.src = url;
       return;
     }
@@ -66,12 +69,40 @@ function readDimensions(file: File, url: string): Promise<{ width: number; heigh
     const image = new Image();
     image.onload = () =>
       resolve({ width: image.naturalWidth, height: image.naturalHeight, kind: "image" });
-    image.onerror = () => reject(new Error("Não foi possível ler esta imagem."));
+    image.onerror = () => reject(new Error("image"));
     image.src = url;
   });
 }
 
+const TEXTOS = traducoes({
+  en: {
+    formato: (l: string) => `Format not accepted. Use: ${l}.`,
+    tamanho: (v: boolean, mb: string, lim: number) => `${v ? "Video" : "Image"} is ${mb} MB. The limit is ${lim} MB.`,
+    resolucao: (w: number, h: number, min: number) => `Resolution ${w}x${h}. The minimum is ${min}x${min}px.`,
+    proporcao: (r: string, l: string) => `Ratio ${r}:1. ${l} is recommended — the image will be cropped.`,
+    lerVideo: "Could not read this video.", lerImagem: "Could not read this image.", invalido: "invalid file",
+    trocar: "change", selecionar: "Select file",
+  },
+  pt: {
+    formato: (l: string) => `Formato não aceito. Use: ${l}.`,
+    tamanho: (v: boolean, mb: string, lim: number) => `${v ? "Vídeo" : "Imagem"} de ${mb} MB. O limite é ${lim} MB.`,
+    resolucao: (w: number, h: number, min: number) => `Resolução ${w}x${h}. O mínimo é ${min}x${min}px.`,
+    proporcao: (r: string, l: string) => `Proporção ${r}:1. O recomendado é ${l} — a imagem vai ser cortada.`,
+    lerVideo: "Não foi possível ler este vídeo.", lerImagem: "Não foi possível ler esta imagem.", invalido: "arquivo inválido",
+    trocar: "trocar", selecionar: "Selecionar arquivo",
+  },
+  zh: {
+    formato: (l: string) => `不支持该格式，请使用：${l}。`,
+    tamanho: (v: boolean, mb: string, lim: number) => `${v ? "视频" : "图片"}大小为 ${mb} MB，上限为 ${lim} MB。`,
+    resolucao: (w: number, h: number, min: number) => `分辨率 ${w}x${h}，最低为 ${min}x${min}px。`,
+    proporcao: (r: string, l: string) => `比例 ${r}:1，推荐 ${l} —— 图片会被裁剪。`,
+    lerVideo: "无法读取该视频。", lerImagem: "无法读取该图片。", invalido: "文件无效",
+    trocar: "更换", selecionar: "选择文件",
+  },
+});
+
 export function MediaDropzone({ spec, value, onChange, title, subtitle, className }: Props) {
+  const t = useTextos(TEXTOS);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +119,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
       setError(null);
 
       if (!spec.accept.includes(file.type)) {
-        setError(`Formato não aceito. Use: ${spec.accept.map(prettyType).join(", ")}.`);
+        setError(t.formato(spec.accept.map(prettyType).join(", ")));
         return;
       }
 
@@ -99,7 +130,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
 
       if (sizeMb > limitMb) {
         setError(
-          `${isVideo ? "Vídeo" : "Imagem"} de ${sizeMb.toFixed(1)} MB. O limite é ${limitMb} MB.`,
+          t.tamanho(isVideo, sizeMb.toFixed(1), limitMb),
         );
         return;
       }
@@ -112,7 +143,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
         // O mínimo de 1000x1000 vale pra imagem; vídeo tem regra própria (1080p).
         if (!isVideo && spec.minDimension && Math.min(width, height) < spec.minDimension) {
           setError(
-            `Resolução ${width}x${height}. O mínimo é ${spec.minDimension}x${spec.minDimension}px.`,
+            t.resolucao(width, height, spec.minDimension),
           );
           URL.revokeObjectURL(url);
           return;
@@ -123,7 +154,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
           const { value: expected, tolerance, label } = spec.aspectRatio;
           if (Math.abs(ratio - expected) > tolerance) {
             setError(
-              `Proporção ${ratio.toFixed(2)}:1. O recomendado é ${label} — a imagem vai ser cortada.`,
+              t.proporcao(ratio.toFixed(2), label),
             );
             // Aviso, não bloqueio: a proporção é recomendação, não requisito.
           }
@@ -132,7 +163,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
         onChange({ file, previewUrl: url, kind, width, height });
       } catch (err) {
         URL.revokeObjectURL(url);
-        setError(err instanceof Error ? err.message : "arquivo inválido");
+        setError(err instanceof Error && err.message === "video" ? t.lerVideo : err instanceof Error && err.message === "image" ? t.lerImagem : err instanceof Error ? err.message : t.invalido);
       }
     },
     [spec, onChange],
@@ -163,7 +194,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
             }}
             className="absolute right-2 top-2 rounded-lg bg-black/70 px-2 py-1 text-[11px] font-semibold text-zinc-300 backdrop-blur transition-colors hover:bg-black/90 hover:text-white"
           >
-            trocar
+            {t.trocar}
           </button>
         </div>
 
@@ -216,7 +247,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
             inputRef.current?.click();
           }}
         >
-          Selecionar arquivo
+          {t.selecionar}
         </Button>
       </div>
 

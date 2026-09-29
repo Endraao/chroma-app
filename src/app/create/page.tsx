@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useState } from "react";
 import Link from "next/link";
 
@@ -10,7 +13,7 @@ import { MediaDropzone, MediaSpecList, type MediaSpec, type SelectedMedia } from
 import { useRouter } from "next/navigation";
 
 import { useChromaAccount } from "@/hooks/useChromaAccount";
-import { TEXTO_DA_ETAPA, useLancarToken } from "@/hooks/useLancarToken";
+import { useLancarToken } from "@/hooks/useLancarToken";
 import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
@@ -18,14 +21,10 @@ import { DEFAULT_PAIR, LIQUIDITY_PAIRS } from "@/lib/pairs";
 import { SeletorDePar } from "@/components/create/SeletorDePar";
 import {
   CHAIN_FEES,
-  DEFAULT_CREATOR_TAX_BPS,
-  MAX_CREATOR_TAX_BPS,
-  feeLabel,
   feeLabelFor,
-  validateCreatorTax,
 } from "@/lib/fees";
 import { cn, formatUsd } from "@/lib/utils";
-import type { ChainId, CreatorRewardsMode } from "@/lib/types";
+import type { ChainId } from "@/lib/types";
 
 /* ------------------------------------------------------------------ */
 /* Requisitos de mídia                                                 */
@@ -43,7 +42,6 @@ const COIN_MEDIA: MediaSpec = {
  * Valores fixos, não derivados do padrão — senão mudar o padrão pra 0
  * duplicaria o primeiro botão.
  */
-const CREATOR_TAX_PRESETS = [0, 100, 200, 500];
 
 const BANNER_MEDIA: MediaSpec = {
   maxSizeMb: 4.5,
@@ -51,7 +49,99 @@ const BANNER_MEDIA: MediaSpec = {
   aspectRatio: { value: 3, tolerance: 0.35, label: "3:1" },
 };
 
+const TEXTOS = traducoes({
+  en: {
+    titulo: "Create token", subtitulo: "Create and trade in the same place: as soon as the coin is created it is available to buy and sell, with its own page and a live chart.",
+    naoLanca: (rede: string, outra: string) => <><strong>Launching coins on {rede} is not available yet.</strong> On this network Chroma only buys and sells. To create your coin, use {outra}.</>,
+    trocarPara: (rede: string) => `Switch to ${rede}`,
+    imutavel: (agora: React.ReactNode) => <>The coin&apos;s data — image, banner and social links — can only be added {agora} and cannot be changed or edited after creation.</>,
+    agora: "now", rede: "Network", gasEm: (s: string) => `gas in ${s}`, par: "Liquidity pair", parSub: "what your token is priced against",
+    midia: "Image or video", obrigatorio: "required", selecione: "Select the video or image you want to upload.", arraste: "or drag and drop it here.",
+    tamanho: "File size and type", img15: "Image — max 15 MB. '.jpg', '.gif' or '.png' recommended.", video30: "Video — max 30 MB. '.mp4' recommended.",
+    resolucao: "Resolution and aspect ratio", img1000: "Image — at least 1000x1000px, 1:1 ratio recommended.", video1080: "Video — 16:9 or 9:16, 1080p or higher recommended.",
+    addBanner: "Add banner", opcional: "optional", carregarBanner: "Upload banner",
+    bannerTexto: "Shown on the coin page, besides the coin image. Images or animated GIFs up to 4.5 MB; larger images are resized automatically, GIFs are not. 3:1 ratio, 1500x500px recommended. You can only do this when creating the coin and cannot change it later.",
+    carregarArquivo: "Upload file…", bannerTamanho: "Image — max 4.5 MB (larger images are resized automatically, GIFs are not). Formats: '.jpg', '.png', '.webp' or '.gif'.",
+    bannerResolucao: "3:1 aspect ratio, 1500x500px recommended.",
+    identidade: "Identity", nome: "Name", nomeEx: "e.g. Turbo Cat", simbolo: "Symbol", simboloEx: "e.g. TURBO", descricao: "Description", descricaoEx: "What is this token?",
+    redesSociais: "Social links", opcionalFixo: "optional · cannot be edited later", site: "Website",
+    ganhoTitulo: "What you earn as the creator",
+    ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
+    verFaixas: "see the tiers",
+    compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
+    segundaConfirmacao: "your wallet asks for a second confirmation for this buy, right after creating",
+    naoCustodia: "Chroma is non-custodial: the coin is yours and the transaction comes from your wallet. The initial buy pays the same price as anyone else — there is no token reserve for the creator. What you buy here shows up in the security panel as creator concentration.",
+    abrirMoeda: "Open the coin",
+    emBreve: (rede: string) => `Launching on ${rede} coming soon`, facaLogin: "Sign in to create", conecteCarteira: (rede: string) => `Connect your ${rede} wallet`,
+    envieImagem: "Upload the image or video", preenchaNome: "Fill in name and symbol", criar: "Create and open the curve",
+    taxaLancamento: (fee: number, s: string, rede: string) => `Launch fee: ${fee} ${s}, paid on submission. Plus the ${rede} network fee.`,
+    semTaxa: (rede: string) => `Launching has no Chroma fee — only the ${rede} network fee, paid from your wallet.`,
+    semLimite: "There is no limit on how many tokens you can launch.", verTaxas: "see all fees",
+    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aguardando-assinatura": "Approve in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", pronto: "Done!" } as Record<string, string>,
+  },
+  pt: {
+    titulo: "Criar token", subtitulo: "Criação e negociação no mesmo lugar: assim que a moeda é criada, ela já fica disponível para compra e venda, com página própria e gráfico ao vivo.",
+    naoLanca: (rede: string, outra: string) => <><strong>Lançar moedas na {rede} ainda não está disponível.</strong> Nesta rede a Chroma faz só compra e venda. Para criar a sua moeda, use a {outra}.</>,
+    trocarPara: (rede: string) => `Trocar para ${rede}`,
+    imutavel: (agora: React.ReactNode) => <>Os dados da moeda — imagem, banner e links de redes sociais — só podem ser adicionados {agora} e não poderão ser alterados nem editados depois da criação.</>,
+    agora: "agora", rede: "Rede", gasEm: (s: string) => `gás em ${s}`, par: "Par de liquidez", parSub: "contra o que seu token é cotado",
+    midia: "Imagem ou vídeo", obrigatorio: "obrigatório", selecione: "Selecione o vídeo ou a imagem que deseja enviar.", arraste: "ou arraste e solte aqui.",
+    tamanho: "Tamanho e tipo do arquivo", img15: "Imagem — máximo 15 MB. Recomenda-se o formato '.jpg', '.gif' ou '.png'.", video30: "Vídeo — máximo 30 MB. Formato '.mp4' recomendado.",
+    resolucao: "Resolução e proporção da tela", img1000: "Imagem — mínimo 1000x1000px, proporção 1:1 recomendada.", video1080: "Vídeo — Formato 16:9 ou 9:16, resolução 1080p ou superior recomendada.",
+    addBanner: "Adicionar banner", opcional: "opcional", carregarBanner: "Carregar banner",
+    bannerTexto: "Isso será exibido na página da moeda, além da imagem da moeda. Imagens ou GIFs animados de até 4,5 MB; imagens maiores são redimensionadas automaticamente, GIFs não. Proporção de 3:1, 1500x500px recomendado. Você só pode fazer isso ao criar a moeda e não poderá alterar posteriormente.",
+    carregarArquivo: "Carregar arquivo…", bannerTamanho: "Imagem — máximo 4,5 MB (imagens maiores são redimensionadas automaticamente, GIFs não). Formatos: '.jpg', '.png', '.webp' ou '.gif'.",
+    bannerResolucao: "Proporção de aspecto 3:1, resolução recomendada de 1500x500px.",
+    identidade: "Identidade", nome: "Nome", nomeEx: "Ex: Gato Turbo", simbolo: "Símbolo", simboloEx: "Ex: TURBO", descricao: "Descrição", descricaoEx: "O que é esse token?",
+    redesSociais: "Redes sociais", opcionalFixo: "opcional · não editável depois", site: "Site",
+    ganhoTitulo: "O que você ganha como criador",
+    ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
+    verFaixas: "ver as faixas",
+    compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
+    segundaConfirmacao: "a carteira pede uma segunda confirmação para esta compra, logo depois de criar",
+    naoCustodia: "A Chroma não faz custódia: a moeda é sua e a transação sai da sua carteira. A compra inicial paga o mesmo preço que qualquer outra pessoa — não existe reserva de tokens para o criador. O que você comprar aqui aparece no painel de segurança como concentração do criador.",
+    abrirMoeda: "Abrir a moeda",
+    emBreve: (rede: string) => `Lançar na ${rede} em breve`, facaLogin: "Faça login para criar", conecteCarteira: (rede: string) => `Conecte sua carteira ${rede}`,
+    envieImagem: "Envie a imagem ou o vídeo", preenchaNome: "Preencha nome e símbolo", criar: "Criar e abrir a curva",
+    taxaLancamento: (fee: number, s: string, rede: string) => `Taxa de lançamento: ${fee} ${s}, paga no envio. Mais a taxa de rede da ${rede}.`,
+    semTaxa: (rede: string) => `Lançar não tem taxa da Chroma — só a taxa de rede da ${rede}, paga da sua carteira.`,
+    semLimite: "Não há limite de quantos tokens você pode lançar.", verTaxas: "ver todas as taxas",
+    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aguardando-assinatura": "Aprove na sua carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", pronto: "Pronto!" } as Record<string, string>,
+  },
+  zh: {
+    titulo: "创建代币", subtitulo: "发行与交易一站完成：代币创建后立即可以买卖，拥有独立页面和实时图表。",
+    naoLanca: (rede: string, outra: string) => <><strong>暂不支持在 {rede} 上发行代币。</strong>在该网络 Chroma 只提供买卖。要创建代币，请使用 {outra}。</>,
+    trocarPara: (rede: string) => `切换到 ${rede}`,
+    imutavel: (agora: React.ReactNode) => <>代币资料 —— 图片、横幅和社交链接 —— 只能{agora}添加，创建后无法修改或编辑。</>,
+    agora: "现在", rede: "网络", gasEm: (s: string) => `以 ${s} 支付 Gas`, par: "流动性交易对", parSub: "你的代币以什么计价",
+    midia: "图片或视频", obrigatorio: "必填", selecione: "选择要上传的视频或图片。", arraste: "或拖放到这里。",
+    tamanho: "文件大小与类型", img15: "图片 —— 最大 15 MB，推荐 '.jpg'、'.gif' 或 '.png'。", video30: "视频 —— 最大 30 MB，推荐 '.mp4'。",
+    resolucao: "分辨率与比例", img1000: "图片 —— 至少 1000x1000px，推荐 1:1。", video1080: "视频 —— 16:9 或 9:16，推荐 1080p 或更高。",
+    addBanner: "添加横幅", opcional: "可选", carregarBanner: "上传横幅",
+    bannerTexto: "显示在代币页面上，与代币图片一起展示。图片或动图最大 4.5 MB；较大的图片会自动缩放，GIF 不会。推荐 3:1 比例、1500x500px。只能在创建时设置，之后无法修改。",
+    carregarArquivo: "上传文件…", bannerTamanho: "图片 —— 最大 4.5 MB（较大图片会自动缩放，GIF 不会）。格式：'.jpg'、'.png'、'.webp' 或 '.gif'。",
+    bannerResolucao: "3:1 比例，推荐 1500x500px。",
+    identidade: "基本信息", nome: "名称", nomeEx: "例如：Turbo Cat", simbolo: "代号", simboloEx: "例如：TURBO", descricao: "简介", descricaoEx: "这个代币是什么？",
+    redesSociais: "社交链接", opcionalFixo: "可选 · 之后无法修改", site: "官网",
+    ganhoTitulo: "作为创建者你能获得什么",
+    ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
+    verFaixas: "查看档位",
+    compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
+    segundaConfirmacao: "创建后钱包会立即请求第二次确认以完成这笔买入",
+    naoCustodia: "Chroma 不托管资产：代币属于你，交易从你的钱包发出。首次买入与其他人价格相同 —— 没有为创建者预留代币。你在这里买入的部分会在安全面板中显示为创建者持仓集中度。",
+    abrirMoeda: "打开代币",
+    emBreve: (rede: string) => `${rede} 发行即将推出`, facaLogin: "登录后创建", conecteCarteira: (rede: string) => `连接你的 ${rede} 钱包`,
+    envieImagem: "请上传图片或视频", preenchaNome: "请填写名称和代号", criar: "创建并开启曲线",
+    taxaLancamento: (fee: number, s: string, rede: string) => `发行费：${fee} ${s}，提交时支付。另加 ${rede} 网络手续费。`,
+    semTaxa: (rede: string) => `发行不收 Chroma 费用 —— 只需从钱包支付 ${rede} 网络手续费。`,
+    semLimite: "发行代币数量不限。", verTaxas: "查看全部费用",
+    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aguardando-assinatura": "请在钱包中确认…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", pronto: "完成！" } as Record<string, string>,
+  },
+});
+
+
 export default function CreateTokenPage() {
+  const t = useTextos(TEXTOS);
   const account = useChromaAccount();
   const router = useRouter();
 
@@ -96,8 +186,6 @@ export default function CreateTokenPage() {
   const redeDisponivel = podeLancarNaRede(chain) && lancamentoEvm.disponivel;
 
   const [pair, setPair] = useState(DEFAULT_PAIR.solana);
-  const [rewards, setRewards] = useState<CreatorRewardsMode>("creator");
-  const [creatorTaxBps, setCreatorTaxBps] = useState(DEFAULT_CREATOR_TAX_BPS);
   const [media, setMedia] = useState<SelectedMedia | null>(null);
   const [banner, setBanner] = useState<SelectedMedia | null>(null);
   const [showBanner, setShowBanner] = useState(false);
@@ -126,8 +214,6 @@ export default function CreateTokenPage() {
    */
   const [criadaSemCompra, setCriadaSemCompra] = useState<{ moeda: string; aviso: string } | null>(null);
 
-  const taxCheck = validateCreatorTax(creatorTaxBps);
-  const taxWarning = taxCheck.ok ? null : taxCheck.error;
   const launchFee = CHAIN_FEES[chain].launchFee;
   const chainLabels = feeLabelFor(chain);
 
@@ -142,7 +228,6 @@ export default function CreateTokenPage() {
 
   const ready =
     account.isSignedIn &&
-    taxCheck.ok &&
     form.name.trim().length >= 2 &&
     form.symbol.trim().length >= 2 &&
     Boolean(media);
@@ -150,10 +235,9 @@ export default function CreateTokenPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4 pt-4">
       <div>
-        <h1 className="text-2xl font-black tracking-tight text-zinc-50">Criar token</h1>
+        <h1 className="text-2xl font-black tracking-tight text-zinc-50">{t.titulo}</h1>
         <p className="mt-1 text-[13px] text-zinc-500">
-          Criação e negociação no mesmo lugar: assim que a moeda é criada, ela já fica disponível
-          para compra e venda, com página própria e gráfico ao vivo.
+          {t.subtitulo}
         </p>
       </div>
 
@@ -170,12 +254,10 @@ export default function CreateTokenPage() {
       {!podeLancarNaRede(chain) && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/30 bg-warn/[0.07] p-3">
           <p className="text-[12px] leading-relaxed text-warn">
-            <strong>Lançar moedas na {meta.label} ainda não está disponível.</strong> Nesta rede a
-            Chroma faz só compra e venda. Para criar a sua moeda, use a{" "}
-            {CHAINS[REDE_PADRAO].label}.
+            {t.naoLanca(meta.label, CHAINS[REDE_PADRAO].label)}
           </p>
           <Button variant="outline" size="sm" onClick={() => selectChain(REDE_PADRAO)}>
-            Trocar para {CHAINS[REDE_PADRAO].label}
+            {t.trocarPara(CHAINS[REDE_PADRAO].label)}
           </Button>
         </div>
       )}
@@ -184,15 +266,14 @@ export default function CreateTokenPage() {
       <div className="flex gap-2.5 rounded-xl border border-warn/25 bg-warn/[0.06] p-3">
         <span className="mt-0.5 shrink-0 text-warn">⚠</span>
         <p className="text-[12px] leading-relaxed text-warn">
-          Os dados da moeda — imagem, banner e links de redes sociais — só podem ser adicionados{" "}
-          <strong>agora</strong> e não poderão ser alterados nem editados depois da criação.
+          {t.imutavel(<strong>{t.agora}</strong>)}
         </p>
       </div>
 
       {/* Rede */}
       <Card>
         <CardHeader>
-          <CardTitle>Rede</CardTitle>
+          <CardTitle>{t.rede}</CardTitle>
         </CardHeader>
         <CardBody className="grid grid-cols-2 gap-2">
           {CHAIN_IDS.map((id) => (
@@ -209,7 +290,7 @@ export default function CreateTokenPage() {
               <div className={cn("text-sm font-bold", chain === id ? "text-marca" : "text-zinc-300")}>
                 {CHAINS[id].label}
               </div>
-              <div className="text-[11px] text-zinc-600">gás em {CHAINS[id].nativeSymbol}</div>
+              <div className="text-[11px] text-zinc-600">{t.gasEm(CHAINS[id].nativeSymbol)}</div>
             </button>
           ))}
         </CardBody>
@@ -218,8 +299,8 @@ export default function CreateTokenPage() {
       {/* Par de liquidez */}
       <Card>
         <CardHeader>
-          <CardTitle>Par de liquidez</CardTitle>
-          <span className="text-[11px] text-zinc-600">contra o que seu token é cotado</span>
+          <CardTitle>{t.par}</CardTitle>
+          <span className="text-[11px] text-zinc-600">{t.parSub}</span>
         </CardHeader>
         <CardBody className="space-y-2">
           {/*
@@ -232,47 +313,35 @@ export default function CreateTokenPage() {
           */}
           <SeletorDePar chain={chain} pares={pairs} valor={pair} onChange={setPair} />
 
-          {chain === "robinhood" && (
-            <p className="rounded-lg border border-white/[0.06] bg-ink-950/60 p-2.5 text-[11px] leading-relaxed text-zinc-600">
-              NVDA e SPCX são ações tokenizadas oficiais da Robinhood. Existem contratos falsos usando os mesmos
-              símbolos nessa rede — os endereços aqui foram conferidos no explorador oficial.
-            </p>
-          )}
         </CardBody>
       </Card>
 
       {/* Mídia da moeda */}
       <Card>
         <CardHeader>
-          <CardTitle>Imagem ou vídeo</CardTitle>
-          <Badge tone="danger">obrigatório</Badge>
+          <CardTitle>{t.midia}</CardTitle>
+          <Badge tone="danger">{t.obrigatorio}</Badge>
         </CardHeader>
         <CardBody className="space-y-4">
           <MediaDropzone
             spec={COIN_MEDIA}
             value={media}
             onChange={setMedia}
-            title="Selecione o vídeo ou a imagem que deseja enviar."
-            subtitle="ou arraste e solte aqui."
+            title={t.selecione}
+            subtitle={t.arraste}
           />
 
           <MediaSpecList
             columns={[
               {
                 icon: "file",
-                title: "Tamanho e tipo do arquivo",
-                items: [
-                  "Imagem — máximo 15 MB. Recomenda-se o formato '.jpg', '.gif' ou '.png'.",
-                  "Vídeo — máximo 30 MB. Formato '.mp4' recomendado.",
-                ],
+                title: t.tamanho,
+                items: [t.img15, t.video30],
               },
               {
                 icon: "image",
-                title: "Resolução e proporção da tela",
-                items: [
-                  "Imagem — mínimo 1000x1000px, proporção 1:1 recomendada.",
-                  "Vídeo — Formato 16:9 ou 9:16, resolução 1080p ou superior recomendada.",
-                ],
+                title: t.resolucao,
+                items: [t.img1000, t.video1080],
               },
             ]}
           />
@@ -290,19 +359,17 @@ export default function CreateTokenPage() {
             <circle cx="8.5" cy="8.5" r="1.5" />
             <path d="m21 15-5-5L5 21" />
           </svg>
-          <span className="text-[13px] font-semibold text-marca">Adicionar banner</span>
-          <span className="text-[12px] text-zinc-600">(Opcional)</span>
+          <span className="text-[13px] font-semibold text-marca">{t.addBanner}</span>
+          <span className="text-[12px] text-zinc-600">({t.opcional})</span>
           <span className={cn("ml-auto text-zinc-600 transition-transform", showBanner && "rotate-180")}>⌄</span>
         </button>
 
         {showBanner && (
           <CardBody className="space-y-4 border-t border-white/[0.06]">
             <div>
-              <div className="text-[13px] font-bold text-zinc-200">Carregar banner</div>
+              <div className="text-[13px] font-bold text-zinc-200">{t.carregarBanner}</div>
               <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                Isso será exibido na página da moeda, além da imagem da moeda. Imagens ou GIFs animados de até 4,5
-                MB; imagens maiores são redimensionadas automaticamente, GIFs não. Proporção de 3:1, 1500x500px
-                recomendado. Você só pode fazer isso ao criar a moeda e não poderá alterar posteriormente.
+                {t.bannerTexto}
               </p>
             </div>
 
@@ -310,22 +377,20 @@ export default function CreateTokenPage() {
               spec={BANNER_MEDIA}
               value={banner}
               onChange={setBanner}
-              title="Carregar arquivo…"
+              title={t.carregarArquivo}
             />
 
             <MediaSpecList
               columns={[
                 {
                   icon: "file",
-                  title: "Tamanho e tipo do arquivo",
-                  items: [
-                    "Imagem — máximo 4,5 MB (imagens maiores são redimensionadas automaticamente, GIFs não). Formatos: '.jpg', '.png', '.webp' ou '.gif'.",
-                  ],
+                  title: t.tamanho,
+                  items: [t.bannerTamanho],
                 },
                 {
                   icon: "image",
-                  title: "Resolução e proporção da tela",
-                  items: ["Proporção de aspecto 3:1, resolução recomendada de 1500x500px."],
+                  title: t.resolucao,
+                  items: [t.bannerResolucao],
                 },
               ]}
             />
@@ -336,25 +401,25 @@ export default function CreateTokenPage() {
       {/* Identidade */}
       <Card>
         <CardHeader>
-          <CardTitle>Identidade</CardTitle>
+          <CardTitle>{t.identidade}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-3">
           <Field
-            label="Nome"
-            placeholder="Ex: Gato Turbo"
+            label={t.nome}
+            placeholder={t.nomeEx}
             value={form.name}
             onChange={(v) => set("name", cortarEmBytes(v, 32))}
           />
           <Field
-            label="Símbolo"
-            placeholder="Ex: TURBO"
+            label={t.simbolo}
+            placeholder={t.simboloEx}
             value={form.symbol}
             maxLength={10}
             onChange={(v) => set("symbol", cortarEmBytes(v.toUpperCase(), 10))}
           />
           <Field
-            label="Descrição"
-            placeholder="O que é esse token?"
+            label={t.descricao}
+            placeholder={t.descricaoEx}
             value={form.description}
             multiline
             onChange={(v) => set("description", v)}
@@ -365,142 +430,62 @@ export default function CreateTokenPage() {
       {/* Redes sociais */}
       <Card>
         <CardHeader>
-          <CardTitle>Redes sociais</CardTitle>
-          <span className="text-[11px] text-zinc-600">opcional · não editável depois</span>
+          <CardTitle>{t.redesSociais}</CardTitle>
+          <span className="text-[11px] text-zinc-600">{t.opcionalFixo}</span>
         </CardHeader>
         <CardBody className="space-y-3">
-          <Field label="Site" placeholder="https://" value={form.website} onChange={(v) => set("website", v)} />
+          <Field label={t.site} placeholder="https://" value={form.website} onChange={(v) => set("website", v)} />
           <Field label="X (Twitter)" placeholder="https://x.com/..." value={form.twitter} onChange={(v) => set("twitter", v)} />
           <Field label="Telegram" placeholder="https://t.me/..." value={form.telegram} onChange={(v) => set("telegram", v)} />
         </CardBody>
       </Card>
 
       {/*
-        Taxa de criador só aparece na Robinhood Chain.
-
-        É assim que o mercado de cada rede funciona: o PONS deixa o criador
-        definir uma taxa própria (teto de 10%) e isso virou esperado lá. O
-        pump.fun não tem esse conceito, e oferecer na Solana só criaria uma
-        alavanca de golpe numa rede onde o comprador não espera encontrar.
+        O QUE O CRIADOR RECEBE, DE VERDADE (28/09/2026).
+        Aqui havia um controle de "taxa de criador" (0–10%) e uma opção de
+        dividir recompensas com detentores. Nenhum dos dois era enviado ao
+        contrato: o criador recebe a fatia fixa das faixas, e é isso que a
+        tela diz agora.
       */}
-      {chain === "robinhood" && (
       <Card>
         <CardHeader>
-          <CardTitle>Taxa de criador</CardTitle>
-          <Badge tone="warn">imutável</Badge>
+          <CardTitle>{t.ganhoTitulo}</CardTitle>
         </CardHeader>
-        <CardBody className="space-y-3">
-          <div className="flex items-center gap-2">
-            {CREATOR_TAX_PRESETS.map((bps) => (
-              <button
-                key={bps}
-                onClick={() => setCreatorTaxBps(bps)}
-                className={cn(
-                  "flex-1 rounded-xl border py-2.5 text-sm font-bold transition-all",
-                  creatorTaxBps === bps
-                    ? "border-marca/50 bg-marca/10 text-marca"
-                    : "border-white/[0.06] bg-white/[0.02] text-zinc-400 hover:border-white/[0.14]",
-                )}
-              >
-                {bps / 100}%
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <input
-              type="range"
-              min={0}
-              max={MAX_CREATOR_TAX_BPS}
-              step={25}
-              value={creatorTaxBps}
-              onChange={(e) => setCreatorTaxBps(Number(e.target.value))}
-              className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-ink-700 accent-marca"
-            />
-            <span className="tnum w-14 text-right text-sm font-bold text-zinc-100">
-              {(creatorTaxBps / 100).toFixed(2).replace(".", ",")}%
-            </span>
-          </div>
-
-          {taxWarning && (
-            <p className="rounded-lg border border-bear/25 bg-bear/[0.06] px-3 py-2 text-[11px] leading-snug text-bear">
-              {taxWarning}
-            </p>
-          )}
-
-          <p className="text-[11px] leading-relaxed text-zinc-500">
-            Cobrada de quem negocia a sua moeda e paga direto para você, além da sua fatia das
-            faixas. O limite é {feeLabel.creatorTaxMax}; acima disso o lançamento é recusado. Escolha
-            com cuidado:{" "}
-            <strong className="text-zinc-300">esse número não pode ser alterado depois</strong>, e
-            taxas altas costumam afastar compradores.
-          </p>
-
-          <div className="rounded-xl border border-white/[0.06] bg-ink-950/60 p-3 text-[11px] leading-relaxed text-zinc-500">
-            <span className="font-semibold text-zinc-300">Além dela, você já recebe</span>{" "}
-            {chainLabels.creatorBase} de cada operação, subindo até {chainLabels.creatorTop}{" "}
-            conforme a moeda ganha volume — sem cobrar nada a mais de quem compra.{" "}
-            <span className="text-zinc-600">
-              No {chainLabels.reference.name} o criador recebe {chainLabels.referenceCreator}.
-            </span>{" "}
+        <CardBody>
+          <p className="text-[12px] leading-relaxed text-zinc-400">
+            {t.ganhoTexto(chainLabels.creatorBase, chainLabels.creatorTop)}{" "}
             <Link href="/fees" className="text-marca hover:text-chroma-cyan">
-              ver as faixas
+              {t.verFaixas}
             </Link>
-          </div>
-        </CardBody>
-      </Card>
-
-      )}
-
-      {/* Recompensas de criador */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Compartilhar recompensas de criador</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-2">
-          <RewardOption
-            active={rewards === "creator"}
-            onClick={() => setRewards("creator")}
-            title="Criador"
-            description="As recompensas para criadores podem ser compartilhadas com carteiras digitais ou instituições de caridade a partir da página da moeda, após a sua criação."
-          />
-          <RewardOption
-            active={rewards === "holders"}
-            onClick={() => setRewards("holders")}
-            title="Detentores"
-            description="100% das recompensas para criadores vão para os detentores. Qualquer pessoa que possua mais de US$ 20 em suas moedas se qualifica."
-          />
+          </p>
         </CardBody>
       </Card>
 
       {/* Compra inicial */}
       <Card>
         <CardHeader>
-          <CardTitle>Compra inicial</CardTitle>
-          <span className="text-[11px] text-zinc-600">opcional</span>
+          <CardTitle>{t.compraInicial}</CardTitle>
+          <span className="text-[11px] text-zinc-600">{t.opcional}</span>
         </CardHeader>
         <CardBody className="space-y-3">
           <Field
-            label={`Quanto você quer comprar no lançamento (em ${meta.nativeSymbol})`}
+            label={t.quanto(meta.nativeSymbol)}
             placeholder="0.5"
             value={form.initialBuy}
             onChange={(v) => set("initialBuy", v.replace(/[^0-9.]/g, ""))}
           />
           {compraInicial > 0 && (
             <p className="tnum -mt-1 text-[12px] text-zinc-400">
-              {compraEmDolar !== null ? <>≈ {formatUsd(compraEmDolar)}</> : "cotação do dólar indisponível agora"}
+              {compraEmDolar !== null ? <>≈ {formatUsd(compraEmDolar)}</> : t.semDolar}
               {chain === "robinhood" && (
                 <span className="text-zinc-600">
-                  {" "}· a carteira pede uma segunda confirmação para esta compra, logo depois de criar
+                  {" "}· {t.segundaConfirmacao}
                 </span>
               )}
             </p>
           )}
           <p className="text-[11px] leading-relaxed text-zinc-500">
-            A Chroma não faz custódia: a moeda é sua e a transação sai da sua carteira. A compra
-            inicial paga o mesmo preço que qualquer outra pessoa — não existe reserva de tokens para
-            o criador. O que você comprar aqui aparece no painel de segurança como concentração do
-            criador.
+            {t.naoCustodia}
           </p>
         </CardBody>
       </Card>
@@ -509,7 +494,7 @@ export default function CreateTokenPage() {
         <div className="rounded-xl border border-warn/30 bg-warn/[0.07] px-4 py-3 text-[12px] leading-relaxed text-warn">
           {criadaSemCompra.aviso}{" "}
           <Link href={`/token/${criadaSemCompra.moeda}`} className="font-bold underline">
-            Abrir a moeda
+            {t.abrirMoeda}
           </Link>
         </div>
       )}
@@ -564,32 +549,29 @@ export default function CreateTokenPage() {
         }}
       >
         {lancamento.ocupado
-          ? TEXTO_DA_ETAPA[lancamento.etapa]
+          ? t.etapas[lancamento.etapa]
           : !redeDisponivel
-            ? `Lançar na ${meta.label} em breve`
+            ? t.emBreve(meta.label)
             : !account.isSignedIn
-              ? "Faça login para criar"
+              ? t.facaLogin
               : !lancamento.carteiraConectada
-                ? `Conecte sua carteira ${meta.label}`
+                ? t.conecteCarteira(meta.label)
                 : !media
-                  ? "Envie a imagem ou o vídeo"
+                  ? t.envieImagem
                   : !ready
-                    ? "Preencha nome e símbolo"
-                    : "Criar e abrir a curva"}
+                    ? t.preenchaNome
+                    : t.criar}
       </Button>
 
       <p className="pb-4 text-center text-[11px] leading-relaxed text-zinc-600">
         {launchFee > 0 ? (
-          <>
-            Taxa de lançamento: {launchFee} {meta.nativeSymbol}, paga no envio. Mais a taxa de rede da{" "}
-            {meta.label}.
-          </>
+          <>{t.taxaLancamento(launchFee, meta.nativeSymbol, meta.label)}</>
         ) : (
-          <>Lançar não tem taxa da Chroma — só a taxa de rede da {meta.label}, paga da sua carteira.</>
+          <>{t.semTaxa(meta.label)}</>
         )}{" "}
-        Não há limite de quantos tokens você pode lançar.{" "}
+        {t.semLimite}{" "}
         <Link href="/fees" className="text-marca hover:text-chroma-cyan">
-          ver todas as taxas
+          {t.verTaxas}
         </Link>
       </p>
     </div>
@@ -597,45 +579,6 @@ export default function CreateTokenPage() {
 }
 
 /* ------------------------------------------------------------------ */
-
-function RewardOption({
-  active,
-  onClick,
-  title,
-  description,
-}: {
-  active: boolean;
-  onClick: () => void;
-  title: string;
-  description: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-all",
-        active
-          ? "border-marca/50 bg-marca/[0.08]"
-          : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.14]",
-      )}
-    >
-      <span
-        className={cn(
-          "mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border-2 transition-colors",
-          active ? "border-marca" : "border-zinc-700",
-        )}
-      >
-        {active && <span className="size-1.5 rounded-full bg-marca" />}
-      </span>
-      <span>
-        <span className={cn("block text-[13px] font-bold", active ? "text-marca" : "text-zinc-200")}>
-          {title}
-        </span>
-        <span className="mt-0.5 block text-[11px] leading-relaxed text-zinc-500">{description}</span>
-      </span>
-    </button>
-  );
-}
 
 /**
  * Corta o texto no limite de BYTES do contrato, não de letras.

@@ -80,7 +80,7 @@ const TEXTOS = traducoes({
     mostrarMenos: "Show less", mostrarOutras: (n: number) => `Show the other ${n} wallets`, carteiras: (n: number) => `${n} wallets`,
     carregando: "Loading recent trades…", falhou: "Could not load the trades. Retrying shortly.",
     negocios: (n: number) => `${n} trades`,
-    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>Calculated from the last {n} of this pair — from {de} to {ate} ({dur}). Not the coin's full history nor the wallets' real balances.</>,
+    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>Calculated from the last {n} of this pair — from {de} to {ate} ({dur}). Not the coin&apos;s full history nor the wallets&apos; real balances.</>,
     semNegocios: "No trades in this window.", c: "B", v: "S",
     vendeuMais: "Sold more than bought in this window: already held tokens before it.",
     comprouAntes: "Bought before this window, so the price paid is unknown.",

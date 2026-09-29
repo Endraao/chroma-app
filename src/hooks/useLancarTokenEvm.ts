@@ -13,6 +13,8 @@ import {
 } from "@/lib/chroma-evm";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
 import { reivindicarPontos } from "@/lib/reivindicar-pontos";
+import { useIdioma } from "@/components/IdiomaProvider";
+import { traducoes, type Idioma } from "@/lib/idiomas";
 import { robinhoodChain } from "@/lib/web3";
 import { TEXTO_DA_ETAPA, type DadosDoLancamento, type EtapaDoLancamento } from "@/hooks/useLancarToken";
 
@@ -79,19 +81,48 @@ const ABI_DO_EVENTO = [
  * Sem nome conhecido, devolve a mensagem curta do viem em vez do texto
  * gigante com o calldata inteiro.
  */
-function explicarRecusa(e: unknown): string {
+function explicarRecusa(e: unknown, idioma: Idioma = "en"): string {
   if (e instanceof BaseError) {
     const recusa = e.walk((x) => x instanceof ContractFunctionRevertedError);
     if (recusa instanceof ContractFunctionRevertedError) {
       const nome = recusa.data?.errorName;
-      if (nome && MOTIVO_DO_ERRO[nome]) return MOTIVO_DO_ERRO[nome];
+      if (nome && MOTIVO_DO_ERRO[idioma][nome]) return MOTIVO_DO_ERRO[idioma][nome];
     }
     return e.shortMessage;
   }
   return e instanceof Error ? e.message : String(e);
 }
 
+const MENSAGENS = traducoes({
+  en: {
+    conecte: "Connect a Robinhood Chain wallet first.", indisponivel: "Launching on this network is not available yet.",
+    compraInvalida: "The initial buy amount is not a valid number.", semConexao: "No connection to Robinhood Chain right now. Try again in a moment.",
+    imagem: "Could not upload the image.", recusou: "the network rejected the transaction", recusouCompra: "the network rejected the buy",
+    semEndereco: "the coin was created, but its address could not be read from the receipt",
+    recusouInicial: "The coin was created. You declined the initial buy — you can buy it on its page.",
+    falhouInicial: (m: string) => `The coin was created, but the initial buy failed: ${m}`,
+  },
+  pt: {
+    conecte: "Conecte uma carteira da Robinhood Chain antes.", indisponivel: "O lançamento nesta rede ainda não está disponível.",
+    compraInvalida: "O valor da compra inicial não é um número válido.", semConexao: "Sem conexão com a Robinhood Chain agora. Tente de novo em instantes.",
+    imagem: "Não foi possível enviar a imagem.", recusou: "a rede recusou a transação", recusouCompra: "a rede recusou a compra",
+    semEndereco: "a moeda foi criada, mas não foi possível ler o endereço dela no recibo",
+    recusouInicial: "A moeda foi criada. Você recusou a compra inicial — dá pra comprar pela página dela.",
+    falhouInicial: (m: string) => `A moeda foi criada, mas a compra inicial falhou: ${m}`,
+  },
+  zh: {
+    conecte: "请先连接 Robinhood Chain 钱包。", indisponivel: "该网络暂不支持发行。",
+    compraInvalida: "首次买入金额不是有效数字。", semConexao: "暂时无法连接 Robinhood Chain，请稍后重试。",
+    imagem: "无法上传图片。", recusou: "网络拒绝了该交易", recusouCompra: "网络拒绝了这笔买入",
+    semEndereco: "代币已创建，但无法从回执中读取其地址",
+    recusouInicial: "代币已创建。你拒绝了首次买入 —— 可以在代币页面购买。",
+    falhouInicial: (m: string) => `代币已创建，但首次买入失败：${m}`,
+  },
+});
+
 export function useLancarTokenEvm() {
+  const idioma = useIdioma();
+  const m = MENSAGENS[idioma];
   const { address, obterCarteira } = useCarteiraRobinhood();
   const publicClient = usePublicClient({ chainId: robinhoodChain.id });
 
@@ -105,7 +136,7 @@ export function useLancarTokenEvm() {
       setErro(null);
 
       if (!address) {
-        setErro("Conecte uma carteira da Robinhood Chain antes.");
+        setErro(m.conecte);
         return null;
       }
 
@@ -117,7 +148,7 @@ export function useLancarTokenEvm() {
        * uma moeda que nunca vai existir.
        */
       if (!curvaEvmDisponivel()) {
-        setErro("O lançamento nesta rede ainda não está disponível.");
+        setErro(m.indisponivel);
         return null;
       }
 
@@ -130,12 +161,12 @@ export function useLancarTokenEvm() {
       try {
         compra = dados.compraInicial ? parseEther(dados.compraInicial) : 0n;
       } catch {
-        setErro("O valor da compra inicial não é um número válido.");
+        setErro(m.compraInvalida);
         return null;
       }
 
       if (!publicClient) {
-        setErro("Sem conexão com a Robinhood Chain agora. Tente de novo em instantes.");
+        setErro(m.semConexao);
         return null;
       }
 
@@ -179,7 +210,7 @@ export function useLancarTokenEvm() {
          */
         gas = ((await publicClient.estimateContractGas(simulado)) * 13n) / 10n;
       } catch (e) {
-        setErro(explicarRecusa(e));
+        setErro(explicarRecusa(e, idioma));
         return null;
       }
 
@@ -200,7 +231,7 @@ export function useLancarTokenEvm() {
 
         const resposta = await fetch("/api/token-media", { method: "POST", body: form });
         const publicado = await resposta.json();
-        if (!resposta.ok) throw new Error(publicado?.error ?? "Não foi possível enviar a imagem.");
+        if (!resposta.ok) throw new Error(publicado?.error ?? m.imagem);
 
         const uri: string = publicado.metadataUrl;
 
@@ -221,7 +252,7 @@ export function useLancarTokenEvm() {
         setEtapa("confirmando");
 
         const recibo = await esperarRecibo(publicClient, hash);
-        if (recibo.status !== "success") throw new Error("a rede recusou a transação");
+        if (recibo.status !== "success") throw new Error(m.recusou);
 
         /*
          * O endereço da moeda sai do evento emitido pela própria curva.
@@ -246,7 +277,7 @@ export function useLancarTokenEvm() {
 
         if (!moeda) {
           throw new Error(
-            "a moeda foi criada, mas não foi possível ler o endereço dela no recibo",
+            m.semEndereco,
           );
         }
 
@@ -306,13 +337,13 @@ export function useLancarTokenEvm() {
               value: compra,
             });
             const reciboDaCompra = await esperarRecibo(publicClient, transacao);
-            if (reciboDaCompra.status !== "success") throw new Error("a rede recusou a compra");
+            if (reciboDaCompra.status !== "success") throw new Error(m.recusouCompra);
             void reivindicarPontos(transacao, address);
           } catch (e) {
             const mensagem = e instanceof Error ? e.message : String(e);
             avisoDeCompra = /reject|denied|cancel|User rejected/i.test(mensagem)
-              ? "A moeda foi criada. Você recusou a compra inicial — dá pra comprar pela página dela."
-              : `A moeda foi criada, mas a compra inicial falhou: ${explicarRecusa(e)}`;
+              ? m.recusouInicial
+              : m.falhouInicial(explicarRecusa(e, idioma));
           }
         }
 
@@ -325,11 +356,11 @@ export function useLancarTokenEvm() {
         // Recusar na carteira é escolha da pessoa, não erro pra mostrar em vermelho.
         if (/reject|denied|cancel|User rejected/i.test(mensagem)) return null;
 
-        setErro(explicarRecusa(e));
+        setErro(explicarRecusa(e, idioma));
         return null;
       }
     },
-    [address, obterCarteira, publicClient],
+    [address, obterCarteira, publicClient, idioma, m],
   );
 
   return {

@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { pairLogo, type LiquidityPair } from "@/lib/pairs";
@@ -22,6 +25,12 @@ import type { ChainId } from "@/lib/types";
  * as pessoas chamam a mesma ação — quem procura "Tesla" e quem procura "TSLA"
  * têm que achar.
  */
+const TEXTOS = traducoes({
+  en: { buscar: "Search by symbol or name…", nenhum: "No asset with that name.", dicas: { ETH: "Robinhood Chain gas token. The most liquid pair on the network.", SOL: "Default. Deepest liquidity and what every buyer already holds.", USDC: "Priced in dollars. Your token's value does not swing with SOL." } as Record<string, string> },
+  pt: { buscar: "Buscar por símbolo ou nome…", nenhum: "Nenhum ativo com esse nome.", dicas: {} as Record<string, string> },
+  zh: { buscar: "按代号或名称搜索…", nenhum: "没有该名称的资产。", dicas: { ETH: "Robinhood Chain 的 Gas 代币，网络上流动性最高的交易对。", SOL: "默认选项，流动性最深，每个买家都持有。", USDC: "以美元计价，代币价值不随 SOL 波动。" } as Record<string, string> },
+});
+
 export function SeletorDePar({
   chain,
   pares,
@@ -33,6 +42,7 @@ export function SeletorDePar({
   valor: string;
   onChange: (simbolo: string) => void;
 }) {
+  const t = useTextos(TEXTOS);
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState("");
   const caixa = useRef<HTMLDivElement>(null);
@@ -105,7 +115,7 @@ export function SeletorDePar({
                 autoFocus
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por símbolo ou nome…"
+                placeholder={t.buscar}
                 className="w-full rounded-lg border border-white/[0.06] bg-ink-950 px-2.5 py-1.5 text-[12px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-marca/40"
               />
             </div>
@@ -114,7 +124,7 @@ export function SeletorDePar({
           <div className="max-h-[280px] overflow-y-auto py-1">
             {filtrados.length === 0 ? (
               <p className="px-3 py-6 text-center text-[12px] text-zinc-600">
-                Nenhum ativo com esse nome.
+                {t.nenhum}
               </p>
             ) : (
               filtrados.map((p) => (
@@ -150,7 +160,7 @@ export function SeletorDePar({
       )}
 
       {escolhido?.hint && (
-        <p className="mt-1.5 text-[11px] leading-snug text-zinc-600">{escolhido.hint}</p>
+        <p className="mt-1.5 text-[11px] leading-snug text-zinc-600">{t.dicas[escolhido.symbol] ?? escolhido.hint}</p>
       )}
     </div>
   );

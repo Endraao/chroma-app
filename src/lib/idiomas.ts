@@ -181,3 +181,42 @@ export function traducoes<T>(d: { en: T; pt: NoInfer<T>; zh: NoInfer<T> }): Reco
 export function textos(idioma: Idioma): Textos {
   return DICIONARIO[idioma] ?? DICIONARIO[IDIOMA_PADRAO];
 }
+
+/* ------------------------------------------------------------------ */
+/* Mensagens que chegam prontas do servidor                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * As rotas da API respondem erros em português. Em vez de ensinar cada rota
+ * a ler o idioma, a tela traduz a frase conhecida na hora de mostrar — e o
+ * que não estiver aqui passa como veio.
+ */
+const DO_SERVIDOR: Record<string, { en: string; zh: string }> = {
+  "A assinatura não confere. Tente novamente.": { en: "The signature does not match. Try again.", zh: "签名不匹配，请重试。" },
+  "A assinatura é inválida ou expirou. Tente novamente.": { en: "The signature is invalid or expired. Try again.", zh: "签名无效或已过期，请重试。" },
+  "Apelido não encontrado.": { en: "Nickname not found.", zh: "未找到该昵称。" },
+  "Escolha um apelido antes de trocar as fotos.": { en: "Choose a nickname before changing your photos.", zh: "请先选择昵称再更换照片。" },
+  "Escolha um apelido antes de vincular outra carteira.": { en: "Choose a nickname before linking another wallet.", zh: "请先选择昵称再关联其他钱包。" },
+  "Esta carteira ainda não tem conta na Chroma.": { en: "This wallet has no Chroma account yet.", zh: "该钱包还没有 Chroma 账户。" },
+  "Esta carteira já pertence a outra conta.": { en: "This wallet already belongs to another account.", zh: "该钱包已属于其他账户。" },
+  "Este apelido já está em uso.": { en: "This nickname is already taken.", zh: "该昵称已被使用。" },
+  "Este apelido é reservado. Escolha outro.": { en: "This nickname is reserved. Choose another one.", zh: "该昵称为保留名称，请换一个。" },
+  "Este endereço não pertence a esta rede.": { en: "This address does not belong to this network.", zh: "该地址不属于此网络。" },
+  "Muitas tentativas. Aguarde um minuto e tente novamente.": { en: "Too many attempts. Wait a minute and try again.", zh: "尝试次数过多，请等待一分钟后重试。" },
+  "Nenhum arquivo foi enviado.": { en: "No file was uploaded.", zh: "没有上传文件。" },
+  "Não encontramos a conta para vincular.": { en: "We could not find the account to link.", zh: "找不到要关联的账户。" },
+  "Não foi possível salvar a imagem.": { en: "Could not save the image.", zh: "无法保存图片。" },
+  "Não foi possível salvar a sua conta.": { en: "Could not save your account.", zh: "无法保存你的账户。" },
+  "Não foi possível salvar as fotos.": { en: "Could not save the photos.", zh: "无法保存照片。" },
+  "Não foi possível vincular a carteira.": { en: "Could not link the wallet.", zh: "无法关联钱包。" },
+  "Não foi possível concluir o registro.": { en: "Could not complete the registration.", zh: "无法完成注册。" },
+  "O apelido precisa ter de 3 a 20 caracteres, usando só letras, números e _.": { en: "The nickname must be 3 to 20 characters, using only letters, numbers and _.", zh: "昵称需为 3 到 20 个字符，只能使用字母、数字和 _。" },
+  "Conecte uma carteira antes.": { en: "Connect a wallet first.", zh: "请先连接钱包。" },
+  "Conecte uma carteira da Robinhood Chain antes.": { en: "Connect a Robinhood Chain wallet first.", zh: "请先连接 Robinhood Chain 钱包。" },
+};
+
+export function traduzirDoServidor(mensagem: string | null | undefined, idioma: Idioma): string | null {
+  if (!mensagem) return mensagem ?? null;
+  if (idioma === "pt") return mensagem;
+  return DO_SERVIDOR[mensagem]?.[idioma] ?? mensagem;
+}

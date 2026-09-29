@@ -9,6 +9,8 @@ import type { EstadoDaCurvaEvm } from "@/lib/chroma-evm";
 import type { TradeSide } from "@/lib/types";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
 import { reivindicarPontos } from "@/lib/reivindicar-pontos";
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
 import { robinhoodChain } from "@/lib/web3";
 
 /**
@@ -52,6 +54,12 @@ interface Opcoes {
   habilitado: boolean;
 }
 
+const MENSAGENS = traducoes({
+  en: { aprove: "Approve in your wallet…", autorize: "Authorize the sale in your wallet… (1 of 2)", aprove2: "Approve in your wallet… (2 of 2)", confirmando: "Confirming on the network…", recusou: "the network rejected the transaction" },
+  pt: { aprove: "Aprove na sua carteira…", autorize: "Autorize a venda na carteira… (1 de 2)", aprove2: "Aprove na sua carteira… (2 de 2)", confirmando: "Confirmando na rede…", recusou: "a rede recusou a transação" },
+  zh: { aprove: "请在钱包中确认…", autorize: "请在钱包中授权卖出…（1/2）", aprove2: "请在钱包中确认…（2/2）", confirmando: "网络确认中…", recusou: "网络拒绝了该交易" },
+});
+
 export function useCurvaSwapEvm({
   moeda,
   curva,
@@ -61,6 +69,7 @@ export function useCurvaSwapEvm({
   afiliado,
   habilitado,
 }: Opcoes) {
+  const m = useTextos(MENSAGENS);
   const { address, obterCarteira } = useCarteiraRobinhood();
   const publicClient = usePublicClient({ chainId: robinhoodChain.id });
 
@@ -147,7 +156,7 @@ export function useCurvaSwapEvm({
 
       if (ehCompra) {
         setFase("assinando");
-        setPasso("Aprove na sua carteira…");
+        setPasso(m.aprove);
         transacao = await walletClient.writeContract({
           ...contrato,
           functionName: "comprar",
@@ -165,7 +174,7 @@ export function useCurvaSwapEvm({
 
         if ((permitido as bigint) < bruto) {
           setFase("aprovando");
-          setPasso("Autorize a venda na carteira… (1 de 2)");
+          setPasso(m.autorize);
           const aprovacao = await walletClient.writeContract({
             address: moeda as Address,
             abi: erc20Abi,
@@ -176,7 +185,7 @@ export function useCurvaSwapEvm({
         }
 
         setFase("assinando");
-        setPasso("Aprove na sua carteira… (2 de 2)");
+        setPasso(m.aprove2);
         transacao = await walletClient.writeContract({
           ...contrato,
           functionName: "vender",
@@ -185,10 +194,10 @@ export function useCurvaSwapEvm({
       }
 
       setFase("confirmando");
-      setPasso("Confirmando na rede…");
+      setPasso(m.confirmando);
 
       const recibo = await esperarRecibo(publicClient, transacao);
-      if (recibo.status !== "success") throw new Error("a rede recusou a transação");
+      if (recibo.status !== "success") throw new Error(m.recusou);
 
       /* Pontos do airdrop: o servidor confere o recibo na rede antes de creditar. */
       void reivindicarPontos(transacao, address);
@@ -208,7 +217,7 @@ export function useCurvaSwapEvm({
       setErro(mensagem);
       setFase("erro");
     }
-  }, [address, obterCarteira, publicClient, cotacao, minimo, ehCompra, moeda, bruto, afiliado]);
+  }, [address, obterCarteira, publicClient, cotacao, minimo, ehCompra, moeda, bruto, afiliado, m]);
 
   return {
     executar,
