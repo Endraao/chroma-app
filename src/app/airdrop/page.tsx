@@ -9,15 +9,15 @@ import { traducoes } from "@/lib/idiomas";
 const METADADOS = {
   "en": [
     "Airdrop — Chroma",
-    "The more you use Chroma, the more points you earn. The rules are secret. No sign-up, counted by your address."
+    "The more you use Chroma, the more points you earn. No sign-up, counted by your address."
   ],
   "pt": [
     "Airdrop — Chroma",
-    "Quanto mais você usa a Chroma, mais pontos acumula. As regras são segredo. Sem inscrição, contado pelo seu endereço."
+    "Quanto mais você usa a Chroma, mais pontos acumula. Sem inscrição, contado pelo seu endereço."
   ],
   "zh": [
     "空投 — Chroma",
-    "你在 Chroma 上用得越多，获得的积分就越多。规则保密。无需注册，按地址统计。"
+    "你在 Chroma 上用得越多，获得的积分就越多。无需注册，按地址统计。"
   ]
 } as const;
 
@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const TEXTOS = traducoes({
   en: {
     temporada: (n: number) => `Season ${n} in progress`, use: "Use Chroma.", acumule: "Earn points.",
-    intro: "Everything you do on Chroma can be worth points, tied to your address. What and how much, we don't tell.",
+    intro: "Everything you do on Chroma earns points, tied to your address.",
     oQueE: "What this is, and what it isn't",
     reais: "Points are real and verifiable.", reaisTexto: "Each one comes from a fact checked on the blockchain and is recorded with the transaction that created it.",
     nenhum: "No token has been created or promised.", nenhumTexto: "There is no date, no set amount, and nothing here is an offer, a guarantee of reward or a promise of future value.",
@@ -39,7 +39,7 @@ const TEXTOS = traducoes({
   },
   pt: {
     temporada: (n: number) => `Temporada ${n} em andamento`, use: "Use a Chroma.", acumule: "Acumule pontos.",
-    intro: "Tudo o que você faz na Chroma pode valer pontos, ligados ao seu endereço. O quê e quanto, a gente não conta.",
+    intro: "Tudo o que você faz na Chroma gera pontos, ligados ao seu endereço.",
     oQueE: "O que isto é, e o que não é",
     reais: "Os pontos são reais e verificáveis.", reaisTexto: "Cada um nasce de um fato conferido na blockchain e fica registrado com a transação que o gerou.",
     nenhum: "Nenhum token foi criado ou prometido.", nenhumTexto: "Não existe data, não existe quantidade definida, e nada aqui é oferta, garantia de recompensa ou promessa de valor futuro.",
@@ -49,7 +49,7 @@ const TEXTOS = traducoes({
   },
   zh: {
     temporada: (n: number) => `第 ${n} 赛季进行中`, use: "使用 Chroma。", acumule: "赚取积分。",
-    intro: "你在 Chroma 上做的每件事都可能获得积分，并与你的地址绑定。具体是什么、多少，我们不公开。",
+    intro: "你在 Chroma 上做的每件事都会获得积分，并与你的地址绑定。",
     oQueE: "这是什么，不是什么",
     reais: "积分真实且可验证。", reaisTexto: "每一分都来自区块链上核实的事实，并与产生它的交易一起记录。",
     nenhum: "没有创建或承诺任何代币。", nenhumTexto: "没有日期，没有确定数量，这里的任何内容都不是要约、奖励保证或未来价值的承诺。",

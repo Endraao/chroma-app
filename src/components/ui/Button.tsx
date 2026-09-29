@@ -25,10 +25,10 @@ type Size = "sm" | "md" | "lg";
  */
 const variants: Record<Variant, string> = {
   chroma:
-    "bg-marca text-ink-950 font-bold hover:bg-marca-forte " +
+    "bg-marca text-[#08090b] font-bold hover:bg-marca-forte " +
     "active:translate-y-px",
   espectro:
-    "varrer text-ink-950 font-bold active:translate-y-px " +
+    "varrer text-[#08090b] font-bold active:translate-y-px " +
     "shadow-[0_0_0_1px_rgba(255,255,255,.08)]",
   buy: "bg-bull/12 text-bull border border-bull/35 hover:bg-bull/20",
   sell: "bg-bear/12 text-bear border border-bear/35 hover:bg-bear/20",

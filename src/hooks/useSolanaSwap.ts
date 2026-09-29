@@ -283,7 +283,6 @@ export function useSolanaSwap({
           body: JSON.stringify({
             event: "trade",
             wallet: affiliate,
-            ref: affiliateRef,
             txHash: result.signature,
             volumeNative: formatUnits(result.volumeLamports, SOL_DECIMALS),
             // O valor que o promotor de fato recebeu, não uma estimativa.

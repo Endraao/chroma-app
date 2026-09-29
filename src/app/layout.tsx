@@ -62,8 +62,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
      * fosse português. Também é o que diz ao buscador pra quem esta página
      * serve.
      */
-    <html lang={idioma} className="dark">
+    <html lang={idioma} className="dark" suppressHydrationWarning>
       <body className={`${display.variable} ${mono.variable} min-h-screen font-sans`}>
+        {/* Aplica o tema salvo ANTES de desenhar, pra não piscar preto→branco. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("chroma.tema")==="claro")document.documentElement.dataset.tema="claro"}catch(e){}`,
+          }}
+        />
         {/* Barrinha de carregamento no topo ao trocar de página, como na pump.fun */}
         <NextTopLoader color="#34d399" height={3} showSpinner={false} shadow="0 0 10px #34d399,0 0 5px #34d399" />
         <IdiomaProvider idioma={idioma}>

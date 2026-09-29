@@ -20,6 +20,7 @@ import {
   type PoolDaMoeda,
 } from "@/lib/uniswap-evm";
 import { PLATFORM_FEE_WALLET_EVM, robinhoodChain } from "@/lib/web3";
+import { registrarIndicacaoEvm } from "@/lib/registrar-indicacao";
 import type { FaseDoSwapEvm } from "@/hooks/useCurvaSwapEvm";
 
 const MENSAGENS = traducoes({
@@ -174,6 +175,17 @@ export function useSwapExternoEvm({
       setPasso(m.confirmando);
       const recibo = await esperarRecibo(publicClient, transacao);
       if (recibo.status !== "success") throw new Error(m.recusou);
+      if (indicador) {
+        // Compra: comissão exata (sai do ETH enviado). Venda: sobre o ETH estimado.
+        const volume = ehCompra ? bruto : cotacao !== null ? (cotacao * 10_000n) / BigInt(10_000 - swapFeeBps("robinhood")) : 0n;
+        registrarIndicacaoEvm({
+          afiliado: indicador,
+          txHash: transacao,
+          volumeEth: formatEther(volume),
+          comissaoEth: formatEther(ehCompra ? taxas.affiliateFee : (volume * BigInt(AFFILIATE_FEE_BPS)) / 10_000n),
+          moeda,
+        });
+      }
       setHash(transacao);
       setFase("pronto");
       setPasso("");
@@ -187,7 +199,7 @@ export function useSwapExternoEvm({
       setErro(mensagem.split(/\r?\n/)[0]);
       setFase("erro");
     }
-  }, [address, publicClient, pool, minimo, bruto, obterCarteira, ehCompra, m, indicador, taxas.affiliateFee, taxas.platformFee, moeda]);
+  }, [address, publicClient, pool, minimo, bruto, obterCarteira, ehCompra, m, indicador, taxas.affiliateFee, taxas.platformFee, moeda, cotacao]);
 
   return {
     executar,

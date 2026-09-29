@@ -2,13 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { erc20Abi, parseEther, parseUnits, formatEther, formatUnits, type Address } from "viem";
+import { decodeEventLog, erc20Abi, parseAbiItem, parseEther, parseUnits, formatEther, formatUnits, type Address } from "viem";
 
 import { ABI_DA_CURVA, CHROMA_CURVE_EVM, ENDERECO_ZERO } from "@/lib/chroma-evm";
 import type { EstadoDaCurvaEvm } from "@/lib/chroma-evm";
 import type { TradeSide } from "@/lib/types";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
 import { reivindicarPontos } from "@/lib/reivindicar-pontos";
+import { registrarIndicacaoEvm } from "@/lib/registrar-indicacao";
+
+const EVENTO_NEGOCIO = parseAbiItem(
+  "event Negocio(address indexed moeda, address indexed trader, bool compra, uint256 eth, uint256 tokens, uint256 taxaCriador, uint256 taxaAfiliado, uint256 taxaPlataforma, address afiliado)",
+);
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import { robinhoodChain } from "@/lib/web3";
@@ -201,6 +206,25 @@ export function useCurvaSwapEvm({
 
       /* Pontos do airdrop: o servidor confere o recibo na rede antes de creditar. */
       void reivindicarPontos(transacao, address);
+
+      // Painel do afiliado: a comissão real sai do evento Negocio do contrato.
+      if (indicador !== ENDERECO_ZERO) {
+        for (const log of recibo.logs) {
+          try {
+            const ev = decodeEventLog({ abi: [EVENTO_NEGOCIO], data: log.data, topics: log.topics });
+            registrarIndicacaoEvm({
+              afiliado: indicador,
+              txHash: transacao,
+              volumeEth: formatEther(ev.args.eth),
+              comissaoEth: formatEther(ev.args.taxaAfiliado),
+              moeda,
+            });
+            break;
+          } catch {
+            /* outro evento */
+          }
+        }
+      }
 
       setHash(transacao);
       setFase("pronto");

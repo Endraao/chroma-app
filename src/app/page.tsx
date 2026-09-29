@@ -3,6 +3,8 @@ import Link from "next/link";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
 import { CardDaMoeda } from "@/components/home/CardDaMoeda";
+import { FaixaDeAbertura } from "@/components/home/FaixaDeAbertura";
+import { formatUsd } from "@/lib/utils";
 import { PainelDaChroma } from "@/components/home/PainelDaChroma";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
@@ -203,6 +205,13 @@ export default async function HomePage({
           {t.semDados}
         </div>
       )}
+
+      {/* A faixa da marca, compacta: não empurra as moedas pra baixo da dobra. */}
+      <FaixaDeAbertura
+        idioma={idioma}
+        quantidadeDeTokens={String(principal.tokens.length + lancadasNaChroma.length)}
+        volumeTotal={formatUsd(principal.tokens.reduce((acc, t) => acc + t.volume24hUsd, 0))}
+      />
 
       {/* Criadas na Chroma — ao vivo, das duas redes */}
       <PainelDaChroma moedas={lancadasNaChroma} />

@@ -32,13 +32,33 @@ const config: Config = {
          * do DADO — o verde, o vermelho, o ciano da marca. Fundo cinza-azulado
          * rouba contraste de tudo que importa.
          */
+        /*
+         * Superfícies e textos em VARIÁVEIS (globals.css): o modo escuro usa
+         * os valores de sempre; o modo claro troca só as variáveis, sem mexer
+         * em tela nenhuma.
+         */
         ink: {
-          950: "#08090b", // fundo da página
-          900: "#0d0e12", // cartões
-          800: "#131419", // cartões elevados, campos
-          700: "#1c1e25", // bordas
-          600: "#282b34", // divisórias e bordas em destaque
+          950: "rgb(var(--ink-950) / <alpha-value>)", // fundo da página
+          900: "rgb(var(--ink-900) / <alpha-value>)", // cartões
+          800: "rgb(var(--ink-800) / <alpha-value>)", // cartões elevados, campos
+          700: "rgb(var(--ink-700) / <alpha-value>)", // bordas
+          600: "rgb(var(--ink-600) / <alpha-value>)", // divisórias e bordas em destaque
         },
+        zinc: {
+          50: "rgb(var(--zinc-50) / <alpha-value>)",
+          100: "rgb(var(--zinc-100) / <alpha-value>)",
+          200: "rgb(var(--zinc-200) / <alpha-value>)",
+          300: "rgb(var(--zinc-300) / <alpha-value>)",
+          400: "rgb(var(--zinc-400) / <alpha-value>)",
+          500: "rgb(var(--zinc-500) / <alpha-value>)",
+          600: "rgb(var(--zinc-600) / <alpha-value>)",
+          700: "rgb(var(--zinc-700) / <alpha-value>)",
+          800: "rgb(var(--zinc-800) / <alpha-value>)",
+          900: "rgb(var(--zinc-900) / <alpha-value>)",
+          950: "rgb(var(--zinc-950) / <alpha-value>)",
+        },
+        white: "rgb(var(--branco) / <alpha-value>)",
+        black: "rgb(var(--preto) / <alpha-value>)",
         // Acentos Chroma (refração de luz)
         chroma: {
           violet: "#8b5cf6",

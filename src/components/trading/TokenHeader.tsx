@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { DenunciarToken } from "@/components/trading/DenunciarToken";
+import { ImagemDaMoedaGrande } from "@/components/trading/ImagemDaMoedaGrande";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
 import type { StatsAoVivo } from "@/components/trading/TokenTerminal";
@@ -86,14 +87,7 @@ export function TokenHeader({
   return (
     <Card className="p-3">
       <div className="flex flex-wrap items-center gap-3">
-        {token.imageUrl ? (
-           
-          <img src={token.imageUrl} alt="" className="size-10 shrink-0 rounded-lg bg-ink-800 object-cover" />
-        ) : (
-          <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-chroma-gradient bg-[length:200%_200%] text-sm font-black text-white/90">
-            {token.symbol.slice(0, 2)}
-          </div>
-        )}
+        <ImagemDaMoedaGrande token={token} />
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

@@ -92,6 +92,8 @@ export function formatUnits(value: bigint, decimals: number): number {
  */
 export function miniatura(url: string | undefined, px: number): string | undefined {
   if (!url) return url;
+  // IPFS: troca por um portão que serve a imagem direto (ver urlsDaImagem).
+  if (/ipfs/i.test(url)) url = urlsDaImagem(url)[0];
   /* Arte lida do contrato (IPFS): passa pelo otimizador, que só aceita esta rota. */
   if (url.startsWith("/api/logo/")) {
     const largura = px <= 48 ? 96 : 256;
@@ -112,4 +114,26 @@ export function miniatura(url: string | undefined, px: number): string | undefin
   } catch {
     return url;
   }
+}
+
+const PORTOES_IPFS = ["https://ipfs.io/ipfs/", "https://dweb.link/ipfs/", "https://gateway.pinata.cloud/ipfs/"];
+
+/**
+ * Endereços para tentar, em ordem, pra uma imagem de moeda.
+ *
+ * Link de IPFS vem em vários formatos (`ipfs://CID`, `https://CID.ipfs.algo`,
+ * `https://algo/ipfs/CID`) e alguns portões — como o `inbrowser.link` — só
+ * funcionam abrindo a página no navegador, nunca numa tag de imagem. Aqui o
+ * CID é extraído e servido por portões que entregam a imagem direto.
+ */
+export function urlsDaImagem(url: string | undefined): string[] {
+  if (!url) return [];
+  const cid =
+    /^ipfs:\/\/(?:ipfs\/)?(.+)$/i.exec(url)?.[1] ??
+    /^https?:\/\/([a-z0-9]{46,})\.ipfs\.[^/]+(\/.*)?$/i.exec(url)?.slice(1, 3).join("").replace(/undefined$/, "") ??
+    /^https?:\/\/[^/]+\/ipfs\/(.+)$/i.exec(url)?.[1];
+  if (!cid) return [url];
+  // Primeiro pelo nosso servidor (vários portões ao mesmo tempo + CDN); os
+  // portões diretos ficam de reserva.
+  return [`/api/imagem?cid=${cid.replace(/\/$/, "")}`, ...PORTOES_IPFS.map((p) => p + cid)];
 }

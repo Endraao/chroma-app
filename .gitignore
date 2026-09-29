@@ -39,3 +39,4 @@ keypairs/
 # carteiras de usuários reais. É cópia de segurança local, não artefato do
 # projeto — apagar só depois de confirmar que a importação ficou certa.
 /.data-backup-antes-do-sqlite/
+backups/

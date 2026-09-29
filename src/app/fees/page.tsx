@@ -40,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const TEXTOS = traducoes({
   en: {
     faixas: ["Launch", "Gaining traction", "Established", "Top"],
-    solLancarNota: "Coins are created on pump.fun and trade there and here. pump.fun itself charges nothing to create.",
+    solLancarNota: "One-time fee, paid at launch. Your coin is born ready to trade, with its own page and live chart on Chroma.",
     solTrade: "Trade through Chroma", solTradeNota: "Charged on buys and sells made through Chroma, on any Solana coin — including the ones launched here.",
     solDivisao: "pump.fun creator fee",
     solDivisaoNota: (c: number, p: number) => `The creator fee pump.fun charges on every trade is split: ${c}% to the creator, ${p}% to Chroma. The creator manages this split on pump.fun.`,
@@ -67,7 +67,7 @@ const TEXTOS = traducoes({
   },
   pt: {
     faixas: ["Lançamento", "Pegando tração", "Consolidada", "Topo"],
-    solLancarNota: "A moeda é criada na pump.fun e negocia lá e aqui. A própria pump.fun não cobra nada para criar.",
+    solLancarNota: "Taxa única, paga no lançamento. A sua moeda já nasce pronta para negociar, com página própria e gráfico ao vivo na Chroma.",
     solTrade: "Operar pela Chroma", solTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Solana — inclusive as lançadas aqui.",
     solDivisao: "Taxa de criador da pump.fun",
     solDivisaoNota: (c: number, p: number) => `A taxa de criador que a pump.fun cobra em cada operação é dividida: ${c}% para o criador, ${p}% para a Chroma. Quem administra essa divisão na pump.fun é o criador.`,
@@ -94,7 +94,7 @@ const TEXTOS = traducoes({
   },
   zh: {
     faixas: ["发行期", "起势期", "成熟期", "顶级"],
-    solLancarNota: "代币在 pump.fun 上创建，可在那里和这里交易。pump.fun 本身创建免费。",
+    solLancarNota: "一次性费用，发行时支付。你的代币一经创建即可交易，在 Chroma 上拥有独立页面和实时图表。",
     solTrade: "通过 Chroma 交易", solTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Solana 代币 —— 包括在这里发行的代币。",
     solDivisao: "pump.fun 创作者费用",
     solDivisaoNota: (c: number, p: number) => `pump.fun 每笔交易收取的创作者费用会被分成：${c}% 归创作者，${p}% 归 Chroma。该分成由创作者在 pump.fun 上管理。`,

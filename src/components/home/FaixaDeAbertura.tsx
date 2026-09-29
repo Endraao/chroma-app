@@ -63,7 +63,7 @@ export function FaixaDeAbertura({
       {/* A luz entrando pela aresta de cima do painel. */}
       <div className="aresta" />
 
-      <div className="relative z-[1] flex flex-col gap-6 px-5 py-7 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-8 lg:py-8">
+      <div className="relative z-[1] flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6 lg:px-6 lg:py-4">
         <div className="min-w-0 max-w-[640px]">
           <div className="flex items-center gap-2">
             <span
@@ -102,16 +102,16 @@ export function FaixaDeAbertura({
             letra aberta lê como rótulo. A diferença entre as duas linhas faz
             o trabalho que um tamanho menor sozinho não faria.
           */}
-          <h1 className="mt-3 select-none">
-            <span className="holo-texto block text-[46px] font-black leading-[0.92] tracking-[-0.045em] sm:text-[64px] lg:text-[76px]">
+          <h1 className="mt-2 select-none">
+            <span className="holo-texto block text-[32px] font-black leading-[0.92] tracking-[-0.045em] sm:text-[40px] lg:text-[46px]">
               CHROMA
             </span>
-            <span className="mt-1.5 block text-[19px] font-bold uppercase tracking-[0.3em] text-zinc-400 sm:text-[26px] lg:text-[31px]">
+            <span className="mt-1 block text-[13px] font-bold uppercase tracking-[0.3em] text-zinc-400 sm:text-[16px] lg:text-[18px]">
               Launchpad
             </span>
           </h1>
 
-          <p className="mt-3 max-w-[520px] text-[13.5px] leading-relaxed text-zinc-400">
+          <p className="mt-2 max-w-[520px] text-[12.5px] leading-relaxed text-zinc-400">
             {/*
               Entre chaves, e não solto como texto: `///` cru no meio do JSX
               é lido pelo linter como começo de comentário, e o aviso está
@@ -121,18 +121,18 @@ export function FaixaDeAbertura({
             {t.heroLinha}
           </p>
 
-          <div className="mt-6 flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row">
+          <div className="mt-3 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             {/*
               O único botão-espectro do site. Ver a nota em `Button.tsx`: o
               efeito só significa alguma coisa porque não se repete.
             */}
             <Link href="/create" className="block sm:w-auto">
-              <Button variant="espectro" size="lg" className="w-full px-7 sm:w-auto">
+              <Button variant="espectro" className="w-full px-6 sm:w-auto">
                 {t.heroBotaoCriar}
               </Button>
             </Link>
             <Link href="/airdrop" className="block sm:w-auto">
-              <Button variant="outline" size="lg" className="w-full px-6 sm:w-auto">
+              <Button variant="outline" className="w-full px-5 sm:w-auto">
                 {t.heroBotaoPontos}
               </Button>
             </Link>
@@ -148,7 +148,7 @@ export function FaixaDeAbertura({
           contrário.
         */}
         <div className="hidden shrink-0 lg:block">
-          <CristalHolografico size={230} />
+          <CristalHolografico size={120} />
         </div>
       </div>
 

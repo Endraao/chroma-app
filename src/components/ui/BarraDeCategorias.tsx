@@ -1,5 +1,7 @@
 "use client";
 
+import { SeletorDeTema } from "@/components/ui/SeletorDeTema";
+
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
@@ -218,6 +220,9 @@ export function BarraDeCategorias({
         <div className="mx-3 my-2 h-px bg-ink-700" />
 
         <Grupo itens={RODAPE} aberta={aberta} ativo={ativo} />
+
+        {/* Tema claro/escuro: o último item, no canto de baixo à esquerda. */}
+        <SeletorDeTema aberta={aberta} />
       </div>
     </aside>
   );

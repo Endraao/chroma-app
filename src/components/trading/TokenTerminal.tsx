@@ -178,7 +178,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
         </div>
 
         {/* Coluna direita: swap grudado no topo ao rolar a página */}
-        <div className="space-y-4 lg:sticky lg:top-[72px] lg:self-start">
+        <div className="space-y-3 lg:sticky lg:top-[72px] lg:max-h-[calc(100vh-84px)] lg:self-start lg:overflow-y-auto lg:pr-1 [scrollbar-width:thin]">
           {/*
             * Acima do painel de swap, e não abaixo: quanto falta pra curva
             * encher é o que decide se a pessoa compra AGORA. Enterrado no fim
@@ -231,10 +231,10 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             naCurva={token.bondingProgress !== null}
           />
 
-          {/* O convite vem DEPOIS do alerta: quem vai operar precisa ver o alerta primeiro. */}
-          <ConviteParaCompartilhar token={token} />
-
+          {/* Ordem da Fomo Family: comprar, alerta, sobre — e o convite por último. */}
           <PainelSobre token={token} />
+
+          <ConviteParaCompartilhar token={token} />
         </div>
       </div>
 

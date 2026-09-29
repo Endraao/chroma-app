@@ -121,7 +121,7 @@ export function PainelDeAtividade({
               </tr>
             </thead>
             <tbody>
-              {negocios.map((n) => {
+              {negocios.slice(0, 30).map((n) => {
                 const compra = n.lado === "compra";
                 return (
                   <tr key={n.txHash + n.lado + n.tokens} className="border-t border-ink-700/60">
