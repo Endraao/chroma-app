@@ -90,7 +90,8 @@ export function TokenHeader({
       <div className="flex flex-wrap items-center gap-3">
         <ImagemDaMoedaGrande token={token} />
 
-        <div className="min-w-0">
+        {/* No celular o nome estica e o preço fica na MESMA linha, à direita. */}
+        <div className="min-w-0 flex-1 lg:flex-none">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-base font-bold text-zinc-50">{token.name}</h1>
             <span className="text-sm font-semibold text-zinc-500">${token.symbol}</span>
@@ -160,7 +161,16 @@ export function TokenHeader({
         </div>
 
         {/* Números na MESMA linha do nome: o cabeçalho fica baixo e sobra altura pro gráfico e pra compra. */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 lg:ml-4 lg:border-l lg:border-white/[0.06] lg:pl-5">
+        {/* Celular: preço na mesma linha do nome, à direita. */}
+        <div className="shrink-0 self-start text-right lg:hidden">
+          <div className="tnum text-base font-black text-zinc-50">$<Preco valor={price} /></div>
+          <div className={cn("tnum text-[11px] font-semibold", up ? "text-bull" : "text-bear")}>
+            {formatPct(variacao)} <span className="text-zinc-600">24h</span>
+          </div>
+        </div>
+
+        {/* No celular os números vão pra última linha, em grade de 3. */}
+        <div className="grid w-full grid-cols-3 gap-x-4 gap-y-2 border-t border-white/[0.06] pt-2 lg:ml-4 lg:flex lg:w-auto lg:flex-wrap lg:items-center lg:gap-x-5 lg:gap-y-1 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
         <Numero rotulo={t.mcap} valor={formatUsd(marketCapAoVivo)} />
         <Numero
           rotulo={t.variacao}
@@ -187,7 +197,8 @@ export function TokenHeader({
         )}
               </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        {/* Computador: preço no canto direito, depois dos números. */}
+        <div className="ml-auto hidden items-center gap-3 lg:flex">
           <div className="text-right">
             <div className="tnum text-lg font-black text-zinc-50">$<Preco valor={price} /></div>
             <div className={cn("tnum text-[12px] font-semibold", up ? "text-bull" : "text-bear")}>

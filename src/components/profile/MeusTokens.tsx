@@ -9,17 +9,19 @@ import Link from "next/link";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TokenCard } from "@/components/ui/TokenCard";
 import { formatUsd, miniatura } from "@/lib/utils";
+import { chainIcon } from "@/lib/chain-icons";
 import type { TokenSummary } from "@/lib/types";
 
 interface Resposta {
   criadas: TokenSummary[];
   naCarteira: { token: TokenSummary; quantidade: number; valorUsd: number }[];
+  nativos?: { simbolo: string; nome: string; rede: "solana" | "robinhood"; quantidade: number; valorUsd: number }[];
 }
 
 const TEXTOS = traducoes({
-  en: { conecte: "Connect a wallet to see your tokens.", carregando: "Loading…", criados: "Created by you", nenhumaCriada: "You have not created any coin yet.", criarAgora: "Create now", naCarteira: "In your wallet", nenhumaNaCarteira: "No Chroma coins in your wallet." },
-  pt: { conecte: "Conecte uma carteira para ver seus tokens.", carregando: "Carregando…", criados: "Criados por você", nenhumaCriada: "Você ainda não criou nenhuma moeda.", criarAgora: "Criar agora", naCarteira: "Na sua carteira", nenhumaNaCarteira: "Nenhuma moeda da Chroma na sua carteira." },
-  zh: { conecte: "连接钱包以查看你的代币。", carregando: "加载中…", criados: "你创建的", nenhumaCriada: "你还没有创建任何代币。", criarAgora: "立即创建", naCarteira: "你钱包中的", nenhumaNaCarteira: "你的钱包中没有 Chroma 代币。" },
+  en: { conecte: "Connect a wallet to see your tokens.", carregando: "Loading…", criados: "Created by you", nenhumaCriada: "You have not created any coin yet.", criarAgora: "Create now", naCarteira: "In your wallet", nenhumaNaCarteira: "No coins in your wallet." },
+  pt: { conecte: "Conecte uma carteira para ver seus tokens.", carregando: "Carregando…", criados: "Criados por você", nenhumaCriada: "Você ainda não criou nenhuma moeda.", criarAgora: "Criar agora", naCarteira: "Na sua carteira", nenhumaNaCarteira: "Nenhuma moeda na sua carteira." },
+  zh: { conecte: "连接钱包以查看你的代币。", carregando: "加载中…", criados: "你创建的", nenhumaCriada: "你还没有创建任何代币。", criarAgora: "立即创建", naCarteira: "你钱包中的", nenhumaNaCarteira: "你的钱包中没有代币。" },
 });
 
 /**
@@ -79,10 +81,26 @@ export function MeusTokens({ chaves }: { chaves: string[] }) {
           <CardTitle>{t.naCarteira}</CardTitle>
         </CardHeader>
         <CardBody>
-          {dados.naCarteira.length === 0 ? (
+          {dados.naCarteira.length === 0 && !dados.nativos?.length ? (
             <p className="text-[13px] text-zinc-500">{t.nenhumaNaCarteira}</p>
           ) : (
             <ul className="divide-y divide-ink-700">
+              {/* SOL e ETH da própria carteira, primeiro */}
+              {(dados.nativos ?? []).map((n) => (
+                <li key={n.rede + n.simbolo} className="flex items-center gap-3 py-2.5">
+                  <img src={chainIcon(n.rede)} alt="" className="size-10 shrink-0 rounded-lg bg-ink-800 object-contain p-1.5" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13.5px] font-bold text-zinc-100">{n.nome}</span>
+                    <span className="block text-[11.5px] text-zinc-500">{n.simbolo}</span>
+                  </span>
+                  <span className="tnum shrink-0 text-right">
+                    <span className="block text-[13.5px] font-bold text-zinc-100">{formatUsd(n.valorUsd)}</span>
+                    <span className="block text-[11px] text-zinc-500">
+                      {n.quantidade.toLocaleString(undefined, { maximumFractionDigits: 5 })} {n.simbolo}
+                    </span>
+                  </span>
+                </li>
+              ))}
               {dados.naCarteira.map(({ token, quantidade, valorUsd }) => (
                 <li key={token.address}>
                   <Link

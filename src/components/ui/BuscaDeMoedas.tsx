@@ -16,7 +16,7 @@ const TEXTOS = traducoes({
  * Busca do cabeçalho. Endereço vai direto pra página da moeda; nome ou
  * símbolo abre a vitrine filtrada, nas duas redes.
  */
-export function BuscaDeMoedas() {
+export function BuscaDeMoedas({ movel = false }: { movel?: boolean }) {
   const t = useTextos(TEXTOS);
   const router = useRouter();
   const [texto, setTexto] = useState("");
@@ -30,7 +30,10 @@ export function BuscaDeMoedas() {
   }
 
   return (
-    <form onSubmit={buscar} className="relative hidden min-w-0 flex-1 lg:block lg:max-w-[340px]">
+    <form
+      onSubmit={buscar}
+      className={movel ? "relative w-full" : "relative hidden min-w-0 flex-1 lg:block lg:max-w-[340px]"}
+    >
       <svg
         viewBox="0 0 24 24"
         className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500"

@@ -13,7 +13,9 @@ import { urlsDaImagem } from "@/lib/utils";
 export function ImagemDaMoedaGrande({ token }: { token: TokenSummary }) {
   const candidatas = [
     ...urlsDaImagem(token.imageUrl),
-    ...(token.chain === "robinhood" && !token.imageUrl?.includes("/api/logo/") ? [`/api/logo/${token.address}`] : []),
+    // O leitor de logo é a MESMA fonte da tela inicial, nas duas redes: se ela
+    // mostrou a foto lá, aqui também mostra (antes só valia pra Robinhood).
+    ...(!token.imageUrl?.includes("/api/logo/") ? [`/api/logo/${token.address}`] : []),
   ];
   const [indice, setIndice] = useState(0);
   const [aberta, setAberta] = useState(false);

@@ -4,6 +4,19 @@ import { saldosNaCarteiraEvm } from "@/lib/curva-evm";
 import { moedasDaChroma } from "@/lib/moedas-da-chroma";
 import type { TokenSummary } from "@/lib/types";
 import { valorDaCarteira } from "@/lib/carteira";
+import { precosNativos } from "@/lib/precos-nativos";
+import { robinhoodChain } from "@/lib/web3";
+
+async function saldoEth(dono: string): Promise<bigint> {
+  const r = await fetch(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0], {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [dono, "latest"] }),
+    cache: "no-store",
+  });
+  const j = (await r.json()) as { result?: string };
+  return j.result ? BigInt(j.result) : 0n;
+}
 
 async function infoDaJupiter(mints: string[]): Promise<Map<string, { name: string; symbol: string; icon?: string }>> {
   const mapa = new Map<string, { name: string; symbol: string; icon?: string }>();
@@ -69,8 +82,21 @@ export async function GET(request: Request) {
    * Solana: TODAS as moedas da carteira (as mesmas que o menu da conta soma
    * em "Em moedas"), não só as lançadas na Chroma. Nome e ícone pela Jupiter.
    */
+  // SOL e ETH da própria carteira também aparecem (antes a lista dizia
+  // "nenhuma moeda" com a carteira cheia de SOL e ETH).
+  const nativos: { simbolo: string; nome: string; rede: "solana" | "robinhood"; quantidade: number; valorUsd: number }[] = [];
+  const precos = await precosNativos().catch(() => ({ solana: 0, robinhood: 0 }) as Record<string, number>);
+  for (const carteira of evm) {
+    const wei = await saldoEth(carteira).catch(() => 0n);
+    const eth = Number(wei) / 1e18;
+    if (eth > 0) nativos.push({ simbolo: "ETH", nome: "Ethereum", rede: "robinhood", quantidade: eth, valorUsd: eth * (precos.robinhood ?? 0) });
+  }
+
   for (const carteira of carteiras.filter((c) => !c.startsWith("0x"))) {
     const valor = await valorDaCarteira(carteira).catch(() => null);
+    if (valor && valor.sol > 0) {
+      nativos.push({ simbolo: "SOL", nome: "Solana", rede: "solana", quantidade: valor.sol, valorUsd: valor.solUsd });
+    }
     if (!valor?.posicoes.length) continue;
     const info = await infoDaJupiter(valor.posicoes.map((p) => p.mint));
     for (const p of valor.posicoes) {
@@ -100,5 +126,5 @@ export async function GET(request: Request) {
 
   naCarteira.sort((a, b) => b.valorUsd - a.valorUsd);
 
-  return NextResponse.json({ criadas, naCarteira });
+  return NextResponse.json({ criadas, naCarteira, nativos });
 }

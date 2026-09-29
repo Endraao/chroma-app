@@ -59,12 +59,19 @@ function palpiteDoNavegador(aceita: string | null): Idioma | null {
   return null;
 }
 
-/** O idioma desta requisição: escolha salva > palpite do navegador > padrão. */
+/** O idioma desta requisição: escolha salva > inglês. */
 export async function idiomaAtual(): Promise<Idioma> {
   const escolhido = (await cookies()).get(NOME_DO_COOKIE)?.value;
   if (ehIdioma(escolhido)) return escolhido;
 
-  return palpiteDoNavegador((await headers()).get("accept-language")) ?? IDIOMA_PADRAO;
+  /*
+   * Sem escolha salva: INGLÊS, sempre (regra do dono, 29/09/2026 — o inglês é
+   * a língua oficial do site). Não adivinhamos mais pelo idioma do navegador;
+   * quem quiser português ou chinês troca no seletor e fica salvo.
+   */
+  void headers;
+  void palpiteDoNavegador;
+  return IDIOMA_PADRAO;
 }
 
 /** Atalho: o idioma e os textos dele de uma vez só. */

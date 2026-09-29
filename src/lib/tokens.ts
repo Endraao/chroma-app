@@ -337,7 +337,8 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
   // Moeda nova que a DEX ainda não indexou: usa o que a vitrine já sabe dela.
   const daVitrine = doMercado ? null : (await universo()).find((t) => t.address.toLowerCase() === address.toLowerCase());
   const achado = doMercado ?? daVitrine ?? null;
-  const real = achado && achado.chain === "robinhood" && !achado.imageUrl
+  // Sem imagem na fonte de mercado: o leitor de logo (mesma fonte da tela inicial), nas duas redes.
+  const real = achado && !achado.imageUrl
     ? { ...achado, imageUrl: `/api/logo/${achado.address}` }
     : achado;
 

@@ -49,11 +49,38 @@ const MOEDA_DA_REDE: Record<ChainId, string> = {
  */
 const TTL = 5 * 60_000;
 
-export async function precosNativos(): Promise<Record<ChainId, number>> {
-  return cached("precos-nativos", TTL, async () => {
-    const ids = [...new Set(Object.values(MOEDA_DA_REDE))].join(",");
+/** Reserva quando a CoinGecko recusa: a Jupiter tem SOL e ETH (ETH da Wormhole). */
+const MINT_NA_JUPITER: Record<ChainId, string> = {
+  solana: "So11111111111111111111111111111111111111112",
+  robinhood: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+};
 
-    const vazio = Object.fromEntries(CHAIN_IDS.map((c) => [c, 0])) as Record<ChainId, number>;
+async function pelaJupiter(): Promise<Record<ChainId, number>> {
+  const r = await fetch(`https://lite-api.jup.ag/price/v3?ids=${Object.values(MINT_NA_JUPITER).join(",")}`, {
+    cache: "no-store",
+  });
+  const j = (await r.json()) as Record<string, { usdPrice?: number }>;
+  return Object.fromEntries(CHAIN_IDS.map((c) => [c, j[MINT_NA_JUPITER[c]]?.usdPrice ?? 0])) as Record<ChainId, number>;
+}
+
+export async function precosNativos(): Promise<Record<ChainId, number>> {
+  const vazio = Object.fromEntries(CHAIN_IDS.map((c) => [c, 0])) as Record<ChainId, number>;
+  try {
+    // Zero nunca é guardado no cache: a próxima chamada tenta de novo.
+    return await cached("precos-nativos", TTL, async () => {
+      const [gecko, jup] = await Promise.all([pelaCoinGecko(vazio), pelaJupiter().catch(() => vazio)]);
+      const precos = Object.fromEntries(CHAIN_IDS.map((c) => [c, gecko[c] || jup[c] || 0])) as Record<ChainId, number>;
+      if (CHAIN_IDS.some((c) => !precos[c])) throw new Error("preço nativo indisponível");
+      return precos;
+    });
+  } catch {
+    return vazio;
+  }
+}
+
+async function pelaCoinGecko(vazio: Record<ChainId, number>): Promise<Record<ChainId, number>> {
+  {
+    const ids = [...new Set(Object.values(MOEDA_DA_REDE))].join(",");
 
     try {
       const res = await fetch(
@@ -76,5 +103,5 @@ export async function precosNativos(): Promise<Record<ChainId, number>> {
        */
       return vazio;
     }
-  });
+  }
 }

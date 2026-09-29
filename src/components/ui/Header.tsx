@@ -53,9 +53,9 @@ export function Header({ idioma }: { idioma: Idioma }) {
 
   return (
     <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-ink-950/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center gap-4 px-4 lg:gap-6 lg:px-6">
-        <Link href="/" className="group flex shrink-0 items-center gap-2.5">
-          <ChromaMark size={38} />
+      <div className="mx-auto flex h-14 w-full max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-4 lg:gap-6 lg:px-6">
+        <Link href="/" className="group flex shrink-0 items-center gap-2 sm:gap-2.5">
+          <ChromaMark size={32} />
           {/*
             O nome na ALTURA do desenho, não num tamanho de menu.
 
@@ -67,7 +67,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
             O valor foi medido contra o cristal de 38px, não chutado — ver a
             nota de tamanho no componente `ChromaMark`.
           */}
-          <span className="text-[38px] font-bold leading-none tracking-tight text-zinc-100">
+          <span className="text-[24px] font-bold leading-none tracking-tight text-zinc-100 sm:text-[38px]">
             Chroma
           </span>
         </Link>
@@ -131,7 +131,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
           </Link>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           {/*
             Rede e idioma antes da carteira, e nessa ordem.
 
@@ -155,9 +155,12 @@ export function Header({ idioma }: { idioma: Idioma }) {
             O reserva tem a mesma largura do botão pronto, senão o cabeçalho
             dá um salto quando ele aparece.
           */}
-          <Suspense fallback={<ReservaDoSeletor />}>
-            <SeletorDeRede />
-          </Suspense>
+          {/* No celular a troca de rede fica nas abas da página (não cabe aqui). */}
+          <div className="hidden sm:block">
+            <Suspense fallback={<ReservaDoSeletor />}>
+              <SeletorDeRede />
+            </Suspense>
+          </div>
 
           <SeletorDeIdioma atual={idioma} />
 
@@ -179,7 +182,11 @@ export function Header({ idioma }: { idioma: Idioma }) {
             </button>
 
             {aberto && (
-              <div className="panel absolute right-0 z-50 mt-2 w-56 p-1">
+              <div className="panel absolute right-0 z-50 mt-2 w-64 p-1">
+                {/* A busca do cabeçalho não cabe no celular: mora aqui. */}
+                <div className="p-1.5">
+                  <BuscaDeMoedas movel />
+                </div>
                 {NAV.map((item) => (
                   <Link
                     key={item.href}

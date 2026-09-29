@@ -149,16 +149,8 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
           return;
         }
 
-        if (spec.aspectRatio && height > 0) {
-          const ratio = width / height;
-          const { value: expected, tolerance, label } = spec.aspectRatio;
-          if (Math.abs(ratio - expected) > tolerance) {
-            setError(
-              t.proporcao(ratio.toFixed(2), label),
-            );
-            // Aviso, não bloqueio: a proporção é recomendação, não requisito.
-          }
-        }
+        // Sem aviso de proporção (pedido do dono, 29/09/2026): as medidas
+        // recomendadas já estão escritas abaixo; outra proporção é escolha da pessoa.
 
         onChange({ file, previewUrl: url, kind, width, height });
       } catch (err) {

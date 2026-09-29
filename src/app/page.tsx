@@ -217,21 +217,24 @@ export default async function HomePage({
       <PainelDaChroma moedas={lancadasNaChroma} />
 
       <section id="mercado" className="scroll-mt-20">
-        <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          {SORTS.map((s) => (
-            <Link
-              key={s.key}
-              href={linkCom({ sort: s.key })}
-              className={
-                sort === s.key
-                  ? "rounded-md bg-bull px-3 py-1.5 text-[13px] font-bold text-black"
-                  : "rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-400 transition-colors hover:bg-ink-800 hover:text-zinc-100"
-              }
-            >
-              {t[s.rotulo]}
-            </Link>
-          ))}
-          <div className="ml-auto">
+        <div className="mb-4 flex flex-wrap items-center gap-y-2">
+          {/* Categorias numa linha só: no celular deslizam pro lado em vez de quebrar. */}
+          <div className="-mx-1 flex max-w-full gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]">
+            {SORTS.map((s) => (
+              <Link
+                key={s.key}
+                href={linkCom({ sort: s.key })}
+                className={
+                  sort === s.key
+                    ? "shrink-0 whitespace-nowrap rounded-md bg-bull px-3 py-1.5 text-[13px] font-bold text-black"
+                    : "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-400 transition-colors hover:bg-ink-800 hover:text-zinc-100"
+                }
+              >
+                {t[s.rotulo]}
+              </Link>
+            ))}
+          </div>
+          <div className="w-full sm:ml-auto sm:w-auto">
             <ChainTabs ativa={chain} sort={sort} />
           </div>
         </div>

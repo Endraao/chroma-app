@@ -52,6 +52,8 @@ export function PainelDaChroma({ moedas }: { moedas: TokenSummary[] }) {
           <span className="relative inline-flex size-2 rounded-full bg-bull" />
         </span>
         <h2 className="mr-2 text-[16px] font-black tracking-tight text-zinc-50">{t.titulo}</h2>
+        {/* No celular as abas descem pra uma linha só delas, lado a lado. */}
+        <div className="flex w-full gap-1 sm:w-auto">
         {(["maiores", "novas"] as const).map((a) => (
           <button
             key={a}
@@ -64,6 +66,7 @@ export function PainelDaChroma({ moedas }: { moedas: TokenSummary[] }) {
             {t[a]}
           </button>
         ))}
+        </div>
       </div>
 
       {moedas.length === 0 ? (

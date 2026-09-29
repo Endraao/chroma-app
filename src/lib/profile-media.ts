@@ -107,14 +107,10 @@ export function recusar(
  * as bordas somem, antes de enviar e estranhar o resultado.
  */
 export function avisoDeCorte(
-  espec: EspecDeFoto,
-  dados: { width: number; height: number },
+  _espec: EspecDeFoto,
+  _dados: { width: number; height: number },
 ): string | null {
-  const desejada = espec.idealW / espec.idealH;
-  const real = dados.width / dados.height;
-  if (Math.abs(real - desejada) < 0.08) return null;
-
-  return real > desejada
-    ? "As laterais vão ser cortadas pra caber na proporção."
-    : "O topo e a base vão ser cortados pra caber na proporção.";
+  // Desligado a pedido do dono (29/09/2026): as medidas recomendadas já estão
+  // escritas no perfil; quem quiser outra proporção, usa. Sem aviso a cada troca.
+  return null;
 }
