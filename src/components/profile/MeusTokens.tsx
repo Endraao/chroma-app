@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -13,6 +16,12 @@ interface Resposta {
   naCarteira: { token: TokenSummary; quantidade: number; valorUsd: number }[];
 }
 
+const TEXTOS = traducoes({
+  en: { conecte: "Connect a wallet to see your tokens.", carregando: "Loading…", criados: "Created by you", nenhumaCriada: "You have not created any coin yet.", criarAgora: "Create now", naCarteira: "In your wallet", nenhumaNaCarteira: "No Chroma coins in your wallet." },
+  pt: { conecte: "Conecte uma carteira para ver seus tokens.", carregando: "Carregando…", criados: "Criados por você", nenhumaCriada: "Você ainda não criou nenhuma moeda.", criarAgora: "Criar agora", naCarteira: "Na sua carteira", nenhumaNaCarteira: "Nenhuma moeda da Chroma na sua carteira." },
+  zh: { conecte: "连接钱包以查看你的代币。", carregando: "加载中…", criados: "你创建的", nenhumaCriada: "你还没有创建任何代币。", criarAgora: "立即创建", naCarteira: "你钱包中的", nenhumaNaCarteira: "你的钱包中没有 Chroma 代币。" },
+});
+
 /**
  * As moedas da Chroma que são da pessoa: as que ela criou e as que carrega.
  *
@@ -20,6 +29,7 @@ interface Resposta {
  * com uma carteira e hoje está com outra conectada continua vendo o que criou.
  */
 export function MeusTokens({ chaves }: { chaves: string[] }) {
+  const t = useTextos(TEXTOS);
   const [dados, setDados] = useState<Resposta | null>(null);
   const chave = [...new Set(chaves)].join(",");
 
@@ -36,22 +46,22 @@ export function MeusTokens({ chaves }: { chaves: string[] }) {
   }, [chave]);
 
   if (!chave) {
-    return <p className="text-[13px] text-zinc-500">Conecte uma carteira para ver seus tokens.</p>;
+    return <p className="text-[13px] text-zinc-500">{t.conecte}</p>;
   }
-  if (!dados) return <p className="text-[13px] text-zinc-500">Carregando…</p>;
+  if (!dados) return <p className="text-[13px] text-zinc-500">{t.carregando}</p>;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Criados por você</CardTitle>
+          <CardTitle>{t.criados}</CardTitle>
         </CardHeader>
         <CardBody>
           {dados.criadas.length === 0 ? (
             <p className="text-[13px] text-zinc-500">
-              Você ainda não criou nenhuma moeda.{" "}
+              {t.nenhumaCriada}{" "}
               <Link href="/create" className="text-marca hover:underline">
-                Criar agora
+                {t.criarAgora}
               </Link>
             </p>
           ) : (
@@ -66,11 +76,11 @@ export function MeusTokens({ chaves }: { chaves: string[] }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Na sua carteira</CardTitle>
+          <CardTitle>{t.naCarteira}</CardTitle>
         </CardHeader>
         <CardBody>
           {dados.naCarteira.length === 0 ? (
-            <p className="text-[13px] text-zinc-500">Nenhuma moeda da Chroma na sua carteira.</p>
+            <p className="text-[13px] text-zinc-500">{t.nenhumaNaCarteira}</p>
           ) : (
             <ul className="divide-y divide-ink-700">
               {dados.naCarteira.map(({ token, quantidade, valorUsd }) => (
@@ -85,7 +95,7 @@ export function MeusTokens({ chaves }: { chaves: string[] }) {
                     <span className="tnum text-right">
                       <span className="block text-zinc-200">{formatUsd(valorUsd)}</span>
                       <span className="block text-[11px] text-zinc-500">
-                        {quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+                        {quantidade.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </span>
                     </span>
                   </Link>

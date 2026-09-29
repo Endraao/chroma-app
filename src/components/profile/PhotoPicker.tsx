@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import { useRef, useState } from "react";
 
 import {
@@ -159,11 +162,18 @@ export function PhotoPicker({
  * Fica visível antes de abrir o seletor de arquivo: descobrir a resolução certa
  * só depois de a imagem ser recusada é o pior jeito de saber.
  */
+const ROTULOS = traducoes({
+  en: { avatar: "Profile photo", cover: "Cover photo", ate: "up to" },
+  pt: { avatar: "Foto de perfil", cover: "Foto de capa", ate: "até" },
+  zh: { avatar: "头像", cover: "封面", ate: "最大" },
+});
+
 export function EspecDaFoto({ campo, className }: { campo: CampoDeFoto; className?: string }) {
   const espec = ESPECS[campo];
+  const r = useTextos(ROTULOS);
   return (
     <span className={cn("text-[11px] text-zinc-600", className)}>
-      {espec.rotulo}: <strong className="font-semibold text-zinc-500">{resumoDaEspec(espec)}</strong>{" "}
+      {r[campo]}: <strong className="font-semibold text-zinc-500">{resumoDaEspec(espec).replace("até", r.ate)}</strong>{" "}
       · {formatosLegiveis(espec)}
     </span>
   );

@@ -1,5 +1,8 @@
 "use client";
 
+import { useTextos } from "@/components/IdiomaProvider";
+import { traducoes } from "@/lib/idiomas";
+
 import Link from "next/link";
 
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -33,7 +36,56 @@ import type { ChainId } from "@/lib/types";
  * veio. Dinheiro que cai sozinho na carteira passa despercebido: a pessoa não
  * liga o valor à causa e para de divulgar.
  */
+const TEXTOS = traducoes({
+  en: {
+    total: "Total received", convertido: "— converted at today's price, so the dollar value goes up and down with the market. The amount in each coin never decreases.",
+    cliques: "Clicks on your link", viraram: "Became trades", compartilhar: "Share",
+    aindaNao: (b: React.ReactNode, p: string) => <>You have not received any commission yet. Open a coin and click {b} to generate your referral link. You get {p} of every trade from whoever comes through it, in the coin of the network where they trade.</>,
+    cliquesExplica: "Clicks are how many people opened your link. Trades are how many of them actually traded.",
+    pagaEm: (s: string) => `paid in ${s}`, jaGanhou: "You have earned", resgatar: (s: string) => `Withdraw ${s}`,
+    semCarteira: (r: string, b: React.ReactNode) => <>You have no {r} wallet on your account. {b} until you link one.</>,
+    naoSaoPagas: "Referrals on this network are not paid", vincular: "Link", hoje: "Today", seteDias: "7 days",
+    nenhumaOperou: (r: string, s: React.ReactNode) => <>None of your referrals traded on {r} yet. When they do, the commission arrives in {s} and each payment shows up here with its receipt.</>,
+    deQuais: "Which coins it came from", cadaPagamento: "Each payment", comprovante: "receipt ↗",
+    naoPrecisaForte: "You do not need to withdraw.",
+    naoPrecisa: (b: React.ReactNode, p: string) => <>{b} Each {p} was already sent to your wallet inside the same transaction, instantly — and every amount above is recorded on the blockchain.</>,
+    resgateIndisponivel: "Withdrawal on this network is not available yet. Your commissions keep adding up normally.",
+    ultimos14: "Last 14 days",
+  },
+  pt: {
+    total: "Total já recebido", convertido: "— convertido ao preço de hoje, então o valor em dólar sobe e desce com o mercado. A quantidade em cada moeda nunca diminui.",
+    cliques: "Cliques no seu link", viraram: "Viraram trade", compartilhar: "Compartilhar",
+    aindaNao: (b: React.ReactNode, p: string) => <>Você ainda não recebeu comissão. Abra uma moeda e clique em {b} para gerar o seu link de indicação. Você recebe {p} de cada operação de quem entrar por ele, na moeda da rede em que a pessoa operar.</>,
+    cliquesExplica: "Cliques são quantas pessoas abriram o seu link. Trades são quantas delas realmente operaram.",
+    pagaEm: (s: string) => `paga em ${s}`, jaGanhou: "Você já ganhou", resgatar: (s: string) => `Resgatar ${s}`,
+    semCarteira: (r: string, b: React.ReactNode) => <>Você não tem carteira {r} na conta. {b} até vincular uma.</>,
+    naoSaoPagas: "Indicações nessa rede não são pagas", vincular: "Vincular", hoje: "Hoje", seteDias: "7 dias",
+    nenhumaOperou: (r: string, s: React.ReactNode) => <>Nenhuma indicação sua operou na {r} ainda. Quando operar, a comissão entra em {s} e cada pagamento aparece aqui com o comprovante.</>,
+    deQuais: "De quais moedas veio", cadaPagamento: "Cada pagamento", comprovante: "comprovante ↗",
+    naoPrecisaForte: "Você não precisa resgatar.",
+    naoPrecisa: (b: React.ReactNode, p: string) => <>{b} Cada {p} já foi transferido para a sua carteira dentro da própria transação, na hora — e cada valor acima fica registrado na blockchain.</>,
+    resgateIndisponivel: "O resgate nesta rede ainda não está disponível. As suas comissões continuam sendo somadas normalmente.",
+    ultimos14: "Últimos 14 dias",
+  },
+  zh: {
+    total: "累计收益", convertido: "—— 按今日价格换算，美元价值随市场涨跌，但每种币的数量永远不会减少。",
+    cliques: "链接点击次数", viraram: "转化为交易", compartilhar: "分享",
+    aindaNao: (b: React.ReactNode, p: string) => <>你还没有获得佣金。打开一个代币并点击 {b} 生成你的推荐链接。通过它进入的人每笔交易你都能获得 {p}，以对方交易所在网络的币种支付。</>,
+    cliquesExplica: "点击次数是打开你链接的人数，交易次数是其中真正交易的人数。",
+    pagaEm: (s: string) => `以 ${s} 支付`, jaGanhou: "你已获得", resgatar: (s: string) => `提取 ${s}`,
+    semCarteira: (r: string, b: React.ReactNode) => <>你的账户没有 {r} 钱包。在关联之前，{b}。</>,
+    naoSaoPagas: "该网络上的推荐不会获得报酬", vincular: "关联", hoje: "今日", seteDias: "7 天",
+    nenhumaOperou: (r: string, s: React.ReactNode) => <>你推荐的人还没有在 {r} 上交易。交易后佣金将以 {s} 到账，每笔付款都会在这里显示凭证。</>,
+    deQuais: "来自哪些代币", cadaPagamento: "每笔付款", comprovante: "凭证 ↗",
+    naoPrecisaForte: "你无需提取。",
+    naoPrecisa: (b: React.ReactNode, p: string) => <>{b} 每笔 {p} 都已在同一笔交易中即时转入你的钱包 —— 上方每个金额都记录在区块链上。</>,
+    resgateIndisponivel: "该网络暂不支持提取，你的佣金会继续正常累计。",
+    ultimos14: "最近 14 天",
+  },
+});
+
 export function EarningsPanel({ resumo }: { resumo: AffiliateSummary | null }) {
+  const t = useTextos(TEXTOS);
   /*
    * Uma entrada por rede existente, não só pelas que já renderam. Assim o
    * layout não muda de forma quando a primeira conversão entra — o número
@@ -65,7 +117,7 @@ export function EarningsPanel({ resumo }: { resumo: AffiliateSummary | null }) {
       {!nadaAinda && (
         <Card>
           <CardBody className="space-y-1 py-5 text-center">
-            <p className="rotulo">Total já recebido</p>
+            <p className="rotulo">{t.total}</p>
 
             {resumo?.totalUsd != null ? (
               <p className="tnum text-4xl font-black text-zinc-50">
@@ -81,8 +133,7 @@ export function EarningsPanel({ resumo }: { resumo: AffiliateSummary | null }) {
               {resumo?.totalUsd != null && (
                 <>
                   {" "}
-                  — convertido ao preço de hoje, então o valor em dólar sobe e desce com o mercado.
-                  A quantidade em cada moeda nunca diminui.
+                  {t.convertido}
                 </>
               )}
             </p>
@@ -101,22 +152,14 @@ export function EarningsPanel({ resumo }: { resumo: AffiliateSummary | null }) {
       <Card>
         <CardBody className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <Mini rotulo="Cliques no seu link" valor={String(resumo?.clicks ?? 0)} />
-            <Mini rotulo="Viraram trade" valor={String(resumo?.trades ?? 0)} />
+            <Mini rotulo={t.cliques} valor={String(resumo?.clicks ?? 0)} />
+            <Mini rotulo={t.viraram} valor={String(resumo?.trades ?? 0)} />
           </div>
           <p className="text-[12px] leading-relaxed text-zinc-500">
             {nadaAinda ? (
-              <>
-                Você ainda não recebeu comissão. Abra uma moeda e clique em{" "}
-                <strong className="text-zinc-300">Compartilhar</strong> para gerar o seu link de
-                indicação. Você recebe {feeLabel.affiliate} de cada operação de quem entrar por ele,
-                na moeda da rede em que a pessoa operar.
-              </>
+              t.aindaNao(<strong className="text-zinc-300">{t.compartilhar}</strong>, feeLabel.affiliate)
             ) : (
-              <>
-                Cliques são quantas pessoas abriram o seu link. Trades são quantas delas realmente
-                operaram.
-              </>
+              t.cliquesExplica
             )}
           </p>
         </CardBody>
@@ -161,6 +204,8 @@ function redeZerada(chain: ChainId): GanhosDaRede {
 /* ------------------------------------------------------------------ */
 
 function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | null }) {
+  const t = useTextos(TEXTOS);
+  const tx = t;
   const meta = CHAINS[rede.chain];
   const pronto = payoutReady();
   const temMovimento = rede.trades > 0;
@@ -178,14 +223,14 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
           />
           <CardTitle>{meta.label}</CardTitle>
         </div>
-        <Badge tone={temMovimento ? "safe" : "neutral"}>paga em {rede.symbol}</Badge>
+        <Badge tone={temMovimento ? "safe" : "neutral"}>{t.pagaEm(rede.symbol)}</Badge>
       </CardHeader>
 
       <CardBody className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-              Você já ganhou
+              {t.jaGanhou}
             </div>
             <div
               className={cn(
@@ -204,7 +249,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
           */}
           {PAYOUT_MODE === "accrual" && (
             <Button variant="chroma" disabled={!pronto || rede.commissionNative <= 0}>
-              Resgatar {rede.symbol}
+              {t.resgatar(rede.symbol)}
             </Button>
           )}
         </div>
@@ -217,29 +262,26 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
         {!carteira && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/30 bg-warn/[0.07] px-3 py-2.5">
             <span className="text-[11px] leading-relaxed text-warn">
-              Você não tem carteira {meta.label} na conta.{" "}
-              <strong>Indicações nessa rede não são pagas</strong> até vincular uma.
+              {t.semCarteira(meta.label, <strong>{t.naoSaoPagas}</strong>)}
             </span>
             <Link
               href="/profile?aba=conta"
               className="shrink-0 rounded-lg border border-warn/40 px-2.5 py-1 text-[11px] font-bold text-warn transition-colors hover:bg-warn/10"
             >
-              Vincular
+              {t.vincular}
             </Link>
           </div>
         )}
 
         <div className="grid grid-cols-3 gap-2">
-          <Mini rotulo="Hoje" valor={curto(rede.commissionToday)} sufixo={rede.symbol} destaque />
-          <Mini rotulo="7 dias" valor={curto(rede.commissionWeek)} sufixo={rede.symbol} />
+          <Mini rotulo={t.hoje} valor={curto(rede.commissionToday)} sufixo={rede.symbol} destaque />
+          <Mini rotulo={t.seteDias} valor={curto(rede.commissionWeek)} sufixo={rede.symbol} />
           <Mini rotulo="Trades" valor={String(rede.trades)} />
         </div>
 
         {!temMovimento ? (
           <p className="text-[11px] leading-relaxed text-zinc-600">
-            Nenhuma indicação sua operou na {meta.label} ainda. Quando operar, a comissão entra em{" "}
-            <strong className="text-zinc-500">{rede.symbol}</strong> e cada pagamento aparece aqui
-            com o comprovante.
+            {t.nenhumaOperou(meta.label, <strong className="text-zinc-500">{rede.symbol}</strong>)}
           </p>
         ) : (
           <>
@@ -248,7 +290,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
             {rede.byToken.length > 0 && (
               <div>
                 <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-                  De quais moedas veio
+                  {t.deQuais}
                 </h4>
                 <div className="space-y-1">
                   {rede.byToken.map((t) => (
@@ -273,7 +315,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
             {rede.recentTrades.length > 0 && (
               <div>
                 <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-                  Cada pagamento
+                  {t.cadaPagamento}
                 </h4>
                 <div className="space-y-1">
                   {rede.recentTrades.map((t) => (
@@ -288,7 +330,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
                         )}
                       </span>
                       <span className="flex items-center gap-2 text-[11px] text-zinc-600">
-                        {new Date(t.at).toLocaleString("pt-BR", {
+                        {new Date(t.at).toLocaleString(undefined, {
                           day: "2-digit",
                           month: "2-digit",
                           hour: "2-digit",
@@ -301,7 +343,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
                             rel="noreferrer"
                             className="text-marca transition-colors hover:text-chroma-cyan"
                           >
-                            comprovante ↗
+                            {tx.comprovante}
                           </a>
                         )}
                       </span>
@@ -313,14 +355,11 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
 
             {PAYOUT_MODE === "instant" ? (
               <p className="rounded-xl border border-bull/20 bg-bull/[0.05] p-3 text-[11px] leading-relaxed text-zinc-400">
-                <strong className="text-bull">Você não precisa resgatar.</strong> Cada{" "}
-                {feeLabel.affiliate} já foi transferido para a sua carteira dentro da própria
-                transação, na hora — e cada valor acima fica registrado na blockchain.
+                {t.naoPrecisa(<strong className="text-bull">{t.naoPrecisaForte}</strong>, feeLabel.affiliate)}
               </p>
             ) : !pronto ? (
               <p className="rounded-xl border border-warn/25 bg-warn/[0.06] p-3 text-[11px] leading-relaxed text-warn">
-                O resgate nesta rede ainda não está disponível. As suas comissões continuam sendo
-                somadas normalmente.
+                {t.resgateIndisponivel}
               </p>
             ) : null}
           </>
@@ -337,12 +376,13 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
  * progresso — que é justamente o que o gráfico existe pra mostrar.
  */
 function GraficoDiario({ dias, simbolo }: { dias: GanhosDaRede["daily"]; simbolo: string }) {
+  const t = useTextos(TEXTOS);
   const maior = Math.max(...dias.map((d) => d.commission), 0);
 
   return (
     <div>
       <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-        Últimos 14 dias
+        {t.ultimos14}
       </h4>
       <div className="flex h-20 items-end gap-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
         {dias.map((d) => {

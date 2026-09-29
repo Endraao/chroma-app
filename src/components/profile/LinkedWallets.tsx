@@ -1,5 +1,8 @@
 "use client";
 
+import { useIdioma, useTextos } from "@/components/IdiomaProvider";
+import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
+
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useSignMessage } from "wagmi";
@@ -27,7 +30,45 @@ import type { ChainId } from "@/lib/types";
  * está em `src/lib/wallet-auth.ts`: é a única que muda pra onde o dinheiro vai,
  * e sem prova qualquer um plugaria a própria carteira no apelido alheio.
  */
+const TEXTOS = traducoes({
+  en: {
+    naoAssina: "This Solana wallet cannot sign messages. Use Phantom or Solflare.", escolhaApelido: "Choose a nickname before linking wallets.",
+    reconecte: (n: string) => `Reconnect your ${n} wallet — it authorizes the link because it already belongs to this account. You can keep both connected at the same time.`,
+    conecteDaConta: "Connect this account's wallet to authorize the link.",
+    titulo: "Wallets that get paid", vinculadaMin: "linked", ou: " or ",
+    aviso: (r: React.ReactNode) => <>To link a new wallet, reconnect your {r} — it authorizes, because it already belongs to this account. You can keep both connected at the same time.</>,
+    recebeEm: (m: string) => `paid in ${m}`, nenhuma: "none — referrals on this network are not paid",
+    assinando: "Signing…", conectar: "Connect", trocarPraEsta: "Switch to this one", vinculada: "Linked", vincular: "Link",
+    umaAssinatura: "a signature", naoTransacao: "is not a transaction",
+    explica: (a: React.ReactNode, b: React.ReactNode) => <>Linking asks for {a} from the wallet already on the account — that is how we confirm the new wallet is yours too. Signing a message {b}: it does not move funds nor grant any permission over them.</>,
+  },
+  pt: {
+    naoAssina: "Esta carteira Solana não sabe assinar mensagens. Use a Phantom ou a Solflare.", escolhaApelido: "Escolha um apelido antes de vincular carteiras.",
+    reconecte: (n: string) => `Reconecte sua carteira ${n} — é ela que autoriza a vinculação, porque já pertence a esta conta. Pode manter as duas conectadas ao mesmo tempo.`,
+    conecteDaConta: "Conecte a carteira desta conta para autorizar a vinculação.",
+    titulo: "Carteiras que recebem", vinculadaMin: "vinculada", ou: " ou ",
+    aviso: (r: React.ReactNode) => <>Para vincular uma carteira nova, reconecte a sua {r} — é ela que autoriza, porque já pertence a esta conta. Você pode manter as duas conectadas ao mesmo tempo.</>,
+    recebeEm: (m: string) => `recebe em ${m}`, nenhuma: "nenhuma — indicações nesta rede não são pagas",
+    assinando: "Assinando…", conectar: "Conectar", trocarPraEsta: "Trocar pra esta", vinculada: "Vinculada", vincular: "Vincular",
+    umaAssinatura: "uma assinatura", naoTransacao: "não é uma transação",
+    explica: (a: React.ReactNode, b: React.ReactNode) => <>Vincular pede {a} da carteira que já está na conta — é assim que confirmamos que a carteira nova também é sua. Assinar uma mensagem {b}: não move fundos nem dá qualquer permissão sobre eles.</>,
+  },
+  zh: {
+    naoAssina: "该 Solana 钱包无法签名消息，请使用 Phantom 或 Solflare。", escolhaApelido: "请先选择昵称再关联钱包。",
+    reconecte: (n: string) => `请重新连接你的 ${n} 钱包 —— 它已属于该账户，由它授权关联。两个钱包可以同时保持连接。`,
+    conecteDaConta: "请连接该账户的钱包以授权关联。",
+    titulo: "收款钱包", vinculadaMin: "已关联", ou: " 或 ",
+    aviso: (r: React.ReactNode) => <>要关联新钱包，请重新连接你的 {r} —— 它已属于该账户，由它授权。两个钱包可以同时保持连接。</>,
+    recebeEm: (m: string) => `以 ${m} 收款`, nenhuma: "无 —— 该网络上的推荐不会获得报酬",
+    assinando: "签名中…", conectar: "连接", trocarPraEsta: "改用此钱包", vinculada: "已关联", vincular: "关联",
+    umaAssinatura: "一次签名", naoTransacao: "不是交易",
+    explica: (a: React.ReactNode, b: React.ReactNode) => <>关联需要账户中已有钱包的{a} —— 以此确认新钱包也属于你。签名消息{b}：不会转移资金，也不会授予任何权限。</>,
+  },
+});
+
 export function LinkedWallets() {
+  const t = useTextos(TEXTOS);
+  const idioma = useIdioma();
   const account = useChromaAccount();
   const [modalAberto, setModalAberto] = useState(false);
   const [ocupada, setOcupada] = useState<ChainId | null>(null);
@@ -55,7 +96,7 @@ export function LinkedWallets() {
 
     if (assinanteEhSolana) {
       if (!assinarSolana) {
-        setErro("Esta carteira Solana não sabe assinar mensagens. Use a Phantom ou a Solflare.");
+        setErro(t.naoAssina);
         return null;
       }
       const bytes = await assinarSolana(new TextEncoder().encode(mensagem));
@@ -74,7 +115,7 @@ export function LinkedWallets() {
       return;
     }
     if (!nickname) {
-      setErro("Escolha um apelido antes de vincular carteiras.");
+      setErro(t.escolhaApelido);
       return;
     }
 
@@ -99,9 +140,8 @@ export function LinkedWallets() {
 
       setErro(
         temCarteiraNaConta
-          ? `Reconecte sua carteira ${nomes} — é ela que autoriza a vinculação, ` +
-            `porque já pertence a esta conta. Pode manter as duas conectadas ao mesmo tempo.`
-          : "Conecte a carteira desta conta para autorizar a vinculação.",
+          ? t.reconecte(nomes)
+          : t.conecteDaConta,
       );
       return;
     }
@@ -163,8 +203,8 @@ export function LinkedWallets() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Carteiras que recebem</CardTitle>
-        {salvou && <Badge tone="safe">vinculada</Badge>}
+        <CardTitle>{t.titulo}</CardTitle>
+        {salvou && <Badge tone="safe">{t.vinculadaMin}</Badge>}
       </CardHeader>
 
       <CardBody className="space-y-2">
@@ -181,10 +221,7 @@ export function LinkedWallets() {
         */}
         {nickname && !account.assinante && temCarteiraNaConta && (
           <div className="rounded-lg border border-warn/30 bg-warn/[0.07] px-3 py-2.5 text-[11.5px] leading-relaxed text-warn">
-            Para vincular uma carteira nova, reconecte a sua{" "}
-            <strong>{redesDaConta.map((c) => CHAINS[c].label).join(" ou ")}</strong> — é ela que
-            autoriza, porque já pertence a esta conta. Você pode manter as duas conectadas ao mesmo
-            tempo.
+            {t.aviso(<strong>{redesDaConta.map((c) => CHAINS[c].label).join(t.ou)}</strong>)}
           </div>
         )}
 
@@ -216,7 +253,7 @@ export function LinkedWallets() {
                 <div className="text-[13px] font-semibold text-zinc-200">
                   {meta.label}{" "}
                   <span className="font-normal text-zinc-600">
-                    · recebe em {MOEDA_DA_REDE[chain]}
+                    · {t.recebeEm(MOEDA_DA_REDE[chain])}
                   </span>
                 </div>
                 <div className="tnum truncate text-[11px] text-zinc-500">
@@ -224,7 +261,7 @@ export function LinkedWallets() {
                     shortenAddress(vinculada, 6)
                   ) : (
                     <span className="text-warn">
-                      nenhuma — indicações nesta rede não são pagas
+                      {t.nenhuma}
                     </span>
                   )}
                 </div>
@@ -237,26 +274,23 @@ export function LinkedWallets() {
                 onClick={() => vincular(chain)}
               >
                 {ocupada === chain
-                  ? "Assinando…"
+                  ? t.assinando
                   : !conectada
-                    ? "Conectar"
+                    ? t.conectar
                     : precisaTrocar
-                      ? "Trocar pra esta"
+                      ? t.trocarPraEsta
                       : vinculada
-                        ? "Vinculada"
-                        : "Vincular"}
+                        ? t.vinculada
+                        : t.vincular}
               </Button>
             </div>
           );
         })}
 
-        {erro && <p className="text-[12px] text-bear">{erro}</p>}
+        {erro && <p className="text-[12px] text-bear">{traduzirDoServidor(erro, idioma)}</p>}
 
         <p className="border-t border-white/[0.06] pt-3 text-[11px] leading-relaxed text-zinc-600">
-          Vincular pede <strong className="text-zinc-400">uma assinatura</strong> da carteira que já
-          está na conta — é assim que confirmamos que a carteira nova também é sua. Assinar uma
-          mensagem <strong className="text-zinc-400">não é uma transação</strong>: não move fundos
-          nem dá qualquer permissão sobre eles.
+          {t.explica(<strong className="text-zinc-400">{t.umaAssinatura}</strong>, <strong className="text-zinc-400">{t.naoTransacao}</strong>)}
         </p>
       </CardBody>
 
