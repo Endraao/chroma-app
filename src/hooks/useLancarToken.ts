@@ -63,6 +63,8 @@ export interface DadosDoLancamento {
   compraInicial?: string;
   /** pra quem vão as recompensas de criador (só Solana por enquanto) */
   recompensas?: "criador" | "detentores";
+  /** par de liquidez na Solana: SOL ou USDC */
+  par?: "SOL" | "USDC";
 }
 
 const MENSAGENS = traducoes({
@@ -159,6 +161,7 @@ export function useLancarToken() {
           carteiraDaChroma,
           taxaSol: CHAIN_FEES.solana.launchFee,
           paraDetentores: dados.recompensas === "detentores",
+          par: dados.par,
         });
         txA.sign([mint]);
         const assinatura = await sendTransaction(txA, connection);
@@ -206,6 +209,7 @@ export function useLancarToken() {
             carteiraDaChroma,
             compraSol,
             paraDetentores,
+            par: dados.par,
           });
           const assinaturaB = await sendTransaction(txB, connection);
           const blocoB = await connection.getLatestBlockhash();

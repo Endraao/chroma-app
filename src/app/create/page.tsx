@@ -593,6 +593,7 @@ export default function CreateTokenPage() {
             banner: banner?.file ?? null,
             compraInicial: form.initialBuy.trim() || undefined,
             recompensas: chain === "solana" ? recompensas : "criador",
+            par: chain === "solana" && pair === "USDC" ? "USDC" : "SOL",
           });
 
           /*

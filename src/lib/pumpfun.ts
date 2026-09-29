@@ -43,6 +43,10 @@ import { NATIVE_MINT, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/sp
  * As duas foram simuladas na mainnet antes de entrar aqui.
  */
 
+/** Pares aceitos no lançamento: a pump.fun cota a moeda em SOL ou em USDC. */
+export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+export type ParDaPump = "SOL" | "USDC";
+
 /** A parte da taxa de criador que vai para a Chroma, em bps (3000 = 30%). */
 export const PARTE_DA_CHROMA_BPS = 3000;
 
@@ -71,6 +75,7 @@ export async function transacaoDeCriacao({
   carteiraDaChroma,
   taxaSol,
   paraDetentores = false,
+  par = "SOL",
 }: {
   conn: Connection;
   criador: PublicKey;
@@ -82,10 +87,12 @@ export async function transacaoDeCriacao({
   taxaSol: number;
   /** recompensas do criador vão para quem segura a moeda, não pro criador */
   paraDetentores?: boolean;
+  par?: ParDaPump;
 }) {
   const { PUMP_SDK } = await sdk();
   const ixs: TransactionInstruction[] = [
-    ComputeBudgetProgram.setComputeUnitLimit({ units: 250_000 }),
+    // Cotação em token (USDC) gasta bem mais processamento que em SOL.
+    ComputeBudgetProgram.setComputeUnitLimit({ units: par === "USDC" ? 500_000 : 250_000 }),
     ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
   ];
   if (taxaSol > 0) {
@@ -110,6 +117,7 @@ export async function transacaoDeCriacao({
       // Nesse modo a divisão com a Chroma não existe (o criador vira a conta
       // de recompensas e não pode ser alterado).
       ...(paraDetentores ? { holderReward: true } : {}),
+      ...(par === "USDC" ? { quoteMint: USDC_MINT, quoteTokenProgram: TOKEN_PROGRAM_ID } : {}),
     }),
   );
   return montar(conn, criador, ixs);
@@ -127,13 +135,16 @@ export async function transacaoDeDivisao({
   carteiraDaChroma,
   compraSol,
   paraDetentores = false,
+  par = "SOL",
 }: {
   conn: Connection;
   criador: PublicKey;
   mint: PublicKey;
   carteiraDaChroma: PublicKey;
+  /** compra inicial, na moeda do par (SOL ou USDC) */
   compraSol: number;
   paraDetentores?: boolean;
+  par?: ParDaPump;
 }) {
   const { PUMP_SDK, OnlinePumpSdk, feeSharingConfigPda, getBuyTokenAmountFromSolAmount } = await sdk();
   const BN = (await import("bn.js")).default;
@@ -148,7 +159,7 @@ export async function transacaoDeDivisao({
         { address: criador, shareBps: 10_000 - PARTE_DA_CHROMA_BPS },
         { address: carteiraDaChroma, shareBps: PARTE_DA_CHROMA_BPS },
       ],
-      quoteMint: NATIVE_MINT,
+      quoteMint: par === "USDC" ? USDC_MINT : NATIVE_MINT,
       quoteTokenProgram: TOKEN_PROGRAM_ID,
     }),
   ];
@@ -156,11 +167,12 @@ export async function transacaoDeDivisao({
   if (compraSol > 0) {
     const online = new OnlinePumpSdk(conn);
     const [global, feeConfig] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig()]);
-    const estado = await online.fetchBuyState(mint, criador, TOKEN_2022_PROGRAM_ID);
+    const estado = await online.fetchBuyState(mint, criador, TOKEN_2022_PROGRAM_ID, par === "USDC" ? USDC_MINT : undefined);
     // Depois da divisão, a taxa de criador vai para a conta de divisão, não
     // mais para o criador: a compra precisa apontar para ela.
     if (!paraDetentores) estado.bondingCurve = { ...estado.bondingCurve, creator: feeSharingConfigPda(mint) };
-    const solAmount = new BN(Math.round(compraSol * LAMPORTS_PER_SOL));
+    // SOL tem 9 casas; USDC, 6.
+    const solAmount = new BN(Math.round(compraSol * (par === "USDC" ? 1e6 : LAMPORTS_PER_SOL)));
     const amount = getBuyTokenAmountFromSolAmount({
       global,
       feeConfig,
@@ -169,19 +181,21 @@ export async function transacaoDeDivisao({
       amount: solAmount,
       quoteMint: estado.quoteMint,
     });
+    const base = {
+      global,
+      bondingCurveAccountInfo: estado.bondingCurveAccountInfo,
+      bondingCurve: estado.bondingCurve,
+      associatedUserAccountInfo: estado.associatedUserAccountInfo,
+      mint,
+      user: criador,
+      amount,
+      slippage: 2,
+      tokenProgram: TOKEN_2022_PROGRAM_ID,
+    };
     ixs.push(
-      ...(await PUMP_SDK.buyInstructions({
-        global,
-        bondingCurveAccountInfo: estado.bondingCurveAccountInfo,
-        bondingCurve: estado.bondingCurve,
-        associatedUserAccountInfo: estado.associatedUserAccountInfo,
-        mint,
-        user: criador,
-        amount,
-        solAmount,
-        slippage: 2,
-        tokenProgram: TOKEN_2022_PROGRAM_ID,
-      })),
+      ...(par === "USDC"
+        ? await PUMP_SDK.buyV2Instructions({ ...base, quoteAmount: solAmount, quoteTokenProgram: TOKEN_PROGRAM_ID })
+        : await PUMP_SDK.buyInstructions({ ...base, solAmount })),
     );
   }
   return montar(conn, criador, ixs);

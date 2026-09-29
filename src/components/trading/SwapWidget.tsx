@@ -198,6 +198,7 @@ function SolanaSwap({
   const { affiliate, affiliateRef } = useAffiliateTracking(chain);
   const { connected, publicKey } = useWallet();
   const precoDoSol = usePrecoDoSol();
+  const idiomaSol = useIdioma();
 
   const comprando = side === "buy";
 
@@ -382,7 +383,7 @@ function SolanaSwap({
 
           {swap.error && (
             <p className="rounded-lg border border-bear/25 bg-bear/[0.06] px-3 py-2 text-[11px] leading-snug text-bear">
-              {swap.error}
+              {traduzirDoServidor(swap.error, idiomaSol)}
             </p>
           )}
 

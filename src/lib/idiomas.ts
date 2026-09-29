@@ -192,6 +192,7 @@ export function textos(idioma: Idioma): Textos {
  * que não estiver aqui passa como veio.
  */
 const DO_SERVIDOR: Record<string, { en: string; zh: string }> = {
+  "Sua carteira não tem SOL para pagar a taxa de rede. Coloque um pouco de SOL (0,01 já basta) e tente de novo.": { en: "Your wallet has no SOL to pay the network fee. Add a little SOL (0.01 is enough) and try again.", zh: "你的钱包没有 SOL 支付网络费用。请存入少量 SOL（0.01 即可）后重试。" },
   "Não foi possível abrir esta imagem.": { en: "Could not open this image.", zh: "无法打开这张图片。" },
   "Não foi possível ler esta imagem.": { en: "Could not read this image.", zh: "无法读取这张图片。" },
   "a rede recusou a migração": { en: "the network rejected the migration", zh: "网络拒绝了迁移" },

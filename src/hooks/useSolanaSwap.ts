@@ -316,7 +316,16 @@ export function useSolanaSwap({
       setStep("");
       const message = err instanceof Error ? err.message : String(err);
       // Cancelar no Phantom não é erro: é o usuário mudando de ideia.
-      setError(/user rejected|rejected the request|cancel/i.test(message) ? null : message);
+      // Carteira sem SOL nenhum não paga a taxa de rede: a Solana responde
+      // com uma frase técnica que ninguém entende.
+      const semSol = /no record of a prior credit|insufficient (funds|lamports)/i.test(message);
+      setError(
+        /user rejected|rejected the request|cancel/i.test(message)
+          ? null
+          : semSol
+            ? "Sua carteira não tem SOL para pagar a taxa de rede. Coloque um pouco de SOL (0,01 já basta) e tente de novo."
+            : message,
+      );
     }
   }, [quote, publicKey, signTransaction, connection, grossRaw, inputMint, affiliate, affiliateRef, tokenMint, tokenSymbol]);
 
