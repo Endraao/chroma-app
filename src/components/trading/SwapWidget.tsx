@@ -2,6 +2,7 @@
 
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
+import { feeLabelFor } from "@/lib/fees";
 
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -16,6 +17,8 @@ import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
 import { useTradeSolana } from "@/hooks/useTradeSolana";
 import { useCurvaEvm } from "@/hooks/useCurvaEvm";
 import { useCurvaSwapEvm } from "@/hooks/useCurvaSwapEvm";
+import { useSwapExternoEvm } from "@/hooks/useSwapExternoEvm";
+import type { Negociavel } from "@/lib/negociavel-evm";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
 import { ABI_DA_CURVA, CHROMA_CURVE_EVM } from "@/lib/chroma-evm";
 import { CHAINS, robinhoodChain } from "@/lib/web3";
@@ -85,10 +88,11 @@ const TEXTOS = traducoes({
     ajustes: "Order settings", slippageMax: "Max slippage",
     explicaSlippage: (c: React.ReactNode) => <>How much the price may get worse between signing and execution. Beyond this limit the transaction is {c} instead of going through at any price. It protects you from losing value in a sudden swing.</>,
     cancelada: "cancelled", minimo: "Minimum received", rota: "Route",
-    naoNegocia: "This coin cannot be traded here yet",
-    naoNegociaTexto: (rede: string) => `It was not launched on Chroma, and trading external coins on ${rede} is in development. Coins created on Chroma already trade normally.`,
+    naoNegocia: "This coin only trades on the platform where it was created",
+    naoNegociaTexto: (rede: string) => `Its pool on ${rede} does not accept outside routers (or it is still on its launchpad's curve), so it cannot be bought or sold through Chroma. Coins created on Chroma and coins with open Uniswap pools trade here normally.`,
+    verificando: "Checking whether this coin can be traded here…",
     verExplorer: "View on explorer ↗", voceBaga: "You pay", saldoDois: "Balance:", voceRecebe: "You receive (estimated)",
-    slippage: "Slippage", taxa12: "1.2% fee",
+    slippage: "Slippage", taxa12: "1.2% fee", taxaDe: (p: string) => `${p} fee`,
     curvaEncheu: "The curve is full. The liquidity still has to be moved to Uniswap — anyone can do it, it only costs the network fee. After that the coin trades anywhere.",
     levando: "Moving to Uniswap…", levar: "Move to Uniswap", indisponivel: "Unavailable right now",
     duasAssinaturas: "Selling asks for two signatures: one allowing the curve to take the tokens and one for the sale itself. The approval is for the exact amount, never unlimited.",
@@ -107,10 +111,11 @@ const TEXTOS = traducoes({
     ajustes: "Ajustes da ordem", slippageMax: "Slippage máximo",
     explicaSlippage: (c: React.ReactNode) => <>O quanto o preço pode piorar entre você assinar e a ordem ser executada. Acima desse limite a transação é {c} em vez de sair a qualquer preço. É o que protege você de perder valor numa oscilação brusca.</>,
     cancelada: "cancelada", minimo: "Mínimo garantido", rota: "Rota",
-    naoNegocia: "Esta moeda não pode ser negociada aqui ainda",
-    naoNegociaTexto: (rede: string) => `Ela não foi lançada na Chroma, e a negociação de moedas externas na ${rede} está em desenvolvimento. As moedas criadas na Chroma já negociam normalmente.`,
+    naoNegocia: "Esta moeda só negocia na plataforma onde foi criada",
+    naoNegociaTexto: (rede: string) => `A pool dela na ${rede} não aceita roteadores de fora (ou ela ainda está na curva da plataforma de origem), então não dá pra comprar nem vender pela Chroma. Moedas criadas na Chroma e moedas com pool aberta na Uniswap negociam aqui normalmente.`,
+    verificando: "Verificando se esta moeda pode ser negociada aqui…",
     verExplorer: "Ver no explorer ↗", voceBaga: "Você paga", saldoDois: "Saldo:", voceRecebe: "Você recebe (estimado)",
-    slippage: "Slippage", taxa12: "taxa 1,2%",
+    slippage: "Slippage", taxa12: "taxa 1.2%", taxaDe: (p: string) => `taxa ${p}`,
     curvaEncheu: "A curva encheu. Falta levar a liquidez pra Uniswap — qualquer pessoa pode fazer isso, custa só a taxa de rede. Depois disso a moeda negocia em qualquer lugar.",
     levando: "Levando pra Uniswap…", levar: "Levar pra Uniswap", indisponivel: "Indisponível agora",
     duasAssinaturas: "Vender pede duas assinaturas: uma autorizando a curva a retirar os tokens e outra da venda em si. A autorização é pelo valor exato, não infinita.",
@@ -129,10 +134,11 @@ const TEXTOS = traducoes({
     ajustes: "订单设置", slippageMax: "最大滑点",
     explicaSlippage: (c: React.ReactNode) => <>从签名到执行之间价格可以变差的幅度。超过这个限度，交易会被{c}，而不是以任意价格成交。这能保护你免受剧烈波动带来的损失。</>,
     cancelada: "取消", minimo: "最少获得", rota: "路由",
-    naoNegocia: "该代币暂时无法在这里交易",
-    naoNegociaTexto: (rede: string) => `它不是在 Chroma 上发行的，${rede} 外部代币交易功能正在开发中。在 Chroma 创建的代币已可正常交易。`,
+    naoNegocia: "该代币只能在其创建平台上交易",
+    naoNegociaTexto: (rede: string) => `它在 ${rede} 上的池子不接受外部路由（或仍处于其发行平台的曲线阶段），因此无法通过 Chroma 买卖。在 Chroma 创建的代币以及拥有开放 Uniswap 池子的代币可在这里正常交易。`,
+    verificando: "正在检查该代币能否在这里交易…",
     verExplorer: "在浏览器中查看 ↗", voceBaga: "你支付", saldoDois: "余额：", voceRecebe: "你将获得（预估）",
-    slippage: "滑点", taxa12: "手续费 1.2%",
+    slippage: "滑点", taxa12: "手续费 1.2%", taxaDe: (p: string) => `手续费 ${p}`,
     curvaEncheu: "曲线已满，还需把流动性迁移到 Uniswap —— 任何人都可以操作，只需支付网络手续费。之后代币可以在任何地方交易。",
     levando: "正在迁移到 Uniswap…", levar: "迁移到 Uniswap", indisponivel: "暂不可用",
     duasAssinaturas: "卖出需要两次签名：一次授权曲线转走代币，一次执行卖出本身。授权额度精确到本次数量，绝不无限授权。",
@@ -144,11 +150,14 @@ export function SwapWidget({
   symbol,
   chain,
   tokenAddress,
+  pool = null,
   priceUsd,
 }: {
   symbol: string;
   chain: ChainId;
   tokenAddress: string;
+  /** o par na DEX (id da pool v4 na Robinhood), quando conhecido */
+  pool?: string | null;
   /** preço ao vivo, vindo do gráfico — a ponte entre token e dólar */
   priceUsd: number;
 }) {
@@ -157,7 +166,7 @@ export function SwapWidget({
   return meta.kind === "solana" ? (
     <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} />
   ) : (
-    <EvmSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} />
+    <EvmSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} pool={pool} />
   );
 }
 
@@ -169,11 +178,14 @@ function SolanaSwap({
   symbol,
   chain,
   tokenAddress,
+  pool = null,
   priceUsd,
 }: {
   symbol: string;
   chain: ChainId;
   tokenAddress: string;
+  /** o par na DEX (id da pool v4 na Robinhood), quando conhecido */
+  pool?: string | null;
   priceUsd: number;
 }) {
   const t = useTextos(TEXTOS);
@@ -728,10 +740,12 @@ function EvmSwap({
   symbol,
   chain,
   tokenAddress,
+  pool,
 }: {
   symbol: string;
   chain: ChainId;
   tokenAddress: string;
+  pool: string | null;
 }) {
   const t = useTextos(TEXTOS);
   const meta = CHAINS[chain];
@@ -746,7 +760,7 @@ function EvmSwap({
   const [digitado, setDigitado] = useState("");
   const [slippageBps, setSlippageBps] = useState(300);
 
-  const swap = useCurvaSwapEvm({
+  const swapDaCurva = useCurvaSwapEvm({
     moeda: tokenAddress,
     curva,
     side,
@@ -757,8 +771,41 @@ function EvmSwap({
     habilitado: Boolean(curva),
   });
 
+  /*
+   * Moeda de fora da curva (ou que já migrou): negocia pela Uniswap v4, se a
+   * pool aceitar o roteador público. O servidor confere simulando compra E
+   * venda — ver src/lib/negociavel-evm.ts.
+   */
+  const precisaDeDex = !carregando && (!curva || curva.migrada);
+  const [externo, setExterno] = useState<Negociavel | "verificando" | null>(null);
+  useEffect(() => {
+    if (!precisaDeDex) return;
+    let cancelado = false;
+    setExterno("verificando");
+    fetch(`/api/negociavel?moeda=${tokenAddress}${pool ? `&pool=${pool}` : ""}`)
+      .then((r) => r.json())
+      .then((r: Negociavel) => !cancelado && setExterno(r))
+      .catch(() => !cancelado && setExterno({ ok: false, motivo: "sem-pool" }));
+    return () => {
+      cancelado = true;
+    };
+  }, [precisaDeDex, tokenAddress, pool]);
+  const liberado = typeof externo === "object" && externo?.ok ? externo : null;
+
+  const swapExterno = useSwapExternoEvm({
+    moeda: tokenAddress,
+    pool: liberado?.pool ?? null,
+    decimais: liberado?.decimais ?? 18,
+    side,
+    valor: digitado,
+    slippageBps: Math.max(slippageBps, 500),
+    afiliado: affiliate,
+    habilitado: Boolean(liberado),
+  });
+  const swap = liberado ? swapExterno : swapDaCurva;
+
   const ehCompra = side === "buy";
-  const podeOperar = ehCompra ? podeComprar : podeVender;
+  const podeOperar = liberado ? true : ehCompra ? podeComprar : podeVender;
 
   /*
    * Saldo de ETH e da moeda, relido a cada 15s e logo depois de cada negócio
@@ -843,7 +890,15 @@ function EvmSwap({
   }
 
   /* Moeda que não é da curva: o caminho por DEX ainda não existe aqui. */
-  if (!carregando && !curva) {
+  if (precisaDeDex && (externo === "verificando" || externo === null)) {
+    return (
+      <Card className="overflow-hidden">
+        <div className="px-4 py-8 text-center text-[12px] text-zinc-500">{t.verificando}</div>
+      </Card>
+    );
+  }
+
+  if (precisaDeDex && !liberado) {
     return (
       <Card className="overflow-hidden">
         <AbasDeLado side="buy" onChange={() => {}} disabled />
@@ -972,7 +1027,7 @@ function EvmSwap({
           <div className="flex justify-between">
             <span className="text-zinc-500">{t.rota}</span>
             <span className="text-zinc-300">
-              {curva?.migrada ? "Uniswap v4" : t.curvaDaChromaMaiusc}, {t.taxa12}
+              {liberado ? `Uniswap v4, ${t.taxaDe(feeLabelFor("robinhood").swap)}` : <>{t.curvaDaChromaMaiusc}, {t.taxa12}</>}
             </span>
           </div>
         </div>

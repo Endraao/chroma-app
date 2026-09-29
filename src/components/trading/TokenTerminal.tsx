@@ -194,6 +194,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
               symbol={token.symbol}
               chain={token.chain}
               tokenAddress={token.address}
+              pool={token.pairAddress ?? null}
               priceUsd={price}
             />
           </Suspense>

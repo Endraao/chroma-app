@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useLancarToken } from "@/hooks/useLancarToken";
+import { chainIcon } from "@/lib/chain-icons";
 import { PARTE_DA_CHROMA_BPS } from "@/lib/pumpfun";
 import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
@@ -283,7 +284,8 @@ export default function CreateTokenPage() {
                   : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.14]",
               )}
             >
-              <div className={cn("text-sm font-bold", chain === id ? "text-marca" : "text-zinc-300")}>
+              <div className={cn("flex items-center gap-2 text-sm font-bold", chain === id ? "text-marca" : "text-zinc-300")}>
+                <img src={chainIcon(id)} alt="" width={18} height={18} className="size-[18px] rounded-full" />
                 {CHAINS[id].label}
               </div>
               <div className="text-[11px] text-zinc-600">{t.gasEm(CHAINS[id].nativeSymbol)}</div>

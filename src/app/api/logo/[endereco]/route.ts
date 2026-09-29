@@ -69,7 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ enderec
   });
 
   // Sem logo no contrato: a DexScreener costuma ter a arte que o time enviou.
-  const daDex = await cached(`logo-dex:${endereco.toLowerCase()}`, UM_DIA * 1000, async () => {
+  const daDex = await cached(`logo-dex2:${endereco.toLowerCase()}`, 10 * 60 * 1000, async () => {
     try {
       const r = await fetch(`https://api.dexscreener.com/tokens/v1/robinhood/${endereco}`, { signal: AbortSignal.timeout(6_000) });
       const pares = (await r.json()) as { info?: { imageUrl?: string } }[];

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { useTextos } from "@/components/IdiomaProvider";
-import { Sparkline } from "@/components/ui/Sparkline";
+import { chainIcon } from "@/lib/chain-icons";
 import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
 import { cn, formatPct, formatUsd, miniatura, shortenAddress, timeAgo } from "@/lib/utils";
@@ -40,11 +40,15 @@ export function CardDaMoeda({ token, destaque = false }: { token: TokenSummary; 
       >
         <ImagemDaMoeda token={token} />
 
-        {/* Mini-gráfico sobre a arte, como na pump.fun */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
-        <div className="pointer-events-none absolute bottom-1.5 right-2 h-8 w-1/2 opacity-90">
-          <Sparkline changes={token.priceChanges} up={up} />
-        </div>
+        {/* A rede da moeda, sempre visível: o painel da Chroma mistura as duas */}
+        <img
+          src={chainIcon(token.chain)}
+          alt={token.chain}
+          width={20}
+          height={20}
+          className="absolute left-2 top-2 size-5 rounded-full ring-2 ring-black/60"
+        />
+
 
         {nova ? (
           <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-bull">

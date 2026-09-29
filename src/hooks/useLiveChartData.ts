@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePoolTicker } from "@/hooks/usePoolTicker";
 import { useEvmPoolTicker } from "@/hooks/useEvmPoolTicker";
 import type { Candle, ChainId } from "@/lib/types";
+import { CHAINS } from "@/lib/web3";
 
 export type Interval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
 
@@ -178,11 +179,20 @@ export function useLiveChartData({
 
     const load = async (isRefresh = false, tentativa = 1): Promise<void> => {
       try {
-        const res = await fetch(`/api/candles?address=${address}&interval=${interval}`, {
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error(`api/candles respondeu ${res.status}`);
-        const data = (await res.json()) as Candle[];
+        /*
+         * Primeiro direto do navegador na GeckoTerminal: cada visitante tem o
+         * próprio limite de consultas. Pelo servidor, todo mundo dividia o
+         * mesmo IP da Vercel, e o gráfico ficava minutos em "limitando as
+         * consultas". Se falhar (ou for moeda da curva), cai no servidor.
+         */
+        let data = pool ? await velasDiretoDaGecko(chain, pool, address, interval) : null;
+        if (!data?.length) {
+          const res = await fetch(`/api/candles?address=${address}&interval=${interval}`, {
+            cache: "no-store",
+          });
+          if (!res.ok) throw new Error(`api/candles respondeu ${res.status}`);
+          data = (await res.json()) as Candle[];
+        }
         if (cancelled) return;
 
         /*
@@ -253,7 +263,7 @@ export function useLiveChartData({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [address, interval, intervalSec]);
+  }, [address, interval, intervalSec, pool, chain]);
 
   /* --- 2. Preço ao vivo, movendo a vela atual ---------------------- */
 
@@ -482,4 +492,39 @@ export function useLiveChartData({
     intervaloDasVelas,
     setInterval,
   };
+}
+
+const GECKO_TF: Record<string, { path: string; aggregate: number }> = {
+  "1m": { path: "minute", aggregate: 1 },
+  "5m": { path: "minute", aggregate: 5 },
+  "15m": { path: "minute", aggregate: 15 },
+  "1h": { path: "hour", aggregate: 1 },
+  "4h": { path: "hour", aggregate: 4 },
+  "1d": { path: "day", aggregate: 1 },
+};
+
+async function velasDiretoDaGecko(
+  chain: ChainId,
+  pool: string,
+  address: string,
+  interval: string,
+): Promise<Candle[] | null> {
+  const tf = GECKO_TF[interval];
+  const rede = CHAINS[chain]?.gecko;
+  if (!tf || !rede) return null;
+  try {
+    const r = await fetch(
+      `https://api.geckoterminal.com/api/v2/networks/${rede}/pools/${pool}/ohlcv/${tf.path}` +
+        `?aggregate=${tf.aggregate}&limit=300&currency=usd&token=${address}`,
+      { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) },
+    );
+    if (!r.ok) return null;
+    const j = (await r.json()) as { data?: { attributes?: { ohlcv_list?: number[][] } } };
+    const lista = j.data?.attributes?.ohlcv_list ?? [];
+    return lista
+      .map(([time, open, high, low, close, volume]) => ({ time, open, high, low, close, volume }))
+      .sort((a, b) => a.time - b.time);
+  } catch {
+    return null;
+  }
 }

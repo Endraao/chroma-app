@@ -3,6 +3,7 @@ import Link from "next/link";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
 import { CardDaMoeda } from "@/components/home/CardDaMoeda";
+import { PainelDaChroma } from "@/components/home/PainelDaChroma";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
@@ -125,15 +126,11 @@ const SORTS: {
   key: AbaDoMercado;
   rotulo: "abaChroma" | "abaRecentes" | "abaAltas" | "abaVolume" | "abaMcap";
 }[] = [
-  { key: "chroma", rotulo: "abaChroma" },
   { key: "new", rotulo: "abaRecentes" },
   { key: "gainers", rotulo: "abaAltas" },
   { key: "volume", rotulo: "abaVolume" },
   { key: "marketCap", rotulo: "abaMcap" },
 ];
-
-/** Quantas lançadas na Chroma aparecem na faixa ao vivo do topo. */
-const QUANTAS_DA_CASA = 14;
 
 /**
  * A vitrine, no formato da pump.fun: arte grande, grade densa, abas em cima.
@@ -160,12 +157,12 @@ export default async function HomePage({
     moedasDaChroma().catch(() => [] as TokenSummary[]),
   ]);
 
-  const lancadasNaChroma = daCasa
-    .filter((t) => t.chain === chain && !FORA_DA_VITRINE.has(t.address.toLowerCase()))
-    .sort((a, b) => b.createdAt - a.createdAt);
+  // Todas as redes: o painel da Chroma não segue a rede escolhida.
+  const lancadasNaChroma = daCasa.filter((t) => !FORA_DA_VITRINE.has(t.address.toLowerCase()));
+  const daChromaNaRede = lancadasNaChroma.filter((t) => t.chain === chain);
 
   const { isDemo } = principal;
-  const tokens = sort === "chroma" ? lancadasNaChroma : principal.tokens;
+  const tokens = sort === "chroma" ? daChromaNaRede : principal.tokens;
 
   const linkCom = (params: { sort?: AbaDoMercado; chain?: ChainId | null }) => {
     const proximoSort = params.sort ?? sort;
@@ -190,22 +187,8 @@ export default async function HomePage({
         </div>
       )}
 
-      {/* Lançadas na Chroma — ao vivo */}
-      {sort !== "chroma" && lancadasNaChroma.length > 0 && (
-        <section>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="relative flex size-2">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-bull opacity-60" />
-              <span className="relative inline-flex size-2 rounded-full bg-bull" />
-            </span>
-            <h2 className="text-[15px] font-black tracking-tight text-zinc-100">{t.lancadasTitulo}</h2>
-            <Link href={linkCom({ sort: "chroma" })} className="ml-auto text-[12px] font-semibold text-marca hover:underline">
-              {t.verTodas}
-            </Link>
-          </div>
-          <Grade tokens={lancadasNaChroma.slice(0, QUANTAS_DA_CASA)} destaque />
-        </section>
-      )}
+      {/* Criadas na Chroma — ao vivo, das duas redes */}
+      <PainelDaChroma moedas={lancadasNaChroma} />
 
       <section id="mercado" className="scroll-mt-20">
         <div className="mb-4 flex flex-wrap items-center gap-1.5">

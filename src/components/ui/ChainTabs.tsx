@@ -44,8 +44,9 @@ export function ChainTabs({ ativa, sort }: { ativa: ChainId; sort: string }) {
   const hrefDe = (chain: ChainId) => {
     const q = new URLSearchParams();
     if (sort && sort !== "new") q.set("sort", sort);
-    /* Solana é o padrão e não precisa ir na URL — igual ao seletor do topo. */
-    if (chain !== "solana") q.set("chain", chain);
+    // Sempre na URL: a rede padrão mudou pra Robinhood, e "/" sem rede
+    // abria a Robinhood mesmo clicando em Solana.
+    q.set("chain", chain);
     const s = q.toString();
     return s ? `/?${s}` : "/";
   };

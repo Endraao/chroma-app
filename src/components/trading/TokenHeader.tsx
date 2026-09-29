@@ -157,7 +157,7 @@ export function TokenHeader({
               <EloExterno href={token.twitter} rotulo="X" />
             ) : (
               <EloExterno
-                href={`https://x.com/search?q=${encodeURIComponent(token.address)}&f=live`}
+                href={`https://x.com/search?q=${encodeURIComponent(`${token.address} OR $${token.symbol}`)}&f=live`}
                 rotulo={t.buscarNoX}
               />
             )}

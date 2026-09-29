@@ -109,11 +109,8 @@ export function SeletorDeRede() {
     const sort = parametros.get("sort");
     if (sort && sort !== "new") q.set("sort", sort);
 
-    /*
-     * Solana não vai pra URL: ela é o padrão, e `/` já significa Solana.
-     * Assim o endereço fica limpo pra quem for compartilhar a home.
-     */
-    if (chain !== "solana") q.set("chain", chain);
+    // Sempre na URL: "/" abre a rede padrão (Robinhood), não a Solana.
+    q.set("chain", chain);
 
     const s = q.toString();
     router.push(s ? `/?${s}` : "/");

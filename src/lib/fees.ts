@@ -93,7 +93,7 @@ export const CHAIN_FEES: Record<ChainId, ChainFeeConfig> = {
   solana: {
     curveTotalBps: 125,
     creatorTiers: tiers([30, 45, 60, 75]),
-    launchFee: Number(process.env.NEXT_PUBLIC_LAUNCH_FEE_SOL || 0.005),
+    launchFee: Number(process.env.NEXT_PUBLIC_LAUNCH_FEE_SOL || 0.02),
     reference: { name: "pump.fun", totalBps: 125, creatorBps: 30, launchFee: "grátis" },
   },
 
