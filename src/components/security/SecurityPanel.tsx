@@ -76,6 +76,19 @@ const TEXTOS = traducoes({
     alertas: (n: number) => (n === 1 ? "Warning: 1 problem" : `Warning: ${n} problems`),
     zeroTitulo: "Zero liquidity",
     zeroDetalhe: "There is no liquidity in this coin. Trading may be impossible.",
+    problemas: {
+      mintable: ["Mint authority open", "The owner can create new tokens and dilute you."],
+      freezable: ["Can freeze wallets", "The owner can freeze your tokens so you cannot sell."],
+      transfer_hook: ["Transfer hook", "External code runs on every transfer and can block sales."],
+      closable: ["Closable token", "The owner can close the token account."],
+      honeypot: ["Cannot sell", "Tests show this token cannot be sold after buying."],
+      hidden_owner: ["Hidden owner", "The contract has a hidden owner."],
+      can_take_back: ["Owner can come back", "The owner can take back control after renouncing."],
+      blacklist: ["Blacklist", "The contract can block your wallet."],
+      sell_tax: ["High sell tax", "A large share is kept by the contract when you sell."],
+      buy_tax: ["High buy tax", "A large share is kept by the contract when you buy."],
+      proxy: ["Changeable code", "The contract code can be swapped after launch."],
+    } as Record<string, [string, string]>,
     passaram: (n: number) => `${n} contract checks passed`,
     atencao: (n: number) => (n === 1 ? "1 point of attention" : `${n} points of attention`),
     naoEGarantia: "Automated audits are not a guarantee. A contract can pass everything and the owner can still sell it all.",
@@ -120,6 +133,19 @@ const TEXTOS = traducoes({
     alertas: (n: number) => (n === 1 ? "Aviso: 1 problema" : `Aviso: ${n} problemas`),
     zeroTitulo: "Liquidez zero",
     zeroDetalhe: "Não há liquidez nesta moeda. A negociação pode estar impossibilitada.",
+    problemas: {
+      mintable: ["Emissão aberta", "O dono pode criar novos tokens e diluir você."],
+      freezable: ["Pode congelar carteiras", "O dono pode congelar seus tokens para você não vender."],
+      transfer_hook: ["Gancho de transferência", "Código externo roda em cada transferência e pode bloquear vendas."],
+      closable: ["Token fechável", "O dono pode fechar a conta do token."],
+      honeypot: ["Não dá para vender", "Os testes mostram que este token não pode ser vendido depois de comprado."],
+      hidden_owner: ["Dono oculto", "O contrato tem um dono escondido."],
+      can_take_back: ["Dono pode voltar", "O dono pode retomar o controle depois de renunciar."],
+      blacklist: ["Lista de bloqueio", "O contrato pode bloquear a sua carteira."],
+      sell_tax: ["Taxa de venda alta", "Uma parte grande fica com o contrato quando você vende."],
+      buy_tax: ["Taxa de compra alta", "Uma parte grande fica com o contrato quando você compra."],
+      proxy: ["Código alterável", "O código do contrato pode ser trocado depois do lançamento."],
+    } as Record<string, [string, string]>,
     passaram: (n: number) => `${n} verificações no contrato passaram`,
     atencao: (n: number) => (n === 1 ? "1 ponto de atenção" : `${n} pontos de atenção`),
     naoEGarantia: "Auditoria automática não é garantia. Um contrato pode passar em tudo e o dono vender tudo mesmo assim.",
@@ -137,6 +163,19 @@ const TEXTOS = traducoes({
     alertas: (n: number) => `警告：${n} 个问题`,
     zeroTitulo: "零流动性",
     zeroDetalhe: "该代币没有流动性，可能无法交易。",
+    problemas: {
+      mintable: ["可增发", "所有者可以增发代币稀释你的持仓。"],
+      freezable: ["可冻结钱包", "所有者可以冻结你的代币使你无法卖出。"],
+      transfer_hook: ["转账钩子", "每次转账都会运行外部代码，可能阻止卖出。"],
+      closable: ["可关闭代币", "所有者可以关闭代币账户。"],
+      honeypot: ["无法卖出", "测试显示该代币买入后无法卖出。"],
+      hidden_owner: ["隐藏所有者", "合约存在隐藏的所有者。"],
+      can_take_back: ["所有者可收回", "所有者放弃后仍可收回控制权。"],
+      blacklist: ["黑名单", "合约可以封禁你的钱包。"],
+      sell_tax: ["卖出税高", "卖出时合约会扣留较大比例。"],
+      buy_tax: ["买入税高", "买入时合约会扣留较大比例。"],
+      proxy: ["代码可更改", "合约代码在发行后可以被替换。"],
+    } as Record<string, [string, string]>,
     passaram: (n: number) => `${n} 项合约检查通过`,
     atencao: (n: number) => `${n} 个注意事项`,
     naoEGarantia: "自动审计并不代表保证。合约即使通过所有检查，所有者仍可能全部卖出。",
@@ -430,7 +469,14 @@ function montarAlertas(
     // alerta "Liquidez zero", logo abaixo, a partir dos nossos dados.
     if (c.id === "liquidity") continue;
 
-    alertas.push({ id: c.id, titulo: c.label, detalhe: c.description, nivel: c.level });
+    // Título do PROBLEMA ("Emissão aberta"), não o nome da checagem ("Autoridade de emissão").
+    const problema = t.problemas[c.id];
+    alertas.push({
+      id: c.id,
+      titulo: problema?.[0] ?? c.label,
+      detalhe: problema?.[1] ?? c.description,
+      nivel: c.level,
+    });
   }
 
   /*
