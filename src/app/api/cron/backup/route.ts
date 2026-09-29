@@ -17,13 +17,13 @@ export async function GET(request: Request) {
   try {
     const dados = await exportarBanco();
     const dia = dados.em.slice(0, 10);
-    const arquivo = await put(`backups/${dia}.json`, JSON.stringify(dados), {
-      access: "public",
-      addRandomSuffix: true, // nome impossível de adivinhar
+    await put(`backups/${dia}.json`, JSON.stringify(dados), {
+      access: "private", // o armazenamento da Chroma é privado: só o servidor lê
+      addRandomSuffix: true,
       contentType: "application/json",
     });
     const linhas = Object.fromEntries(Object.entries(dados.tabelas).map(([t, l]) => [t, l.length]));
-    return NextResponse.json({ ok: true, linhas, tamanho: arquivo.pathname.length ? undefined : 0 });
+    return NextResponse.json({ ok: true, linhas });
   } catch (e) {
     console.error("[backup]", e);
     return NextResponse.json({ error: "falhou" }, { status: 500 });
