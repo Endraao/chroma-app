@@ -42,8 +42,8 @@ const TEXTOS = traducoes({
     faixas: ["Launch", "Gaining traction", "Established", "Top"],
     solLancarNota: "One-time fee, paid at launch. Your coin is born ready to trade, with its own page and live chart on Chroma.",
     solTrade: "Trade through Chroma", solTradeNota: "Charged on buys and sells made through Chroma, on any Solana coin — including the ones launched here.",
-    solDivisao: "pump.fun creator fee",
-    solDivisaoNota: (c: number, p: number) => `The creator fee pump.fun charges on every trade is split: ${c}% to the creator, ${p}% to Chroma. The creator manages this split on pump.fun.`,
+    solDivisao: "Creator fee split",
+    solDivisaoNota: (c: number, p: number) => `The creator fee on every trade is split: ${c}% to the creator, ${p}% to Chroma.`,
     titulo: "Fees and limits", intro1: "Each network has its own table. Everything you pay on Chroma is on this page.", intro2: "No fee shows up only when you confirm a trade.",
     qualquerRede: "On every network",
     divisao: "Referrer's share", divisaoNota: "Comes out of the platform's cut, not the trader's pocket, and lands in the referrer's wallet in the same swap transaction. Without a referral, this share stays with the platform.",
@@ -51,7 +51,7 @@ const TEXTOS = traducoes({
     fora: "Coin launched outside Chroma", pagaMenos: "costs less", foraNota: "There is no creator fee on these coins, so it is not charged. You pay only the platform fee and the referrer's share.",
     estado: "current status", emVigor: "What is live today",
     vigorRobinhood: "all fees on this page are live, charged by the contract itself inside each transaction: trading, creator share, referrer share and launch fee.",
-    vigorSolana: "launch fee, swap fee, referrer share and the pump.fun creator-fee split are live.",
+    vigorSolana: "launch fee, swap fee, referrer share and creator-fee split are live.",
     comparacao: (n: string, total: string, criador: string) => `comparison: ${n} charges ${total} in total, ${criador} to the creator`,
     tradeCurva: "Trade on the curve",
     igual: (n: string) => `Exactly what ${n} charges.`,
@@ -61,7 +61,9 @@ const TEXTOS = traducoes({
     lancar: "Launch", gratis: "free",
     faixa: "Tier", volume: "Total volume", criador: "Creator", afiliado: "Referrer", plataforma: "Platform",
     acimaDe: (v: string) => `above ${v}`, ate: (v: string) => `up to ${v}`,
-    vocePaga: (total: string, n: string, c: string) => `You always pay ${total}; what changes is how it is split. In green, the tiers where the creator gets at least what they would get on ${n} (${c}). Total volume only goes up, so a tier once reached never drops.`,
+    vocePaga: (total: string) => `You always pay ${total}; what changes is how it is split. Total volume only goes up, so a tier once reached never drops.`,
+    notaCurva: "Split between the creator, the referrer and the platform — see the table below.",
+    notaLancar: "One-time fee, paid at launch.",
     semIndicacaoForte: "Without a referral, that share stays with the platform",
     semIndicacao: (b: React.ReactNode, p1: string, p2: string, total: string) => <>The table shows the case where the buy came through a referral link. {b} — which becomes {p1} in the first tier and {p2} at the top. Either way you pay {total}: a referral never makes your trade more expensive.</>,
   },
@@ -69,8 +71,8 @@ const TEXTOS = traducoes({
     faixas: ["Lançamento", "Pegando tração", "Consolidada", "Topo"],
     solLancarNota: "Taxa única, paga no lançamento. A sua moeda já nasce pronta para negociar, com página própria e gráfico ao vivo na Chroma.",
     solTrade: "Operar pela Chroma", solTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Solana — inclusive as lançadas aqui.",
-    solDivisao: "Taxa de criador da pump.fun",
-    solDivisaoNota: (c: number, p: number) => `A taxa de criador que a pump.fun cobra em cada operação é dividida: ${c}% para o criador, ${p}% para a Chroma. Quem administra essa divisão na pump.fun é o criador.`,
+    solDivisao: "Divisão da taxa de criador",
+    solDivisaoNota: (c: number, p: number) => `A taxa de criador de cada operação é dividida: ${c}% para o criador, ${p}% para a Chroma.`,
     titulo: "Taxas e limites", intro1: "Cada rede tem a sua própria tabela. Tudo o que você paga na Chroma está nesta página.", intro2: "Nenhuma taxa aparece só na hora de confirmar a operação.",
     qualquerRede: "Vale em qualquer rede",
     divisao: "Divisão com quem indicou", divisaoNota: "Sai da parte da plataforma, não do bolso do trader, e cai na carteira de quem indicou na mesma transação do swap. Quando não há indicação, essa parte fica com a plataforma.",
@@ -78,7 +80,7 @@ const TEXTOS = traducoes({
     fora: "Moeda lançada fora da Chroma", pagaMenos: "paga menos", foraNota: "Não existe taxa de criador nessas moedas, então ela não é cobrada. Você paga apenas a taxa da plataforma e a parte de quem indicou.",
     estado: "estado atual", emVigor: "O que está em vigor hoje",
     vigorRobinhood: "todas as taxas desta página estão em vigor, cobradas pelo próprio contrato dentro de cada transação: negociação, parte do criador, parte de quem indicou e taxa de lançamento.",
-    vigorSolana: "taxa de lançamento, taxa de swap, parte de quem indicou e divisão da taxa de criador da pump.fun em vigor.",
+    vigorSolana: "taxa de lançamento, taxa de swap, parte de quem indicou e divisão da taxa de criador em vigor.",
     comparacao: (n: string, total: string, criador: string) => `comparação: ${n} cobra ${total} no total, ${criador} para o criador`,
     tradeCurva: "Trade na curva",
     igual: (n: string) => `Exatamente o que o ${n} cobra.`,
@@ -88,7 +90,9 @@ const TEXTOS = traducoes({
     lancar: "Lançar", gratis: "grátis",
     faixa: "Faixa", volume: "Volume acumulado", criador: "Criador", afiliado: "Afiliado", plataforma: "Plataforma",
     acimaDe: (v: string) => `acima de ${v}`, ate: (v: string) => `até ${v}`,
-    vocePaga: (total: string, n: string, c: string) => `Você paga sempre ${total}; o que muda é a divisão desse valor. Em verde, as faixas em que o criador recebe pelo menos o mesmo que receberia no ${n} (${c}). O volume acumulado só aumenta, então a faixa alcançada nunca diminui.`,
+    vocePaga: (total: string) => `Você paga sempre ${total}; o que muda é a divisão desse valor. O volume acumulado só aumenta, então a faixa alcançada nunca diminui.`,
+    notaCurva: "Dividida entre o criador, quem indicou e a plataforma — veja a tabela abaixo.",
+    notaLancar: "Taxa única, paga no lançamento.",
     semIndicacaoForte: "Sem indicação, essa parte fica com a plataforma",
     semIndicacao: (b: React.ReactNode, p1: string, p2: string, total: string) => <>A tabela mostra o caso em que a compra veio por um link de indicação. {b} — que passa a {p1} na primeira faixa e {p2} no topo. Em qualquer caso você paga {total}: a indicação nunca encarece a sua operação.</>,
   },
@@ -96,8 +100,8 @@ const TEXTOS = traducoes({
     faixas: ["发行期", "起势期", "成熟期", "顶级"],
     solLancarNota: "一次性费用，发行时支付。你的代币一经创建即可交易，在 Chroma 上拥有独立页面和实时图表。",
     solTrade: "通过 Chroma 交易", solTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Solana 代币 —— 包括在这里发行的代币。",
-    solDivisao: "pump.fun 创作者费用",
-    solDivisaoNota: (c: number, p: number) => `pump.fun 每笔交易收取的创作者费用会被分成：${c}% 归创作者，${p}% 归 Chroma。该分成由创作者在 pump.fun 上管理。`,
+    solDivisao: "创作者费用分成",
+    solDivisaoNota: (c: number, p: number) => `每笔交易的创作者费用会被分成：${c}% 归创作者，${p}% 归 Chroma。`,
     titulo: "费用与限制", intro1: "每条链都有自己的费率表。你在 Chroma 上支付的所有费用都在此页面。", intro2: "不会有任何费用只在确认交易时才出现。",
     qualquerRede: "所有网络通用",
     divisao: "推荐人分成", divisaoNota: "来自平台的份额，而不是交易者的口袋，并在同一笔兑换交易中进入推荐人的钱包。没有推荐时，这部分归平台所有。",
@@ -105,7 +109,7 @@ const TEXTOS = traducoes({
     fora: "在 Chroma 以外发行的代币", pagaMenos: "费用更低", foraNota: "这些代币没有创作者费用，因此不收取。你只需支付平台费和推荐人分成。",
     estado: "当前状态", emVigor: "目前已生效",
     vigorRobinhood: "本页所有费用均已生效，由合约在每笔交易中直接收取：交易费、创作者分成、推荐人分成和发行费。",
-    vigorSolana: "发行费、兑换费、推荐人分成以及 pump.fun 创作者费用分成均已生效。",
+    vigorSolana: "发行费、兑换费、推荐人分成以及创作者费用分成均已生效。",
     comparacao: (n: string, total: string, criador: string) => `对比：${n} 总共收取 ${total}，其中 ${criador} 给创作者`,
     tradeCurva: "曲线交易",
     igual: (n: string) => `与 ${n} 收费完全相同。`,
@@ -115,7 +119,9 @@ const TEXTOS = traducoes({
     lancar: "发行", gratis: "免费",
     faixa: "档位", volume: "累计交易量", criador: "创作者", afiliado: "推荐人", plataforma: "平台",
     acimaDe: (v: string) => `${v} 以上`, ate: (v: string) => `最高 ${v}`,
-    vocePaga: (total: string, n: string, c: string) => `你始终支付 ${total}，变化的只是分配方式。绿色表示创作者获得不少于在 ${n} 上所得（${c}）的档位。累计交易量只增不减，因此已达到的档位不会下降。`,
+    vocePaga: (total: string) => `你始终支付 ${total}，变化的只是分配方式。累计交易量只增不减，因此已达到的档位不会下降。`,
+    notaCurva: "在创作者、推荐人和平台之间分配 —— 见下表。",
+    notaLancar: "一次性费用，发行时支付。",
     semIndicacaoForte: "没有推荐时，这部分归平台所有",
     semIndicacao: (b: React.ReactNode, p1: string, p2: string, total: string) => <>此表显示通过推荐链接买入的情况。{b} —— 第一档为 {p1}，最高档为 {p2}。无论如何你都支付 {total}：推荐永远不会让你的交易更贵。</>,
   },
@@ -230,9 +236,6 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
     <section>
       <div className="flex flex-wrap items-baseline gap-3">
         <h2 className={cn("text-xl font-bold tracking-tight", meta.accent)}>{meta.label}</h2>
-        <span className="text-[12px] text-zinc-600">
-          {t.comparacao(config.reference.name, labels.referenceTotal, labels.referenceCreator)}
-        </span>
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -240,13 +243,7 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
           icon="percent"
           label={t.tradeCurva}
           value={labels.curveTotal}
-          note={
-            diffBps === 0
-              ? t.igual(config.reference.name)
-              : diffBps > 0
-                ? t.acima(formatBps(diffBps), config.reference.name)
-                : t.abaixo(formatBps(-diffBps), config.reference.name)
-          }
+          note={t.notaCurva}
         />
         <FeeCard
           icon="percent"
@@ -258,7 +255,7 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
           icon="box"
           label={t.lancar}
           value={labels.launchFee > 0 ? `${labels.launchFee} ${meta.nativeSymbol}` : t.gratis}
-          note={`${config.reference.name}: ${config.reference.launchFee === "grátis" ? t.gratis : config.reference.launchFee.replace(",", ".")}.`}
+          note={t.notaLancar}
         />
       </div>
 
@@ -312,7 +309,7 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
       </div>
 
       <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-        {t.vocePaga(labels.curveTotal, config.reference.name, labels.referenceCreator)}
+        {t.vocePaga(labels.curveTotal)}
       </p>
 
       {/*

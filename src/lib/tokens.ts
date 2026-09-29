@@ -287,7 +287,10 @@ export async function listTokens(
       /* fora de uma requisição (scripts): sem classificação em segundo plano */
     }
   }
-  return { tokens: sortTokens(filtradas, sort), isDemo };
+  // Sem imagem na fonte de mercado: o leitor de logo procura em todas as
+  // fontes (contrato, Jupiter, DexScreener, IPFS) — igual à página da moeda.
+  const comImagem = filtradas.map((t) => (t.imageUrl ? t : { ...t, imageUrl: `/api/logo/${t.address}` }));
+  return { tokens: sortTokens(comImagem, sort), isDemo };
 }
 
 /**
