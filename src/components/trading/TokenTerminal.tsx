@@ -183,9 +183,15 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
         top10Pct={report?.holderConcentration.top10Pct || top10DaGecko}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
-        {/* Coluna esquerda: o gráfico, com a altura toda */}
-        <div className="space-y-4">
+      {/*
+        Três blocos numa grade: gráfico, coluna da compra e negociações.
+        No computador: gráfico em cima e negociações embaixo, à esquerda; a
+        compra ocupa a direita. No celular a ordem é a do código — gráfico,
+        compra, alertas e Sobre, e só DEPOIS a lista de negociações (antes ela
+        aparecia antes da descrição da moeda).
+      */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-[auto_1fr]">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           <ChartPanel
             address={token.address}
             symbol={token.symbol}
@@ -197,17 +203,10 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             quotePriceUsd={token.quotePriceUsd}
             onTick={handleTick}
           />
-
-          {/*
-            Transações e traders logo abaixo do gráfico, na mesma coluna
-            (referência: PEAR, 28/09/2026). Antes a tabela de traders ficava
-            no pé da página, ocupando a largura toda.
-          */}
-          <PainelDeAtividade address={token.address} symbol={token.symbol} chain={token.chain} />
         </div>
 
-        {/* Coluna direita: swap grudado no topo ao rolar a página */}
-        <div className="space-y-3 lg:self-start">
+        {/* Coluna direita: compra, alertas, Sobre e convite */}
+        <div className="min-w-0 space-y-3 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           {/*
             * Acima do painel de swap, e não abaixo: quanto falta pra curva
             * encher é o que decide se a pessoa compra AGORA. Enterrado no fim
@@ -266,6 +265,11 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
           <PainelSobre token={token} />
 
           <ConviteParaCompartilhar token={token} />
+        </div>
+
+        {/* Negociações: embaixo do gráfico no computador; no celular, por último. */}
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+          <PainelDeAtividade address={token.address} symbol={token.symbol} chain={token.chain} />
         </div>
       </div>
 
