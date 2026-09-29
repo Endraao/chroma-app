@@ -9,7 +9,6 @@ import { Moldura } from "@/components/ui/Moldura";
 import { Rodape } from "@/components/ui/Rodape";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { IdiomaProvider } from "@/components/IdiomaProvider";
-import { AffiliateBanner } from "@/components/web3/AffiliateBanner";
 import { RpcNotice } from "@/components/web3/RpcNotice";
 
 import "./globals.css";
@@ -71,7 +70,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <WalletProviders>
           {/* useSearchParams precisa de um limite de Suspense no App Router. */}
           <Suspense fallback={null}>
-            <AffiliateBanner />
           </Suspense>
           <RpcNotice />
           <Header idioma={idioma} />

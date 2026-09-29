@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { resolverIndicador } from "@/lib/accounts";
+import { findByWallet, resolverIndicador } from "@/lib/accounts";
 import { CHAIN_IDS } from "@/lib/web3";
 import type { ChainId } from "@/lib/types";
 
@@ -47,13 +47,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const indicador = await resolverIndicador(wallet, chain);
+    const [indicador, conta] = await Promise.all([resolverIndicador(wallet, chain), findByWallet(wallet)]);
 
     /*
      * Sem indicador NÃO é erro: a imensa maioria das pessoas chega sozinha.
      * Devolver 404 faria a tela tratar o caso comum como falha.
      */
-    return NextResponse.json({ indicador });
+    // temConta: com conta, só vale o indicador gravado na criação dela —
+    // um link aberto depois não troca nada.
+    return NextResponse.json({ indicador, temConta: Boolean(conta) });
   } catch (erro) {
     console.error("[afiliado] falha ao resolver indicador:", erro);
     /*

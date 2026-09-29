@@ -260,12 +260,14 @@ export function useAffiliateTracking(chain?: ChainId) {
             { cache: "no-store" },
           );
           if (res.ok) {
-            const { indicador } = (await res.json()) as {
+            const { indicador, temConta } = (await res.json()) as {
               indicador: { apelido: string; endereco: string } | null;
+              temConta?: boolean;
             };
             if (cancelled) return;
-            if (indicador) {
-              setAffiliate(indicador.endereco);
+            // Conta já existe: o indicador dela é definitivo (ou não tem nenhum).
+            if (indicador || temConta) {
+              setAffiliate(indicador?.endereco ?? null);
               return;
             }
           }
@@ -280,7 +282,10 @@ export function useAffiliateTracking(chain?: ChainId) {
       }
 
       const endereco = await enderecoDoRef(entry.ref, chain);
-      if (!cancelled) setAffiliate(endereco);
+      // O próprio link não conta.
+      const proprio =
+        endereco && carteiraAtual && endereco.toLowerCase() === carteiraAtual.toLowerCase();
+      if (!cancelled) setAffiliate(proprio ? null : endereco);
     })();
 
     return () => {

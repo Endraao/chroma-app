@@ -28,6 +28,8 @@ export interface ChromaAccount {
   /** foto enviada pela pessoa; sem ela a interface gera uma a partir do endereço */
   avatar?: string;
   cover?: string;
+  /** apelido de quem indicou a conta — gravado na criação, não muda */
+  indicadoPor?: string | null;
 }
 
 /**

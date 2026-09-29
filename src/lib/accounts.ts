@@ -372,7 +372,7 @@ export async function claimNickname(params: {
             params.wallet,
             params.kind,
             agora,
-            params.indicadoPor?.trim().replace(/^@/, "").toLowerCase() || null,
+            indicadorValido(params.indicadoPor, nickname, params.wallet),
           ],
         );
         conta = Number(criada.rows[0].id);
@@ -521,4 +521,12 @@ export async function linkWallet(params: {
   return account
     ? { ok: true, account }
     : { ok: false, error: "Não foi possível vincular a carteira.", status: 500 };
+}
+
+/** O indicador gravado na criação — nunca a própria pessoa (apelido ou carteira). */
+function indicadorValido(bruto: string | null | undefined, apelido: string, carteira: string): string | null {
+  const ref = bruto?.trim().replace(/^@/, "").toLowerCase() || null;
+  if (!ref) return null;
+  if (ref === apelido.toLowerCase() || ref === carteira.toLowerCase()) return null;
+  return ref;
 }
