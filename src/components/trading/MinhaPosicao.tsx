@@ -1,4 +1,5 @@
 "use client";
+import { Preco } from "@/components/ui/Preco";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
@@ -270,8 +271,8 @@ export function MinhaPosicao({
           <div className="flex items-center justify-between border-t border-white/[0.06] pt-2 text-[11px]">
             <span className="text-zinc-600">{t.precoMedio}</span>
             <span className="tnum text-zinc-400">
-              ${formatPrice(custo)}
-              <span className="ml-2 text-zinc-600">{t.agora} ${formatPrice(preco)}</span>
+              $<Preco valor={custo} />
+              <span className="ml-2 text-zinc-600">{t.agora} $<Preco valor={preco} /></span>
             </span>
           </div>
         )}

@@ -1,4 +1,5 @@
 "use client";
+import { Preco } from "@/components/ui/Preco";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
@@ -143,7 +144,7 @@ export function PainelDeAtividade({
                     <td className="px-2 py-2.5 text-right text-zinc-200">{formatUsd(n.usd)}</td>
                     <td className="px-2 py-2.5 text-right text-zinc-300">{compacto(n.tokens)}</td>
                     <td className="px-2 py-2.5 text-right text-zinc-400">
-                      ${formatPrice(n.tokens > 0 ? n.usd / n.tokens : 0)}
+                      $<Preco valor={n.tokens > 0 ? n.usd / n.tokens : 0} />
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <a

@@ -1,4 +1,5 @@
 "use client";
+import { Preco } from "@/components/ui/Preco";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
@@ -188,7 +189,7 @@ export function TokenHeader({
 
         <div className="ml-auto flex items-center gap-3">
           <div className="text-right">
-            <div className="tnum text-lg font-black text-zinc-50">${formatPrice(price)}</div>
+            <div className="tnum text-lg font-black text-zinc-50">$<Preco valor={price} /></div>
             <div className={cn("tnum text-[12px] font-semibold", up ? "text-bull" : "text-bear")}>
               {formatPct(variacao)} <span className="text-zinc-600">24h</span>
             </div>

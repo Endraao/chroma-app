@@ -1,4 +1,5 @@
 "use client";
+import { Preco } from "@/components/ui/Preco";
 
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
@@ -343,7 +344,7 @@ function SolanaSwap({
             >
               {t.saldo}{" "}
               <span className="tnum text-zinc-500 group-hover:text-zinc-300">
-                {formatPrice(swap.balance, comprando ? 4 : 2)} {comprando ? "SOL" : symbol}
+                <Preco valor={swap.balance} casas={comprando ? 4 : 2} /> {comprando ? "SOL" : symbol}
               </span>
               {swap.balance > 0 && (
                 <span className="ml-1.5 rounded border border-marca/30 px-1 py-px text-[10px] font-bold uppercase text-marca group-hover:border-marca/60">
@@ -526,12 +527,12 @@ function CampoDeValor({
       <p className="tnum mt-2 min-h-[16px] text-[12px] text-zinc-600">
         {comprando ? (
           emDolar ? (
-            <>≈ {formatPrice(emSol, 4)} SOL</>
+            <>≈ <Preco valor={emSol} casas={4} /> SOL</>
           ) : (
             <span className="text-warn/80">{t.semCotacaoSol}</span>
           )
         ) : (
-          <>≈ ${formatPrice(equivalenteUsd, 2)}</>
+          <>≈ $<Preco valor={equivalenteUsd} casas={2} /></>
         )}
       </p>
     </div>
