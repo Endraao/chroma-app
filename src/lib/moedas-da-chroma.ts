@@ -125,8 +125,31 @@ async function montar(
     const mercado = await fetchToken(m.endereco).catch(() => null);
     if (!mercado) return curva ? null : semMercado(m);
 
+    /*
+     * Lançada na curva de lançamento da Solana: progresso e SOL guardado lidos
+     * da própria curva — a DexScreener não dá o progresso e mostra liquidez 0,
+     * e o card saía com o selo da rede em vez de "Curva".
+     */
+    let naCurvaPump: { bondingProgress: number; liquidityUsd: number } | null = null;
+    const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+    if (m.rede === "solana" && mercado.dexId === "pumpfun" && rpc?.startsWith("http")) {
+      try {
+        const [{ Connection }, { estadoDaCurvaPump }] = await Promise.all([
+          import("@solana/web3.js"),
+          import("@/lib/pumpfun"),
+        ]);
+        const e = await estadoDaCurvaPump(new Connection(rpc, "confirmed"), new PublicKey(m.endereco));
+        if (e && !e.completa) {
+          naCurvaPump = { bondingProgress: e.progresso, liquidityUsd: e.solReal * (precoDoSol ?? 0) };
+        }
+      } catch {
+        /* sem leitura: fica o que o mercado disse */
+      }
+    }
+
     return {
       ...mercado,
+      ...(naCurvaPump ?? {}),
       /* O que o criador escreveu aqui vale mais que o que a DEX adivinhou. */
       name: mercado.name || m.nome,
       symbol: mercado.symbol || m.simbolo,

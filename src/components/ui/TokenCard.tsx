@@ -43,19 +43,18 @@ export function TokenCard({ token }: { token: TokenSummary }) {
       {/* Identidade */}
       <div className="flex items-start gap-3">
         <div className="size-12 shrink-0 overflow-hidden rounded-lg border border-ink-700 bg-ink-800">
-          {token.imageUrl ? (
-            <img
-              src={miniatura(token.imageUrl, 48)}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="size-full object-cover"
-            />
-          ) : (
-            <div className="grid size-full place-items-center text-[15px] font-bold text-zinc-600">
-              {token.symbol.slice(0, 2).toUpperCase()}
-            </div>
-          )}
+          {/* Sem arte no cadastro (ou link morto): o leitor de logo procura nas outras fontes. */}
+          <img
+            src={token.imageUrl ? miniatura(token.imageUrl, 48) : `/api/logo/${token.address}`}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (!img.src.includes("/api/logo/")) img.src = `/api/logo/${token.address}`;
+            }}
+            className="size-full object-cover"
+          />
         </div>
 
         <div className="min-w-0 flex-1">

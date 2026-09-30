@@ -531,3 +531,28 @@ export async function transacaoUnicaDeLancamento({
     new TransactionMessage({ payerKey: criador, recentBlockhash: blockhash, instructions: ixs }).compileToV0Message([conta.value]),
   );
 }
+
+/** Tokens à venda na curva quando ela nasce (793,1 milhões, 6 casas). */
+const TOKENS_A_VENDA_INICIAL = 793_100_000_000_000n;
+
+/**
+ * Progresso da curva (0–100) e SOL que ela guarda, lidos dos bytes da conta.
+ * A DexScreener não informa progresso: sem isto o card mostrava "Liquidez
+ * $0" e o selo da rede em vez de "Curva" com a barra.
+ */
+export async function estadoDaCurvaPump(
+  conn: Connection,
+  mint: PublicKey,
+): Promise<{ progresso: number; solReal: number; completa: boolean } | null> {
+  const programa = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
+  const [curva] = PublicKey.findProgramAddressSync([Buffer.from("bonding-curve"), mint.toBuffer()], programa);
+  const conta = await conn.getAccountInfo(curva, "confirmed");
+  if (!conta || !conta.owner.equals(programa) || conta.data.length < 49) return null;
+  const d = conta.data;
+  const tokenReal = d.readBigUInt64LE(24);
+  const solReal = Number(d.readBigUInt64LE(32)) / LAMPORTS_PER_SOL;
+  const completa = d[48] !== 0;
+  const vendidos = TOKENS_A_VENDA_INICIAL > tokenReal ? TOKENS_A_VENDA_INICIAL - tokenReal : 0n;
+  const progresso = completa ? 100 : Number((vendidos * 10_000n) / TOKENS_A_VENDA_INICIAL) / 100;
+  return { progresso, solReal, completa };
+}
