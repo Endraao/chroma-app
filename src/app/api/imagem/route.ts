@@ -15,7 +15,11 @@ const PORTOES = [
 ];
 
 export async function GET(request: Request) {
-  const cid = new URL(request.url).searchParams.get("cid") ?? "";
+  const params = new URL(request.url).searchParams;
+  const cid = params.get("cid") ?? "";
+  // Com `w`, devolve a miniatura em WebP (cartões da vitrine) — ver /api/miniatura.
+  const largura = Number(params.get("w") ?? 0);
+  const reduzir = [48, 96, 160, 256].includes(largura);
   if (!/^[a-zA-Z0-9]{46,}(\/[\w.\-/%]*)?$/.test(cid)) return new Response(null, { status: 400 });
 
   const controle = new AbortController();
@@ -29,6 +33,20 @@ export async function GET(request: Request) {
       }),
     );
     controle.abort();
+    if (reduzir && resposta.tipo.startsWith("image/")) {
+      try {
+        const { default: sharp } = await import("sharp");
+        const reduzida = await sharp(Buffer.from(resposta.corpo), { animated: false })
+          .resize(largura * 2, largura * 2, { fit: "cover" })
+          .webp({ quality: 72 })
+          .toBuffer();
+        return new Response(new Uint8Array(reduzida), {
+          headers: { "content-type": "image/webp", "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable" },
+        });
+      } catch {
+        /* não deu pra reduzir: vai a original */
+      }
+    }
     return new Response(resposta.corpo, {
       headers: {
         "content-type": resposta.tipo,

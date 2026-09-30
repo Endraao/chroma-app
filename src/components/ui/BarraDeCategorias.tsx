@@ -12,9 +12,9 @@ import { traducoes } from "@/lib/idiomas";
 
 /* Rótulos da barra, pelo texto em português (que é a chave em CATEGORIAS). */
 const TEXTOS = traducoes<Record<string, string>>({
-  en: { Tudo: "All", Quentes: "Trending", "Maiores altas": "Top gainers", Maiores: "Biggest", "Recém-chegadas": "Just launched", Afiliados: "Affiliates", Taxas: "Fees", "Criar token": "Create token", recolher: "Collapse categories", expandir: "Expand categories" },
-  pt: { Tudo: "Tudo", Quentes: "Quentes", "Maiores altas": "Maiores altas", Maiores: "Maiores", "Recém-chegadas": "Recém-chegadas", Afiliados: "Afiliados", Taxas: "Taxas", "Criar token": "Criar token", recolher: "Recolher categorias", expandir: "Expandir categorias" },
-  zh: { Tudo: "全部", Quentes: "热门", "Maiores altas": "涨幅榜", Maiores: "市值最高", "Recém-chegadas": "新上线", Afiliados: "推广伙伴", Taxas: "费用", "Criar token": "创建代币", recolher: "收起分类", expandir: "展开分类" },
+  en: { "Todas as redes": "All networks", Tudo: "All", Quentes: "Trending", "Maiores altas": "Top gainers", Maiores: "Biggest", "Recém-chegadas": "Just launched", Afiliados: "Affiliates", Taxas: "Fees", "Criar token": "Create token", recolher: "Collapse categories", expandir: "Expand categories" },
+  pt: { "Todas as redes": "Todas as redes", Tudo: "Tudo", Quentes: "Quentes", "Maiores altas": "Maiores altas", Maiores: "Maiores", "Recém-chegadas": "Recém-chegadas", Afiliados: "Afiliados", Taxas: "Taxas", "Criar token": "Criar token", recolher: "Recolher categorias", expandir: "Expandir categorias" },
+  zh: { "Todas as redes": "全部网络", Tudo: "全部", Quentes: "热门", "Maiores altas": "涨幅榜", Maiores: "市值最高", "Recém-chegadas": "新上线", Afiliados: "推广伙伴", Taxas: "费用", "Criar token": "创建代币", recolher: "收起分类", expandir: "展开分类" },
 });
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
@@ -119,7 +119,22 @@ const CATEGORIAS: Item[] = [
  *
  * Sai de CHAIN_IDS para seguir a ordem do site: a rede principal vem primeiro.
  */
-const REDES: Item[] = CHAIN_IDS.map((id) => ({
+const TODAS_AS_REDES: Item = {
+  href: "/?chain=todas",
+  rotulo: "Todas as redes",
+  cor: "#e4e4e7",
+  corFixa: true,
+  // Os dois símbolos sobrepostos: "as duas redes juntas", sem legenda.
+  icone: (
+    <span className="relative inline-block size-4 shrink-0">
+      <img src={chainIcon("robinhood")} alt="" width={11} height={11} className="absolute left-0 top-0 size-[11px] rounded-full" />
+      <img src={chainIcon("solana")} alt="" width={11} height={11} className="absolute bottom-0 right-0 size-[11px] rounded-full ring-1 ring-ink-950" />
+    </span>
+  ),
+  casa: (p: string, _s: string | null, chain: string | null) => p === "/" && chain === "todas",
+};
+
+const REDES: Item[] = [TODAS_AS_REDES, ...CHAIN_IDS.map((id) => ({
   href: `/?chain=${id}`,
   rotulo: CHAINS[id].label,
   cor: id === "robinhood" ? "#34d399" : "#8b5cf6",
@@ -134,7 +149,7 @@ const REDES: Item[] = CHAIN_IDS.map((id) => ({
     />
   ),
   casa: (p: string, _s: string | null, chain: string | null) => p === "/" && chain === id,
-}));
+}))];
 
 const RODAPE: Item[] = [
   {

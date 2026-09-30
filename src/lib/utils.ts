@@ -97,16 +97,19 @@ export function miniatura(url: string | undefined, px: number): string | undefin
   /* Arte lida do contrato (IPFS): passa pelo otimizador, que só aceita esta rota. */
   // Direto, sem o otimizador do Next: quando não há arte, a rota devolve um
   // SVG de iniciais, e o otimizador recusa SVG — a imagem aparecia quebrada.
-  if (url.startsWith("/api/logo/")) return url;
+  const largura = [48, 96, 160, 256].find((w) => w >= px) ?? 256;
+  // IPFS pela nossa rota: ela também reduz (parâmetro w).
+  if (url.startsWith("/api/imagem?cid=")) return `${url}&w=${largura}`;
+  if (url.startsWith("/")) return url;
   try {
     const u = new URL(url);
-    // DexScreener: NÃO mexe no tamanho — o CDN só aceita os parâmetros
-    // originais (width=800…); qualquer outro devolve 422 e a moeda ficava
-    // sem foto.
-    if (u.hostname === "coin-images.coingecko.com" && px <= 48) {
-      return url.replace("/large/", "/small/");
-    }
-    return url;
+    if (u.protocol !== "https:") return url;
+    /*
+     * Reduzida no nosso servidor e guardada no CDN (ver /api/miniatura): arte
+     * de 1.000+ px e meio megabyte virava um cartão vazio em internet lenta.
+     * Se a redução falhar, quem chama cai na arte original / no leitor de logo.
+     */
+    return `/api/miniatura?u=${encodeURIComponent(url)}&w=${largura}`;
   } catch {
     return url;
   }
