@@ -196,7 +196,9 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    * ninguém consegue vender depois de comprar, o que é pior do que uma vitrine
    * curta. Mil dólares é o mesmo corte que a lista antiga já aplicava.
    */
-  const deMercado = [...porEndereco.values()].filter((t) => t.liquidityUsd >= 1_000);
+  const deMercado = [...porEndereco.values()].filter(
+    (t) => t.liquidityUsd >= 1_000 && !FORA_DA_VITRINE.has(t.address.toLowerCase()),
+  );
 
   /*
    * Rede sem NENHUMA moeda de mercado é fonte recusando, não mercado vazio.
@@ -230,6 +232,7 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    * pouco —, e sem passar por cima de quem já veio de uma fonte de mercado.
    */
   for (const t of [...daCurvaSol, ...daPons, ...ponsGraduadas]) {
+    if (FORA_DA_VITRINE.has(t.address.toLowerCase())) continue;
     const chave = `${t.chain}:${t.address.toLowerCase()}`;
     if (!porChave.has(chave)) porChave.set(chave, t);
   }

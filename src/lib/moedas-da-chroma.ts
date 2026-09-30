@@ -63,7 +63,22 @@ const TTL_CURVAS = 15_000;
  * SundayCat: a moeda de teste, lançada antes do ajuste de preço inicial —
  * nasceu valendo ~US$ 75 mil e destoaria das novas (~US$ 5 mil).
  */
-export const FORA_DA_VITRINE = new Set(["0x5b78097b8a5de294f93780abdff4ce7ac790ef63"]);
+/**
+ * Moedas de TESTE (30/09/2026): existem na rede para sempre, mas não aparecem
+ * na vitrine. Continuam abrindo pelo endereço e no perfil de quem criou.
+ * Comparação sempre em minúsculas.
+ */
+export const FORA_DA_VITRINE = new Set(
+  [
+    "0x5b78097b8a5de294f93780abdff4ce7ac790ef63",
+    "Fn4QycXx5JN5uocWtzMxkBJFrVtNrEJu49WF8KWYKhjc",
+    "Gvf5RiyNiUwKYaAgiruJotBp89PdLGwyHzYGx2TKmBVe",
+    "7SwbHeEpJZmPtDMUPTbeGdNCWfa67fYnHAo91gNetykp",
+    "ACcX351Jn1mwcyEYQw4DcKkQJ3RYR7w57KWjWmoEEZew",
+    "0x4e270310e2f217296e4df00017297a0141bd14ec",
+    "0x8b152f9d792e46c096dbd7cc82c9116e0bee9b34",
+  ].map((a) => a.toLowerCase()),
+);
 
 export const moedasDaChroma = unstable_cache(moedasDaChromaSemCache, ["moedas-da-chroma-v1"], {
   revalidate: 15,
