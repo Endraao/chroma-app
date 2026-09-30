@@ -39,7 +39,7 @@ export const MIDIA_DA_MOEDA: EspecDeMidia = {
   maxMb: 15,
   maxVideoMb: 30,
   aceita: ["image/jpeg", "image/png", "image/gif", "video/mp4"],
-  minLado: 1000,
+  minLado: 200,
 };
 
 /** Faixa larga do topo da página, na mesma proporção da capa de perfil. */

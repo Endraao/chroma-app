@@ -37,7 +37,7 @@ const COIN_MEDIA: MediaSpec = {
   maxSizeMb: 15,
   maxVideoSizeMb: 30,
   accept: ["image/jpeg", "image/png", "image/gif", "video/mp4"],
-  minDimension: 1000,
+  minDimension: 200,
 };
 
 /**
@@ -61,7 +61,7 @@ const TEXTOS = traducoes({
     agora: "now", rede: "Network", gasEm: (s: string) => `gas in ${s}`, par: "Liquidity pair", parSub: "what your token is priced against",
     midia: "Image or video", obrigatorio: "required", selecione: "Select the video or image you want to upload.", arraste: "or drag and drop it here.",
     tamanho: "File size and type", img15: "Image — max 15 MB. '.jpg', '.gif' or '.png' recommended.", video30: "Video — max 30 MB. '.mp4' recommended.",
-    resolucao: "Resolution and aspect ratio", img1000: "Image — at least 1000x1000px, 1:1 ratio recommended.", video1080: "Video — 16:9 or 9:16, 1080p or higher recommended.",
+    resolucao: "Resolution and aspect ratio", img1000: "Image — at least 200x200px; 1000x1000px and 1:1 ratio recommended.", video1080: "Video — 16:9 or 9:16, 1080p or higher recommended.",
     addBanner: "Add banner", opcional: "optional", carregarBanner: "Upload banner",
     bannerTexto: "Shown on the coin page, besides the coin image. Images or animated GIFs up to 4.5 MB; larger images are resized automatically, GIFs are not. 3:1 ratio, 1500x500px recommended. You can only do this when creating the coin and cannot change it later.",
     carregarArquivo: "Upload file…", bannerTamanho: "Image — max 4.5 MB (larger images are resized automatically, GIFs are not). Formats: '.jpg', '.png', '.webp' or '.gif'.",
@@ -96,7 +96,7 @@ const TEXTOS = traducoes({
     agora: "agora", rede: "Rede", gasEm: (s: string) => `gás em ${s}`, par: "Par de liquidez", parSub: "contra o que seu token é cotado",
     midia: "Imagem ou vídeo", obrigatorio: "obrigatório", selecione: "Selecione o vídeo ou a imagem que deseja enviar.", arraste: "ou arraste e solte aqui.",
     tamanho: "Tamanho e tipo do arquivo", img15: "Imagem — máximo 15 MB. Recomenda-se o formato '.jpg', '.gif' ou '.png'.", video30: "Vídeo — máximo 30 MB. Formato '.mp4' recomendado.",
-    resolucao: "Resolução e proporção da tela", img1000: "Imagem — mínimo 1000x1000px, proporção 1:1 recomendada.", video1080: "Vídeo — Formato 16:9 ou 9:16, resolução 1080p ou superior recomendada.",
+    resolucao: "Resolução e proporção da tela", img1000: "Imagem — mínimo 200x200px; 1000x1000px e proporção 1:1 recomendadas.", video1080: "Vídeo — Formato 16:9 ou 9:16, resolução 1080p ou superior recomendada.",
     addBanner: "Adicionar banner", opcional: "opcional", carregarBanner: "Carregar banner",
     bannerTexto: "Isso será exibido na página da moeda, além da imagem da moeda. Imagens ou GIFs animados de até 4,5 MB; imagens maiores são redimensionadas automaticamente, GIFs não. Proporção de 3:1, 1500x500px recomendado. Você só pode fazer isso ao criar a moeda e não poderá alterar posteriormente.",
     carregarArquivo: "Carregar arquivo…", bannerTamanho: "Imagem — máximo 4,5 MB (imagens maiores são redimensionadas automaticamente, GIFs não). Formatos: '.jpg', '.png', '.webp' ou '.gif'.",
@@ -131,7 +131,7 @@ const TEXTOS = traducoes({
     agora: "现在", rede: "网络", gasEm: (s: string) => `以 ${s} 支付 Gas`, par: "流动性交易对", parSub: "你的代币以什么计价",
     midia: "图片或视频", obrigatorio: "必填", selecione: "选择要上传的视频或图片。", arraste: "或拖放到这里。",
     tamanho: "文件大小与类型", img15: "图片 —— 最大 15 MB，推荐 '.jpg'、'.gif' 或 '.png'。", video30: "视频 —— 最大 30 MB，推荐 '.mp4'。",
-    resolucao: "分辨率与比例", img1000: "图片 —— 至少 1000x1000px，推荐 1:1。", video1080: "视频 —— 16:9 或 9:16，推荐 1080p 或更高。",
+    resolucao: "分辨率与比例", img1000: "图片 —— 至少 200x200px，推荐 1000x1000px、1:1。", video1080: "视频 —— 16:9 或 9:16，推荐 1080p 或更高。",
     addBanner: "添加横幅", opcional: "可选", carregarBanner: "上传横幅",
     bannerTexto: "显示在代币页面上，与代币图片一起展示。图片或动图最大 4.5 MB；较大的图片会自动缩放，GIF 不会。推荐 3:1 比例、1500x500px。只能在创建时设置，之后无法修改。",
     carregarArquivo: "上传文件…", bannerTamanho: "图片 —— 最大 4.5 MB（较大图片会自动缩放，GIF 不会）。格式：'.jpg'、'.png'、'.webp' 或 '.gif'。",
