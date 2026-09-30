@@ -210,7 +210,9 @@ function SolanaSwap({
    * cotação não dá pra converter. Nesse caso o campo passa a pedir SOL e diz
    * isso na tela, em vez de inventar um câmbio.
    */
-  const emDolar = false;
+  // Compra em DÓLAR (pedido do dono: "coloco 5, quero 5 dólares"). Sem a
+  // cotação do SOL volta a pedir SOL — nunca inventa câmbio.
+  const emDolar = comprando && Boolean(precoDoSol && precoDoSol > 0);
   const digitadoNum = Number(digitado) || 0;
 
   /*
@@ -331,8 +333,13 @@ function SolanaSwap({
             placeholder="0.0"
             className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
           />
-          <span className="shrink-0 text-[13px] font-bold text-zinc-400">{comprando ? "SOL" : symbol}</span>
+          <span className="shrink-0 text-[13px] font-bold text-zinc-400">{comprando ? (emDolar ? "USD" : "SOL") : symbol}</span>
         </label>
+        {emDolar && digitadoNum > 0 && (
+          <p className="tnum -mt-1.5 px-1 text-[11px] text-zinc-500">
+            ≈ <Preco valor={Number(amount)} casas={4} /> SOL
+          </p>
+        )}
 
         <div className="grid grid-cols-4 gap-2">
           {comprando
@@ -746,12 +753,16 @@ function EvmSwap({
   const [slippageBps, setSlippageBps] = useState(300);
   // Atalhos da compra em dólar: convertidos pelo preço do ETH.
   const precoDoEth = usePrecoNativo("robinhood") ?? 0;
+  // Compra em DÓLAR, como na Solana. Sem cotação do ETH, pede ETH.
+  const compraEmDolar = side === "buy" && precoDoEth > 0;
+  const valorNativo =
+    compraEmDolar && Number(digitado) > 0 ? cortar(Number(digitado) / precoDoEth, 12) : digitado;
 
   const swapDaCurva = useCurvaSwapEvm({
     moeda: tokenAddress,
     curva,
     side,
-    valor: digitado,
+    valor: valorNativo,
     slippageBps,
     /* Sem isto a comissão do promotor nunca saía na Robinhood. */
     afiliado: affiliate,
@@ -784,7 +795,7 @@ function EvmSwap({
     pool: liberado?.pool ?? null,
     decimais: liberado?.decimais ?? 18,
     side,
-    valor: digitado,
+    valor: valorNativo,
     slippageBps: Math.max(slippageBps, 500),
     afiliado: affiliate,
     habilitado: Boolean(liberado),
@@ -835,7 +846,7 @@ function EvmSwap({
   useEffect(() => {
     if (!swap.hash || !address) return;
     const tokens = ehCompra ? Number(swap.saida ?? 0) : Number(digitado);
-    const eth = ehCompra ? Number(digitado) : Number(swap.saida ?? 0);
+    const eth = ehCompra ? Number(valorNativo) : Number(swap.saida ?? 0);
     anotarOperacao(address, tokenAddress, side, tokens, eth);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só no momento em que a operação confirma
   }, [swap.hash]);
@@ -882,7 +893,8 @@ function EvmSwap({
   function usarPorcentagem(pct: number) {
     if (saldo === null) return;
     const base = ehCompra ? Math.max(0, saldo - RESERVA_DE_REDE_ETH) : saldo;
-    setDigitado(cortar((base * pct) / 100, ehCompra ? 6 : 2));
+    const parte = (base * pct) / 100;
+    setDigitado(compraEmDolar ? cortar(parte * precoDoEth, 2) : cortar(parte, ehCompra ? 6 : 2));
   }
 
   /* Moeda que não é da curva: o caminho por DEX ainda não existe aqui. */
@@ -932,7 +944,11 @@ function EvmSwap({
 
   return (
     <Card className="overflow-hidden">
-      <AbasDeLado side={side} onChange={setSide} disabled={swap.ocupado} />
+      <AbasDeLado side={side} onChange={(s) => {
+          if (s === side) return;
+          setSide(s);
+          setDigitado(""); // dólar e tokens não são a mesma unidade
+        }} disabled={swap.ocupado} />
 
       <div className="space-y-3 px-4 pb-4 pt-1">
         {/*
@@ -966,9 +982,14 @@ function EvmSwap({
             className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
           />
           <span className="shrink-0 text-[13px] font-bold text-zinc-400">
-            {ehCompra ? meta.nativeSymbol : symbol}
+            {ehCompra ? (compraEmDolar ? "USD" : meta.nativeSymbol) : symbol}
           </span>
         </label>
+        {compraEmDolar && Number(digitado) > 0 && (
+          <p className="tnum -mt-1.5 px-1 text-[11px] text-zinc-500">
+            ≈ <Preco valor={Number(valorNativo)} casas={6} /> {meta.nativeSymbol}
+          </p>
+        )}
 
         <div className="grid grid-cols-4 gap-2">
           {(ehCompra ? ATALHOS_EM_DOLAR : ATALHOS_EM_PORCENTAGEM).map((v) => (
@@ -977,7 +998,7 @@ function EvmSwap({
               rotulo={ehCompra ? `$${v}` : v === 100 ? t.maxMaiusc : `${v}%`}
               tom={ehCompra ? "buy" : "sell"}
               ligado={ehCompra ? precoDoEth > 0 : saldo !== null && saldo > 0}
-              onClick={() => (ehCompra ? precoDoEth > 0 && setDigitado(cortar(v / precoDoEth, 6)) : usarPorcentagem(v))}
+              onClick={() => (ehCompra ? precoDoEth > 0 && setDigitado(String(v)) : usarPorcentagem(v))}
             />
           ))}
         </div>

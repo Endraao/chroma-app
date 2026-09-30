@@ -15,6 +15,7 @@ import {
 import { CHAIN_FEES } from "@/lib/fees";
 import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
 import { useIdioma } from "@/components/IdiomaProvider";
+import { anotarOperacao } from "@/lib/posicoes-locais";
 import { traducoes } from "@/lib/idiomas";
 
 /**
@@ -208,6 +209,18 @@ export function useLancarToken() {
           const r1 = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
           if (r1.value.err) throw new Error(m.recusou);
           mintCriado = mint.publicKey.toBase58();
+          // A compra inicial saiu junto com a criação: anota pro painel "Sua
+          // posição" ter o preço médio desde o primeiro segundo.
+          if (compraSol > 0) {
+            const criadoAgora = mintCriado;
+            void connection
+              .getParsedTokenAccountsByOwner(publicKey, { mint: mint.publicKey })
+              .then((contas) => {
+                const tokens = contas.value.reduce((s, c) => s + Number(c.account.data.parsed.info.tokenAmount.uiAmount ?? 0), 0);
+                if (tokens > 0) anotarOperacao(publicKey.toBase58(), criadoAgora, "buy", tokens, compraSol);
+              })
+              .catch(() => {});
+          }
 
           /* Transação 2: já assinada. Se falhar, remonta e pede de novo (só nesse caso). */
           setEtapa("finalizando");

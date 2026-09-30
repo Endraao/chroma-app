@@ -260,11 +260,10 @@ export function MinhaPosicao({
                 </div>
               )}
             </div>
-          ) : (
-            <div className="max-w-[190px] text-right text-[11px] leading-snug text-zinc-600">
-              {t.jaTinha}
-            </div>
-          )}
+          ) : // Preço médio ainda desconhecido (histórico carregando ou moeda
+          // recebida de fora): mostra só o valor, sem aviso — o lucro entra
+          // sozinho quando der pra calcular.
+          null}
         </div>
 
         {custo !== null && (
