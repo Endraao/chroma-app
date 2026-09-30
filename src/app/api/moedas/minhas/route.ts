@@ -53,6 +53,11 @@ export async function GET(request: Request) {
     .split(",")
     .map((c) => c.trim())
     .filter((c) => c.length >= 32 && c.length <= 64)
+    // Endereço EVM vem às vezes em minúsculas e às vezes "checksum" (maiúsculas
+    // misturadas): sem normalizar, a mesma carteira entrava duas vezes e a
+    // moeda aparecia repetida.
+    .map((c) => (c.startsWith("0x") ? c.toLowerCase() : c))
+    .filter((c, i, todas) => todas.indexOf(c) === i)
     .slice(0, 4);
 
   if (carteiras.length === 0) {

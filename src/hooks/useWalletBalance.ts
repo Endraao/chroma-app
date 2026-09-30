@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount } from "wagmi";
+import { useChromaAccount } from "@/hooks/useChromaAccount";
 
 /**
  * Quanto as carteiras conectadas valem: SOL e moedas da Solana, mais o ETH da
@@ -85,9 +86,18 @@ function useLeitura<T>(dono: string | null): T | null {
 export function useWalletBalance() {
   const { publicKey } = useWallet();
   const { address } = useAccount();
+  const { account } = useChromaAccount();
 
-  const solana = useLeitura<SaldoSolana>(publicKey?.toBase58() ?? null);
-  const evm = useLeitura<SaldoEvm>(address ?? null);
+  /*
+   * A conectada agora OU a vinculada à conta. Antes só contava a conectada:
+   * com a MetaMask conectada e a Phantom só vinculada, o saldo do topo
+   * mostrava o ETH e ignorava o SOL — enquanto o perfil mostrava os dois.
+   */
+  const donoSolana = publicKey?.toBase58() ?? account?.carteiras?.solana ?? null;
+  const donoEvm = address ?? account?.carteiras?.robinhood ?? null;
+
+  const solana = useLeitura<SaldoSolana>(donoSolana);
+  const evm = useLeitura<SaldoEvm>(donoEvm);
 
   /*
    * O total só existe se todas as partes conectadas tiverem valor em dólar.
@@ -95,8 +105,8 @@ export function useWalletBalance() {
    * daria um número menor que o real com cara de certo.
    */
   const partes: (number | null)[] = [];
-  if (publicKey) partes.push(solana ? solana.totalUsd : null);
-  if (address) partes.push(evm && evm.ethUsd !== null ? evm.ethUsd + (evm.tokensUsd ?? 0) : null);
+  if (donoSolana) partes.push(solana ? solana.totalUsd : null);
+  if (donoEvm) partes.push(evm && evm.ethUsd !== null ? evm.ethUsd + (evm.tokensUsd ?? 0) : null);
   const usd =
     partes.length > 0 && partes.every((p) => p !== null)
       ? partes.reduce<number>((soma, p) => soma + (p as number), 0)

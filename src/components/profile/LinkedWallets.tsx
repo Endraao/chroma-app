@@ -229,7 +229,12 @@ export function LinkedWallets() {
           const meta = CHAINS[chain];
           const vinculada = account.carteiras[chain] ?? null;
           const conectada = account.conectadas[chain] ?? null;
-          const precisaTrocar = Boolean(vinculada && conectada && vinculada !== conectada);
+          // Sem diferenciar maiúsculas: o mesmo endereço EVM vem "checksum" de
+          // um lado e em minúsculas do outro, e aparecia "Trocar pra esta" pra
+          // própria carteira já vinculada.
+          const precisaTrocar = Boolean(
+            vinculada && conectada && vinculada.toLowerCase() !== conectada.toLowerCase(),
+          );
 
           return (
             <div
@@ -275,12 +280,12 @@ export function LinkedWallets() {
               >
                 {ocupada === chain
                   ? t.assinando
-                  : !conectada
-                    ? t.conectar
-                    : precisaTrocar
-                      ? t.trocarPraEsta
-                      : vinculada
-                        ? t.vinculada
+                  : vinculada && !precisaTrocar
+                    ? t.vinculada // já ligada à conta: não importa se está conectada agora
+                    : !conectada
+                      ? t.conectar
+                      : precisaTrocar
+                        ? t.trocarPraEsta
                         : t.vincular}
               </Button>
             </div>
