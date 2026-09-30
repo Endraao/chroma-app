@@ -5,6 +5,7 @@ import { enderecoDaCurva, lerCurva } from "@/lib/chroma-program";
 import { registrarMoeda } from "@/lib/db";
 import { creditarMoeda } from "@/lib/airdrop";
 import { lerMoedaDaCurvaEvm } from "@/lib/curva-evm";
+import { lancamentoPonsNaTransacao, lerMoedaDaPons } from "@/lib/pons";
 import { revalidateTag } from "next/cache";
 import { TAG_DO_UNIVERSO } from "@/lib/tokens";
 
@@ -171,6 +172,40 @@ async function registrarNaRobinhood(corpo: Record<string, unknown>) {
   const endereco = texto(corpo.address, 42);
   if (!/^0x[0-9a-fA-F]{40}$/.test(endereco)) {
     return NextResponse.json({ error: "'address' não é um endereço EVM" }, { status: 400 });
+  }
+
+  /*
+   * Lançada pela Chroma NA PONS: a prova é o recibo — foi o nosso contrato
+   * (logo a taxa da Chroma foi paga) e quem lançou é quem assinou.
+   */
+  const txHash = texto(corpo.txHash, 128);
+  const pelaPons = txHash ? await lancamentoPonsNaTransacao(txHash).catch(() => null) : null;
+  if (pelaPons && pelaPons.moeda === endereco.toLowerCase()) {
+    const daPons = await lerMoedaDaPons(endereco).catch(() => null);
+    try {
+      await registrarMoeda({
+        endereco: endereco.toLowerCase(),
+        rede: "robinhood",
+        nome: (daPons?.nome ?? texto(corpo.nome, LIMITES.nome)).slice(0, LIMITES.nome) || endereco.slice(0, 6),
+        simbolo: (daPons?.simbolo ?? texto(corpo.simbolo, LIMITES.simbolo)).slice(0, LIMITES.simbolo) || "?",
+        descricao: texto(corpo.descricao, LIMITES.descricao) || null,
+        imagem: urlSegura(corpo.imagem),
+        criador: pelaPons.criador,
+        assinatura: txHash,
+        criadaEm: Date.now(),
+        links: linksDo(corpo),
+      });
+    } catch (erro) {
+      console.warn("[moedas] falha ao registrar (pons):", erro);
+      return NextResponse.json({ error: "Não foi possível registrar agora." }, { status: 500 });
+    }
+    revalidateTag(TAG_DO_UNIVERSO, "max");
+    try {
+      await creditarMoeda(endereco.toLowerCase(), pelaPons.criador, "robinhood");
+    } catch (erro) {
+      console.warn("[moedas] falha ao pontuar o airdrop (pons):", erro);
+    }
+    return NextResponse.json({ ok: true, address: endereco });
   }
 
   const moeda = await lerMoedaDaCurvaEvm(endereco).catch(() => null);

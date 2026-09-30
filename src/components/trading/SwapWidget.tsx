@@ -21,6 +21,7 @@ import { useCurvaEvm } from "@/hooks/useCurvaEvm";
 import { useCurvaSwapEvm } from "@/hooks/useCurvaSwapEvm";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { useSwapExternoEvm } from "@/hooks/useSwapExternoEvm";
+import { useCurvaPons, useSwapPons } from "@/hooks/useSwapPons";
 import type { Negociavel } from "@/lib/negociavel-evm";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
 import { ABI_DA_CURVA, CHROMA_CURVE_EVM } from "@/lib/chroma-evm";
@@ -756,6 +757,8 @@ function EvmSwap({
   const t = useTextos(TEXTOS);
   const meta = CHAINS[chain];
   const { curva, podeComprar, podeVender, carregando } = useCurvaEvm(tokenAddress);
+  // Moeda na curva da Pons (lançada pela Chroma ou não): negocia pelo ChromaPons.
+  const { pons, carregando: carregandoPons } = useCurvaPons(tokenAddress);
   const { affiliate } = useAffiliateTracking(chain);
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: robinhoodChain.id });
@@ -788,7 +791,7 @@ function EvmSwap({
    * pool aceitar o roteador público. O servidor confere simulando compra E
    * venda — ver src/lib/negociavel-evm.ts.
    */
-  const precisaDeDex = !carregando && (!curva || curva.migrada);
+  const precisaDeDex = !carregando && !carregandoPons && !pons && (!curva || curva.migrada);
   const [externo, setExterno] = useState<Negociavel | "verificando" | null>(null);
   useEffect(() => {
     if (!precisaDeDex) return;
@@ -814,10 +817,19 @@ function EvmSwap({
     afiliado: affiliate,
     habilitado: Boolean(liberado),
   });
-  const swap = liberado ? swapExterno : swapDaCurva;
+  const swapPons = useSwapPons({
+    moeda: tokenAddress,
+    pons,
+    side,
+    valor: valorNativo,
+    slippageBps,
+    afiliado: affiliate,
+    habilitado: Boolean(pons),
+  });
+  const swap = pons ? swapPons : liberado ? swapExterno : swapDaCurva;
 
   const ehCompra = side === "buy";
-  const podeOperar = liberado ? true : ehCompra ? podeComprar : podeVender;
+  const podeOperar = pons || liberado ? true : ehCompra ? podeComprar : podeVender;
 
   /*
    * Saldo de ETH e da moeda, relido a cada 15s e logo depois de cada negócio
@@ -1070,7 +1082,11 @@ function EvmSwap({
           <div className="flex justify-between">
             <span className="text-zinc-500">{t.rota}</span>
             <span className="text-zinc-300">
-              {liberado ? `Uniswap v4, ${t.taxaDe(feeLabelFor("robinhood").swap)}` : <>{t.curvaDaChromaMaiusc}, {t.taxa12}</>}
+              {pons
+                ? `Chroma, ${t.taxaDe(`${(swapPons.taxaBps / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`)}`
+                : liberado
+                  ? `Uniswap v4, ${t.taxaDe(feeLabelFor("robinhood").swap)}`
+                  : <>{t.curvaDaChromaMaiusc}, {t.taxa12}</>}
             </span>
           </div>
         </div>

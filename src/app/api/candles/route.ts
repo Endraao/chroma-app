@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { fetchCandles, CANDLE_INTERVALS, intervalSeconds } from "@/lib/market";
 import { lerMoedaDaCurvaEvm, velasDaCurvaEvm } from "@/lib/curva-evm";
+import { lerMoedaDaPons, velasDaPons } from "@/lib/pons";
 
 /** GET /api/candles?address=…&interval=1m → velas reais da GeckoTerminal. */
 export async function GET(request: Request) {
@@ -25,6 +26,12 @@ export async function GET(request: Request) {
      * negócios registrados no próprio contrato. Depois de migrar, ela passa a
      * ter pool e o caminho de sempre volta a valer.
      */
+    const daPons = await lerMoedaDaPons(address).catch(() => null);
+    if (daPons) {
+      const velas = await velasDaPons(daPons, intervalSeconds(interval));
+      if (!velas.length) return NextResponse.json({ error: "sem velas para este par" }, { status: 404 });
+      return NextResponse.json(velas);
+    }
     const daCurva = await lerMoedaDaCurvaEvm(address).catch(() => null);
     if (daCurva && !daCurva.curva.migrada) {
       const velas = await velasDaCurvaEvm(address, intervalSeconds(interval));

@@ -16,6 +16,23 @@ import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import { useIdioma } from "@/components/IdiomaProvider";
 import { traducoes, type Idioma } from "@/lib/idiomas";
 import { robinhoodChain } from "@/lib/web3";
+import { ABI_CHROMA_PONS, CHROMA_PONS, FABRICA_DA_PONS } from "@/lib/chroma-pons";
+import { anotarOperacao } from "@/lib/posicoes-locais";
+
+/** Evento do ChromaPons com o endereço da moeda e a compra do criador. */
+const ABI_LANCADA_PONS = [
+  {
+    type: "event",
+    name: "Lancada",
+    inputs: [
+      { name: "moeda", type: "address", indexed: true },
+      { name: "curva", type: "address", indexed: true },
+      { name: "criador", type: "address", indexed: true },
+      { name: "compra", type: "uint256", indexed: false },
+      { name: "tokens", type: "uint256", indexed: false },
+    ],
+  },
+] as const;
 import { TEXTO_DA_ETAPA, type DadosDoLancamento, type EtapaDoLancamento } from "@/hooks/useLancarToken";
 
 export { TEXTO_DA_ETAPA };
@@ -172,42 +189,54 @@ export function useLancarTokenEvm() {
 
       /* --- 0. o contrato aceitaria? ------------------------------- */
       /*
-       * A TAXA SAI DO CONTRATO, NÃO DO AMBIENTE.
+       * LANÇAMENTO PELA CURVA DA PONS (30/09/2026), numa transação só: taxa
+       * da Pons + taxa da Chroma + criação + compra do criador, pelo contrato
+       * ChromaPons. As duas taxas saem dos contratos, não do ambiente.
        *
-       * Antes vinha de NEXT_PUBLIC_LAUNCH_FEE_ETH. Se a variável faltar na
-       * Vercel, o site mandava zero, o contrato recusava, a MetaMask não
-       * conseguia estimar o gás e a transação morria sem explicação
-       * (27/09/2026). Quem cobra é o contrato; é dele que o número vem.
-       *
-       * E a simulação roda ANTES de subir a arte e de abrir a MetaMask: se o
-       * contrato vai recusar, a pessoa lê o motivo em português aqui, em vez de
-       * "Interaction failed" na carteira.
+       * A simulação roda ANTES de subir a arte e de abrir a carteira: se algo
+       * vai ser recusado, a pessoa lê o motivo aqui.
        */
-      let taxaDeLancamento: bigint;
+      const salt = `0x${Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, "0")).join("")}` as `0x${string}`;
+      const parametros = (logo: string) => ({
+        name: dados.nome,
+        symbol: dados.simbolo,
+        logo,
+        description: dados.descricao ?? "",
+        socials: {
+          twitter: dados.twitter ?? "",
+          telegram: dados.telegram ?? "",
+          discord: "",
+          website: dados.site ?? "",
+          farcaster: "",
+        },
+        creatorFeeRecipient: address,
+        creatorTaxBps: 0,
+        buybackEnabled: false,
+        expectedEconomics: `0x${"0".repeat(64)}` as `0x${string}`,
+        salt,
+      });
+      let valor: bigint;
       let gas: bigint;
       try {
-        taxaDeLancamento = (await publicClient.readContract({
-          address: CHROMA_CURVE_EVM as Address,
-          abi: ABI_DA_CURVA,
-          functionName: "taxaDeLancamento",
-        })) as bigint;
-
+        const [taxaDaPons, taxaDaChroma] = await Promise.all([
+          publicClient.readContract({
+            address: FABRICA_DA_PONS,
+            abi: [{ type: "function", name: "launchFee", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] }] as const,
+            functionName: "launchFee",
+          }),
+          publicClient.readContract({ address: CHROMA_PONS, abi: ABI_CHROMA_PONS, functionName: "taxaDeLancamento" }) as Promise<bigint>,
+        ]);
+        valor = taxaDaPons + taxaDaChroma + compra;
         const simulado = {
-          address: CHROMA_CURVE_EVM as Address,
-          abi: ABI_DA_CURVA,
+          address: CHROMA_PONS,
+          abi: ABI_CHROMA_PONS,
           functionName: "lancar",
-          /* A URI real só existe depois do upload; o tamanho é parecido. */
-          args: [dados.nome, dados.simbolo, "https://chroma.exemplo/metadados/0000000000000000.json"],
-          value: taxaDeLancamento,
+          /* O endereço real da arte só existe depois do upload; o tamanho é parecido. */
+          args: [parametros("https://chromalaunch.fun/api/media/00000000000000000000000000000000.jpg"), 0n, 0n],
+          value: valor,
           account: address,
         } as const;
         await publicClient.simulateContract(simulado);
-
-        /*
-         * Gás estimado aqui e enviado pronto, com 30% de folga. Na Robinhood
-         * (Arbitrum) o limite também paga o dado postado na L1; se a carteira
-         * chutar baixo, a rede recusa a transação antes de incluí-la.
-         */
         gas = ((await publicClient.estimateContractGas(simulado)) * 13n) / 10n;
       } catch (e) {
         setErro(explicarRecusa(e, idioma));
@@ -233,18 +262,16 @@ export function useLancarTokenEvm() {
         const publicado = await resposta.json();
         if (!resposta.ok) throw new Error(publicado?.error ?? m.imagem);
 
-        const uri: string = publicado.metadataUrl;
-
-        /* --- 2. a transação --------------------------------------- */
-        setEtapa("aguardando-assinatura");
+        /* --- 2. a transação (uma só) ------------------------------ */
+        setEtapa("aprovar-unica");
 
         const carteira = await obterCarteira();
         const hash = await carteira.writeContract({
-          address: CHROMA_CURVE_EVM as Address,
-          abi: ABI_DA_CURVA,
+          address: CHROMA_PONS,
+          abi: ABI_CHROMA_PONS,
           functionName: "lancar",
-          args: [dados.nome, dados.simbolo, uri],
-          value: taxaDeLancamento,
+          args: [parametros(publicado.imageUrl as string), 0n, 0n],
+          value: valor,
           gas,
         });
 
@@ -254,38 +281,32 @@ export function useLancarTokenEvm() {
         const recibo = await esperarRecibo(publicClient, hash);
         if (recibo.status !== "success") throw new Error(m.recusou);
 
-        /*
-         * O endereço da moeda sai do evento emitido pela própria curva.
-         *
-         * Os registros de outros contratos na mesma transação são ignorados em
-         * silêncio: decodificar um log que não é nosso lança, e isso não é
-         * erro — é só um log de terceiro.
-         */
         let moeda: string | null = null;
+        let tokensDoCriador = 0n;
         for (const log of recibo.logs) {
-          if (log.address.toLowerCase() !== String(CHROMA_CURVE_EVM).toLowerCase()) continue;
+          if (log.address.toLowerCase() !== CHROMA_PONS.toLowerCase()) continue;
           try {
-            const evento = decodeEventLog({ abi: ABI_DO_EVENTO, ...log });
+            const evento = decodeEventLog({ abi: ABI_LANCADA_PONS, ...log });
             if (evento.eventName === "Lancada") {
               moeda = evento.args.moeda as string;
+              tokensDoCriador = evento.args.tokens as bigint;
               break;
             }
           } catch {
-            /* log de outro evento do mesmo contrato: segue procurando */
+            /* outro evento do mesmo contrato */
           }
         }
+        if (!moeda) throw new Error(m.semEndereco);
 
-        if (!moeda) {
-          throw new Error(
-            m.semEndereco,
-          );
+        // A compra do criador saiu junto: anota pro painel "Sua posição".
+        if (compra > 0n && tokensDoCriador > 0n) {
+          anotarOperacao(address, moeda.toLowerCase(), "buy", Number(tokensDoCriador) / 1e18, Number(compra) / 1e18);
         }
 
         /*
-         * O catálogo é registrado DEPOIS, e uma falha aqui não derruba o
-         * lançamento: a moeda já existe na rede. Mesma decisão do fluxo da
-         * Solana — erro nosso de catálogo não pode virar "deu errado" para
-         * quem acabou de pagar o gás.
+         * Catálogo DEPOIS, e falha aqui não derruba o lançamento: a moeda já
+         * existe na rede. O servidor confere o recibo (foi o nosso contrato,
+         * e quem lançou é quem assinou).
          */
         void fetch("/api/moedas", {
           method: "POST",
@@ -297,58 +318,16 @@ export function useLancarTokenEvm() {
             address: moeda,
             chain: "robinhood",
             txHash: hash,
+            nome: dados.nome,
+            simbolo: dados.simbolo,
             descricao: dados.descricao,
             imagem: publicado.imageUrl,
           }),
         }).catch((erroDeCatalogo) => {
           console.warn("[lancamento-evm] moeda criada, mas não entrou no catálogo:", erroDeCatalogo);
         });
-
-        /* --- 4. compra inicial ------------------------------------ */
-        /*
-         * O contrato não compra junto do lançamento: o que passa da taxa volta
-         * como troco. Então é uma SEGUNDA transação, e a MetaMask pede uma
-         * segunda confirmação.
-         *
-         * Falhar aqui NÃO desfaz nada — a moeda já existe. Por isso o erro vira
-         * aviso devolvido junto do resultado, e não exceção: "deu errado" pra
-         * quem acabou de criar a moeda seria mentira.
-         */
-        let avisoDeCompra: string | null = null;
-        if (compra > 0n) {
-          setEtapa("comprando");
-          try {
-            const cotado = (await publicClient.readContract({
-              address: CHROMA_CURVE_EVM as Address,
-              abi: ABI_DA_CURVA,
-              functionName: "cotarCompra",
-              args: [moeda as Address, compra],
-            })) as bigint;
-
-            /*
-             * 5% de folga: a curva acabou de nascer, mas alguém pode comprar
-             * entre as duas transações. Passando disso o contrato reverte em
-             * vez de entregar menos.
-             */
-            const minimo = (cotado * 9_500n) / 10_000n;
-
-            const transacao = await carteira.writeContract({
-              address: CHROMA_CURVE_EVM as Address,
-              abi: ABI_DA_CURVA,
-              functionName: "comprar",
-              args: [moeda as Address, minimo, ENDERECO_ZERO as Address],
-              value: compra,
-            });
-            const reciboDaCompra = await esperarRecibo(publicClient, transacao);
-            if (reciboDaCompra.status !== "success") throw new Error(m.recusouCompra);
-            void reivindicarPontos(transacao, address);
-          } catch (e) {
-            const mensagem = e instanceof Error ? e.message : String(e);
-            avisoDeCompra = /reject|denied|cancel|User rejected/i.test(mensagem)
-              ? m.recusouInicial
-              : m.falhouInicial(explicarRecusa(e, idioma));
-          }
-        }
+        void reivindicarPontos(hash, address);
+        const avisoDeCompra: string | null = null;
 
         setEtapa("pronto");
         return { moeda, hash, avisoDeCompra };

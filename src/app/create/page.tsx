@@ -76,6 +76,7 @@ const TEXTOS = traducoes({
     ganhoTitulo: "What you earn as the creator",
     ganhoPump: (_p: number) => `You keep 100% of the creator fee from every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
+    ganhoEvm: "You receive 0.70% of every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.",
     verFaixas: "see the tiers",
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
     segundaConfirmacao: "your wallet asks for a second confirmation for this buy, right after creating",
@@ -111,6 +112,7 @@ const TEXTOS = traducoes({
     ganhoTitulo: "O que você ganha como criador",
     ganhoPump: (_p: number) => `Você fica com 100% da taxa de criador de cada operação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
+    ganhoEvm: "Você recebe 0,70% de cada negociação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.",
     verFaixas: "ver as faixas",
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
     segundaConfirmacao: "a carteira pede uma segunda confirmação para esta compra, logo depois de criar",
@@ -146,6 +148,7 @@ const TEXTOS = traducoes({
     ganhoTitulo: "作为创建者你能获得什么",
     ganhoPump: (_p: number) => `你保留代币每笔交易 100% 的创作者费用。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
+    ganhoEvm: "你的代币每笔交易你都能获得 0.70%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。",
     verFaixas: "查看档位",
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
     segundaConfirmacao: "创建后钱包会立即请求第二次确认以完成这笔买入",
@@ -515,12 +518,9 @@ export default function CreateTokenPage() {
             {chain === "solana" ? (
               recompensas === "detentores" ? t.ganhoDetentores : t.ganhoPump(PARTE_DA_CHROMA_BPS / 100)
             ) : (
-              <>
-                {t.ganhoTexto(chainLabels.creatorBase, chainLabels.creatorTop)}{" "}
-                <Link href="/fees" className="text-marca hover:text-chroma-cyan">
-                  {t.verFaixas}
-                </Link>
-              </>
+              // Robinhood (curva da Pons, conferido na rede em 30/09/2026): 1% por
+              // negociação, 70% disso vai pro criador = 0,70% de cada operação.
+              t.ganhoEvm
             )}
           </p>
         </CardBody>
@@ -542,11 +542,6 @@ export default function CreateTokenPage() {
           {compraInicial > 0 && (
             <p className="tnum -mt-1 text-[12px] text-zinc-400">
               {compraEmDolar !== null ? <>≈ {formatUsd(compraEmDolar)}</> : t.semDolar}
-              {chain === "robinhood" && (
-                <span className="text-zinc-600">
-                  {" "}· {t.segundaConfirmacao}
-                </span>
-              )}
             </p>
           )}
           <p className="text-[11px] leading-relaxed text-zinc-500">

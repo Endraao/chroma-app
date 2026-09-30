@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { fetchTrades, type NegocioDoPool } from "@/lib/market";
 import { lerMoedaDaCurvaEvm, negociosDaCurvaComoPool } from "@/lib/curva-evm";
 import { negociosDaCurvaSolana } from "@/lib/negocios-curva-solana";
+import { lerMoedaDaPons, negociosDaPonsComoPool } from "@/lib/pons";
 import { precosNativos } from "@/lib/precos-nativos";
 
 /** Só moeda ainda na curva de lançamento (conta existe e não terminou). */
@@ -36,12 +37,14 @@ export async function GET(request: Request) {
 
   let negocios: NegocioDoPool[] = [];
   try {
-    const daCurva = address.startsWith("0x") ? await lerMoedaDaCurvaEvm(address).catch(() => null) : null;
+    const daPons = address.startsWith("0x") ? await lerMoedaDaPons(address).catch(() => null) : null;
+    const daCurva = address.startsWith("0x") && !daPons ? await lerMoedaDaCurvaEvm(address).catch(() => null) : null;
     // Solana na curva de lançamento: direto da rede, em segundos (a fonte
     // de mercado leva ~1 min). Sem leitura, cai na fonte de sempre.
     const daCurvaSolana = address.startsWith("0x") ? null : await negociosNaCurvaDaSolana(address);
     negocios =
       daCurvaSolana ??
+      (daPons ? await negociosDaPonsComoPool(daPons) : null) ??
       (daCurva && !daCurva.curva.migrada
         ? await negociosDaCurvaComoPool(address)
         : await fetchTrades(address));

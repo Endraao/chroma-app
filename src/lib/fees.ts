@@ -105,7 +105,8 @@ export const CHAIN_FEES: Record<ChainId, ChainFeeConfig> = {
   robinhood: {
     curveTotalBps: 120,
     creatorTiers: tiers([45, 55, 62, 70]),
-    launchFee: Number(process.env.NEXT_PUBLIC_LAUNCH_FEE_ETH || 0.0005),
+    // Lançamento pela curva da Pons: 0,0005 da plataforma + 0,0005 da Chroma.
+    launchFee: 0.001,
     reference: { name: "PONS", totalBps: 100, creatorBps: 70, launchFee: "0,0005 ETH" },
   },
 };

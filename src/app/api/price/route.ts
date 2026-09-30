@@ -4,6 +4,7 @@ import { fetchPrice } from "@/lib/market";
 import { lerMoedaDaCurvaEvm, precoEmEth } from "@/lib/curva-evm";
 import { precosNativos } from "@/lib/precos-nativos";
 import { cached } from "@/lib/cache";
+import { lerMoedaDaPons, precoInicialNaPons, precoNaPons } from "@/lib/pons";
 
 /**
  * GET /api/price?address=… → só o preço em USD.
@@ -57,6 +58,24 @@ export async function GET(request: Request) {
         precoInicialNativo: 30 / 1_073_000_000,
         at: Date.now(),
       });
+    }
+  }
+
+  // Moeda na curva da Pons: preço da curva (só muda com negócio), em ETH e dólar.
+  if (address.startsWith("0x")) {
+    const daPons = await lerMoedaDaPons(address).catch(() => null);
+    if (daPons) {
+      const eth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
+      const priceNativo = precoNaPons(daPons);
+      if (eth > 0 && priceNativo > 0) {
+        return NextResponse.json({
+          address,
+          priceUsd: priceNativo * eth,
+          priceNativo,
+          precoInicialNativo: precoInicialNaPons(daPons),
+          at: Date.now(),
+        });
+      }
     }
   }
 

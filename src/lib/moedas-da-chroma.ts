@@ -18,6 +18,7 @@ import {
 } from "@/lib/chroma-program";
 import type { TokenSummary } from "@/lib/types";
 import { resumoDaMoedaEvm } from "@/lib/curva-evm";
+import { lerMoedaDaPons, resumoDaMoedaPons } from "@/lib/pons";
 
 /**
  * As moedas lançadas na Chroma, prontas pra entrar na vitrine.
@@ -94,6 +95,13 @@ async function moedasDaChromaSemCache(): Promise<TokenSummary[]> {
        * leitura falhar), cai no mesmo caminho de mercado da Solana.
        */
       if (m.rede === "robinhood") {
+        // Lançada pela Chroma na curva da Pons: lida de lá.
+        const daPons = await lerMoedaDaPons(m.endereco).catch(() => null);
+        if (daPons) {
+          return resumoDaMoedaPons(daPons, { imagem: m.imagem, descricao: m.descricao, criadaEm: m.criadaEm }).catch(
+            () => montar(m, undefined, estados.config, precoDoSol),
+          );
+        }
         const naCurva = await resumoDaMoedaEvm(m.endereco, {
           imagem: m.imagem,
           descricao: m.descricao,

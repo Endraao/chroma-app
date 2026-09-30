@@ -9,6 +9,7 @@ import { FORA_DA_VITRINE, moedasDaChroma } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
 import { lerMoedaDaCurvaEvm, resumoDaMoedaEvm } from "./curva-evm";
+import { lerMoedaDaPons, resumoDaMoedaPons } from "./pons";
 import { buscarMoedaDaChroma } from "./db";
 import type { ChainId, TokenSummary } from "./types";
 
@@ -375,6 +376,17 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
    * de migrar (aí a pool existe e o mercado sabe mais).
    */
   if (address.startsWith("0x")) {
+    // Moeda na curva da Pons (lançada pela Chroma ou não): lida da curva.
+    const daPons = await lerMoedaDaPons(address).catch(() => null);
+    if (daPons) {
+      const registro = await buscarMoedaDaChroma(address).catch(() => null);
+      const token = await resumoDaMoedaPons(daPons, {
+        imagem: registro?.imagem,
+        descricao: registro?.descricao,
+        criadaEm: registro?.criadaEm,
+      });
+      return { token, isDemo: false };
+    }
     const daCurva = await lerMoedaDaCurvaEvm(address).catch(() => null);
     if (daCurva && !daCurva.curva.migrada) {
       const registro = await buscarMoedaDaChroma(address).catch(() => null);

@@ -40,6 +40,7 @@ const TEXTOS = traducoes({
   en: {
     faixas: ["Launch", "Gaining traction", "Established", "Top"],
     solLancarNota: "One-time fee, paid at launch. Your coin is born ready to trade, with its own page and live chart on Chroma.",
+    rhCriadorNota: "The creator receives 0.70% of every trade of their coin.",
     solTrade: "Trade through Chroma", solTradeNota: "Charged on buys and sells made through Chroma, on any Solana coin — including the ones launched here.",
     solDivisao: "Creator fee",
     solDivisaoNota: "The creator keeps 100% of the creator fee on every trade of their coin.",
@@ -69,6 +70,7 @@ const TEXTOS = traducoes({
   pt: {
     faixas: ["Lançamento", "Pegando tração", "Consolidada", "Topo"],
     solLancarNota: "Taxa única, paga no lançamento. A sua moeda já nasce pronta para negociar, com página própria e gráfico ao vivo na Chroma.",
+    rhCriadorNota: "O criador recebe 0,70% de cada negociação da sua moeda.",
     solTrade: "Operar pela Chroma", solTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Solana — inclusive as lançadas aqui.",
     solDivisao: "Taxa de criador",
     solDivisaoNota: "O criador fica com 100% da taxa de criador de cada operação da sua moeda.",
@@ -98,6 +100,7 @@ const TEXTOS = traducoes({
   zh: {
     faixas: ["发行期", "起势期", "成熟期", "顶级"],
     solLancarNota: "一次性费用，发行时支付。你的代币一经创建即可交易，在 Chroma 上拥有独立页面和实时图表。",
+    rhCriadorNota: "创作者可获得其代币每笔交易的 0.70%。",
     solTrade: "通过 Chroma 交易", solTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Solana 代币 —— 包括在这里发行的代币。",
     solDivisao: "创作者费用",
     solDivisaoNota: "每笔交易的创作者费用 100% 归创作者。",
@@ -208,7 +211,8 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
   const diffBps = config.curveTotalBps - config.reference.totalBps;
 
   // Na Solana a moeda nasce na pump.fun: não há curva da Chroma nem faixas.
-  if (chain === "solana") {
+  if (chain === "solana" || chain === "robinhood") {
+    const rh = chain === "robinhood";
     return (
       <section>
         <h2 className={cn("text-xl font-bold tracking-tight", meta.accent)}>{meta.label}</h2>
@@ -223,8 +227,8 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
           <FeeCard
             icon="users"
             label={t.solDivisao}
-            value="100%"
-            note={t.solDivisaoNota}
+            value={rh ? "0.70%" : "100%"}
+            note={rh ? t.rhCriadorNota : t.solDivisaoNota}
           />
         </div>
       </section>
