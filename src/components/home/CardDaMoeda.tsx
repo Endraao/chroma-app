@@ -101,17 +101,19 @@ export function CardDaMoeda({ token, destaque = false }: { token: TokenSummary; 
  * letras do símbolo em vez do ícone de imagem quebrada.
  */
 export function ImagemDaMoeda({ token, px = 256 }: { token: TokenSummary; px?: number }) {
-  const [falhou, setFalhou] = useState(false);
+  // 0 = arte da moeda; 1 = /api/logo (procura em outras fontes); 2 = letras.
+  const [tentativa, setTentativa] = useState(token.imageUrl ? 0 : 1);
+  const proxima = () => setTentativa((t) => t + 1);
   const ref = useRef<HTMLImageElement>(null);
 
   // Imagem que falhou ANTES da página acordar no navegador não dispara o
   // onError — confere na montagem.
   useEffect(() => {
     const img = ref.current;
-    if (img && img.complete && img.naturalWidth === 0) setFalhou(true);
+    if (img && img.complete && img.naturalWidth === 0) proxima();
   }, []);
 
-  if (!token.imageUrl || falhou) {
+  if (tentativa >= 2) {
     return (
       <div
         className="grid size-full place-items-center text-[28px] font-black text-white/80"
@@ -123,12 +125,13 @@ export function ImagemDaMoeda({ token, px = 256 }: { token: TokenSummary; px?: n
   }
   return (
     <img
-      src={miniatura(token.imageUrl, px)}
+      key={tentativa}
+      src={tentativa === 0 ? miniatura(token.imageUrl, px) : `/api/logo/${token.address}`}
       alt=""
       loading="lazy"
       decoding="async"
       ref={ref}
-      onError={() => setFalhou(true)}
+      onError={proxima}
       className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
     />
   );

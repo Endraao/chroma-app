@@ -100,12 +100,9 @@ export function miniatura(url: string | undefined, px: number): string | undefin
   if (url.startsWith("/api/logo/")) return url;
   try {
     const u = new URL(url);
-    if (u.hostname === "cdn.dexscreener.com") {
-      u.searchParams.set("width", String(px * 2));
-      u.searchParams.set("height", String(px * 2));
-      u.searchParams.set("quality", "85");
-      return u.toString();
-    }
+    // DexScreener: NÃO mexe no tamanho — o CDN só aceita os parâmetros
+    // originais (width=800…); qualquer outro devolve 422 e a moeda ficava
+    // sem foto.
     if (u.hostname === "coin-images.coingecko.com" && px <= 48) {
       return url.replace("/large/", "/small/");
     }
