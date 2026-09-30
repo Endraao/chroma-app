@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
-import { erc20Abi, formatEther, formatUnits, parseAbi, parseEther, parseUnits, type Address } from "viem";
+import { erc20Abi, formatEther, formatUnits, maxUint256, parseAbi, parseEther, parseUnits, type Address } from "viem";
 
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
 import { useTextos } from "@/components/IdiomaProvider";
@@ -15,15 +15,15 @@ import type { FaseDoSwapEvm } from "@/hooks/useCurvaSwapEvm";
 
 const MENSAGENS = traducoes({
   en: {
-    aprove: "Approve in your wallet…", autorize: "Allow selling this coin… (1 of 2)", venda: "Approve the sale in your wallet…",
+    aprove: "Approve in your wallet…", autorize: "Allow selling this coin (first time only)… (1 of 2)", venda: "Approve the sale in your wallet…",
     confirmando: "Confirming on the network…", recusou: "the network rejected the transaction",
   },
   pt: {
-    aprove: "Aprove na sua carteira…", autorize: "Libere a venda desta moeda… (1 de 2)", venda: "Aprove a venda na sua carteira…",
+    aprove: "Aprove na sua carteira…", autorize: "Libere a venda desta moeda (só na primeira vez)… (1 de 2)", venda: "Aprove a venda na sua carteira…",
     confirmando: "Confirmando na rede…", recusou: "a rede recusou a transação",
   },
   zh: {
-    aprove: "请在钱包中确认…", autorize: "允许卖出该代币…（1/2）", venda: "请在钱包中确认卖出…",
+    aprove: "请在钱包中确认…", autorize: "允许卖出该代币（仅首次）…（1/2）", venda: "请在钱包中确认卖出…",
     confirmando: "网络确认中…", recusou: "网络拒绝了该交易",
   },
 });
@@ -220,7 +220,12 @@ export function useSwapPons({
               account: address,
             });
       } else {
-        // Aprovação do valor EXATO pro nosso contrato — nunca infinita.
+        /*
+         * Liberação UMA vez por moeda (pedido do dono: a venda pedia duas
+         * confirmações toda vez). Seguro: o ChromaPons só puxa moeda de quem
+         * está chamando a venda naquela transação (transferFrom(msg.sender)),
+         * então ninguém mais consegue usar esta liberação.
+         */
         const liberado = await publicClient.readContract({
           address: moeda as Address,
           abi: erc20Abi,
@@ -234,7 +239,7 @@ export function useSwapPons({
             address: moeda as Address,
             abi: erc20Abi,
             functionName: "approve",
-            args: [CHROMA_PONS, bruto],
+            args: [CHROMA_PONS, maxUint256],
             chain: robinhoodChain,
             account: address,
           });
