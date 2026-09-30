@@ -8,6 +8,7 @@ import Link from "next/link";
 
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { Badge } from "@/components/ui/Badge";
 import { MediaDropzone, MediaSpecList, type MediaSpec, type SelectedMedia } from "@/components/ui/MediaDropzone";
 import { useRouter } from "next/navigation";
@@ -569,6 +570,11 @@ export default function CreateTokenPage() {
         </div>
       )}
 
+      {/*
+        Carteira da rede escolhida não conectada nesta aba (mesmo que já
+        vinculada à conta): em vez de um botão travado, o botão de conectar.
+      */}
+      <RequireChainWallet chain={chain}>
       <Button
         variant="chroma"
         size="lg"
@@ -628,6 +634,7 @@ export default function CreateTokenPage() {
                     ? t.preenchaNome
                     : t.criar}
       </Button>
+      </RequireChainWallet>
 
       <p className="pb-4 text-center text-[11px] leading-relaxed text-zinc-600">
         {launchFee > 0 ? (
