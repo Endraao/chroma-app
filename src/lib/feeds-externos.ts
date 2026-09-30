@@ -154,3 +154,46 @@ export async function moedasRecentesDaPons(): Promise<TokenSummary[]> {
       });
   }).catch(() => []);
 }
+
+const EVENTO_GRADUOU = parseAbiItem(
+  "event PoolGraduated(address indexed token, uint256 positionId, uint256 tokenAmount, uint256 pairTokenAmount)",
+);
+
+/**
+ * As MELHORES moedas que já graduaram na Pons (pedido do dono: das 884, só
+ * as melhores). Graduada negocia na Uniswap v4 — a vitrine ainda confere, por
+ * simulação, se a pool aceita o nosso roteador (`soNegociaveis`).
+ *
+ * Melhor = mais volume em 24h, com pelo menos US$ 10 mil de liquidez.
+ */
+export async function melhoresGraduadasDaPons(): Promise<TokenSummary[]> {
+  return cached("feed:pons-graduadas", 10 * 60_000, async () => {
+    const { bestPair, toSummary } = await import("@/lib/market");
+    const ultimo = await cliente.getBlockNumber();
+    const logs = await cliente.getLogs({
+      address: FABRICA_DA_PONS as Address,
+      event: EVENTO_GRADUOU,
+      fromBlock: ultimo > 9_000_000n ? ultimo - 9_000_000n : 0n,
+      toBlock: ultimo,
+    });
+    const moedas = [...new Set(logs.map((l) => l.args.token!.toLowerCase()))];
+    const resumos: TokenSummary[] = [];
+    for (let i = 0; i < moedas.length; i += 30) {
+      const lote = moedas.slice(i, i + 30);
+      const r = await fetch(`https://api.dexscreener.com/tokens/v1/robinhood/${lote.join(",")}`, {
+        signal: AbortSignal.timeout(10_000),
+        cache: "no-store",
+      }).catch(() => null);
+      if (!r?.ok) continue;
+      const pares = (await r.json()) as Parameters<typeof bestPair>[0];
+      for (const m of lote) {
+        const par = bestPair(pares.filter((p) => p.baseToken?.address?.toLowerCase() === m));
+        if (par) resumos.push(toSummary(par));
+      }
+    }
+    return resumos
+      .filter((t) => t.liquidityUsd >= 10_000)
+      .sort((a, b) => b.volume24hUsd - a.volume24hUsd)
+      .slice(0, 25);
+  }).catch(() => []);
+}

@@ -66,7 +66,7 @@ export function chainFromDexscreener(id: string): ChainId | null {
 /* Tipos crus da Dexscreener (só o que usamos)                         */
 /* ------------------------------------------------------------------ */
 
-interface DexPair {
+export interface DexPair {
   chainId: string;
   dexId: string;
   pairAddress: string;
@@ -199,7 +199,7 @@ function linksDoProjeto(info: DexPair["info"]): {
 }
 
 /** Entre vários pares do mesmo token, o que vale é o de maior liquidez. */
-function bestPair(pairs: DexPair[]): DexPair | null {
+export function bestPair(pairs: DexPair[]): DexPair | null {
   const valid = pairs.filter((p) => DEXSCREENER_TO_CHAIN[p.chainId] && Number(p.priceUsd) > 0);
   if (!valid.length) return null;
   return valid.reduce((best, p) =>
@@ -207,7 +207,7 @@ function bestPair(pairs: DexPair[]): DexPair | null {
   );
 }
 
-function toSummary(pair: DexPair): TokenSummary {
+export function toSummary(pair: DexPair): TokenSummary {
   return {
     address: pair.baseToken.address,
     chain: DEXSCREENER_TO_CHAIN[pair.chainId] ?? "solana",
