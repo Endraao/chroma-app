@@ -189,6 +189,10 @@ export function AccountMenu() {
                    * estavam certos e pareciam se contradizer.
                    */
                   const vinculada = Boolean(account.carteiras?.[id]);
+                  // Vinculada à conta mas não plugada nesta aba: é da pessoa,
+                  // mostra o endereço. A conexão é pedida só na hora de
+                  // comprar ou lançar (RequireChainWallet).
+                  const mostrada = conectada ?? account.carteiras?.[id] ?? null;
                   return (
                     <div key={id} className="flex items-center gap-2.5">
                       { }
@@ -199,7 +203,7 @@ export function AccountMenu() {
                         height={18}
                         className={cn(
                           "size-[18px] shrink-0 rounded-full transition-opacity",
-                          !conectada && "opacity-35",
+                          !mostrada && "opacity-35",
                         )}
                       />
                       <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-zinc-300">
@@ -208,7 +212,7 @@ export function AccountMenu() {
                           <span className="pl-1.5 font-normal text-zinc-600">{nomeCarteira}</span>
                         )}
                       </span>
-                      {conectada ? (
+                      {mostrada ? (
                         <span className="flex shrink-0 items-center gap-1.5">
                           {/*
                             Conectada mas FORA da conta: a comissão desta rede
@@ -226,7 +230,7 @@ export function AccountMenu() {
                             </Link>
                           )}
                           <span className="tnum text-[11px] text-zinc-500">
-                            {shortenAddress(conectada, 3)}
+                            {shortenAddress(mostrada, 3)}
                           </span>
                         </span>
                       ) : (
