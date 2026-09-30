@@ -58,6 +58,14 @@ const REFERENCIA_MS = PRICE_POLL_MS;
  * — não dá pra separar um do outro. Daí a faixa.
  */
 const FATOR_MAXIMO = 1.03;
+/*
+ * Robinhood: o preço vem de CADA swap, exato (evento da pool) — o problema dos
+ * negócios opostos no mesmo slot não existe. Com 3%, numa moeda agitada quase
+ * todo tique caía pra âncora do agregador, que atrasa ~30 s, e o gráfico
+ * ficava meio minuto atrás da Fomo (30/09/2026). 2x ainda pega erro de modelo
+ * (que erra por 3x ou mais) e deixa passar o movimento de verdade.
+ */
+const FATOR_MAXIMO_EVM = 2;
 /** De quanto em quanto tempo as velas fechadas são recarregadas. */
 const CANDLE_REFRESH_MS = 60_000;
 
@@ -477,7 +485,8 @@ export function useLiveChartData({
 
     if (referencia > 0) {
       const fator = preco / referencia;
-      if (fator > FATOR_MAXIMO || fator < 1 / FATOR_MAXIMO) {
+      const limite = chain === "robinhood" ? FATOR_MAXIMO_EVM : FATOR_MAXIMO;
+      if (fator > limite || fator < 1 / limite) {
         /*
          * Fora da faixa: vale o preço do servidor, não o descarte puro.
          *
@@ -501,7 +510,7 @@ export function useLiveChartData({
 
     precoPendenteRef.current = preco;
     volumePendenteRef.current += tickDaPool.volumeUsd;
-  }, [tickDaPool]);
+  }, [tickDaPool, chain]);
 
   // Trocar de moeda zera o contador: ele é da sessão nesta página.
   useEffect(() => {
