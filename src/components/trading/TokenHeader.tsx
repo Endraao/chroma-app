@@ -110,10 +110,10 @@ export function TokenHeader({
               */}
             {progressoDaCurva !== null ? (
               <Badge tone="chroma">
-                {t.curva} {progressoDaCurva.toFixed(0)}%
+                {t.curva} {pctDaCurva(progressoDaCurva)}%
               </Badge>
             ) : token.bondingProgress !== null ? (
-              <Badge tone="chroma">{t.curva} {token.bondingProgress}%</Badge>
+              <Badge tone="chroma">{t.curva} {pctDaCurva(token.bondingProgress)}%</Badge>
             ) : (
               // Curva de lançamento da Solana: o selo diz "curva", nunca o nome
               // de quem opera por trás.
@@ -243,4 +243,9 @@ function Numero({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: s
       <div className={cn("tnum text-[13px] font-bold", cor ?? "text-zinc-100")}>{valor}</div>
     </div>
   );
+}
+
+/** 0.3896761904… → "0.4"; 42.7 → "43". Menos de 1% com uma casa, pra não mostrar "0%". */
+function pctDaCurva(p: number): string {
+  return p < 1 ? p.toFixed(1) : p.toFixed(0);
 }
