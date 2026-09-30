@@ -75,6 +75,7 @@ const TEXTOS = traducoes({
     nenhumSinal: "No danger signs found",
     alertas: (n: number) => (n === 1 ? "Warning: 1 problem" : `Warning: ${n} problems`),
     zeroTitulo: "Zero liquidity",
+    curvaValor: "Bonding curve",
     zeroDetalhe: "There is no liquidity in this coin. Trading may be impossible.",
     problemas: {
       mintable: ["Mint authority open", "The owner can create new tokens and dilute you."],
@@ -132,6 +133,7 @@ const TEXTOS = traducoes({
     nenhumSinal: "Nenhum sinal de perigo encontrado",
     alertas: (n: number) => (n === 1 ? "Aviso: 1 problema" : `Aviso: ${n} problemas`),
     zeroTitulo: "Liquidez zero",
+    curvaValor: "Curva de lançamento",
     zeroDetalhe: "Não há liquidez nesta moeda. A negociação pode estar impossibilitada.",
     problemas: {
       mintable: ["Emissão aberta", "O dono pode criar novos tokens e diluir você."],
@@ -162,6 +164,7 @@ const TEXTOS = traducoes({
     nenhumSinal: "未发现危险信号",
     alertas: (n: number) => `警告：${n} 个问题`,
     zeroTitulo: "零流动性",
+    curvaValor: "联合曲线",
     zeroDetalhe: "该代币没有流动性，可能无法交易。",
     problemas: {
       mintable: ["可增发", "所有者可以增发代币稀释你的持仓。"],
@@ -254,8 +257,19 @@ export function SecurityPanel({
   /* A auditoria chega em português do servidor; aqui ela vira o idioma da página. */
   report = traduzirRelatorio(report, t);
 
+  // Na curva de lançamento a compra e a venda são feitas contra a própria
+  // curva: não existe pool nem LP pra travar, e isso não é risco.
+  if (naCurva) {
+    report = {
+      ...report,
+      checks: report.checks
+        .filter((c) => c.id !== "lp_locked")
+        .map((c) => (c.id === "liquidity" ? { ...c, level: "safe" as const, value: t.curvaValor } : c)),
+    };
+  }
+
   const alertas = montarAlertas(report, { liquidityUsd }, t).filter(
-    (a) => !naCurva || !["liquidity", "liquidez_rasa", "lp_sem_prova"].includes(a.id),
+    (a) => !naCurva || !["liquidity", "liquidez_rasa", "lp_sem_prova", "liquidez_zero", "lp_locked"].includes(a.id),
   );
   const passaram = report.checks.filter((c) => c.level === "safe");
   const naoVerificados = report.checks.filter((c) => c.level === "unknown");

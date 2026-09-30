@@ -264,7 +264,9 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             report={report}
             carregando={auditando}
             liquidityUsd={stats.liquidityUsd}
-            naCurva={token.bondingProgress !== null}
+            // Solana ainda na curva de lançamento: a DexScreener não dá o
+            // progresso, mas o identificador da DEX diz que é curva.
+            naCurva={token.bondingProgress !== null || (token.chain === "solana" && token.dexId === "pumpfun")}
           />
 
           {/* Ordem da Fomo Family: comprar, alerta, sobre — e o convite por último. */}

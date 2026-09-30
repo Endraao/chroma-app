@@ -72,19 +72,19 @@ const MENSAGENS = traducoes({
     conecte: "Connect a Solana wallet first.", semCarteira: "Launching on Solana is not configured yet.",
     compraInvalida: "The initial buy amount is not a valid number.", imagem: "Could not upload the image.",
     recusou: "the network rejected the transaction", demorou: "The coin was created, but the network is slow to show it. Open its page in a minute.",
-    semDivisao: "The coin was created on pump.fun. The last step (fee split and initial buy) was not completed — you can buy it on its page.",
+    semDivisao: "Your coin was created. Finish the last step on its page.",
   },
   pt: {
     conecte: "Conecte uma carteira Solana antes.", semCarteira: "O lançamento na Solana ainda não está configurado.",
     compraInvalida: "O valor da compra inicial não é um número válido.", imagem: "Não foi possível enviar a imagem.",
     recusou: "a rede recusou a transação", demorou: "A moeda foi criada, mas a rede está demorando para mostrá-la. Abra a página dela em um minuto.",
-    semDivisao: "A moeda foi criada na pump.fun. A última etapa (divisão da taxa e compra inicial) não foi concluída — dá pra comprar pela página dela.",
+    semDivisao: "Sua moeda foi criada. Conclua a última etapa na página dela.",
   },
   zh: {
     conecte: "请先连接 Solana 钱包。", semCarteira: "Solana 发行尚未配置。",
     compraInvalida: "首次买入金额不是有效数字。", imagem: "无法上传图片。",
     recusou: "网络拒绝了该交易", demorou: "代币已创建，但网络显示较慢。请一分钟后打开其页面。",
-    semDivisao: "代币已在 pump.fun 创建。最后一步（费用分成和首次买入）未完成 —— 可以在代币页面购买。",
+    semDivisao: "你的代币已创建。请在代币页面完成最后一步。",
   },
 });
 
@@ -202,19 +202,31 @@ export function useLancarToken() {
         if (!(paraDetentores && compraSol <= 0)) try {
           await esperarCurva(connection, mint.publicKey);
           setEtapa("dividindo");
-          const txB = await transacaoDeDivisao({
-            conn: connection,
-            criador: publicKey,
-            mint: mint.publicKey,
-            carteiraDaChroma,
-            compraSol,
-            paraDetentores,
-            par: dados.par,
-          });
-          const assinaturaB = await sendTransaction(txB, connection);
-          const blocoB = await connection.getLatestBlockhash();
-          const resB = await connection.confirmTransaction({ signature: assinaturaB, ...blocoB }, "confirmed");
-          if (resB.value.err) throw new Error(m.recusou);
+          // Duas tentativas: a curva recém-criada às vezes ainda não aparece
+          // para o RPC da carteira e a primeira simulação falha. Recusa da
+          // pessoa não repete.
+          for (let tentativa = 1; ; tentativa++) {
+            try {
+              const txB = await transacaoDeDivisao({
+                conn: connection,
+                criador: publicKey,
+                mint: mint.publicKey,
+                carteiraDaChroma,
+                compraSol,
+                paraDetentores,
+                par: dados.par,
+              });
+              const assinaturaB = await sendTransaction(txB, connection);
+              const blocoB = await connection.getLatestBlockhash();
+              const resB = await connection.confirmTransaction({ signature: assinaturaB, ...blocoB }, "confirmed");
+              if (resB.value.err) throw new Error(m.recusou);
+              break;
+            } catch (erroB) {
+              const msg = erroB instanceof Error ? erroB.message : String(erroB);
+              if (tentativa >= 2 || /reject|denied|cancel/i.test(msg)) throw erroB;
+              await new Promise((r) => setTimeout(r, 2500));
+            }
+          }
         } catch (e) {
           console.warn("[lancamento] etapa B não concluída:", e);
           avisoDeCompra = e instanceof Error && e.message === "curve-timeout" ? m.demorou : m.semDivisao;

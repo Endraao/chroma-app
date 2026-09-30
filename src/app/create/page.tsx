@@ -74,7 +74,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "As a holder you also get your share of the rewards for as long as you hold the coin — just like everyone else.",
     recSoSolana: "Sending rewards to holders is available for Solana launches. On Robinhood Chain, rewards go to the creator.",
     ganhoTitulo: "What you earn as the creator",
-    ganhoPump: (p: number) => `On Solana your coin is launched on pump.fun and trades there and here. You keep ${100 - p}% of the pump.fun creator fee, and ${p}% goes to Chroma. You will approve two steps in your wallet: creating the coin and the fee split (with your initial buy).`,
+    ganhoPump: (p: number) => `You keep ${100 - p}% of the creator fee from every trade of your coin, and ${p}% goes to Chroma. You will approve two steps in your wallet: creating the coin and setting up the fees (with your initial buy).`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
     verFaixas: "see the tiers",
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
@@ -109,7 +109,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "Como detentor, você também recebe a sua parte das recompensas enquanto segurar a moeda — igual a todo mundo.",
     recSoSolana: "Enviar as recompensas aos detentores está disponível nos lançamentos da Solana. Na Robinhood Chain, as recompensas vão para o criador.",
     ganhoTitulo: "O que você ganha como criador",
-    ganhoPump: (p: number) => `Na Solana a sua moeda é lançada na pump.fun e negocia lá e aqui. Você fica com ${100 - p}% da taxa de criador da pump.fun, e ${p}% vão para a Chroma. Você vai aprovar duas etapas na carteira: a criação da moeda e a divisão da taxa (junto com a sua compra inicial).`,
+    ganhoPump: (p: number) => `Você fica com ${100 - p}% da taxa de criador de cada operação da sua moeda, e ${p}% vão para a Chroma. Você vai aprovar duas etapas na carteira: a criação da moeda e a configuração das taxas (junto com a sua compra inicial).`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
     verFaixas: "ver as faixas",
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
@@ -144,7 +144,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "作为持有人，只要你持有该代币，也能和其他人一样获得你的那份奖励。",
     recSoSolana: "将奖励发送给持有人仅适用于 Solana 发行。在 Robinhood Chain 上，奖励归创作者所有。",
     ganhoTitulo: "作为创建者你能获得什么",
-    ganhoPump: (p: number) => `在 Solana 上，你的代币会在 pump.fun 发行，并可在那里和这里交易。你保留 pump.fun 创作者费用的 ${100 - p}%，${p}% 归 Chroma。你需要在钱包中确认两步：创建代币，以及费用分成（连同你的首次买入）。`,
+    ganhoPump: (p: number) => `你保留代币每笔交易创作者费用的 ${100 - p}%，${p}% 归 Chroma。你需要在钱包中确认两步：创建代币，以及设置费用（连同你的首次买入）。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
     verFaixas: "查看档位",
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
@@ -614,7 +614,9 @@ export default function CreateTokenPage() {
            */
           if (!resultado) return;
           if ("avisoDeCompra" in resultado && resultado.avisoDeCompra) {
-            setCriadaSemCompra({ moeda: resultado.moeda, aviso: resultado.avisoDeCompra });
+            // Sem mensagem de erro: vai para a moeda, onde o criador conclui
+            // a última etapa com um clique (ConcluirLancamento).
+            router.push(`/token/${resultado.moeda}`);
             return;
           }
           router.push(`/token/${"mint" in resultado ? resultado.mint : resultado.moeda}`);

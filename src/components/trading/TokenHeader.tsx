@@ -113,7 +113,13 @@ export function TokenHeader({
             ) : token.bondingProgress !== null ? (
               <Badge tone="chroma">{t.curva} {token.bondingProgress}%</Badge>
             ) : (
-              <Badge tone="neutral">{token.dexId ?? t.listado}</Badge>
+              // Curva de lançamento da Solana: o selo diz "curva", nunca o nome
+              // de quem opera por trás.
+              token.dexId === "pumpfun" ? (
+                <Badge tone="chroma">{t.curva}</Badge>
+              ) : (
+                <Badge tone="neutral">{token.dexId?.includes("pump") ? t.listado : (token.dexId ?? t.listado)}</Badge>
+              )
             )}
           </div>
 
