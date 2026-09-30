@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount } from "wagmi";
+import { useChromaAccount } from "@/hooks/useChromaAccount";
 
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, CHAIN_IDS, REDE_PADRAO } from "@/lib/web3";
@@ -74,9 +75,12 @@ export function SeletorDeRede() {
 
   const { connected } = useWallet();
   const { isConnected: evmConectada } = useAccount();
+  // Vinculada à conta também conta: é carteira da pessoa, mesmo sem estar
+  // plugada nesta aba.
+  const { account } = useChromaAccount();
   const conectada: Record<ChainId, boolean> = {
-    solana: connected,
-    robinhood: evmConectada,
+    solana: connected || Boolean(account?.carteiras?.solana),
+    robinhood: evmConectada || Boolean(account?.carteiras?.robinhood),
   };
 
   /* Fecha ao clicar fora ou apertar Esc — igual aos outros menus do site. */
