@@ -84,18 +84,21 @@ const MENSAGENS = traducoes({
     compraInvalida: "The initial buy amount is not a valid number.", imagem: "Could not upload the image.",
     recusou: "the network rejected the transaction", demorou: "The coin was created, but the network is slow to show it. Open its page in a minute.",
     semDivisao: "Your coin was created. Finish the last step on its page.",
+    expirou: "The approval took too long and the network turned it down. Nothing was charged — just click again.",
   },
   pt: {
     conecte: "Conecte uma carteira Solana antes.", semCarteira: "O lançamento na Solana ainda não está configurado.",
     compraInvalida: "O valor da compra inicial não é um número válido.", imagem: "Não foi possível enviar a imagem.",
     recusou: "a rede recusou a transação", demorou: "A moeda foi criada, mas a rede está demorando para mostrá-la. Abra a página dela em um minuto.",
     semDivisao: "Sua moeda foi criada. Conclua a última etapa na página dela.",
+    expirou: "A aprovação demorou demais e a rede recusou. Nada foi cobrado — é só clicar de novo.",
   },
   zh: {
     conecte: "请先连接 Solana 钱包。", semCarteira: "Solana 发行尚未配置。",
     compraInvalida: "首次买入金额不是有效数字。", imagem: "无法上传图片。",
     recusou: "网络拒绝了该交易", demorou: "代币已创建，但网络显示较慢。请一分钟后打开其页面。",
     semDivisao: "你的代币已创建。请在代币页面完成最后一步。",
+    expirou: "确认耗时过长，网络已拒绝。未产生任何费用——再点一次即可。",
   },
 });
 
@@ -185,7 +188,7 @@ export function useLancarToken() {
          * As duas transações são montadas antes e assinadas juntas; o site
          * envia a 2 assim que a 1 confirma. Ver `transacoesDeLancamento`.
          */
-        if (dados.par !== "USDC" && signAllTransactions) {
+        if (dados.par !== "USDC") {
           setEtapa("aprovar-tudo");
           const mint = Keypair.generate();
           const { criacao, divisao } = await transacoesDeLancamento({
@@ -201,10 +204,29 @@ export function useLancarToken() {
             paraDetentores: paraDetentoresUnico,
           });
           criacao.sign([mint]);
-          const [criacaoAssinada, divisaoAssinada] = await signAllTransactions([criacao, divisao]);
+
+          /*
+           * Uma aprovação quando a carteira assina as duas juntas. Carteira sem
+           * esse recurso (ou que falhe nele): assina a 1 sozinha — criação e
+           * compra continuam juntas, o criador segue comprando primeiro — e a
+           * 2 é pedida em seguida. Recusa da pessoa para tudo.
+           */
+          let assinadas: (typeof criacao)[] | null = null;
+          if (signAllTransactions) {
+            try {
+              assinadas = await signAllTransactions([criacao, divisao]);
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              if (/reject|denied|cancel/i.test(msg)) throw e;
+              console.warn("[lancamento] carteira não assinou as duas juntas, seguindo uma a uma:", e);
+            }
+          }
+          const divisaoAssinada = assinadas?.[1] ?? null;
 
           setEtapa("confirmando");
-          const assinatura = await connection.sendRawTransaction(criacaoAssinada.serialize(), { maxRetries: 5 });
+          const assinatura = assinadas
+            ? await connection.sendRawTransaction(assinadas[0].serialize(), { maxRetries: 5 })
+            : await sendTransaction(criacao, connection);
           const bloco = await connection.getLatestBlockhash();
           const r1 = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
           if (r1.value.err) throw new Error(m.recusou);
@@ -225,7 +247,7 @@ export function useLancarToken() {
           /* Transação 2: já assinada. Se falhar, remonta e pede de novo (só nesse caso). */
           setEtapa("finalizando");
           let assinaturaTaxa: string | undefined;
-          const enviar = async (tx: typeof divisaoAssinada) => {
+          const enviar = async (tx: typeof criacao) => {
             const sig = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 5 });
             const b = await connection.getLatestBlockhash();
             const r = await connection.confirmTransaction({ signature: sig, ...b }, "confirmed");
@@ -234,10 +256,12 @@ export function useLancarToken() {
           };
           try {
             await esperarCurva(connection, mint.publicKey);
+            if (!divisaoAssinada) throw new Error("sem assinatura prévia");
             assinaturaTaxa = await enviar(divisaoAssinada);
           } catch (e1) {
             console.warn("[lancamento] etapa 2 falhou, remontando:", e1);
             try {
+              await esperarCurva(connection, mint.publicKey);
               const nova = await transacaoDeTaxaEDivisao({
                 conn: connection,
                 criador: publicKey,
@@ -350,7 +374,13 @@ export function useLancarToken() {
       } catch (e) {
         setEtapa("parado");
         const mensagem = e instanceof Error ? e.message : String(e);
-        setErro(/reject|denied|User rejected/i.test(mensagem) ? null : mensagem);
+        setErro(
+          /reject|denied|User rejected/i.test(mensagem)
+            ? null
+            : /blockhash|expired|block height exceeded/i.test(mensagem)
+              ? m.expirou
+              : mensagem,
+        );
         return null;
       }
     },
