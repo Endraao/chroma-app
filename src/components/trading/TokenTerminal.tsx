@@ -183,7 +183,9 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
         price={price}
         stats={{ ...stats, holders: stats.holders || holdersDaGecko }}
         volumeDaSessao={volumeDaSessao}
-        top10Pct={report?.holderConcentration.top10Pct || top10DaGecko}
+        /* Na curva, o maior "dono" é a própria curva (os tokens ainda não vendidos):
+           o top 10 dava 100% numa moeda recém-nascida e saudável. Some até graduar. */
+        top10Pct={token.bondingProgress != null && token.bondingProgress < 100 ? 0 : report?.holderConcentration.top10Pct || top10DaGecko}
       />
 
       {/*
