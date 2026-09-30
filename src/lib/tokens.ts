@@ -320,13 +320,22 @@ async function comCurvaDaSolana(r: { token: TokenSummary; isDemo: boolean }) {
     const sol = precos?.solana ?? 0;
     if (!estado || estado.completa || emSol === null || sol <= 0) return r;
     const preco = emSol * sol;
+    /*
+     * O preço da CURVA manda (igual à pump.fun). A DexScreener registra o
+     * preço médio do último negócio, abaixo do preço depois dele, e a
+     * variação saía negativa numa moeda que só subiu (30/09/2026).
+     * Moeda com menos de 24h: variação contra o preço de nascimento.
+     */
+    const inicialEmSol = 30 / 1_073_000_000;
+    const nova = r.token.createdAt > 0 && Date.now() - r.token.createdAt < 24 * 3600_000;
     return {
       ...r,
       token: {
         ...r.token,
-        priceUsd: r.token.priceUsd > 0 ? r.token.priceUsd : preco,
+        priceUsd: preco,
+        change24h: nova ? (emSol / inicialEmSol - 1) * 100 : r.token.change24h,
         // Emissão fixa da curva: 1 bilhão de tokens.
-        marketCapUsd: r.token.marketCapUsd > 0 ? r.token.marketCapUsd : preco * 1_000_000_000,
+        marketCapUsd: preco * 1_000_000_000,
         liquidityUsd: estado.solReal * sol,
         bondingProgress: estado.progresso,
         dexId: "pumpfun",

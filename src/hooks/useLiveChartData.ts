@@ -61,6 +61,9 @@ const FATOR_MAXIMO = 1.03;
 /** De quanto em quanto tempo as velas fechadas são recarregadas. */
 const CANDLE_REFRESH_MS = 60_000;
 
+/** Preço inicial de toda moeda na curva de lançamento da Solana, em SOL por token. */
+const PRECO_INICIAL_NA_CURVA_SOL = 30 / 1_073_000_000;
+
 interface Options {
   address: string;
   /** endereço (ou id) do par; com ele o preço é lido direto da rede */
@@ -182,14 +185,32 @@ export function useLiveChartData({
      * "carregando" ou "sem dados", o gráfico começa com uma vela no preço de
      * agora (lido da curva) e anda com os negócios (30/09/2026).
      */
-    const semente = async (): Promise<boolean> => {
+    /*
+     * Preço com que TODA moeda nasce na curva de lançamento da Solana (30 SOL
+     * virtuais contra 1,073 bi de tokens), em dólar. Só existe para moeda na
+     * curva — o /api/price devolve priceSol só nesse caso.
+     */
+    const precoInicialDaCurva = async (): Promise<{ inicial: number; agora: number } | null> => {
       try {
         const res = await fetch(`/api/price?address=${address}`, { cache: "no-store" });
-        if (!res.ok) return false;
-        const { priceUsd } = (await res.json()) as { priceUsd: number };
-        if (cancelled || !Number.isFinite(priceUsd) || priceUsd <= 0) return false;
+        if (!res.ok) return null;
+        const { priceUsd, priceSol } = (await res.json()) as { priceUsd: number; priceSol?: number };
+        if (!Number.isFinite(priceUsd) || priceUsd <= 0) return null;
+        if (!priceSol || priceSol <= 0) return { inicial: 0, agora: priceUsd };
+        return { inicial: PRECO_INICIAL_NA_CURVA_SOL * (priceUsd / priceSol), agora: priceUsd };
+      } catch {
+        return null;
+      }
+    };
+
+    const semente = async (): Promise<boolean> => {
+      try {
+        const precos = await precoInicialDaCurva();
+        if (cancelled || !precos) return false;
+        const priceUsd = precos.agora;
+        const abre = precos.inicial > 0 && precos.inicial < priceUsd ? precos.inicial : priceUsd;
         const agora = Math.floor(Date.now() / 1000);
-        const vela = { time: agora - (agora % intervalSec), open: priceUsd, high: priceUsd, low: priceUsd, close: priceUsd, volume: 0 };
+        const vela = { time: agora - (agora % intervalSec), open: abre, high: priceUsd, low: abre, close: priceUsd, volume: 0 };
         setIntervaloDasVelas(interval);
         setCandles((prev) => (prev.length ? prev : [vela]));
         setStatus("live");
@@ -228,6 +249,29 @@ export function useLiveChartData({
           if (isRefresh) return; // as velas na tela continuam valendo
           if (!(await semente())) setStatus("vazio");
           return;
+        }
+
+        /*
+         * PRIMEIRA VELA DA MOEDA NA CURVA: abre no preço de nascimento.
+         * A fonte registra o primeiro negócio com abertura = fechamento = preço
+         * DEPOIS da compra do criador — uma vela achatada, invisível; parecia
+         * "moeda sem gráfico" (30/09/2026). Como na pump.fun, ela passa a abrir
+         * no preço inicial da curva. Só quando o histórico veio inteiro (poucas
+         * velas) e a primeira abre acima do preço inicial.
+         */
+        if (chain === "solana" && data.length < 500) {
+          const precos = await precoInicialDaCurva();
+          const primeira = data[0];
+          if (precos && precos.inicial > 0 && primeira.open > precos.inicial * 1.0005) {
+            data = [{ ...primeira, open: precos.inicial, low: Math.min(primeira.low, precos.inicial) }, ...data.slice(1)];
+          }
+          // A última vela fecha no preço da curva AGORA (depois do negócio),
+          // não no preço médio que a fonte registrou — igual à pump.fun.
+          if (precos && precos.inicial > 0 && data.length) {
+            const u = data[data.length - 1];
+            data = [...data.slice(0, -1), { ...u, close: precos.agora, high: Math.max(u.high, precos.agora), low: Math.min(u.low, precos.agora) }];
+          }
+          if (cancelled) return;
         }
 
         setStatus("live");
