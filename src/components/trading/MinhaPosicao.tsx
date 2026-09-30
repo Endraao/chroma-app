@@ -178,7 +178,9 @@ export function MinhaPosicao({
 
   /* Sem carteira, ou sem posição nesta moeda: o painel não existe. */
   const saldoAtual = saldoNaRede ?? doHistorico?.saldo ?? 0;
-  if (!minhaCarteira || saldoAtual <= 0) return null;
+  // Poeira (sobra de centavo de centavo depois de vender tudo) não é posição.
+  const precoParaPoeira = precoUsd > 0 ? precoUsd : precoDoQuadro;
+  if (!minhaCarteira || saldoAtual <= 0 || (precoParaPoeira > 0 && saldoAtual * precoParaPoeira < 0.01)) return null;
   const preco = precoUsd > 0 ? precoUsd : precoDoQuadro;
 
   // Preço médio: primeiro o anotado nas operações feitas aqui; senão, o do histórico público.

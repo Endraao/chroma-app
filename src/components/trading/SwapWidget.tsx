@@ -83,6 +83,7 @@ const TEXTOS = traducoes({
     venderTodos: (s: string) => `Sell all your ${s}`,
     saldo: "balance", max: "max", maxMaiusc: "Max", curvaDaChroma: "Chroma curve", curvaDaChromaMaiusc: "Chroma curve",
     impacto: (p: React.ReactNode) => <>This order moves the price by {p}. It is too large for the available liquidity: you buy at a worse price and whoever sells afterwards gets less.</>,
+    semRota: "No route for this amount — it may be too small to trade.",
     compraFeita: "Buy completed", vendaFeita: "Sell completed", verNoExplorador: "view transaction ↗",
     confirmado: "Confirmed!", verSolscan: "view on Solscan ↗", processando: "Processing…", informeValor: "Enter an amount",
     cotando: "Quoting…", tentarDeNovo: "Try again", comprar: "Buy", vender: "Sell",
@@ -107,6 +108,7 @@ const TEXTOS = traducoes({
     venderTodos: (s: string) => `Vender todos os seus ${s}`,
     saldo: "saldo", max: "máx", maxMaiusc: "Máx", curvaDaChroma: "curva da Chroma", curvaDaChromaMaiusc: "Curva da Chroma",
     impacto: (p: React.ReactNode) => <>Esta ordem move o preço em {p}. É grande demais para a liquidez disponível: você compra a um preço pior e quem vender depois recebe menos.</>,
+    semRota: "Não há rota para esse valor — ele pode ser pequeno demais para negociar.",
     compraFeita: "Compra feita", vendaFeita: "Venda feita", verNoExplorador: "ver transação ↗",
     confirmado: "Confirmado!", verSolscan: "ver no Solscan ↗", processando: "Processando…", informeValor: "Informe um valor",
     cotando: "Cotando…", tentarDeNovo: "Tentar de novo", comprar: "Comprar", vender: "Vender",
@@ -131,6 +133,7 @@ const TEXTOS = traducoes({
     venderTodos: (s: string) => `卖出全部 ${s}`,
     saldo: "余额", max: "最大", maxMaiusc: "最大", curvaDaChroma: "Chroma 曲线", curvaDaChromaMaiusc: "Chroma 曲线",
     impacto: (p: React.ReactNode) => <>该订单会使价格变动 {p}。相对于现有流动性过大：你会以更差的价格买入，之后卖出的人获得更少。</>,
+    semRota: "该金额没有可用路由——可能金额太小，无法交易。",
     compraFeita: "买入成功", vendaFeita: "卖出成功", verNoExplorador: "查看交易 ↗",
     confirmado: "已确认！", verSolscan: "在 Solscan 查看 ↗", processando: "处理中…", informeValor: "请输入金额",
     cotando: "报价中…", tentarDeNovo: "重试", comprar: "买入", vender: "卖出",
@@ -417,7 +420,7 @@ function SolanaSwap({
           <div className="flex justify-between">
             <span className="text-zinc-500">{t.rota}</span>
             <span className="text-zinc-300">
-              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.curvaDaChromaMaiusc : `Jupiter, ${t.taxaDe(feeLabelFor("solana").swap)}`}
+              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.curvaDaChromaMaiusc : `${swap.quote && "routePlan" in swap.quote && swap.quote.routePlan.length && swap.quote.routePlan.every((r) => /^pump.?fun$/i.test(r.swapInfo.label ?? "")) ? "Chroma" : "Jupiter"}, ${t.taxaDe(feeLabelFor("solana").swap)}`}
             </span>
           </div>
         </div>
@@ -446,7 +449,12 @@ function SolanaSwap({
           </Button>
         </RequireChainWallet>
 
-        {swap.error && <p className="text-[11px] leading-relaxed text-bear">{traduzirDoServidor(swap.error, idiomaSol)}</p>}
+        {swap.error && (
+          <p className="text-[11px] leading-relaxed text-bear">
+            {/* "No routes found" da Jupiter: quase sempre valor pequeno demais (poeira) ou moeda sem liquidez. */}
+            {/NO_ROUTES_FOUND|No routes found|COULD_NOT_FIND_ANY_ROUTE/i.test(swap.error) ? t.semRota : traduzirDoServidor(swap.error, idiomaSol)}
+          </p>
+        )}
         {recibo && <ReciboDaOperacao recibo={recibo} onFechar={() => setRecibo(null)} />}
       </div>
     </Card>
@@ -1167,34 +1175,30 @@ export interface Recibo {
 function ReciboDaOperacao({ recibo, onFechar }: { recibo: Recibo; onFechar: () => void }) {
   const t = useTextos(TEXTOS);
   const compra = recibo.lado === "buy";
-  const tokens = recibo.tokens.toLocaleString(undefined, { maximumFractionDigits: recibo.tokens >= 1000 ? 0 : 4 });
+  // Compacto (pedido do dono): quantidade abreviada, uma linha só.
+  const tokens = Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(recibo.tokens);
   return (
     <div
       role="status"
       className={cn(
-        "relative rounded-lg border px-3 py-2.5 text-[12px]",
-        compra ? "border-bull/30 bg-bull/[0.08]" : "border-bear/30 bg-bear/[0.08]",
+        "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px]",
+        compra ? "border-bull/25 bg-bull/[0.06]" : "border-bear/25 bg-bear/[0.06]",
       )}
     >
-      <button onClick={onFechar} aria-label="×" className="absolute right-2 top-1.5 text-zinc-500 hover:text-zinc-200">
+      <span className={cn("shrink-0 font-bold", compra ? "text-bull" : "text-bear")}>
+        ✓ {compra ? t.compraFeita : t.vendaFeita}
+      </span>
+      <span className="tnum min-w-0 flex-1 truncate text-zinc-300">
+        {compra
+          ? `${recibo.usd > 0 ? formatUsd(recibo.usd) : `${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`} → ${tokens} ${recibo.simbolo}`
+          : `${tokens} ${recibo.simbolo} → ${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`}
+      </span>
+      <a href={recibo.link} target="_blank" rel="noreferrer" title={t.verNoExplorador} className="shrink-0 font-semibold text-marca hover:underline">
+        ↗
+      </a>
+      <button onClick={onFechar} aria-label="×" className="shrink-0 text-zinc-500 hover:text-zinc-200">
         ×
       </button>
-      <p className={cn("font-bold", compra ? "text-bull" : "text-bear")}>✓ {compra ? t.compraFeita : t.vendaFeita}</p>
-      <p className="tnum mt-0.5 text-zinc-200">
-        {compra ? (
-          <>
-            {recibo.usd > 0 ? formatUsd(recibo.usd) : `${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`} → {tokens} {recibo.simbolo}
-          </>
-        ) : (
-          <>
-            {tokens} {recibo.simbolo} → {recibo.nativo.toFixed(4)} {recibo.simboloNativo}
-            {recibo.usd > 0 && <span className="text-zinc-500"> (≈ {formatUsd(recibo.usd)})</span>}
-          </>
-        )}
-      </p>
-      <a href={recibo.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] font-semibold text-marca hover:underline">
-        {t.verNoExplorador}
-      </a>
     </div>
   );
 }
