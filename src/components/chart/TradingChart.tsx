@@ -259,6 +259,46 @@ export function TradingChart({
   /** ids dos desenhos, na ordem em que nasceram — é a pilha do desfazer */
   const desenhosRef = useRef<string[]>([]);
 
+  /*
+   * DESENHOS GUARDADOS NO NAVEGADOR, por moeda e escala (pedido do dono,
+   * 30/09/2026: atualizar a página apagava a análise). A escala entra na
+   * chave porque um ponto em market cap não vale na escala de preço; o
+   * tempo gráfico não entra — os pontos são por horário, valem em 1m e em 1h.
+   */
+  const chaveDosDesenhos = (s: string) => {
+    const [moeda, , esc] = s.split(":");
+    return `chroma.desenhos.${moeda}.${esc}`;
+  };
+  const salvarDesenhos = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart || !serieAplicadaRef.current) return;
+    const lista = desenhosRef.current
+      .map((id) => chart.getOverlayById(id))
+      .filter((o): o is NonNullable<typeof o> => Boolean(o))
+      .map((o) => ({
+        name: o.name,
+        points: o.points
+          .filter((p) => typeof p.timestamp === "number" && typeof p.value === "number")
+          .map((p) => ({ timestamp: p.timestamp, value: p.value })),
+      }))
+      .filter((o) => o.points.length > 0);
+    try {
+      localStorage.setItem(chaveDosDesenhos(serieAplicadaRef.current), JSON.stringify(lista));
+    } catch {
+      /* navegador sem armazenamento: o desenho só vale nesta visita */
+    }
+  }, []);
+  const ganchosDoDesenho = {
+    onDrawEnd: () => {
+      salvarDesenhos();
+      return false;
+    },
+    onPressedMoveEnd: () => {
+      salvarDesenhos();
+      return false;
+    },
+  };
+
   const [ferramenta, setFerramenta] = useState<string | null>(null);
   /*
    * Ímã, igual ao do TradingView: o ponto do desenho gruda na vela mais
@@ -289,7 +329,29 @@ export function TradingChart({
     chartRef.current = chart;
     setPronto(true);
 
+    /*
+     * Acompanha o tamanho da CAIXA, não só da janela. Abrir e fechar a
+     * extensão da carteira muda a largura da página por um instante, e o
+     * gráfico ficava preso no tamanho errado — velas espremidas num canto e
+     * o eixo solto no meio (30/09/2026).
+     */
+    let quadro = 0;
+    const observador = new ResizeObserver(() => {
+      cancelAnimationFrame(quadro);
+      quadro = requestAnimationFrame(() => chart.resize());
+    });
+    observador.observe(caixa);
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") chart.resize();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+
     return () => {
+      observador.disconnect();
+      cancelAnimationFrame(quadro);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
       dispose(caixa);
       chartRef.current = null;
       serieAplicadaRef.current = "";
@@ -341,6 +403,26 @@ export function TradingChart({
       const largura = chart.getSize("candle_pane", DomPosition.Main)?.width ?? 0;
       const ocupado = dados.length * chart.getBarSpace();
       if (largura > 0) chart.setOffsetRightDistance(ocupado < largura / 2 ? (largura - ocupado) / 2 : DISTANCIA_DA_BORDA);
+
+      // Outra moeda ou outra escala: tira os desenhos da tela e põe os
+      // guardados desta. Só trocar o tempo gráfico mantém os que estão lá.
+      const anterior = serieAplicadaRef.current;
+      if (!anterior || chaveDosDesenhos(anterior) !== chaveDosDesenhos(serie)) {
+        chart.removeOverlay();
+        desenhosRef.current = [];
+        try {
+          const guardados = JSON.parse(localStorage.getItem(chaveDosDesenhos(serie)) ?? "[]") as {
+            name: string;
+            points: { timestamp: number; value: number }[];
+          }[];
+          for (const d of guardados) {
+            const id = chart.createOverlay({ name: d.name, points: d.points, ...ganchosDoDesenho }, "candle_pane");
+            if (typeof id === "string") desenhosRef.current.push(id);
+          }
+        } catch {
+          /* nada guardado, ou armazenamento bloqueado */
+        }
+      }
       serieAplicadaRef.current = serie;
       ultimoTsRef.current = dados[dados.length - 1].timestamp;
       return;
@@ -576,10 +658,12 @@ export function TradingChart({
          */
         const ultimo = desenhosRef.current.pop();
         if (ultimo) chartRef.current?.removeOverlay(ultimo);
+        salvarDesenhos();
       },
       limparDesenhos: () => {
         chartRef.current?.removeOverlay();
         desenhosRef.current = [];
+        salvarDesenhos();
         setFerramenta(null);
       },
     }),
@@ -601,7 +685,7 @@ export function TradingChart({
          * espera.
          */
         const criado = chart.createOverlay(
-          { name: id, mode: ima ? OverlayMode.WeakMagnet : OverlayMode.Normal },
+          { name: id, mode: ima ? OverlayMode.WeakMagnet : OverlayMode.Normal, ...ganchosDoDesenho },
           "candle_pane",
         );
         if (typeof criado === "string") desenhosRef.current.push(criado);
@@ -628,8 +712,9 @@ export function TradingChart({
   const limpar = useCallback(() => {
     chartRef.current?.removeOverlay();
     desenhosRef.current = [];
+    salvarDesenhos();
     setFerramenta(null);
-  }, []);
+  }, [salvarDesenhos]);
 
   const vela = emFoco ?? ultimaVela(candles);
   const variacao = vela ? vela.close - vela.open : 0;
