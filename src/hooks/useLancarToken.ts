@@ -41,7 +41,7 @@ export const TEXTO_DA_ETAPA: Record<EtapaDoLancamento, string> = {
   "aguardando-assinatura": "Aprove na sua carteira…",
   confirmando: "Confirmando na rede…",
   comprando: "Moeda criada. Aprove a compra inicial…",
-  dividindo: "Moeda criada. Aprove a última etapa na carteira…",
+  dividindo: "Etapa 2 de 2 — aprove na carteira a compra inicial e a divisão das taxas…",
   pronto: "Pronto!",
 };
 

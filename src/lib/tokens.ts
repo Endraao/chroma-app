@@ -310,6 +310,7 @@ export async function getToken(address: string): Promise<{ token: TokenSummary; 
       twitter: r.token.twitter ?? l.twitter,
       telegram: r.token.telegram ?? l.telegram,
       recompensasParaDetentores: registro.recompensas === "detentores",
+      criadorNaChroma: registro.criador,
     },
   };
 }

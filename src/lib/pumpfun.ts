@@ -211,3 +211,13 @@ export async function esperarCurva(conn: Connection, mint: PublicKey, tentativas
   }
   throw new Error("curve-timeout");
 }
+
+/**
+ * A divisão da taxa de criador (70% criador / 30% Chroma) já foi feita?
+ * Quando a etapa B do lançamento falha, a moeda fica sem ela — e a página
+ * da moeda oferece ao criador concluir depois.
+ */
+export async function divisaoFeita(conn: Connection, mint: PublicKey): Promise<boolean> {
+  const { feeSharingConfigPda } = await sdk();
+  return Boolean(await conn.getAccountInfo(feeSharingConfigPda(mint), "confirmed"));
+}

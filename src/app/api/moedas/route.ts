@@ -289,6 +289,8 @@ function urlSegura(valor: unknown): string | null {
   if (bruto.startsWith("/")) return bruto; // servida por nós
   try {
     const u = new URL(bruto);
+    // Lançada da versão local: o arquivo é o mesmo do site no ar.
+    if (/^(localhost|127\.0\.0\.1)$/.test(u.hostname) && u.pathname.startsWith("/api/media/")) return u.pathname;
     return u.protocol === "https:" ? bruto : null;
   } catch {
     return null;

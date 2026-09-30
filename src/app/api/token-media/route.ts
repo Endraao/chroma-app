@@ -50,8 +50,12 @@ function excedeuLimite(request: Request): boolean {
  */
 function baseDoSite(request: Request): string {
   const configurada = process.env.NEXT_PUBLIC_SITE_URL;
-  if (configurada) return configurada;
-  return new URL(request.url).origin;
+  if (configurada && !/localhost|127\.0\.0\.1/.test(configurada)) return configurada;
+  // Nunca grava localhost: o link vai para a rede e é permanente — uma moeda
+  // lançada da versão local ficava sem foto em todo lugar. Os arquivos são os
+  // mesmos que o site no ar serve.
+  const origem = new URL(request.url).origin;
+  return /localhost|127\.0\.0\.1/.test(origem) ? "https://chromalaunch.fun" : origem;
 }
 
 export async function POST(request: Request) {

@@ -86,7 +86,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Launch fee: ${fee} ${s}, paid on submission. Plus the ${rede} network fee.`,
     semTaxa: (rede: string) => `Launching has no Chroma fee — only the ${rede} network fee, paid from your wallet.`,
     semLimite: "There is no limit on how many tokens you can launch.", verTaxas: "see all fees",
-    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aguardando-assinatura": "Approve in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", dividindo: "Coin created. Approve the last step in your wallet…", pronto: "Done!" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aguardando-assinatura": "Step 1 of 2 — approve creating the coin in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", dividindo: "Step 2 of 2 — approve the initial buy and fee split in your wallet…", pronto: "Done!" } as Record<string, string>,
   },
   pt: {
     titulo: "Criar token", subtitulo: "Criação e negociação no mesmo lugar: assim que a moeda é criada, ela já fica disponível para compra e venda, com página própria e gráfico ao vivo.",
@@ -121,7 +121,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Taxa de lançamento: ${fee} ${s}, paga no envio. Mais a taxa de rede da ${rede}.`,
     semTaxa: (rede: string) => `Lançar não tem taxa da Chroma — só a taxa de rede da ${rede}, paga da sua carteira.`,
     semLimite: "Não há limite de quantos tokens você pode lançar.", verTaxas: "ver todas as taxas",
-    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aguardando-assinatura": "Aprove na sua carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", dividindo: "Moeda criada. Aprove a última etapa na carteira…", pronto: "Pronto!" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aguardando-assinatura": "Etapa 1 de 2 — aprove a criação da moeda na carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", dividindo: "Etapa 2 de 2 — aprove na carteira a compra inicial e a divisão das taxas…", pronto: "Pronto!" } as Record<string, string>,
   },
   zh: {
     titulo: "创建代币", subtitulo: "发行与交易一站完成：代币创建后立即可以买卖，拥有独立页面和实时图表。",
@@ -156,7 +156,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `发行费：${fee} ${s}，提交时支付。另加 ${rede} 网络手续费。`,
     semTaxa: (rede: string) => `发行不收 Chroma 费用 —— 只需从钱包支付 ${rede} 网络手续费。`,
     semLimite: "发行代币数量不限。", verTaxas: "查看全部费用",
-    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aguardando-assinatura": "请在钱包中确认…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", dividindo: "代币已创建，请在钱包中确认最后一步…", pronto: "完成！" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aguardando-assinatura": "第 1 步，共 2 步 —— 请在钱包中确认创建代币…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", dividindo: "第 2 步，共 2 步 —— 请在钱包中确认首次买入和费用分配…", pronto: "完成！" } as Record<string, string>,
   },
 });
 

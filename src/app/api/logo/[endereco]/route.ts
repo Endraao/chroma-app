@@ -92,6 +92,11 @@ async function fontes(endereco: string, ehEvm: boolean): Promise<{ urls: string[
   return { urls: [daRede.cdn, jup.icon, daRede.imagem, daDex].filter(Boolean), simbolo: jup.simbolo || daRede.simbolo };
 }
 
+/** Link para a versão local do site vira o do site no ar (os arquivos são os mesmos). */
+function semLocalhost(url: string): string {
+  return url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?=\/api\/media\/)/, "https://chromalaunch.fun");
+}
+
 function daHelius(mint: string): Promise<{ cdn: string; imagem: string; simbolo: string }> {
   return cached(`logo-helius:${mint}`, 60 * 60 * 1000, async () => {
     const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
@@ -106,9 +111,22 @@ function daHelius(mint: string): Promise<{ cdn: string; imagem: string; simbolo:
       });
       const a = (await r.json()).result;
       const arquivo = a?.content?.files?.[0];
+      let imagem: string = a?.content?.links?.image ?? arquivo?.uri ?? "";
+      // Moeda lançada da versão local do site: os metadados apontam para
+      // localhost, que ninguém alcança — mas o arquivo é o mesmo que o site
+      // no ar serve. Lê o JSON pelo endereço de produção.
+      const uri: string = a?.content?.json_uri ?? "";
+      if (!imagem && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/api\/media\//.test(uri)) {
+        try {
+          const j = await fetch(semLocalhost(uri), { signal: AbortSignal.timeout(6_000) }).then((x) => x.json());
+          imagem = semLocalhost(j?.image ?? "");
+        } catch {
+          /* sem imagem: segue para as outras fontes */
+        }
+      }
       return {
         cdn: arquivo?.cdn_uri ?? "",
-        imagem: a?.content?.links?.image ?? arquivo?.uri ?? "",
+        imagem: semLocalhost(imagem),
         simbolo: a?.content?.metadata?.symbol ?? "",
       };
     } catch {
