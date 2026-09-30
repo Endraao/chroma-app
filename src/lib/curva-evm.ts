@@ -162,6 +162,21 @@ export async function resumoDaMoedaEvm(
   const { curva } = dados;
   const precoUsd = precoEmEth(curva) * precoEth;
 
+  /*
+   * Moeda com menos de 24h: variação contra o preço de NASCIMENTO (produto
+   * constante da curva, voltando os tokens já vendidos) — igual à Solana.
+   * Com mais de 24h, sem preço de ontem guardado, fica zero.
+   */
+  const criadaEm = extra?.criadaEm ?? 0;
+  let variacao = 0;
+  if (criadaEm > 0 && Date.now() - criadaEm < 24 * 3600_000) {
+    const vendidos = dados.tokenAVenda > curva.tokenReal ? dados.tokenAVenda - curva.tokenReal : BigInt(0);
+    const tv0 = Number(curva.tokenVirtual + vendidos);
+    const p0 = tv0 > 0 ? (Number(curva.ethVirtual) * Number(curva.tokenVirtual)) / (tv0 * tv0) : 0;
+    const agora = precoEmEth(curva);
+    if (p0 > 0 && agora > 0) variacao = (agora / p0 - 1) * 100;
+  }
+
   return {
     address: moeda,
     chain: "robinhood",
@@ -170,8 +185,7 @@ export async function resumoDaMoedaEvm(
     imageUrl: extra?.imagem ?? undefined,
     description: extra?.descricao ?? "Moeda lançada na curva da Chroma.",
     priceUsd: precoUsd,
-    /* Sem preço de ontem guardado, zero é "sem variação apurada" — a verdade. */
-    change24h: 0,
+    change24h: variacao,
     marketCapUsd: precoUsd * dados.emissao,
     /* A liquidez da curva é o ETH de verdade que está dentro dela. */
     liquidityUsd: (Number(curva.ethReal) / ESCALA) * precoEth,

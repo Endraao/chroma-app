@@ -106,6 +106,19 @@ const VAZIO: ParametrosDeIndicador = {};
 /** Distância padrão entre a última vela e a borda direita (a da biblioteca). */
 const DISTANCIA_DA_BORDA = 80;
 
+/**
+ * Moeda nova, com poucas velas: elas ficam NO MEIO do gráfico, e não coladas
+ * no canto direito (pedido do dono, 30/09/2026). Com velas suficientes pra
+ * encher metade da tela, volta a distância de sempre. Roda ao carregar e a
+ * cada mudança de tamanho (que refaz o enquadramento).
+ */
+function centralizarPoucasVelas(chart: Chart) {
+  const largura = chart.getSize("candle_pane", DomPosition.Main)?.width ?? 0;
+  if (largura <= 0) return;
+  const ocupado = chart.getDataList().length * chart.getBarSpace();
+  chart.setOffsetRightDistance(ocupado < largura / 2 ? (largura - ocupado) / 2 : DISTANCIA_DA_BORDA);
+}
+
 const EIXO_COMPACTO = "chroma-compacto";
 
 /**
@@ -338,7 +351,10 @@ export function TradingChart({
     let quadro = 0;
     const observador = new ResizeObserver(() => {
       cancelAnimationFrame(quadro);
-      quadro = requestAnimationFrame(() => chart.resize());
+      quadro = requestAnimationFrame(() => {
+        chart.resize();
+        centralizarPoucasVelas(chart);
+      });
     });
     observador.observe(caixa);
     const aoVoltar = () => {
@@ -400,9 +416,7 @@ export function TradingChart({
        * coladas no canto direito (pedido do dono, 30/09/2026). Com velas
        * suficientes pra encher metade da tela, volta a distância de sempre.
        */
-      const largura = chart.getSize("candle_pane", DomPosition.Main)?.width ?? 0;
-      const ocupado = dados.length * chart.getBarSpace();
-      if (largura > 0) chart.setOffsetRightDistance(ocupado < largura / 2 ? (largura - ocupado) / 2 : DISTANCIA_DA_BORDA);
+      centralizarPoucasVelas(chart);
 
       // Outra moeda ou outra escala: tira os desenhos da tela e põe os
       // guardados desta. Só trocar o tempo gráfico mantém os que estão lá.

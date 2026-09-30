@@ -12,6 +12,7 @@ import { SwapWidget } from "@/components/trading/SwapWidget";
 import { SecurityPanel } from "@/components/security/SecurityPanel";
 import { CurvaPanel } from "@/components/trading/CurvaPanel";
 import { CurvaProvider } from "@/components/trading/CurvaProvider";
+import { useCurvaEvm } from "@/hooks/useCurvaEvm";
 import { PainelDeAtividade } from "@/components/trading/PainelDeAtividade";
 import { StatusDaCurva } from "@/components/trading/StatusDaCurva";
 import { ConviteParaCompartilhar } from "@/components/trading/ConviteParaCompartilhar";
@@ -257,13 +258,11 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             fato grave continua marcado em vermelho aqui dentro; o resto ficou
             em amarelo, que informa sem assustar.
           */}
-          <SecurityPanel
+          <SegurancaDaMoeda
+            token={token}
             report={report}
             carregando={auditando}
             liquidityUsd={stats.liquidityUsd}
-            // Solana ainda na curva de lançamento: a DexScreener não dá o
-            // progresso, mas o identificador da DEX diz que é curva.
-            naCurva={token.bondingProgress !== null || (token.chain === "solana" && token.dexId === "pumpfun")}
           />
 
           {/* Ordem da Fomo Family: comprar, alerta, sobre — e o convite por último. */}
@@ -281,4 +280,29 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
     </div>
     </CurvaProvider>
   );
+}
+
+/**
+ * O painel de segurança sabendo se a moeda está numa curva de lançamento.
+ * O servidor às vezes ainda não sabe (moeda de 1 minuto na Robinhood: dava
+ * "liquidez não travada" e "liquidez baixa" numa moeda da curva da Chroma,
+ * 30/09/2026) — o contrato, lido aqui, sabe.
+ */
+function SegurancaDaMoeda({
+  token,
+  report,
+  carregando,
+  liquidityUsd,
+}: {
+  token: TokenSummary;
+  report: SecurityReport | null;
+  carregando: boolean;
+  liquidityUsd: number;
+}) {
+  const { curva } = useCurvaEvm(token.chain === "robinhood" ? token.address : null);
+  const naCurva =
+    token.bondingProgress !== null ||
+    (token.chain === "solana" && token.dexId === "pumpfun") ||
+    Boolean(curva && !curva.migrada);
+  return <SecurityPanel report={report} carregando={carregando} liquidityUsd={liquidityUsd} naCurva={naCurva} />;
 }

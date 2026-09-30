@@ -48,7 +48,16 @@ export async function GET(request: Request) {
     });
     // priceSol: o gráfico só mexe a vela quando ELE muda (houve negócio) —
     // o dólar sozinho oscila com o SOL e desenhava velas sem ninguém negociar.
-    if (naCurva) return NextResponse.json({ address, priceUsd: naCurva.usd, priceSol: naCurva.sol, at: Date.now() });
+    if (naCurva) {
+      return NextResponse.json({
+        address,
+        priceUsd: naCurva.usd,
+        priceSol: naCurva.sol,
+        // Toda moeda da curva de lançamento da Solana nasce em 30 / 1,073 bi SOL.
+        precoInicialNativo: 30 / 1_073_000_000,
+        at: Date.now(),
+      });
+    }
   }
 
   const daCurva = address.startsWith("0x") ? await lerMoedaDaCurvaEvm(address).catch(() => null) : null;
@@ -56,7 +65,19 @@ export async function GET(request: Request) {
     const eth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
     const priceUsd = precoEmEth(daCurva.curva) * eth;
     // priceNativo (ETH): o gráfico só mexe a vela quando ele muda — igual à Solana.
-    if (priceUsd > 0) return NextResponse.json({ address, priceUsd, priceNativo: precoEmEth(daCurva.curva), at: Date.now() });
+    /*
+     * Preço de nascimento desta moeda (a primeira vela do gráfico abre nele):
+     * o produto da curva é constante, então voltando os tokens já vendidos
+     * chega-se ao ponto inicial. Não é fixo — os parâmetros do contrato
+     * mudaram entre moedas.
+     */
+    const { ethVirtual, tokenVirtual, tokenReal } = daCurva.curva;
+    const vendidos = daCurva.tokenAVenda > tokenReal ? daCurva.tokenAVenda - tokenReal : BigInt(0);
+    const tv0 = Number(tokenVirtual + vendidos);
+    const precoInicialNativo = tv0 > 0 ? (Number(ethVirtual) * Number(tokenVirtual)) / (tv0 * tv0) : undefined;
+    if (priceUsd > 0) {
+      return NextResponse.json({ address, priceUsd, priceNativo: precoEmEth(daCurva.curva), precoInicialNativo, at: Date.now() });
+    }
   }
 
   const price = await fetchPrice(address);

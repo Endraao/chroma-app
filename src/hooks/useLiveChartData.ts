@@ -61,8 +61,6 @@ const FATOR_MAXIMO = 1.03;
 /** De quanto em quanto tempo as velas fechadas são recarregadas. */
 const CANDLE_REFRESH_MS = 60_000;
 
-/** Preço inicial de toda moeda na curva de lançamento da Solana, em SOL por token. */
-const PRECO_INICIAL_NA_CURVA_SOL = 30 / 1_073_000_000;
 
 interface Options {
   address: string;
@@ -194,10 +192,17 @@ export function useLiveChartData({
       try {
         const res = await fetch(`/api/price?address=${address}`, { cache: "no-store" });
         if (!res.ok) return null;
-        const { priceUsd, priceSol } = (await res.json()) as { priceUsd: number; priceSol?: number };
+        const { priceUsd, priceSol, priceNativo, precoInicialNativo } = (await res.json()) as {
+          priceUsd: number;
+          priceSol?: number;
+          priceNativo?: number;
+          precoInicialNativo?: number;
+        };
         if (!Number.isFinite(priceUsd) || priceUsd <= 0) return null;
-        if (!priceSol || priceSol <= 0) return { inicial: 0, agora: priceUsd };
-        return { inicial: PRECO_INICIAL_NA_CURVA_SOL * (priceUsd / priceSol), agora: priceUsd };
+        // Preço de nascimento vem do servidor (cada curva sabe o seu).
+        const emNativo = priceSol ?? priceNativo;
+        if (!emNativo || emNativo <= 0 || !precoInicialNativo) return { inicial: 0, agora: priceUsd };
+        return { inicial: precoInicialNativo * (priceUsd / emNativo), agora: priceUsd };
       } catch {
         return null;
       }
@@ -259,7 +264,7 @@ export function useLiveChartData({
          * no preço inicial da curva. Só quando o histórico veio inteiro (poucas
          * velas) e a primeira abre acima do preço inicial.
          */
-        if (chain === "solana" && data.length < 500) {
+        if (data.length < 500) {
           const precos = await precoInicialDaCurva();
           const primeira = data[0];
           if (precos && precos.inicial > 0 && primeira.open > precos.inicial * 1.0005) {
