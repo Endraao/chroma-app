@@ -5,7 +5,13 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Keypair, PublicKey } from "@solana/web3.js";
 
 import { recusarDadosDoToken } from "@/lib/chroma-program";
-import { esperarCurva, transacaoDeCriacao, transacaoDeDivisao } from "@/lib/pumpfun";
+import {
+  esperarCurva,
+  transacaoDeCriacao,
+  transacaoDeDivisao,
+  transacaoDeTaxaEDivisao,
+  transacoesDeLancamento,
+} from "@/lib/pumpfun";
 import { CHAIN_FEES } from "@/lib/fees";
 import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
 import { useIdioma } from "@/components/IdiomaProvider";
@@ -28,6 +34,8 @@ import { traducoes } from "@/lib/idiomas";
 export type EtapaDoLancamento =
   | "parado"
   | "publicando-arte"
+  | "aprovar-tudo"
+  | "finalizando"
   | "aguardando-assinatura"
   | "confirmando"
   | "comprando"
@@ -38,6 +46,8 @@ export type EtapaDoLancamento =
 export const TEXTO_DA_ETAPA: Record<EtapaDoLancamento, string> = {
   parado: "",
   "publicando-arte": "Publicando a arte…",
+  "aprovar-tudo": "Aprove o lançamento na sua carteira…",
+  finalizando: "Finalizando o lançamento…",
   "aguardando-assinatura": "Aprove na sua carteira…",
   confirmando: "Confirmando na rede…",
   comprando: "Moeda criada. Aprove a compra inicial…",
@@ -90,7 +100,7 @@ const MENSAGENS = traducoes({
 
 export function useLancarToken() {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction } = useWallet();
+  const { publicKey, sendTransaction, signAllTransactions } = useWallet();
   const idioma = useIdioma();
   const m = MENSAGENS[idioma];
 
@@ -147,6 +157,96 @@ export function useLancarToken() {
         const uri: string = publicado.metadataUrl;
         const problemaDaUri = recusarDadosDoToken({ nome: dados.nome, simbolo: dados.simbolo, uri });
         if (problemaDaUri) throw new Error(problemaDaUri);
+
+        const paraDetentoresUnico = dados.recompensas === "detentores";
+        const registrar = (assinatura: string, assinaturaTaxa?: string) =>
+          fetch("/api/moedas", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              site: dados.site,
+              twitter: dados.twitter,
+              telegram: dados.telegram,
+              recompensas: dados.recompensas,
+              chain: "solana",
+              mint: mintCriado,
+              nome: dados.nome,
+              simbolo: dados.simbolo,
+              descricao: dados.descricao,
+              imagem: publicado.imageUrl,
+              assinatura,
+              assinaturaTaxa,
+            }),
+          }).catch((erroDeCatalogo) => console.warn("[lancamento] fora do catálogo:", erroDeCatalogo));
+
+        /*
+         * UMA APROVAÇÃO (par SOL, carteira que assina várias de uma vez).
+         * As duas transações são montadas antes e assinadas juntas; o site
+         * envia a 2 assim que a 1 confirma. Ver `transacoesDeLancamento`.
+         */
+        if (dados.par !== "USDC" && signAllTransactions) {
+          setEtapa("aprovar-tudo");
+          const mint = Keypair.generate();
+          const { criacao, divisao } = await transacoesDeLancamento({
+            conn: connection,
+            criador: publicKey,
+            mint: mint.publicKey,
+            nome: dados.nome,
+            simbolo: dados.simbolo,
+            uri,
+            carteiraDaChroma,
+            taxaSol: CHAIN_FEES.solana.launchFee,
+            compraSol,
+            paraDetentores: paraDetentoresUnico,
+          });
+          criacao.sign([mint]);
+          const [criacaoAssinada, divisaoAssinada] = await signAllTransactions([criacao, divisao]);
+
+          setEtapa("confirmando");
+          const assinatura = await connection.sendRawTransaction(criacaoAssinada.serialize(), { maxRetries: 5 });
+          const bloco = await connection.getLatestBlockhash();
+          const r1 = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+          if (r1.value.err) throw new Error(m.recusou);
+          mintCriado = mint.publicKey.toBase58();
+
+          /* Transação 2: já assinada. Se falhar, remonta e pede de novo (só nesse caso). */
+          setEtapa("finalizando");
+          let assinaturaTaxa: string | undefined;
+          const enviar = async (tx: typeof divisaoAssinada) => {
+            const sig = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 5 });
+            const b = await connection.getLatestBlockhash();
+            const r = await connection.confirmTransaction({ signature: sig, ...b }, "confirmed");
+            if (r.value.err) throw new Error(m.recusou);
+            return sig;
+          };
+          try {
+            await esperarCurva(connection, mint.publicKey);
+            assinaturaTaxa = await enviar(divisaoAssinada);
+          } catch (e1) {
+            console.warn("[lancamento] etapa 2 falhou, remontando:", e1);
+            try {
+              const nova = await transacaoDeTaxaEDivisao({
+                conn: connection,
+                criador: publicKey,
+                mint: mint.publicKey,
+                carteiraDaChroma,
+                taxaSol: CHAIN_FEES.solana.launchFee,
+                paraDetentores: paraDetentoresUnico,
+              });
+              assinaturaTaxa = await sendTransaction(nova, connection);
+              const b = await connection.getLatestBlockhash();
+              const r = await connection.confirmTransaction({ signature: assinaturaTaxa, ...b }, "confirmed");
+              if (r.value.err) assinaturaTaxa = undefined;
+            } catch (e2) {
+              console.warn("[lancamento] etapa 2 não concluída:", e2);
+              assinaturaTaxa = undefined;
+            }
+          }
+
+          await registrar(assinatura, assinaturaTaxa);
+          setEtapa("pronto");
+          return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
+        }
 
         /* 2. Transação A: taxa da Chroma + criação na pump.fun. */
         setEtapa("aguardando-assinatura");
@@ -241,7 +341,7 @@ export function useLancarToken() {
         return null;
       }
     },
-    [connection, publicKey, sendTransaction, m],
+    [connection, publicKey, sendTransaction, signAllTransactions, m],
   );
 
   return {

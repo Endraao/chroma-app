@@ -6,7 +6,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
   type Connection,
-  type TransactionInstruction,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import { NATIVE_MINT, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
@@ -49,6 +49,7 @@ export type ParDaPump = "SOL" | "USDC";
 
 /** A parte da taxa de criador que vai para a Chroma, em bps (3000 = 30%). */
 export const PARTE_DA_CHROMA_BPS = 3000;
+export const MEMO_PROGRAM_ID = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
 
 /** Priority fee: sem ela, a criação pode ficar minutos na fila em hora de pico. */
 const PRECO_POR_CU = 200_000; // micro-lamports
@@ -220,4 +221,140 @@ export async function esperarCurva(conn: Connection, mint: PublicKey, tentativas
 export async function divisaoFeita(conn: Connection, mint: PublicKey): Promise<boolean> {
   const { feeSharingConfigPda } = await sdk();
   return Boolean(await conn.getAccountInfo(feeSharingConfigPda(mint), "confirmed"));
+}
+
+/**
+ * Lançamento com UMA aprovação na carteira (par SOL).
+ *
+ * Tudo numa transação só não cabe (1.419 bytes contra o limite de 1.232 —
+ * medido em scripts/medir-tx-unica.mts). Então são duas, montadas JUNTAS e
+ * assinadas de uma vez (signAllTransactions):
+ *   1. criação + compra inicial (create_v2 + buy), atômicas: a compra do
+ *      criador sai no mesmo instante em que a moeda nasce, antes de qualquer
+ *      robô. Sem instruções de prioridade — não caberia.
+ *   2. taxa de lançamento da Chroma + divisão da taxa de criador (70/30).
+ *      Não lê nada da curva, por isso pode ser montada antes da 1 existir.
+ * No modo detentores não há divisão: a 2 leva só a taxa.
+ */
+export async function transacoesDeLancamento({
+  conn,
+  criador,
+  mint,
+  nome,
+  simbolo,
+  uri,
+  carteiraDaChroma,
+  taxaSol,
+  compraSol,
+  paraDetentores = false,
+}: {
+  conn: Connection;
+  criador: PublicKey;
+  mint: PublicKey;
+  nome: string;
+  simbolo: string;
+  uri: string;
+  carteiraDaChroma: PublicKey;
+  taxaSol: number;
+  compraSol: number;
+  paraDetentores?: boolean;
+}): Promise<{ criacao: VersionedTransaction; divisao: VersionedTransaction }> {
+  const { PUMP_SDK, OnlinePumpSdk, getBuyTokenAmountFromSolAmount } = await sdk();
+  const BN = (await import("bn.js")).default;
+
+  const comum = {
+    mint,
+    name: nome,
+    symbol: simbolo,
+    uri,
+    creator: criador,
+    user: criador,
+    mayhemMode: false,
+    ...(paraDetentores ? { holderReward: true } : {}),
+  };
+
+  const ixs: TransactionInstruction[] = [];
+  if (compraSol > 0) {
+    const online = new OnlinePumpSdk(conn);
+    const [global, feeConfig] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig()]);
+    const solAmount = new BN(Math.round(compraSol * LAMPORTS_PER_SOL));
+    const amount = getBuyTokenAmountFromSolAmount({
+      global,
+      feeConfig,
+      mintSupply: null,
+      bondingCurve: null,
+      amount: solAmount,
+      quoteMint: NATIVE_MINT,
+    });
+    ixs.push(...(await PUMP_SDK.createV2AndBuyInstructions({ ...comum, global, amount, solAmount })));
+  } else {
+    ixs.push(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 250_000 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
+      await PUMP_SDK.createV2Instruction(comum),
+    );
+  }
+  const criacao = await montar(conn, criador, ixs);
+
+  const divisao = await transacaoDeTaxaEDivisao({ conn, criador, mint, carteiraDaChroma, taxaSol, paraDetentores });
+  return { criacao, divisao };
+}
+
+/**
+ * Transação 2 do lançamento com uma aprovação: taxa de lançamento (com memo
+ * da moeda) + divisão da taxa de criador. Também é remontada sozinha se a
+ * versão assinada junto com a criação falhar.
+ */
+export async function transacaoDeTaxaEDivisao({
+  conn,
+  criador,
+  mint,
+  carteiraDaChroma,
+  taxaSol,
+  paraDetentores = false,
+}: {
+  conn: Connection;
+  criador: PublicKey;
+  mint: PublicKey;
+  carteiraDaChroma: PublicKey;
+  taxaSol: number;
+  paraDetentores?: boolean;
+}): Promise<VersionedTransaction> {
+  const { PUMP_SDK } = await sdk();
+  const ixsDaDivisao: TransactionInstruction[] = [
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
+  ];
+  if (taxaSol > 0) {
+    ixsDaDivisao.push(
+      SystemProgram.transfer({
+        fromPubkey: criador,
+        toPubkey: carteiraDaChroma,
+        lamports: Math.round(taxaSol * LAMPORTS_PER_SOL),
+      }),
+      // Amarra o pagamento a ESTA moeda: o cadastro confere o memo, e o mesmo
+      // pagamento não serve para registrar outra.
+      new TransactionInstruction({
+        programId: MEMO_PROGRAM_ID,
+        keys: [],
+        data: Buffer.from(mint.toBase58(), "utf8"),
+      }),
+    );
+  }
+  if (!paraDetentores) {
+    ixsDaDivisao.push(
+      await PUMP_SDK.createFeeSharingConfig({ creator: criador, mint, pool: null }),
+      await PUMP_SDK.updateFeeSharesV2({
+        authority: criador,
+        mint,
+        currentShareholders: [criador],
+        newShareholders: [
+          { address: criador, shareBps: 10_000 - PARTE_DA_CHROMA_BPS },
+          { address: carteiraDaChroma, shareBps: PARTE_DA_CHROMA_BPS },
+        ],
+        quoteMint: NATIVE_MINT,
+        quoteTokenProgram: TOKEN_PROGRAM_ID,
+      }),
+    );
+  }
+  return montar(conn, criador, ixsDaDivisao);
 }

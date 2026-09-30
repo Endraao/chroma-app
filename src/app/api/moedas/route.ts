@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
   /* --- a prova: a curva existe, e é do nosso programa? --------------- */
   // Moeda lançada pela pump.fun: confere a transação de criação na rede.
-  const pump = await conferirLancamentoPump(chaveDoMint, texto(corpo.assinatura, 128));
+  const pump = await conferirLancamentoPump(chaveDoMint, texto(corpo.assinatura, 128), texto(corpo.assinaturaTaxa, 128) || undefined);
   if (pump.ok) {
     try {
       await registrarMoeda({
@@ -302,9 +302,44 @@ function urlSegura(valor: unknown): string | null {
  * pagou a taxa de lançamento da Chroma. Sem as duas coisas, qualquer um
  * poderia pôr qualquer moeda da pump.fun na vitrine da Chroma.
  */
+type TxLida = {
+  meta: { err: unknown; logMessages?: string[] };
+  transaction: {
+    message: {
+      accountKeys: { pubkey: string; signer: boolean }[];
+      instructions: { programId: string; parsed?: { type: string; info: Record<string, unknown> } | string }[];
+    };
+  };
+};
+
+async function lerTransacao(rpc: string, assinatura: string): Promise<TxLida | null> {
+  const resposta = await fetch(rpc, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "getTransaction",
+      params: [assinatura, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
+    }),
+  });
+  const json = (await resposta.json()) as { result?: TxLida | null };
+  const tx = json.result ?? null;
+  return tx && !tx.meta.err ? tx : null;
+}
+
+/**
+ * Confere na rede que `assinatura` criou `mint` na curva e que a taxa de
+ * lançamento da Chroma foi paga — na própria criação (fluxo antigo) ou em
+ * `assinaturaTaxa`, a transação 2 do lançamento com uma aprovação. Nessa, o
+ * pagamento só vale se vier do criador e com o memo do endereço da moeda:
+ * o mesmo pagamento não registra outra moeda.
+ */
 async function conferirLancamentoPump(
   mint: PublicKey,
   assinatura: string,
+  assinaturaTaxa?: string,
 ): Promise<{ ok: true; criador: string } | { ok: false }> {
   const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
   if (!rpc || !assinatura) return { ok: false };
@@ -313,47 +348,39 @@ async function conferirLancamentoPump(
   const { CHAIN_FEES } = await import("@/lib/fees");
 
   try {
-    const resposta = await fetch(rpc, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      cache: "no-store",
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getTransaction",
-        params: [assinatura, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
-      }),
-    });
-    const json = (await resposta.json()) as {
-      result?: {
-        meta: { err: unknown; logMessages?: string[] };
-        transaction: {
-          message: {
-            accountKeys: { pubkey: string; signer: boolean }[];
-            instructions: { programId: string; parsed?: { type: string; info: Record<string, unknown> } }[];
-          };
-        };
-      } | null;
-    };
-    const tx = json.result;
-    if (!tx || tx.meta.err) return { ok: false };
+    const tx = await lerTransacao(rpc, assinatura);
+    if (!tx) return { ok: false };
 
     const chaves = tx.transaction.message.accountKeys;
+    const criador = chaves[0].pubkey;
     const mintAssinou = chaves.some((k) => k.pubkey === mint.toBase58() && k.signer);
     const chamouPump = tx.transaction.message.instructions.some((i) => i.programId === PUMP_PROGRAM_ID.toBase58());
     if (!mintAssinou || !chamouPump) return { ok: false };
 
     const taxaExigida = Math.round(CHAIN_FEES.solana.launchFee * 1e9);
     if (taxaExigida > 0) {
-      const pagou = tx.transaction.message.instructions.some(
-        (i) =>
-          i.parsed?.type === "transfer" &&
-          i.parsed.info.destination === PLATFORM_FEE_WALLET_SOL &&
-          Number(i.parsed.info.lamports) >= taxaExigida,
-      );
+      const pagouEm = (t: TxLida) =>
+        t.transaction.message.instructions.some(
+          (i) =>
+            typeof i.parsed === "object" &&
+            i.parsed?.type === "transfer" &&
+            i.parsed.info.source === criador &&
+            i.parsed.info.destination === PLATFORM_FEE_WALLET_SOL &&
+            Number(i.parsed.info.lamports) >= taxaExigida,
+        );
+      let pagou = pagouEm(tx);
+      if (!pagou && assinaturaTaxa) {
+        const txTaxa = await lerTransacao(rpc, assinaturaTaxa);
+        pagou = Boolean(
+          txTaxa &&
+            txTaxa.transaction.message.accountKeys[0]?.pubkey === criador &&
+            txTaxa.transaction.message.instructions.some((i) => i.parsed === mint.toBase58()) &&
+            pagouEm(txTaxa),
+        );
+      }
       if (!pagou) return { ok: false };
     }
-    return { ok: true, criador: chaves[0].pubkey };
+    return { ok: true, criador };
   } catch {
     return { ok: false };
   }
