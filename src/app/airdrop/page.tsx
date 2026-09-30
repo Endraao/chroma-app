@@ -8,15 +8,15 @@ import { traducoes } from "@/lib/idiomas";
 
 const METADADOS = {
   "en": [
-    "Airdrop — Chroma",
+    "Rewards — Chroma",
     "The more you use Chroma, the more points you earn. No sign-up, counted by your address."
   ],
   "pt": [
-    "Airdrop — Chroma",
+    "Recompensas — Chroma",
     "Quanto mais você usa a Chroma, mais pontos acumula. Sem inscrição, contado pelo seu endereço."
   ],
   "zh": [
-    "空投 — Chroma",
+    "奖励 — Chroma",
     "你在 Chroma 上用得越多，获得的积分就越多。无需注册，按地址统计。"
   ]
 } as const;

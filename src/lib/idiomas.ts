@@ -75,7 +75,7 @@ export interface Textos {
 const en: Textos = {
   navExplorar: "Explore",
   navCriar: "Create token",
-  navAirdrop: "Airdrop",
+  navAirdrop: "Rewards",
   navAfiliados: "Affiliates",
   navTaxas: "Fees",
 
@@ -100,13 +100,13 @@ const en: Textos = {
   rodapePrivacidade: "Privacy",
   rodapeTaxas: "Fees",
   rodapeContato: "Contact",
-  rodapeAirdrop: "Airdrop",
+  rodapeAirdrop: "Rewards",
 };
 
 const pt: Textos = {
   navExplorar: "Explorar",
   navCriar: "Criar token",
-  navAirdrop: "Airdrop",
+  navAirdrop: "Recompensas",
   navAfiliados: "Afiliados",
   navTaxas: "Taxas",
 
@@ -131,13 +131,13 @@ const pt: Textos = {
   rodapePrivacidade: "Privacidade",
   rodapeTaxas: "Taxas",
   rodapeContato: "Contato",
-  rodapeAirdrop: "Airdrop",
+  rodapeAirdrop: "Recompensas",
 };
 
 const zh: Textos = {
   navExplorar: "探索",
   navCriar: "创建代币",
-  navAirdrop: "空投",
+  navAirdrop: "奖励",
   navAfiliados: "推广伙伴",
   navTaxas: "费用",
 
@@ -162,7 +162,7 @@ const zh: Textos = {
   rodapePrivacidade: "隐私政策",
   rodapeTaxas: "费用",
   rodapeContato: "联系我们",
-  rodapeAirdrop: "空投",
+  rodapeAirdrop: "奖励",
 };
 
 export const DICIONARIO: Record<Idioma, Textos> = { en, pt, zh };
