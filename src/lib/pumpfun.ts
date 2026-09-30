@@ -358,3 +358,70 @@ export async function transacaoDeTaxaEDivisao({
   }
   return montar(conn, criador, ixsDaDivisao);
 }
+
+/**
+ * Compra ou venda DIRETO na curva de lançamento (moeda que ainda não migrou).
+ *
+ * A rota da Jupiter para a curva embrulha e desembrulha SOL e, somada às
+ * transferências de taxa (Chroma + indicação), passava do limite de 1.232
+ * bytes: a carteira mostrava "reverted during simulation". Direto no programa
+ * a transação é bem menor e as taxas cabem.
+ *
+ * Devolve só as instruções da troca; quem chama põe as taxas e o orçamento.
+ *   compra: `lamports` é o SOL que entra na curva; `tokens` o esperado.
+ *   venda:  `tokens` é o que sai da carteira; `lamports` o SOL esperado.
+ */
+export async function instrucoesNaCurva({
+  conn,
+  usuario,
+  mint,
+  lado,
+  lamports,
+  tokens,
+  slippagePct,
+}: {
+  conn: Connection;
+  usuario: PublicKey;
+  mint: PublicKey;
+  lado: "buy" | "sell";
+  lamports: bigint;
+  tokens: bigint;
+  slippagePct: number;
+}): Promise<TransactionInstruction[]> {
+  const { PUMP_SDK, OnlinePumpSdk } = await sdk();
+  const BN = (await import("bn.js")).default;
+  const online = new OnlinePumpSdk(conn);
+  const contaDoMint = await conn.getAccountInfo(mint, "confirmed");
+  if (!contaDoMint) throw new Error("moeda não encontrada");
+  const tokenProgram = contaDoMint.owner.equals(TOKEN_2022_PROGRAM_ID) ? TOKEN_2022_PROGRAM_ID : TOKEN_PROGRAM_ID;
+  const global = await online.fetchGlobal();
+
+  if (lado === "buy") {
+    const estado = await online.fetchBuyState(mint, usuario, tokenProgram);
+    return PUMP_SDK.buyInstructions({
+      global,
+      bondingCurveAccountInfo: estado.bondingCurveAccountInfo,
+      bondingCurve: estado.bondingCurve,
+      associatedUserAccountInfo: estado.associatedUserAccountInfo,
+      mint,
+      user: usuario,
+      amount: new BN(tokens.toString()),
+      solAmount: new BN(lamports.toString()),
+      slippage: slippagePct,
+      tokenProgram,
+    });
+  }
+  const estado = await online.fetchSellState(mint, usuario, tokenProgram);
+  return PUMP_SDK.sellInstructions({
+    global,
+    bondingCurveAccountInfo: estado.bondingCurveAccountInfo,
+    bondingCurve: estado.bondingCurve,
+    mint,
+    user: usuario,
+    amount: new BN(tokens.toString()),
+    solAmount: new BN(lamports.toString()),
+    slippage: slippagePct,
+    tokenProgram,
+    mayhemMode: estado.bondingCurve.isMayhemMode,
+  });
+}

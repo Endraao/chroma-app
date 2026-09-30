@@ -2,6 +2,7 @@
 
 import {
   AddressLookupTableAccount,
+  ComputeBudgetProgram,
   Connection,
   PublicKey,
   SystemProgram,
@@ -321,6 +322,64 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
     platform: new PublicKey(PLATFORM_FEE_WALLET_SOL),
     affiliate: affiliate ? safePublicKey(affiliate) : null,
   };
+
+  /*
+   * MOEDA NA CURVA DE LANÇAMENTO: direto no programa da curva.
+   * A rota da Jupiter para ela, com as duas taxas, passava de 1.232 bytes e a
+   * carteira mostrava "reverted during simulation" (29/09/2026, compra de $1
+   * com indicação). Direto, a transação é bem menor. Ver `instrucoesNaCurva`.
+   */
+  const soCurva =
+    quote.routePlan.length > 0 && quote.routePlan.every((r) => /^pump\.?fun$/i.test(r.swapInfo.label ?? ""));
+  if (soCurva) {
+    onStep?.("Montando a ordem…");
+    const ehVendaNaCurva = inputMint !== SOL_MINT;
+    const { instrucoesNaCurva } = await import("@/lib/pumpfun");
+    const tokenMint = new PublicKey(ehVendaNaCurva ? quote.inputMint : quote.outputMint);
+    const ixsDaCurva = await instrucoesNaCurva({
+      conn: connection,
+      usuario: publicKey,
+      mint: tokenMint,
+      lado: ehVendaNaCurva ? "sell" : "buy",
+      lamports: BigInt(ehVendaNaCurva ? quote.outAmount : quote.inAmount),
+      tokens: BigInt(ehVendaNaCurva ? quote.inAmount : quote.outAmount),
+      slippagePct: Math.max(1, quote.slippageBps / 100),
+    });
+    const baseNaCurva = ehVendaNaCurva ? BigInt(quote.otherAmountThreshold) : grossRaw;
+    const splitNaCurva = computeFeesRaw(baseNaCurva, affiliate, "solana");
+    const inexistentesNaCurva = await contasInexistentes(
+      connection,
+      [recipients.platform, recipients.affiliate].filter((c): c is PublicKey => c !== null),
+    );
+    const taxas = buildFeeInstructions({
+      payer: publicKey,
+      split: splitNaCurva,
+      recipients,
+      inexistentes: inexistentesNaCurva,
+    });
+    const orcamento = [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 250_000 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 400_000 }),
+    ];
+    const carimboCurva = await connection.getLatestBlockhash("confirmed");
+    const msgCurva = new TransactionMessage({
+      payerKey: publicKey,
+      recentBlockhash: carimboCurva.blockhash,
+      instructions: ehVendaNaCurva ? [...orcamento, ...ixsDaCurva, ...taxas] : [...orcamento, ...taxas, ...ixsDaCurva],
+    });
+    const txCurva = new VersionedTransaction(msgCurva.compileToV0Message());
+
+    onStep?.("Aguardando sua assinatura…");
+    const assinadaCurva = await signTransaction(txCurva);
+    onStep?.("Enviando pra rede…");
+    const assinaturaCurva = await enviarInsistindo(connection, assinadaCurva.serialize(), carimboCurva, onStep);
+    return {
+      signature: assinaturaCurva,
+      feePaidRaw: splitNaCurva.totalFee,
+      affiliatePaidRaw: splitNaCurva.affiliateFee,
+      volumeLamports: baseNaCurva,
+    };
+  }
 
   onStep?.("Montando a rota na Jupiter…");
   const buildRes = await fetch("/api/swap", {
