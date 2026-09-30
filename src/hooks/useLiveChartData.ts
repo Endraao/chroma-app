@@ -177,6 +177,28 @@ export function useLiveChartData({
     let cancelled = false;
     setStatus("connecting");
 
+    /*
+     * Moeda recém-lançada: a fonte de velas ainda não a conhece. Em vez de
+     * "carregando" ou "sem dados", o gráfico começa com uma vela no preço de
+     * agora (lido da curva) e anda com os negócios (30/09/2026).
+     */
+    const semente = async (): Promise<boolean> => {
+      try {
+        const res = await fetch(`/api/price?address=${address}`, { cache: "no-store" });
+        if (!res.ok) return false;
+        const { priceUsd } = (await res.json()) as { priceUsd: number };
+        if (cancelled || !Number.isFinite(priceUsd) || priceUsd <= 0) return false;
+        const agora = Math.floor(Date.now() / 1000);
+        const vela = { time: agora - (agora % intervalSec), open: priceUsd, high: priceUsd, low: priceUsd, close: priceUsd, volume: 0 };
+        setIntervaloDasVelas(interval);
+        setCandles((prev) => (prev.length ? prev : [vela]));
+        setStatus("live");
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     const load = async (isRefresh = false, tentativa = 1): Promise<void> => {
       try {
         /*
@@ -203,7 +225,8 @@ export function useLiveChartData({
          * nunca dizer que não havia nada a mostrar.
          */
         if (!Array.isArray(data) || !data.length) {
-          setStatus("vazio");
+          if (isRefresh) return; // as velas na tela continuam valendo
+          if (!(await semente())) setStatus("vazio");
           return;
         }
 
@@ -256,7 +279,7 @@ export function useLiveChartData({
           if (!cancelled) return load(false, tentativa + 1);
           return;
         }
-        setStatus("erro");
+        if (!(await semente())) setStatus("erro");
       }
     };
 

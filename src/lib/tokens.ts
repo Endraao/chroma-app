@@ -294,11 +294,55 @@ export async function listTokens(
 }
 
 /**
+ * Moeda da Solana ainda na curva de lançamento: preço, capitalização,
+ * liquidez e progresso lidos da PRÓPRIA curva.
+ *
+ * Recém-lançada, a DexScreener ainda não a conhece (leva de segundos a
+ * minutos): a página abria com $0, "Listado em DEX" e alerta de "Liquidez
+ * zero" numa moeda que já negociava (30/09/2026). A curva é a fonte certa.
+ */
+async function comCurvaDaSolana(r: { token: TokenSummary; isDemo: boolean }) {
+  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  if (r.token.chain !== "solana" || r.isDemo || !rpc?.startsWith("http")) return r;
+  try {
+    const [{ Connection, PublicKey }, { estadoDaCurvaPump, precoNaCurvaEmSol }, { precosNativos }] = await Promise.all([
+      import("@solana/web3.js"),
+      import("@/lib/pumpfun"),
+      import("@/lib/precos-nativos"),
+    ]);
+    const conn = new Connection(rpc, "confirmed");
+    const mint = new PublicKey(r.token.address);
+    const [estado, emSol, precos] = await Promise.all([
+      estadoDaCurvaPump(conn, mint),
+      precoNaCurvaEmSol(conn, mint),
+      precosNativos().catch(() => null),
+    ]);
+    const sol = precos?.solana ?? 0;
+    if (!estado || estado.completa || emSol === null || sol <= 0) return r;
+    const preco = emSol * sol;
+    return {
+      ...r,
+      token: {
+        ...r.token,
+        priceUsd: r.token.priceUsd > 0 ? r.token.priceUsd : preco,
+        // Emissão fixa da curva: 1 bilhão de tokens.
+        marketCapUsd: r.token.marketCapUsd > 0 ? r.token.marketCapUsd : preco * 1_000_000_000,
+        liquidityUsd: estado.solReal * sol,
+        bondingProgress: estado.progresso,
+        dexId: "pumpfun",
+      },
+    };
+  } catch {
+    return r;
+  }
+}
+
+/**
  * A moeda, com os links (site, X, Telegram) informados no lançamento quando
  * ela nasceu na Chroma — o mercado só conhece os que o time pagou pra exibir.
  */
 export async function getToken(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
-  const r = await getTokenBase(address);
+  const r = await comCurvaDaSolana(await getTokenBase(address));
   const registro = await buscarMoedaDaChroma(address).catch(() => null);
   const l = registro?.links ?? {};
   if (!registro) return r;
