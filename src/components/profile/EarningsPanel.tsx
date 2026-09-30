@@ -4,6 +4,7 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -46,7 +47,7 @@ const TEXTOS = traducoes({
     semCarteira: (r: string, b: React.ReactNode) => <>You have no {r} wallet on your account. {b} until you link one.</>,
     naoSaoPagas: "Referrals on this network are not paid", vincular: "Link", hoje: "Today", seteDias: "7 days",
     nenhumaOperou: (r: string, s: React.ReactNode) => <>None of your referrals traded on {r} yet. When they do, the commission arrives in {s} and each payment shows up here with its receipt.</>,
-    deQuais: "Which coins it came from", cadaPagamento: "Each payment", comprovante: "receipt ↗",
+    deQuais: "Which coins it came from", cadaPagamento: "Each payment", comprovante: "receipt ↗", em: "on",
     naoPrecisaForte: "You do not need to withdraw.",
     naoPrecisa: (b: React.ReactNode, p: string) => <>{b} Each {p} was already sent to your wallet inside the same transaction, instantly — and every amount above is recorded on the blockchain.</>,
     resgateIndisponivel: "Withdrawal on this network is not available yet. Your commissions keep adding up normally.",
@@ -61,7 +62,7 @@ const TEXTOS = traducoes({
     semCarteira: (r: string, b: React.ReactNode) => <>Você não tem carteira {r} na conta. {b} até vincular uma.</>,
     naoSaoPagas: "Indicações nessa rede não são pagas", vincular: "Vincular", hoje: "Hoje", seteDias: "7 dias",
     nenhumaOperou: (r: string, s: React.ReactNode) => <>Nenhuma indicação sua operou na {r} ainda. Quando operar, a comissão entra em {s} e cada pagamento aparece aqui com o comprovante.</>,
-    deQuais: "De quais moedas veio", cadaPagamento: "Cada pagamento", comprovante: "comprovante ↗",
+    deQuais: "De quais moedas veio", cadaPagamento: "Cada pagamento", comprovante: "comprovante ↗", em: "em",
     naoPrecisaForte: "Você não precisa resgatar.",
     naoPrecisa: (b: React.ReactNode, p: string) => <>{b} Cada {p} já foi transferido para a sua carteira dentro da própria transação, na hora — e cada valor acima fica registrado na blockchain.</>,
     resgateIndisponivel: "O resgate nesta rede ainda não está disponível. As suas comissões continuam sendo somadas normalmente.",
@@ -76,7 +77,7 @@ const TEXTOS = traducoes({
     semCarteira: (r: string, b: React.ReactNode) => <>你的账户没有 {r} 钱包。在关联之前，{b}。</>,
     naoSaoPagas: "该网络上的推荐不会获得报酬", vincular: "关联", hoje: "今日", seteDias: "7 天",
     nenhumaOperou: (r: string, s: React.ReactNode) => <>你推荐的人还没有在 {r} 上交易。交易后佣金将以 {s} 到账，每笔付款都会在这里显示凭证。</>,
-    deQuais: "来自哪些代币", cadaPagamento: "每笔付款", comprovante: "凭证 ↗",
+    deQuais: "来自哪些代币", cadaPagamento: "每笔付款", comprovante: "凭证 ↗", em: "来自",
     naoPrecisaForte: "你无需提取。",
     naoPrecisa: (b: React.ReactNode, p: string) => <>{b} 每笔 {p} 都已在同一笔交易中即时转入你的钱包 —— 上方每个金额都记录在区块链上。</>,
     resgateIndisponivel: "该网络暂不支持提取，你的佣金会继续正常累计。",
@@ -326,7 +327,7 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
                       <span className="tnum font-bold text-bull">
                         +{curto(t.commissionNative ?? 0)} {rede.symbol}
                         {t.tokenSymbol && (
-                          <span className="pl-2 font-normal text-zinc-500">em ${t.tokenSymbol}</span>
+                          <span className="pl-2 font-normal text-zinc-500">{tx.em} ${t.tokenSymbol}</span>
                         )}
                       </span>
                       <span className="flex items-center gap-2 text-[11px] text-zinc-600">
@@ -376,35 +377,75 @@ function RedeCard({ rede, carteira }: { rede: GanhosDaRede; carteira: string | n
  * progresso — que é justamente o que o gráfico existe pra mostrar.
  */
 function GraficoDiario({ dias, simbolo }: { dias: GanhosDaRede["daily"]; simbolo: string }) {
+  /*
+   * GANHO ACUMULADO, não barras por dia (pedido do dono, 30/09/2026).
+   * Com poucos dias de comissão, as barras viravam um bloco verde solitário
+   * num canto vazio. A linha acumulada só sobe: mostra o saldo crescendo, e
+   * cada dia com ganho vira um ponto (passe o mouse pra ver o valor).
+   */
   const t = useTextos(TEXTOS);
-  const maior = Math.max(...dias.map((d) => d.commission), 0);
+  const [foco, setFoco] = useState<number | null>(null);
+  const acumulado = dias.reduce<number[]>((acc, d) => [...acc, (acc.at(-1) ?? 0) + d.commission], []);
+  const topo = Math.max(acumulado.at(-1) ?? 0, 0);
+  const L = 280;
+  const A = 64;
+  const x = (i: number) => (dias.length > 1 ? (i / (dias.length - 1)) * L : L / 2);
+  const y = (v: number) => (topo > 0 ? A - 4 - (v / topo) * (A - 10) : A - 4);
+  const linha = acumulado.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const area = `${linha} L${L},${A} L0,${A} Z`;
+  const rotuloDia = (s: string) => {
+    const [, mes, dia] = s.split("-");
+    return `${dia}/${mes}`;
+  };
+  const i = foco ?? dias.length - 1;
 
   return (
     <div>
-      <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-        {t.ultimos14}
-      </h4>
-      <div className="flex h-20 items-end gap-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
-        {dias.map((d) => {
-          const altura =
-            maior > 0 ? Math.max((d.commission / maior) * 100, d.commission > 0 ? 8 : 2) : 2;
-          const [, mes, dia] = d.day.split("-");
-          return (
-            <div
-              key={d.day}
-              title={dia + "/" + mes + " — " + curto(d.commission) + " " + simbolo}
-              className="group flex h-full flex-1 items-end"
-            >
-              <div
-                style={{ height: altura + "%" }}
-                className={cn(
-                  "w-full rounded-sm transition-colors",
-                  d.commission > 0 ? "bg-bull/60 group-hover:bg-bull" : "bg-ink-700",
-                )}
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <h4 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">{t.ultimos14}</h4>
+        {dias[i] && (
+          <span className="tnum text-[11px] text-zinc-500">
+            {rotuloDia(dias[i].day)} ·{" "}
+            <span className={dias[i].commission > 0 ? "font-semibold text-bull" : ""}>
+              +{curto(dias[i].commission)} {simbolo}
+            </span>
+          </span>
+        )}
+      </div>
+      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 pb-1.5 pt-3">
+        <svg viewBox={`0 0 ${L} ${A}`} preserveAspectRatio="none" className="h-16 w-full overflow-visible" onMouseLeave={() => setFoco(null)}>
+          <defs>
+            <linearGradient id={`ganho-${simbolo}`} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#00d18f" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#00d18f" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={area} fill={`url(#ganho-${simbolo})`} />
+          <path d={linha} fill="none" stroke="#00d18f" strokeWidth="1.75" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          {foco !== null && (
+            <line x1={x(foco)} x2={x(foco)} y1={0} y2={A} stroke="#71717a" strokeOpacity="0.4" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          )}
+          {dias.map((d, k) => (
+            <rect key={d.day} x={x(k) - L / dias.length / 2} y={0} width={L / dias.length} height={A} fill="transparent" onMouseEnter={() => setFoco(k)} />
+          ))}
+        </svg>
+        {/* Pontos fora do SVG esticado, pra continuarem redondos. */}
+        <div className="relative -mt-16 h-16 pointer-events-none">
+          {dias.map((d, k) =>
+            d.commission > 0 ? (
+              <span
+                key={d.day}
+                className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-ink-900 bg-bull"
+                style={{ left: `${(x(k) / L) * 100}%`, top: `${(y(acumulado[k]) / A) * 100}%` }}
               />
-            </div>
-          );
-        })}
+            ) : null,
+          )}
+        </div>
+        <div className="tnum mt-1 flex justify-between text-[10px] text-zinc-600">
+          <span>{dias[0] ? rotuloDia(dias[0].day) : ""}</span>
+          <span>{dias[Math.floor(dias.length / 2)] ? rotuloDia(dias[Math.floor(dias.length / 2)].day) : ""}</span>
+          <span>{t.hoje}</span>
+        </div>
       </div>
     </div>
   );
