@@ -10,6 +10,7 @@ import { useAccount, useChainId, useSwitchChain } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { SignInModal } from "@/components/web3/SignInModal";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
+import { useWalletOptions } from "@/hooks/useWalletOptions";
 import { shortenAddress } from "@/lib/utils";
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, robinhoodChain } from "@/lib/web3";
@@ -95,6 +96,17 @@ export function RequireChainWallet({
   const { account } = useChromaAccount();
   const vinculada = account?.carteiras?.[chain] ?? null;
 
+  /*
+   * Um clique conecta: com uma carteira só instalada (ou a usada da última
+   * vez), pede a conexão direto nela. A lista só abre quando há mais de uma
+   * e nenhuma usada antes.
+   */
+  const opcoes = useWalletOptions();
+  const detectadas = opcoes[ehSolana ? "solana" : "evm"].detected;
+  const direta =
+    detectadas.length === 1 ? detectadas[0] : detectadas.find((o) => o.state === "recent");
+  const abrir = () => (direta ? direta.onSelect() : setModalAberto(true));
+
   if (conectada && !redeErrada) return <>{children}</>;
 
   return (
@@ -142,7 +154,7 @@ export function RequireChainWallet({
             variant="chroma"
             size="lg"
             className="w-full"
-            onClick={() => setModalAberto(true)}
+            onClick={abrir}
           >
             {vinculada ? t.liberar : t.conectarCarteira(meta.label)}
           </Button>

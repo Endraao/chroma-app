@@ -55,7 +55,7 @@ const slugify = (name: string) =>
  * Misturar tudo numa lista só faz a pessoa escolher errado.
  */
 export function useWalletOptions() {
-  const { wallets, select } = useWallet();
+  const { wallets, select, wallet: selecionada, connect: conectarSolana } = useWallet();
   const { connect, connectors } = useConnect();
   const [recent, setRecent] = useState<string | null>(null);
 
@@ -93,10 +93,13 @@ export function useWalletOptions() {
           state: recent === w.adapter.name ? ("recent" as const) : ("detected" as const),
           onSelect: () => {
             remember(w.adapter.name);
-            select(w.adapter.name);
+            // Já selecionada (mas desconectada): select() não faria nada —
+            // o botão parecia morto. Pede a conexão direto.
+            if (selecionada?.adapter.name === w.adapter.name) void conectarSolana().catch(() => {});
+            else select(w.adapter.name);
           },
         })),
-    [wallets, select, recent, remember],
+    [wallets, select, selecionada, conectarSolana, recent, remember],
   );
 
   /* --- Detectadas: EVM --------------------------------------------- */
