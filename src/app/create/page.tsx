@@ -77,6 +77,7 @@ const TEXTOS = traducoes({
     ganhoPump: (_p: number) => `You keep 100% of the creator fee from every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
     ganhoEvm: "You receive 0.70% of every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.",
+    taxaCriadorTitulo: "Creator tax (optional)", taxaCriadorNota: (total: string) => `Extra fee on every trade, paid entirely to you — up to 10%. Traders pay ${total}% in total.`,
     verFaixas: "see the tiers",
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
     segundaConfirmacao: "your wallet asks for a second confirmation for this buy, right after creating",
@@ -113,6 +114,7 @@ const TEXTOS = traducoes({
     ganhoPump: (_p: number) => `Você fica com 100% da taxa de criador de cada operação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
     ganhoEvm: "Você recebe 0,70% de cada negociação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.",
+    taxaCriadorTitulo: "Taxa do criador (opcional)", taxaCriadorNota: (total: string) => `Taxa extra em cada negociação, paga toda para você — até 10%. Quem negocia paga ${total}% no total.`,
     verFaixas: "ver as faixas",
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
     segundaConfirmacao: "a carteira pede uma segunda confirmação para esta compra, logo depois de criar",
@@ -149,6 +151,7 @@ const TEXTOS = traducoes({
     ganhoPump: (_p: number) => `你保留代币每笔交易 100% 的创作者费用。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
     ganhoEvm: "你的代币每笔交易你都能获得 0.70%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。",
+    taxaCriadorTitulo: "创作者税（可选）", taxaCriadorNota: (total: string) => `每笔交易的额外费用，全部归你——最高 10%。交易者总共支付 ${total}%。`,
     verFaixas: "查看档位",
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
     segundaConfirmacao: "创建后钱包会立即请求第二次确认以完成这笔买入",
@@ -216,6 +219,9 @@ export default function CreateTokenPage() {
 
   // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
   const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
+  // Robinhood: taxa extra do criador (0 a 10%), igual à da plataforma de lançamento.
+  const [taxaDoCriador, setTaxaDoCriador] = useState("");
+  const taxaDoCriadorNum = Math.max(0, Math.min(10, Number(taxaDoCriador.replace(",", ".")) || 0));
   const [form, setForm] = useState({
     name: "",
     symbol: "",
@@ -523,6 +529,24 @@ export default function CreateTokenPage() {
               t.ganhoEvm
             )}
           </p>
+          {chain === "robinhood" && (
+            <div className="mt-3 space-y-1.5">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.taxaCriadorTitulo}</label>
+              <div className="flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 py-2 focus-within:border-marca/50">
+                <input
+                  inputMode="decimal"
+                  value={taxaDoCriador}
+                  onChange={(e) => setTaxaDoCriador(e.target.value.replace(/[^0-9.,]/g, "").slice(0, 5))}
+                  placeholder="0"
+                  className="tnum min-w-0 flex-1 bg-transparent text-[15px] font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
+                />
+                <span className="text-[13px] font-bold text-zinc-500">%</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-zinc-500">
+                {t.taxaCriadorNota((1 + taxaDoCriadorNum).toLocaleString(undefined, { maximumFractionDigits: 2 }))}
+              </p>
+            </div>
+          )}
         </CardBody>
       </Card>
 
@@ -594,6 +618,7 @@ export default function CreateTokenPage() {
             banner: banner?.file ?? null,
             compraInicial: form.initialBuy.trim() || undefined,
             recompensas: chain === "solana" ? recompensas : "criador",
+            taxaDoCriador: chain === "robinhood" ? taxaDoCriadorNum : 0,
             par: chain === "solana" && pair === "USDC" ? "USDC" : "SOL",
           });
 

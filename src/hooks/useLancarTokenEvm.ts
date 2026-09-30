@@ -210,7 +210,7 @@ export function useLancarTokenEvm() {
           farcaster: "",
         },
         creatorFeeRecipient: address,
-        creatorTaxBps: 0,
+        creatorTaxBps: Math.max(0, Math.min(1000, Math.round((dados.taxaDoCriador ?? 0) * 100))),
         buybackEnabled: false,
         expectedEconomics: `0x${"0".repeat(64)}` as `0x${string}`,
         salt,

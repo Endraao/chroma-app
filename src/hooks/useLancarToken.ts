@@ -80,6 +80,8 @@ export interface DadosDoLancamento {
   recompensas?: "criador" | "detentores";
   /** par de liquidez na Solana: SOL ou USDC */
   par?: "SOL" | "USDC";
+  /** Robinhood: taxa extra do criador em cada negociação, em % (0 a 10), paga toda a ele */
+  taxaDoCriador?: number;
 }
 
 const MENSAGENS = traducoes({
