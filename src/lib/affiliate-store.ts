@@ -206,6 +206,42 @@ async function eventosDe(quem: IdentidadeDoPromotor): Promise<AffiliateRecord[]>
 }
 
 
+/**
+ * Negócio da Robinhood registrado sem o símbolo da moeda (a tela mostrava
+ * "$?"): o símbolo é lido do próprio token na rede, uma vez por moeda.
+ */
+const simbolosEvm = new Map<string, string>();
+async function comSimbolos(trades: AffiliateRecord[]): Promise<AffiliateRecord[]> {
+  const faltando = [
+    ...new Set(
+      trades
+        .filter((t) => !t.tokenSymbol && t.tokenAddress?.startsWith("0x") && !simbolosEvm.has(t.tokenAddress.toLowerCase()))
+        .map((t) => t.tokenAddress!.toLowerCase()),
+    ),
+  ];
+  if (faltando.length) {
+    const [{ createPublicClient, http, erc20Abi }, { robinhoodChain }] = await Promise.all([
+      import("viem"),
+      import("./web3"),
+    ]);
+    const cliente = createPublicClient({
+      chain: robinhoodChain,
+      transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0]),
+    });
+    await Promise.all(
+      faltando.map(async (a) => {
+        const simbolo = await cliente
+          .readContract({ address: a as `0x${string}`, abi: erc20Abi, functionName: "symbol" })
+          .catch(() => null);
+        if (simbolo) simbolosEvm.set(a, simbolo.slice(0, 20));
+      }),
+    );
+  }
+  return trades.map((t) =>
+    t.tokenSymbol || !t.tokenAddress ? t : { ...t, tokenSymbol: simbolosEvm.get(t.tokenAddress.toLowerCase()) ?? t.tokenSymbol },
+  );
+}
+
 /** Chave YYYY-MM-DD no fuso local — é o "dia" que o promotor enxerga. */
 function diaDe(ts: number): string {
   const d = new Date(ts);
@@ -307,7 +343,7 @@ export async function summarize(quem: IdentidadeDoPromotor): Promise<AffiliateSu
    * algo a mais — o que entra na conta é o que passa aqui.
    */
   const mine = (await eventosDe(quem)).filter(eDele);
-  const trades = mine.filter((r) => r.event === "trade");
+  const trades = await comSimbolos(mine.filter((r) => r.event === "trade"));
 
   /*
    * Uma seção por rede, e só pras redes em que a pessoa realmente ganhou algo.

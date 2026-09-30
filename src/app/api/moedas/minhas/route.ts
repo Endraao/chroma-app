@@ -131,5 +131,15 @@ export async function GET(request: Request) {
 
   naCarteira.sort((a, b) => b.valorUsd - a.valorUsd);
 
-  return NextResponse.json({ criadas, naCarteira, nativos });
+  /*
+   * Sem poeira (pedido do dono, 30/09/2026): sobra de centavo de centavo
+   * depois de vender tudo não é "moeda na carteira". Moeda sem preço
+   * conhecido só some se a quantidade também for ínfima.
+   */
+  const poeira = (valorUsd: number, preco: number, quantidade: number) =>
+    quantidade <= 0 || (valorUsd < 0.01 && (preco > 0 || quantidade < 1));
+  const limpa = naCarteira.filter((n) => !poeira(n.valorUsd, n.token.priceUsd, n.quantidade));
+  const nativosLimpos = nativos.filter((n) => n.valorUsd >= 0.01 || n.quantidade >= 0.001);
+
+  return NextResponse.json({ criadas, naCarteira: limpa, nativos: nativosLimpos });
 }
