@@ -70,6 +70,7 @@ export interface Textos {
   rodapeTaxas: string;
   rodapeContato: string;
   rodapeAirdrop: string;
+  rodapeDocs: string;
 }
 
 const en: Textos = {
@@ -101,6 +102,7 @@ const en: Textos = {
   rodapeTaxas: "Fees",
   rodapeContato: "Contact",
   rodapeAirdrop: "Rewards",
+  rodapeDocs: "Docs",
 };
 
 const pt: Textos = {
@@ -132,6 +134,7 @@ const pt: Textos = {
   rodapeTaxas: "Taxas",
   rodapeContato: "Contato",
   rodapeAirdrop: "Recompensas",
+  rodapeDocs: "Docs",
 };
 
 const zh: Textos = {
@@ -163,6 +166,7 @@ const zh: Textos = {
   rodapeTaxas: "费用",
   rodapeContato: "联系我们",
   rodapeAirdrop: "奖励",
+  rodapeDocs: "文档",
 };
 
 export const DICIONARIO: Record<Idioma, Textos> = { en, pt, zh };
