@@ -90,22 +90,33 @@ const TEXTOS = traducoes({
  * na Robinhood Chain, e conectar a MetaMask-EVM não te deixa comprar na
  * Solana — numa lista única a pessoa escolhe errado e acha que quebrou.
  */
-export function SignInModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SignInModal({
+  open,
+  onClose,
+  rede,
+}: {
+  open: boolean;
+  onClose: () => void;
+  /** Só escolher a carteira desta rede (já logado, para assinar): abre na lista e não fecha sozinho. */
+  rede?: WalletNetwork;
+}) {
   const t = useTextos(TEXTOS);
   const account = useChromaAccount();
-  const [view, setView] = useState<View>("main");
-  const [scope, setScope] = useState<WalletNetwork>("solana");
+  const inicio: View = rede ? "all" : "main";
+  const [view, setView] = useState<View>(inicio);
+  const [escolhida, setScope] = useState<WalletNetwork>("solana");
+  const scope = rede ?? escolhida;
 
   // Conectou e ainda não tem apelido: avança sozinho pra etapa do apelido.
   const step: View = account.needsNickname ? "nickname" : view;
 
   useEffect(() => {
-    if (open && account.isSignedIn && account.account) onClose();
-  }, [open, account.isSignedIn, account.account, onClose]);
+    if (!rede && open && account.isSignedIn && account.account) onClose();
+  }, [rede, open, account.isSignedIn, account.account, onClose]);
 
   // Volta pro começo sempre que reabre.
   useEffect(() => {
-    if (!open) setView("main");
+    if (!open) setView(inicio);
   }, [open]);
 
   // Esc fecha, e o fundo não rola enquanto o modal está aberto.
@@ -149,7 +160,7 @@ export function SignInModal({ open, onClose }: { open: boolean; onClose: () => v
 
       <div className="glass relative z-10 flex max-h-[88vh] w-full max-w-[400px] flex-col overflow-hidden">
         <header className="flex items-start gap-2 px-5 pb-3 pt-5">
-          {step === "all" && (
+          {step === "all" && !rede && (
             <button
               onClick={() => setView("main")}
               className="-ml-1.5 mt-0.5 rounded-lg px-1.5 py-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-zinc-200"

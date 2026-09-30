@@ -149,7 +149,11 @@ export function RequireChainWallet({
         )}
       </div>
 
-      <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} />
+      <SignInModal
+        open={modalAberto}
+        onClose={() => setModalAberto(false)}
+        rede={ehSolana ? "solana" : "evm"}
+      />
     </>
   );
 }
