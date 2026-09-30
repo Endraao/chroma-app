@@ -461,11 +461,23 @@ export function useLiveChartData({
     // Com o WebSocket de pé, pesquisar seria pedir de novo o que já chega sozinho.
     if (!address || !candles.length || tempoReal) return;
 
+    /*
+     * Moeda na curva de lançamento: vem também o preço em SOL. A vela só anda
+     * quando ELE muda (alguém negociou). O dólar sozinho oscila com o SOL e o
+     * gráfico subia e descia sem negócio nenhum (30/09/2026).
+     */
+    let ultimoEmSol: number | null = null;
     const tick = async () => {
       try {
         const res = await fetch(`/api/price?address=${address}`, { cache: "no-store" });
         if (!res.ok) return;
-        const { priceUsd } = (await res.json()) as { priceUsd: number };
+        const { priceUsd, priceSol } = (await res.json()) as { priceUsd: number; priceSol?: number };
+        if (typeof priceSol === "number") {
+          if (ultimoEmSol === priceSol) return;
+          const primeiro = ultimoEmSol === null;
+          ultimoEmSol = priceSol;
+          if (primeiro) return; // a vela já está no preço das velas carregadas
+        }
         aplicarPreco(priceUsd);
       } catch {
         /* rede oscilou: o próximo tick tenta de novo */

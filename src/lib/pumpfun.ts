@@ -425,3 +425,23 @@ export async function instrucoesNaCurva({
     mayhemMode: estado.bondingCurve.isMayhemMode,
   });
 }
+
+/**
+ * Preço de uma moeda na curva de lançamento, em SOL por token, lido direto da
+ * conta da curva. Só muda quando alguém negocia — é o que faz o gráfico ficar
+ * parado sem negócio (a cotação da Jupiter oscila sozinha em moeda rasa).
+ * `null` quando não há curva, ela terminou ou não é cotada em SOL.
+ */
+export async function precoNaCurvaEmSol(conn: Connection, mint: PublicKey): Promise<number | null> {
+  // Lido dos bytes da conta, sem o SDK: no servidor ele falha ao carregar por
+  // esta rota ("exports is not defined"). Formato conferido contra o SDK.
+  const programa = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
+  const [curva] = PublicKey.findProgramAddressSync([Buffer.from("bonding-curve"), mint.toBuffer()], programa);
+  const conta = await conn.getAccountInfo(curva, "confirmed");
+  if (!conta || !conta.owner.equals(programa) || conta.data.length < 49) return null;
+  const d = conta.data;
+  if (d[48] !== 0) return null; // curva completa: a moeda já migrou
+  const token = Number(d.readBigUInt64LE(8)) / 1e6;
+  const sol = Number(d.readBigUInt64LE(16)) / LAMPORTS_PER_SOL;
+  return token > 0 ? sol / token : null;
+}
