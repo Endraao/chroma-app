@@ -215,20 +215,27 @@ function Perfil() {
                 {t.indicadoPor} <span className="font-semibold text-zinc-300">@{account.account.indicadoPor}</span>
               </p>
             )}
-            <div className="tnum mt-0.5 flex flex-wrap items-center gap-2 text-[12px] text-zinc-500">
-              <span>{account.wallet ? shortenAddress(account.wallet, 5) : "—"}</span>
-              <span>·</span>
-              <span className="flex items-center gap-1.5">
-                { }
-                <img
-                  src={chainIcon(account.kind === "solana" ? "solana" : "robinhood")}
-                  alt=""
-                  width={14}
-                  height={14}
-                  className="size-3.5 rounded-full"
-                />
-                {rede.label}
-              </span>
+            {/* Todas as carteiras da conta, uma por rede (antes só a principal). */}
+            <div className="tnum mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-zinc-500">
+              {(Object.entries(account.account?.carteiras ?? {}) as [keyof typeof CHAINS, string][]).length > 0 ? (
+                (Object.entries(account.account?.carteiras ?? {}) as [keyof typeof CHAINS, string][]).map(([rede, endereco]) => (
+                  <span key={rede} className="flex items-center gap-1.5">
+                    <img src={chainIcon(rede)} alt="" width={14} height={14} className="size-3.5 rounded-full" />
+                    {shortenAddress(endereco, 5)}
+                  </span>
+                ))
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <img
+                    src={chainIcon(account.kind === "solana" ? "solana" : "robinhood")}
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="size-3.5 rounded-full"
+                  />
+                  {account.wallet ? shortenAddress(account.wallet, 5) : "—"} · {rede.label}
+                </span>
+              )}
             </div>
           </div>
 
