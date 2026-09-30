@@ -10,6 +10,7 @@ import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
 import { lerMoedaDaCurvaEvm, resumoDaMoedaEvm } from "./curva-evm";
 import { lerMoedaDaPons, resumoDaMoedaPons } from "./pons";
+import { moedasDaCurvaSolana, moedasRecentesDaPons } from "./feeds-externos";
 import { buscarMoedaDaChroma } from "./db";
 import type { ChainId, TokenSummary } from "./types";
 
@@ -140,7 +141,7 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    * recusa. A Robinhood é a rede principal e vinha por último — chegava com 3
    * moedas enquanto a Solana vinha cheia (28/09/2026).
    */
-  const [novasRh, emAltaRh, grandesRh, novas, emAlta, grandes, perfis, daCasa] =
+  const [novasRh, emAltaRh, grandesRh, novas, emAlta, grandes, perfis, daCasa, daCurvaSol, daPons] =
     await Promise.all([
       fetchPoolFeed("robinhood", "new_pools"),
       fetchPoolFeed("robinhood", "trending_pools"),
@@ -150,6 +151,8 @@ async function montarUniverso(): Promise<TokenSummary[]> {
       fetchPoolFeed("solana", "pools"),
       fetchTokenList(),
       moedasDaChroma(),
+      moedasDaCurvaSolana(),
+      moedasRecentesDaPons(),
     ]);
 
   const porEndereco = new Map<string, TokenSummary>();
@@ -220,6 +223,15 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    *    além do progresso da curva. Sobrescrever é o resultado certo.
    */
   const porChave = new Map(deMercado.map((t) => [`${t.chain}:${t.address.toLowerCase()}`, t]));
+  /*
+   * Destaques da curva da Solana e lançamentos recentes da Pons (pedido do
+   * dono, 30/09/2026). Sem o piso de mil dólares — moeda de curva começa com
+   * pouco —, e sem passar por cima de quem já veio de uma fonte de mercado.
+   */
+  for (const t of [...daCurvaSol, ...daPons]) {
+    const chave = `${t.chain}:${t.address.toLowerCase()}`;
+    if (!porChave.has(chave)) porChave.set(chave, t);
+  }
   for (const t of daCasa) {
     if (FORA_DA_VITRINE.has(t.address.toLowerCase())) continue;
     porChave.set(`${t.chain}:${t.address.toLowerCase()}`, t);
@@ -248,7 +260,7 @@ async function montarUniverso(): Promise<TokenSummary[]> {
  * Lançar moeda renova na hora (tag `universo`, ver POST /api/moedas).
  */
 export const TAG_DO_UNIVERSO = "universo";
-const universoEmCache = unstable_cache(montarUniverso, ["universo-v3"], {
+const universoEmCache = unstable_cache(montarUniverso, ["universo-v4"], {
   /*
    * 2 min: cada montagem são 12 consultas à GeckoTerminal. A 30 s isso comia
    * quase todo o limite do IP. Moeda lançada aqui aparece na hora mesmo assim

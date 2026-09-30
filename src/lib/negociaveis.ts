@@ -78,7 +78,7 @@ export async function classificarPendentes(tokens: TokenSummary[], limite = 6): 
   if (rodando) return;
   rodando = true;
   try {
-    const daRede = tokens.filter((t) => t.chain === "robinhood");
+    const daRede = tokens.filter((t) => t.chain === "robinhood" && t.dexId !== "pons");
     const status = await statusDasMoedas(daRede.map((t) => t.address));
     const pendentes = daRede.filter((t) => !valido(status.get(t.address.toLowerCase()))).slice(0, limite);
     for (const t of pendentes) {
@@ -94,5 +94,8 @@ export async function soNegociaveis(tokens: TokenSummary[]): Promise<TokenSummar
   const daRede = tokens.filter((t) => t.chain === "robinhood");
   if (!daRede.length) return tokens;
   const status = await statusDasMoedas(daRede.map((t) => t.address));
-  return tokens.filter((t) => t.chain !== "robinhood" || status.get(t.address.toLowerCase())?.r.ok === true);
+  // Moeda na curva da Pons negocia pelo ChromaPons, não pela Uniswap: passa direto.
+  return tokens.filter(
+    (t) => t.chain !== "robinhood" || t.dexId === "pons" || status.get(t.address.toLowerCase())?.r.ok === true,
+  );
 }
