@@ -261,7 +261,7 @@ async function montarUniverso(): Promise<TokenSummary[]> {
  * Lançar moeda renova na hora (tag `universo`, ver POST /api/moedas).
  */
 export const TAG_DO_UNIVERSO = "universo";
-const universoEmCache = unstable_cache(montarUniverso, ["universo-v5"], {
+const universoEmCache = unstable_cache(montarUniverso, ["universo-v6"], {
   /*
    * 2 min: cada montagem são 12 consultas à GeckoTerminal. A 30 s isso comia
    * quase todo o limite do IP. Moeda lançada aqui aparece na hora mesmo assim

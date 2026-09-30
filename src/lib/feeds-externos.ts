@@ -88,9 +88,9 @@ export async function moedasDaCurvaSolana(): Promise<TokenSummary[]> {
   return cached("feed:curva-solana", 60_000, async () => {
     const precoDoSol = (await precosNativos().catch(() => null))?.solana ?? 0;
     const [destaque, aoVivo, ativas] = await Promise.all([
-      listaDaCurvaSolana("coins/great-coins?limit=40").catch(() => []),
-      listaDaCurvaSolana("coins/currently-live?limit=30&offset=0&includeNsfw=false").catch(() => []),
-      listaDaCurvaSolana("coins?offset=0&limit=40&sort=last_trade_timestamp&order=DESC&includeNsfw=false").catch(() => []),
+      listaDaCurvaSolana("coins/great-coins?limit=100").catch(() => []),
+      listaDaCurvaSolana("coins/currently-live?limit=60&offset=0&includeNsfw=false").catch(() => []),
+      listaDaCurvaSolana("coins?offset=0&limit=100&sort=last_trade_timestamp&order=DESC&includeNsfw=false").catch(() => []),
     ]);
     const vistas = new Set<string>();
     const saida: TokenSummary[] = [];
@@ -98,7 +98,7 @@ export async function moedasDaCurvaSolana(): Promise<TokenSummary[]> {
       if (vistas.has(m.mint)) continue;
       vistas.add(m.mint);
       const t = daCurvaSolana(m, precoDoSol);
-      if (t && t.marketCapUsd >= 8_000) saida.push(t);
+      if (t && t.marketCapUsd >= 5_000) saida.push(t);
     }
     return saida;
   }).catch(() => []);
@@ -126,7 +126,7 @@ export async function moedasRecentesDaPons(): Promise<TokenSummary[]> {
       fromBlock: ultimo > 200_000n ? ultimo - 200_000n : 0n,
       toBlock: ultimo,
     });
-    const recentes = [...new Set(logs.map((l) => l.args.token!.toLowerCase()))].reverse().slice(0, 12);
+    const recentes = [...new Set(logs.map((l) => l.args.token!.toLowerCase()))].reverse().slice(0, 24);
     const precoEth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
     const lidas = await Promise.all(recentes.map((t) => lerMoedaDaPons(t).catch(() => null)));
     return lidas
@@ -194,6 +194,6 @@ export async function melhoresGraduadasDaPons(): Promise<TokenSummary[]> {
     return resumos
       .filter((t) => t.liquidityUsd >= 10_000)
       .sort((a, b) => b.volume24hUsd - a.volume24hUsd)
-      .slice(0, 25);
+      .slice(0, 60);
   }).catch(() => []);
 }
