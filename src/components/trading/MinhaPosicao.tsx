@@ -10,6 +10,7 @@ import { PublicKey } from "@solana/web3.js";
 import { usePublicClient } from "wagmi";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
+import { ABI_DA_CURVA, CHROMA_CURVE_EVM } from "@/lib/chroma-evm";
 import { posicaoLocal } from "@/lib/posicoes-locais";
 import { useAccount } from "wagmi";
 
@@ -139,6 +140,15 @@ export function MinhaPosicao({
             publicClient.readContract({ address: address as Address, abi: erc20Abi, functionName: "decimals" }).catch(() => 18),
           ]);
           saldo = Number(formatUnits(bruto, Number(dec)));
+          // Moeda na curva da Chroma: o próprio contrato cota a venda, já com
+          // as taxas — o mesmo "valor honesto" da Solana. Fora da curva a
+          // chamada falha e fica o preço de tela.
+          if (bruto > BigInt(0)) {
+            const eth = await publicClient
+              .readContract({ address: CHROMA_CURVE_EVM as Address, abi: ABI_DA_CURVA, functionName: "cotarVenda", args: [address as Address, bruto] })
+              .catch(() => null);
+            if (!cancelado) setVendaEmSol(typeof eth === "bigint" && eth > BigInt(0) ? Number(formatUnits(eth, 18)) : null);
+          } else if (!cancelado) setVendaEmSol(null);
         }
         if (!cancelado) setSaldoNaRede(saldo);
       } catch {

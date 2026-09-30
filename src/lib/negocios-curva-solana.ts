@@ -13,6 +13,7 @@ interface TxDaHelius {
   transactionError?: unknown;
   tokenTransfers?: { mint: string; fromUserAccount?: string; toUserAccount?: string; tokenAmount: number }[];
   nativeTransfers?: { fromUserAccount: string; toUserAccount: string; amount: number }[];
+  accountData?: { account: string; nativeBalanceChange: number }[];
 }
 
 /**
@@ -57,13 +58,14 @@ export async function negociosDaCurvaSolana(mint: string, precoDoSol: number): P
       const carteira = saiuDaCurva ? doToken[0].toUserAccount : doToken[0].fromUserAccount;
       if (!carteira) continue;
       const tokens = doToken.reduce((s, t) => s + t.tokenAmount, 0);
-      const lamports = (tx.nativeTransfers ?? [])
-        .filter(
-          (n) =>
-            (n.fromUserAccount === carteira && n.toUserAccount === enderecoDaCurva) ||
-            (n.fromUserAccount === enderecoDaCurva && n.toUserAccount === carteira),
-        )
-        .reduce((s, n) => s + n.amount, 0);
+      /*
+       * SOL do negócio = quanto o saldo da CURVA mudou. Na venda o programa
+       * debita a curva direto (não há "transferência" listada) — ler só as
+       * transferências fazia toda venda sumir da lista (30/09/2026).
+       */
+      const lamports = Math.abs(
+        (tx.accountData ?? []).find((a) => a.account === enderecoDaCurva)?.nativeBalanceChange ?? 0,
+      );
       if (tokens <= 0 || lamports <= 0) continue;
       negocios.push({
         carteira,

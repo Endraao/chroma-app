@@ -55,7 +55,8 @@ export async function GET(request: Request) {
   if (daCurva && !daCurva.curva.migrada) {
     const eth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
     const priceUsd = precoEmEth(daCurva.curva) * eth;
-    if (priceUsd > 0) return NextResponse.json({ address, priceUsd, at: Date.now() });
+    // priceNativo (ETH): o gráfico só mexe a vela quando ele muda — igual à Solana.
+    if (priceUsd > 0) return NextResponse.json({ address, priceUsd, priceNativo: precoEmEth(daCurva.curva), at: Date.now() });
   }
 
   const price = await fetchPrice(address);

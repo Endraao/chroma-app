@@ -103,6 +103,9 @@ const VAZIO: ParametrosDeIndicador = {};
  * a biblioteca já calculou. Então nada de recalcular posição: só o texto é
  * reescrito, e toda a matemática de escala continua sendo dela.
  */
+/** Distância padrão entre a última vela e a borda direita (a da biblioteca). */
+const DISTANCIA_DA_BORDA = 80;
+
 const EIXO_COMPACTO = "chroma-compacto";
 
 /**
@@ -330,6 +333,14 @@ export function TradingChart({
 
     if (serieAplicadaRef.current !== serie) {
       chart.applyNewData(dados);
+      /*
+       * Moeda nova, com poucas velas: elas abrem NO MEIO do gráfico, e não
+       * coladas no canto direito (pedido do dono, 30/09/2026). Com velas
+       * suficientes pra encher metade da tela, volta a distância de sempre.
+       */
+      const largura = chart.getSize("candle_pane", DomPosition.Main)?.width ?? 0;
+      const ocupado = dados.length * chart.getBarSpace();
+      if (largura > 0) chart.setOffsetRightDistance(ocupado < largura / 2 ? (largura - ocupado) / 2 : DISTANCIA_DA_BORDA);
       serieAplicadaRef.current = serie;
       ultimoTsRef.current = dados[dados.length - 1].timestamp;
       return;

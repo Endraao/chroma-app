@@ -538,11 +538,17 @@ export function useLiveChartData({
       try {
         const res = await fetch(`/api/price?address=${address}`, { cache: "no-store" });
         if (!res.ok) return;
-        const { priceUsd, priceSol } = (await res.json()) as { priceUsd: number; priceSol?: number };
-        if (typeof priceSol === "number") {
-          if (ultimoEmSol === priceSol) return;
+        const { priceUsd, priceSol, priceNativo } = (await res.json()) as {
+          priceUsd: number;
+          priceSol?: number;
+          priceNativo?: number;
+        };
+        // Preço na moeda da rede (SOL ou ETH) — só existe para moeda na curva.
+        const emNativo = priceSol ?? priceNativo;
+        if (typeof emNativo === "number") {
+          if (ultimoEmSol === emNativo) return;
           const primeiro = ultimoEmSol === null;
-          ultimoEmSol = priceSol;
+          ultimoEmSol = emNativo;
           if (primeiro) return; // a vela já está no preço das velas carregadas
         }
         aplicarPreco(priceUsd);
