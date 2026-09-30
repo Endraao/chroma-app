@@ -148,7 +148,7 @@ export function FaixaDeAbertura({
           contrário.
         */}
         {/* Mesmo tamanho do cristal do Airdrop (150), um pouco afastado da borda direita. */}
-        <div className="hidden shrink-0 lg:mr-10 lg:block xl:mr-16">
+        <div className="hidden shrink-0 lg:mr-6 lg:block xl:mr-10">
           <CristalHolografico size={150} />
         </div>
       </div>
