@@ -9,6 +9,8 @@ import { useAccount, useChainId, useSwitchChain } from "wagmi";
 
 import { Button } from "@/components/ui/Button";
 import { SignInModal } from "@/components/web3/SignInModal";
+import { useChromaAccount } from "@/hooks/useChromaAccount";
+import { shortenAddress } from "@/lib/utils";
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, robinhoodChain } from "@/lib/web3";
 import type { ChainId } from "@/lib/types";
@@ -37,6 +39,9 @@ const TEXTOS = traducoes({
     aguardando: "Waiting for the wallet…",
     trocarPara: (rede: string) => `Switch to ${rede}`,
     conectarCarteira: (rede: string) => `Connect ${rede} wallet`,
+    liberarTitulo: (end: string) => `Your wallet ${end} is on your account`,
+    liberarTexto: "To sign, it needs to be opened in this tab. One click: pick the same wallet in the list and approve.",
+    liberar: "Open wallet to sign",
   },
   pt: {
     outraRede: "Sua carteira está em outra rede",
@@ -46,6 +51,9 @@ const TEXTOS = traducoes({
     aguardando: "Aguardando a carteira…",
     trocarPara: (rede: string) => `Trocar para ${rede}`,
     conectarCarteira: (rede: string) => `Conectar carteira ${rede}`,
+    liberarTitulo: (end: string) => `Sua carteira ${end} já está na conta`,
+    liberarTexto: "Para assinar, ela precisa ser aberta nesta aba. É um clique: escolha a mesma carteira na lista e aprove.",
+    liberar: "Abrir carteira para assinar",
   },
   zh: {
     outraRede: "你的钱包在其他网络上",
@@ -55,6 +63,9 @@ const TEXTOS = traducoes({
     aguardando: "等待钱包…",
     trocarPara: (rede: string) => `切换到 ${rede}`,
     conectarCarteira: (rede: string) => `连接 ${rede} 钱包`,
+    liberarTitulo: (end: string) => `你的钱包 ${end} 已在账户中`,
+    liberarTexto: "签名前需要在此页面打开钱包。只需一步：在列表中选择同一个钱包并确认。",
+    liberar: "打开钱包签名",
   },
 });
 
@@ -79,6 +90,11 @@ export function RequireChainWallet({
   const conectada = ehSolana ? solanaConectada : evmConectada;
   const redeErrada = !ehSolana && evmConectada && chainIdAtual !== robinhoodChain.id;
 
+  // Já vinculada à conta: a pessoa não precisa "conectar" de novo, só abrir a
+  // carteira nesta aba para o site poder pedir a assinatura.
+  const { account } = useChromaAccount();
+  const vinculada = account?.carteiras?.[chain] ?? null;
+
   if (conectada && !redeErrada) return <>{children}</>;
 
   return (
@@ -93,13 +109,19 @@ export function RequireChainWallet({
             className="size-5 rounded-full"
           />
           <span className="text-[13px] font-semibold text-zinc-200">
-            {redeErrada ? t.outraRede : t.moedaDa(meta.label)}
+            {redeErrada
+              ? t.outraRede
+              : vinculada
+                ? t.liberarTitulo(shortenAddress(vinculada, 4))
+                : t.moedaDa(meta.label)}
           </span>
         </div>
 
         <p className="text-[11px] leading-relaxed text-zinc-500">
           {redeErrada ? (
             t.precisaEstar(<strong className="text-zinc-300">{meta.label}</strong>)
+          ) : vinculada ? (
+            t.liberarTexto
           ) : (
             t.conecteUma(<strong className="text-zinc-300">{meta.label}</strong>)
           )}
@@ -122,7 +144,7 @@ export function RequireChainWallet({
             className="w-full"
             onClick={() => setModalAberto(true)}
           >
-            {t.conectarCarteira(meta.label)}
+            {vinculada ? t.liberar : t.conectarCarteira(meta.label)}
           </Button>
         )}
       </div>
