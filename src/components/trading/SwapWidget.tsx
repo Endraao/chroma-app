@@ -439,7 +439,7 @@ function SolanaSwap({
             onClick={swap.execute}
           >
             {swap.phase === "executing"
-              ? swap.step || t.processando
+              ? traduzirDoServidor(swap.step, idiomaSol) || t.processando
               : semValor
                 ? t.informeValor
                 : swap.phase === "quoting"

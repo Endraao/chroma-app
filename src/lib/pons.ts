@@ -79,38 +79,56 @@ export interface MoedaDaPons {
   descricao: string;
 }
 
-/** A moeda, se for da Pons E ainda estiver na curva. `null` em qualquer outro caso. */
-export async function lerMoedaDaPons(moeda: string): Promise<MoedaDaPons | null> {
-  if (!/^0x[0-9a-fA-F]{40}$/.test(moeda)) return null;
-  return cached(`pons:${moeda.toLowerCase()}`, 4_000, async () => {
-    const l = await cliente
-      .readContract({ address: FABRICA_DA_PONS, abi: ABI_FABRICA, functionName: "getLaunchedToken", args: [moeda as Address] })
-      .catch(() => null);
-    if (!l || !l.exists || l.phase !== 0 || l.pairToken !== "0x0000000000000000000000000000000000000000") return null;
+/** Uma leitura com uma segunda tentativa: o RPC público recusa em rajada (429). */
+async function ler<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch {
+    await new Promise((r) => setTimeout(r, 400));
+    return fn();
+  }
+}
+
+interface FixosDaPons {
+  curva: Address;
+  criador: string;
+  limiar: bigint;
+  ethVirtualInicial: bigint;
+  taxaBps: number;
+  nome: string;
+  simbolo: string;
+  emissao: number;
+  logo: string;
+  descricao: string;
+}
+
+/**
+ * O que não muda depois do lançamento (curva, nome, logo, taxas): lido UMA
+ * vez por hora. `null` guardado só quando a fábrica diz que não é da Pons —
+ * erro de rede sobe e não fica em cache.
+ */
+async function fixosDaPons(moeda: string): Promise<FixosDaPons | null> {
+  return cached(`pons-fixos:${moeda.toLowerCase()}`, 3_600_000, async () => {
+    const l = await ler(() =>
+      cliente.readContract({ address: FABRICA_DA_PONS, abi: ABI_FABRICA, functionName: "getLaunchedToken", args: [moeda as Address] }),
+    );
+    if (!l.exists || l.pairToken !== "0x0000000000000000000000000000000000000000") return null;
     const curva = l.curve;
-    const [reservas, real, fantasma, taxa, imposto, graduada, nome, simbolo, fornecimento, logo, descricao] = await Promise.all([
-      cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "getReserves" }),
-      cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "realQuoteReserve" }),
-      cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "phantomQuote" }),
-      cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "feeBps" }),
-      cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "creatorTaxBps" }),
-      cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "graduated" }),
-      cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "name" }),
-      cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "symbol" }),
-      cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "totalSupply" }),
+    const [fantasma, taxa, imposto, nome, simbolo, fornecimento, logo, descricao] = await Promise.all([
+      ler(() => cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "phantomQuote" })),
+      ler(() => cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "feeBps" })),
+      ler(() => cliente.readContract({ address: curva, abi: ABI_CURVA, functionName: "creatorTaxBps" })),
+      ler(() => cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "name" })),
+      ler(() => cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "symbol" })),
+      ler(() => cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "totalSupply" })),
       cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "logo" }).catch(() => ""),
       cliente.readContract({ address: moeda as Address, abi: ABI_TOKEN, functionName: "description" }).catch(() => ""),
     ]);
-    if (graduada) return null;
     return {
-      moeda: moeda.toLowerCase(),
       curva,
       criador: l.creatorFeeRecipient,
-      reservaEth: reservas[0],
-      reservaToken: reservas[1],
-      ethReal: real,
-      ethVirtualInicial: fantasma,
       limiar: l.graduationThreshold,
+      ethVirtualInicial: fantasma,
       taxaBps: Number(taxa + imposto),
       nome,
       simbolo,
@@ -118,7 +136,42 @@ export async function lerMoedaDaPons(moeda: string): Promise<MoedaDaPons | null>
       logo,
       descricao,
     };
-  }).catch(() => null);
+  });
+}
+
+/** A moeda, se for da Pons E ainda estiver na curva. `null` em qualquer outro caso. */
+export async function lerMoedaDaPons(moeda: string): Promise<MoedaDaPons | null> {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(moeda)) return null;
+  try {
+    const fixos = await fixosDaPons(moeda);
+    if (!fixos) return null;
+    return await cached(`pons:${moeda.toLowerCase()}`, 4_000, async () => {
+      const [reservas, real, graduada] = await Promise.all([
+        ler(() => cliente.readContract({ address: fixos.curva, abi: ABI_CURVA, functionName: "getReserves" })),
+        ler(() => cliente.readContract({ address: fixos.curva, abi: ABI_CURVA, functionName: "realQuoteReserve" })),
+        ler(() => cliente.readContract({ address: fixos.curva, abi: ABI_CURVA, functionName: "graduated" })),
+      ]);
+      if (graduada) return null;
+      return {
+        moeda: moeda.toLowerCase(),
+        curva: fixos.curva,
+        criador: fixos.criador,
+        reservaEth: reservas[0],
+        reservaToken: reservas[1],
+        ethReal: real,
+        ethVirtualInicial: fixos.ethVirtualInicial,
+        limiar: fixos.limiar,
+        taxaBps: fixos.taxaBps,
+        nome: fixos.nome,
+        simbolo: fixos.simbolo,
+        emissao: fixos.emissao,
+        logo: fixos.logo,
+        descricao: fixos.descricao,
+      };
+    });
+  } catch {
+    return null;
+  }
 }
 
 /** Preço em ETH por token (as duas pontas têm 18 casas). */

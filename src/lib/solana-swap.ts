@@ -381,7 +381,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
     };
   }
 
-  onStep?.("Montando a rota na Jupiter…");
+  onStep?.("Montando a ordem…");
   const buildRes = await fetch("/api/swap", {
     method: "POST",
     headers: { "content-type": "application/json" },

@@ -192,6 +192,12 @@ export function textos(idioma: Idioma): Textos {
  * que não estiver aqui passa como veio.
  */
 const DO_SERVIDOR: Record<string, { en: string; zh: string }> = {
+  // Etapas da compra/venda na Solana (mostradas no botão enquanto executa).
+  "Aguardando sua assinatura…": { en: "Waiting for your signature…", zh: "等待你的签名…" },
+  "Anexando a taxa à mesma transação…": { en: "Preparing the transaction…", zh: "正在准备交易…" },
+  "Confirmando…": { en: "Confirming…", zh: "确认中…" },
+  "Enviando pra rede…": { en: "Sending to the network…", zh: "正在发送到网络…" },
+  "Montando a ordem…": { en: "Building the order…", zh: "正在创建订单…" },
   "Sua carteira não tem SOL para pagar a taxa de rede. Coloque um pouco de SOL (0,01 já basta) e tente de novo.": { en: "Your wallet has no SOL to pay the network fee. Add a little SOL (0.01 is enough) and try again.", zh: "你的钱包没有 SOL 支付网络费用。请存入少量 SOL（0.01 即可）后重试。" },
   "Não foi possível abrir esta imagem.": { en: "Could not open this image.", zh: "无法打开这张图片。" },
   "Não foi possível ler esta imagem.": { en: "Could not read this image.", zh: "无法读取这张图片。" },

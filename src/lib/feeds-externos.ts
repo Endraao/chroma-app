@@ -126,7 +126,7 @@ export async function moedasRecentesDaPons(): Promise<TokenSummary[]> {
       fromBlock: ultimo > 200_000n ? ultimo - 200_000n : 0n,
       toBlock: ultimo,
     });
-    const recentes = [...new Set(logs.map((l) => l.args.token!.toLowerCase()))].reverse().slice(0, 24);
+    const recentes = [...new Set(logs.map((l) => l.args.token!.toLowerCase()))].reverse().slice(0, 12);
     const precoEth = (await precosNativos().catch(() => null))?.robinhood ?? 0;
     const lidas = await Promise.all(recentes.map((t) => lerMoedaDaPons(t).catch(() => null)));
     return lidas
