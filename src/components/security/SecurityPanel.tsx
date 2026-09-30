@@ -78,6 +78,7 @@ const TEXTOS = traducoes({
     curvaValor: "Bonding curve",
     zeroDetalhe: "There is no liquidity in this coin. Trading may be impossible.",
     problemas: {
+      lp_locked: ["Liquidity not locked", "The owner can remove the liquidity — if they do, the price goes to zero."],
       mintable: ["Mint authority open", "The owner can create new tokens and dilute you."],
       freezable: ["Can freeze wallets", "The owner can freeze your tokens so you cannot sell."],
       transfer_hook: ["Transfer hook", "External code runs on every transfer and can block sales."],
@@ -136,6 +137,7 @@ const TEXTOS = traducoes({
     curvaValor: "Curva de lançamento",
     zeroDetalhe: "Não há liquidez nesta moeda. A negociação pode estar impossibilitada.",
     problemas: {
+      lp_locked: ["Liquidez não travada", "O dono pode retirar a liquidez — se retirar, o preço vai a zero."],
       mintable: ["Emissão aberta", "O dono pode criar novos tokens e diluir você."],
       freezable: ["Pode congelar carteiras", "O dono pode congelar seus tokens para você não vender."],
       transfer_hook: ["Gancho de transferência", "Código externo roda em cada transferência e pode bloquear vendas."],
@@ -167,6 +169,7 @@ const TEXTOS = traducoes({
     curvaValor: "联合曲线",
     zeroDetalhe: "该代币没有流动性，可能无法交易。",
     problemas: {
+      lp_locked: ["流动性未锁定", "所有者可以撤走流动性——一旦撤走，价格会归零。"],
       mintable: ["可增发", "所有者可以增发代币稀释你的持仓。"],
       freezable: ["可冻结钱包", "所有者可以冻结你的代币使你无法卖出。"],
       transfer_hook: ["转账钩子", "每次转账都会运行外部代码，可能阻止卖出。"],
