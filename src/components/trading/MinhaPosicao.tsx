@@ -100,6 +100,13 @@ export function MinhaPosicao({
   const [precoDoQuadro, setPreco] = useState(0);
   const precoNativo = usePrecoNativo(chain);
   const [saldoNaRede, setSaldoNaRede] = useState<number | null>(null);
+  /*
+   * Quanto a pessoa RECEBERIA vendendo tudo agora (Solana), em SOL.
+   * Comparar o preço médio com o preço de tela mostrava lucro sem negócio
+   * nenhum: a própria compra sobe o preço da curva, e vendendo ele volta e
+   * ainda tem as taxas (30/09/2026). A cotação de venda é o número honesto.
+   */
+  const [vendaEmSol, setVendaEmSol] = useState<number | null>(null);
   const { connection } = useConnection();
   const publicClient = usePublicClient({ chainId: robinhoodChain.id });
 
@@ -116,6 +123,16 @@ export function MinhaPosicao({
         if (CHAINS[chain].kind === "solana") {
           const contas = await connection.getParsedTokenAccountsByOwner(new PublicKey(minhaCarteira), { mint: new PublicKey(address) });
           saldo = contas.value.reduce((acc, c) => acc + Number(c.account.data.parsed.info.tokenAmount.uiAmount ?? 0), 0);
+          const bruto = contas.value.reduce((acc, c) => acc + BigInt(c.account.data.parsed.info.tokenAmount.amount ?? "0"), BigInt(0));
+          if (bruto > BigInt(0)) {
+            const q = await fetch(
+              `/api/swap?inputMint=${address}&outputMint=So11111111111111111111111111111111111111112&amount=${bruto}&slippageBps=300`,
+              { cache: "no-store" },
+            ).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+            const saida = Number(q?.outAmount ?? 0) / 1e9;
+            // Menos a taxa de 0,95% da Chroma, cobrada na venda.
+            if (!cancelado) setVendaEmSol(saida > 0 ? saida * (1 - 0.0095) : null);
+          } else if (!cancelado) setVendaEmSol(null);
         } else if (publicClient) {
           const [bruto, dec] = await Promise.all([
             publicClient.readContract({ address: address as Address, abi: erc20Abi, functionName: "balanceOf", args: [minhaCarteira as Address] }),
@@ -200,7 +217,9 @@ export function MinhaPosicao({
     vendas: local?.vendas ?? doHistorico?.vendas ?? 0,
   };
 
-  const valorAtual = eu.saldo * preco;
+  const valorDeVenda = vendaEmSol !== null && precoNativo ? vendaEmSol * precoNativo : null;
+  const valorAtual = valorDeVenda ?? eu.saldo * preco;
+  if (valorDeVenda !== null && medio !== null) eu.naoRealizadoUsd = valorDeVenda - medio * eu.saldo;
 
   /*
    * O lucro no papel é o que interessa aqui: é o que a pessoa ganha ou perde
