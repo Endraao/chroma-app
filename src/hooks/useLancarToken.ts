@@ -11,11 +11,13 @@ import {
   transacaoDeDivisao,
   transacaoDeTaxaEDivisao,
   transacoesDeLancamento,
+  transacaoUnicaDeLancamento,
 } from "@/lib/pumpfun";
 import { CHAIN_FEES } from "@/lib/fees";
 import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
 import { useIdioma } from "@/components/IdiomaProvider";
 import { anotarOperacao } from "@/lib/posicoes-locais";
+import { TABELA_SOLANA } from "@/lib/tabela-solana";
 import { traducoes } from "@/lib/idiomas";
 
 /**
@@ -35,6 +37,7 @@ import { traducoes } from "@/lib/idiomas";
 export type EtapaDoLancamento =
   | "parado"
   | "publicando-arte"
+  | "aprovar-unica"
   | "aprovar-tudo"
   | "finalizando"
   | "aguardando-assinatura"
@@ -47,6 +50,7 @@ export type EtapaDoLancamento =
 export const TEXTO_DA_ETAPA: Record<EtapaDoLancamento, string> = {
   parado: "",
   "publicando-arte": "Publicando a arte…",
+  "aprovar-unica": "Aprove o lançamento na sua carteira…",
   "aprovar-tudo": "Etapa 1 de 2 — aprove a criação e a sua compra…",
   finalizando: "Etapa 2 de 2 — aprove as taxas na carteira…",
   "aguardando-assinatura": "Aprove na sua carteira…",
@@ -184,9 +188,50 @@ export function useLancarToken() {
           }).catch((erroDeCatalogo) => console.warn("[lancamento] fora do catálogo:", erroDeCatalogo));
 
         /*
-         * UMA APROVAÇÃO (par SOL, carteira que assina várias de uma vez).
-         * As duas transações são montadas antes e assinadas juntas; o site
-         * envia a 2 assim que a 1 confirma. Ver `transacoesDeLancamento`.
+         * UMA TRANSAÇÃO SÓ (com a tabela de endereços da Chroma na rede):
+         * taxa + criação + compra do criador, atômicas. Ver
+         * `transacaoUnicaDeLancamento`.
+         */
+        if (dados.par !== "USDC" && TABELA_SOLANA) {
+          setEtapa("aprovar-unica");
+          const mint = Keypair.generate();
+          const tx = await transacaoUnicaDeLancamento({
+            conn: connection,
+            criador: publicKey,
+            mint: mint.publicKey,
+            nome: dados.nome,
+            simbolo: dados.simbolo,
+            uri,
+            carteiraDaChroma,
+            taxaSol: CHAIN_FEES.solana.launchFee,
+            compraSol,
+            paraDetentores: paraDetentoresUnico,
+            tabela: new PublicKey(TABELA_SOLANA),
+          });
+          tx.sign([mint]);
+          const assinatura = await sendTransaction(tx, connection);
+          setEtapa("confirmando");
+          const bloco = await connection.getLatestBlockhash();
+          const r = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+          if (r.value.err) throw new Error(m.recusou);
+          mintCriado = mint.publicKey.toBase58();
+          if (compraSol > 0) {
+            const criadoAgora = mintCriado;
+            void connection
+              .getParsedTokenAccountsByOwner(publicKey, { mint: mint.publicKey })
+              .then((contas) => {
+                const tokens = contas.value.reduce((s, c) => s + Number(c.account.data.parsed.info.tokenAmount.uiAmount ?? 0), 0);
+                if (tokens > 0) anotarOperacao(publicKey.toBase58(), criadoAgora, "buy", tokens, compraSol);
+              })
+              .catch(() => {});
+          }
+          await registrar(assinatura);
+          setEtapa("pronto");
+          return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
+        }
+
+        /*
+         * Sem a tabela: duas aprovações em sequência (ver abaixo).
          */
         if (dados.par !== "USDC") {
           setEtapa("aprovar-tudo");

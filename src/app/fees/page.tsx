@@ -14,7 +14,6 @@ import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 import { cn, formatUsd } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 import { idiomaAtual } from "@/lib/idioma-servidor";
-import { PARTE_DA_CHROMA_BPS } from "@/lib/pumpfun";
 import { traducoes } from "@/lib/idiomas";
 
 const METADADOS = {
@@ -42,8 +41,8 @@ const TEXTOS = traducoes({
     faixas: ["Launch", "Gaining traction", "Established", "Top"],
     solLancarNota: "One-time fee, paid at launch. Your coin is born ready to trade, with its own page and live chart on Chroma.",
     solTrade: "Trade through Chroma", solTradeNota: "Charged on buys and sells made through Chroma, on any Solana coin — including the ones launched here.",
-    solDivisao: "Creator fee split",
-    solDivisaoNota: (c: number, p: number) => `The creator fee on every trade is split: ${c}% to the creator, ${p}% to Chroma.`,
+    solDivisao: "Creator fee",
+    solDivisaoNota: "The creator keeps 100% of the creator fee on every trade of their coin.",
     titulo: "Fees and limits", intro1: "Each network has its own table. Everything you pay on Chroma is on this page.", intro2: "No fee shows up only when you confirm a trade.",
     qualquerRede: "On every network",
     divisao: "Referrer's share", divisaoNota: "Comes out of the platform's cut, not the trader's pocket, and lands in the referrer's wallet in the same swap transaction. Without a referral, this share stays with the platform.",
@@ -71,8 +70,8 @@ const TEXTOS = traducoes({
     faixas: ["Lançamento", "Pegando tração", "Consolidada", "Topo"],
     solLancarNota: "Taxa única, paga no lançamento. A sua moeda já nasce pronta para negociar, com página própria e gráfico ao vivo na Chroma.",
     solTrade: "Operar pela Chroma", solTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Solana — inclusive as lançadas aqui.",
-    solDivisao: "Divisão da taxa de criador",
-    solDivisaoNota: (c: number, p: number) => `A taxa de criador de cada operação é dividida: ${c}% para o criador, ${p}% para a Chroma.`,
+    solDivisao: "Taxa de criador",
+    solDivisaoNota: "O criador fica com 100% da taxa de criador de cada operação da sua moeda.",
     titulo: "Taxas e limites", intro1: "Cada rede tem a sua própria tabela. Tudo o que você paga na Chroma está nesta página.", intro2: "Nenhuma taxa aparece só na hora de confirmar a operação.",
     qualquerRede: "Vale em qualquer rede",
     divisao: "Divisão com quem indicou", divisaoNota: "Sai da parte da plataforma, não do bolso do trader, e cai na carteira de quem indicou na mesma transação do swap. Quando não há indicação, essa parte fica com a plataforma.",
@@ -100,8 +99,8 @@ const TEXTOS = traducoes({
     faixas: ["发行期", "起势期", "成熟期", "顶级"],
     solLancarNota: "一次性费用，发行时支付。你的代币一经创建即可交易，在 Chroma 上拥有独立页面和实时图表。",
     solTrade: "通过 Chroma 交易", solTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Solana 代币 —— 包括在这里发行的代币。",
-    solDivisao: "创作者费用分成",
-    solDivisaoNota: (c: number, p: number) => `每笔交易的创作者费用会被分成：${c}% 归创作者，${p}% 归 Chroma。`,
+    solDivisao: "创作者费用",
+    solDivisaoNota: "每笔交易的创作者费用 100% 归创作者。",
     titulo: "费用与限制", intro1: "每条链都有自己的费率表。你在 Chroma 上支付的所有费用都在此页面。", intro2: "不会有任何费用只在确认交易时才出现。",
     qualquerRede: "所有网络通用",
     divisao: "推荐人分成", divisaoNota: "来自平台的份额，而不是交易者的口袋，并在同一笔兑换交易中进入推荐人的钱包。没有推荐时，这部分归平台所有。",
@@ -224,8 +223,8 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
           <FeeCard
             icon="users"
             label={t.solDivisao}
-            value={`${100 - PARTE_DA_CHROMA_BPS / 100}% / ${PARTE_DA_CHROMA_BPS / 100}%`}
-            note={t.solDivisaoNota(100 - PARTE_DA_CHROMA_BPS / 100, PARTE_DA_CHROMA_BPS / 100)}
+            value="100%"
+            note={t.solDivisaoNota}
           />
         </div>
       </section>

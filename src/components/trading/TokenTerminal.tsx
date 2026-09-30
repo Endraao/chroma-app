@@ -18,7 +18,6 @@ import { ConviteParaCompartilhar } from "@/components/trading/ConviteParaCompart
 import { PainelSobre } from "@/components/trading/PainelSobre";
 import { AvisoRecompensas } from "@/components/trading/AvisoRecompensas";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
-import { ConcluirLancamento } from "@/components/trading/ConcluirLancamento";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { SecurityReport, TokenSummary } from "@/lib/types";
@@ -243,10 +242,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
           */}
           <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} precoUsd={price} />
 
-          {/* Etapa 2 do lançamento falhou: só o criador vê, e conclui daqui. */}
-          {token.chain === "solana" && token.criadorNaChroma && !token.recompensasParaDetentores && (
-            <ConcluirLancamento mint={token.address} criador={token.criadorNaChroma} />
-          )}
 
           {/*
             A AUDITORIA FICA DEPOIS DO BOTÃO, e discreta.

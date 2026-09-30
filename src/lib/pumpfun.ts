@@ -445,3 +445,89 @@ export async function precoNaCurvaEmSol(conn: Connection, mint: PublicKey): Prom
   const sol = Number(d.readBigUInt64LE(16)) / LAMPORTS_PER_SOL;
   return token > 0 ? sol / token : null;
 }
+
+/**
+ * LANÇAMENTO EM UMA TRANSAÇÃO SÓ (decisão do dono, 30/09/2026).
+ *
+ * Taxa de lançamento da Chroma + criação + compra do criador, juntas e
+ * atômicas: ou tudo acontece, ou nada. Não há segunda aprovação para negar
+ * (antes, negar a 2ª deixava a Chroma sem taxa), e o criador compra antes de
+ * qualquer um. Sem a divisão 70/30 da taxa de criador — não cabe; o criador
+ * fica com 100% dela. Cabe graças à tabela de endereços (lib/tabela-solana.ts).
+ */
+export async function transacaoUnicaDeLancamento({
+  conn,
+  criador,
+  mint,
+  nome,
+  simbolo,
+  uri,
+  carteiraDaChroma,
+  taxaSol,
+  compraSol,
+  paraDetentores = false,
+  tabela,
+}: {
+  conn: Connection;
+  criador: PublicKey;
+  mint: PublicKey;
+  nome: string;
+  simbolo: string;
+  uri: string;
+  carteiraDaChroma: PublicKey;
+  taxaSol: number;
+  compraSol: number;
+  paraDetentores?: boolean;
+  tabela: PublicKey;
+}): Promise<VersionedTransaction> {
+  const { PUMP_SDK, OnlinePumpSdk, getBuyTokenAmountFromSolAmount } = await sdk();
+  const BN = (await import("bn.js")).default;
+
+  const conta = await conn.getAddressLookupTable(tabela);
+  if (!conta.value) throw new Error("tabela de endereços não encontrada");
+
+  const ixs: TransactionInstruction[] = [
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
+  ];
+  if (taxaSol > 0) {
+    ixs.push(
+      SystemProgram.transfer({
+        fromPubkey: criador,
+        toPubkey: carteiraDaChroma,
+        lamports: Math.round(taxaSol * LAMPORTS_PER_SOL),
+      }),
+    );
+  }
+  const comum = {
+    mint,
+    name: nome,
+    symbol: simbolo,
+    uri,
+    creator: criador,
+    user: criador,
+    mayhemMode: false,
+    ...(paraDetentores ? { holderReward: true } : {}),
+  };
+  if (compraSol > 0) {
+    const online = new OnlinePumpSdk(conn);
+    const [global, feeConfig] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig()]);
+    const solAmount = new BN(Math.round(compraSol * LAMPORTS_PER_SOL));
+    const amount = getBuyTokenAmountFromSolAmount({
+      global,
+      feeConfig,
+      mintSupply: null,
+      bondingCurve: null,
+      amount: solAmount,
+      quoteMint: NATIVE_MINT,
+    });
+    ixs.push(...(await PUMP_SDK.createV2AndBuyInstructions({ ...comum, global, amount, solAmount })));
+  } else {
+    ixs.push(await PUMP_SDK.createV2Instruction(comum));
+  }
+
+  const { blockhash } = await conn.getLatestBlockhash("confirmed");
+  return new VersionedTransaction(
+    new TransactionMessage({ payerKey: criador, recentBlockhash: blockhash, instructions: ixs }).compileToV0Message([conta.value]),
+  );
+}
