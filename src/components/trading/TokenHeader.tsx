@@ -61,8 +61,10 @@ export function TokenHeader({
    * última consulta enquanto o gráfico dispara ao lado.
    */
   const precoDe24hAtras =
-    token.priceUsd > 0 && stats.change24h > -100
-      ? token.priceUsd / (1 + stats.change24h / 100)
+    (stats.priceUsd ?? token.priceUsd) > 0 && stats.change24h > -100
+      ? // Preço e variação da MESMA leitura: misturar o preço de quando a página
+        // abriu com a variação nova dava -6% numa moeda de volta ao preço inicial.
+        (stats.priceUsd ?? token.priceUsd) / (1 + stats.change24h / 100)
       : 0;
 
   const variacao =

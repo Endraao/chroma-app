@@ -62,6 +62,8 @@ export interface StatsAoVivo {
   liquidityUsd: number;
   volume24hUsd: number;
   holders: number;
+  /** preço da MESMA leitura que a variação — a base das 24h sai dos dois juntos */
+  priceUsd?: number;
 }
 
 const TEXTOS = traducoes({
