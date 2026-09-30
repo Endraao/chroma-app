@@ -25,7 +25,7 @@ import type { Negociavel } from "@/lib/negociavel-evm";
 import { esperarRecibo, useCarteiraRobinhood } from "@/hooks/useCarteiraRobinhood";
 import { ABI_DA_CURVA, CHROMA_CURVE_EVM } from "@/lib/chroma-evm";
 import { CHAINS, robinhoodChain } from "@/lib/web3";
-import { cn, formatPrice, shortenAddress } from "@/lib/utils";
+import { cn, formatPrice, formatUsd, shortenAddress } from "@/lib/utils";
 import type { ChainId, TradeSide } from "@/lib/types";
 
 /**
@@ -83,6 +83,7 @@ const TEXTOS = traducoes({
     venderTodos: (s: string) => `Sell all your ${s}`,
     saldo: "balance", max: "max", maxMaiusc: "Max", curvaDaChroma: "Chroma curve", curvaDaChromaMaiusc: "Chroma curve",
     impacto: (p: React.ReactNode) => <>This order moves the price by {p}. It is too large for the available liquidity: you buy at a worse price and whoever sells afterwards gets less.</>,
+    compraFeita: "Buy completed", vendaFeita: "Sell completed", verNoExplorador: "view transaction ↗",
     confirmado: "Confirmed!", verSolscan: "view on Solscan ↗", processando: "Processing…", informeValor: "Enter an amount",
     cotando: "Quoting…", tentarDeNovo: "Try again", comprar: "Buy", vender: "Sell",
     precisaCotacao: "Needs the SOL price, which did not load", conecteParaPct: "Connect your wallet to use a percentage of your balance",
@@ -106,6 +107,7 @@ const TEXTOS = traducoes({
     venderTodos: (s: string) => `Vender todos os seus ${s}`,
     saldo: "saldo", max: "máx", maxMaiusc: "Máx", curvaDaChroma: "curva da Chroma", curvaDaChromaMaiusc: "Curva da Chroma",
     impacto: (p: React.ReactNode) => <>Esta ordem move o preço em {p}. É grande demais para a liquidez disponível: você compra a um preço pior e quem vender depois recebe menos.</>,
+    compraFeita: "Compra feita", vendaFeita: "Venda feita", verNoExplorador: "ver transação ↗",
     confirmado: "Confirmado!", verSolscan: "ver no Solscan ↗", processando: "Processando…", informeValor: "Informe um valor",
     cotando: "Cotando…", tentarDeNovo: "Tentar de novo", comprar: "Comprar", vender: "Vender",
     precisaCotacao: "Precisa da cotação do SOL, que não carregou", conecteParaPct: "Conecte a carteira pra usar porcentagem do saldo",
@@ -129,6 +131,7 @@ const TEXTOS = traducoes({
     venderTodos: (s: string) => `卖出全部 ${s}`,
     saldo: "余额", max: "最大", maxMaiusc: "最大", curvaDaChroma: "Chroma 曲线", curvaDaChromaMaiusc: "Chroma 曲线",
     impacto: (p: React.ReactNode) => <>该订单会使价格变动 {p}。相对于现有流动性过大：你会以更差的价格买入，之后卖出的人获得更少。</>,
+    compraFeita: "买入成功", vendaFeita: "卖出成功", verNoExplorador: "查看交易 ↗",
     confirmado: "已确认！", verSolscan: "在 Solscan 查看 ↗", processando: "处理中…", informeValor: "请输入金额",
     cotando: "报价中…", tentarDeNovo: "重试", comprar: "买入", vender: "卖出",
     precisaCotacao: "需要 SOL 报价，但未能加载", conecteParaPct: "连接钱包后可按余额百分比下单",
@@ -236,12 +239,24 @@ function SolanaSwap({
     affiliateRef,
   });
 
-  // Anota a operação pro painel "Sua posição" (preço médio em SOL).
+  const [recibo, setRecibo] = useState<Recibo | null>(null);
+
+  // Anota a operação pro painel "Sua posição" (preço médio em SOL) e mostra o recibo.
   useEffect(() => {
     if (!swap.signature || !publicKey) return;
     const tokens = comprando ? Number(swap.outAmount ?? 0) : Number(amount);
     const sol = comprando ? Number(amount) : Number(swap.outAmount ?? 0);
     anotarOperacao(publicKey.toBase58(), tokenAddress, side, tokens, sol);
+    setRecibo({
+      lado: side,
+      usd: comprando && emDolar ? digitadoNum : sol * (precoDoSol ?? 0),
+      tokens,
+      simbolo: symbol,
+      nativo: sol,
+      simboloNativo: "SOL",
+      link: `https://solscan.io/tx/${swap.signature}`,
+    });
+    setDigitado("");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só no momento em que a operação confirma
   }, [swap.signature]);
 
@@ -432,16 +447,7 @@ function SolanaSwap({
         </RequireChainWallet>
 
         {swap.error && <p className="text-[11px] leading-relaxed text-bear">{traduzirDoServidor(swap.error, idiomaSol)}</p>}
-        {swap.signature && (
-          <a
-            href={`https://solscan.io/tx/${swap.signature}`}
-            target="_blank"
-            rel="noreferrer"
-            className="block text-center text-[11px] font-semibold text-marca hover:underline"
-          >
-            {t.verSolscan}
-          </a>
-        )}
+        {recibo && <ReciboDaOperacao recibo={recibo} onFechar={() => setRecibo(null)} />}
       </div>
     </Card>
   );
@@ -842,12 +848,24 @@ function EvmSwap({
     };
   }, [address, publicClient, tokenAddress, swap.hash]);
 
-  // Anota a operação pro painel "Sua posição" (preço médio em ETH).
+  const [recibo, setRecibo] = useState<Recibo | null>(null);
+
+  // Anota a operação pro painel "Sua posição" (preço médio em ETH) e mostra o recibo.
   useEffect(() => {
     if (!swap.hash || !address) return;
     const tokens = ehCompra ? Number(swap.saida ?? 0) : Number(digitado);
     const eth = ehCompra ? Number(valorNativo) : Number(swap.saida ?? 0);
     anotarOperacao(address, tokenAddress, side, tokens, eth);
+    setRecibo({
+      lado: side,
+      usd: ehCompra && compraEmDolar ? Number(digitado) : eth * precoDoEth,
+      tokens,
+      simbolo: symbol,
+      nativo: eth,
+      simboloNativo: meta.nativeSymbol,
+      link: `${meta.explorer.replace(/\/token\/$/, "/tx/")}${swap.hash}`,
+    });
+    setDigitado("");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só no momento em que a operação confirma
   }, [swap.hash]);
 
@@ -1097,21 +1115,8 @@ function EvmSwap({
 
         {swap.erro && <p className="text-[11px] leading-relaxed text-bear">{swap.erro}</p>}
 
-        {swap.hash && (
-          <a
-            /*
-             * `meta.explorer` aponta pra página de TOKEN; transação fica noutro
-             * caminho no mesmo explorer. Trocar o sufixo aqui evita um link que
-             * abre "token não encontrado" com um hash de transação na URL.
-             */
-            href={`${meta.explorer.replace(/\/token\/$/, "/tx/")}${swap.hash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-center text-[11px] font-semibold text-marca hover:underline"
-          >
-            {t.verTransacao}
-          </a>
-        )}
+        {/* O link troca o sufixo /token/ do explorador por /tx/: o hash é de transação. */}
+        {recibo && <ReciboDaOperacao recibo={recibo} onFechar={() => setRecibo(null)} />}
       </div>
     </Card>
   );
@@ -1142,4 +1147,54 @@ function cortar(n: number, casas: number): string {
   const c = Math.min(9, Math.max(0, casas));
   const fator = 10 ** c;
   return String(Math.floor(n * fator) / fator);
+}
+
+export interface Recibo {
+  lado: TradeSide;
+  usd: number;
+  tokens: number;
+  simbolo: string;
+  nativo: number;
+  simboloNativo: string;
+  link: string;
+}
+
+/**
+ * O aviso de que deu certo, com os números: quanto foi e quanto veio.
+ * Antes só aparecia um link pro explorador — a pessoa ficava sem saber se
+ * a compra tinha entrado e de quanto.
+ */
+function ReciboDaOperacao({ recibo, onFechar }: { recibo: Recibo; onFechar: () => void }) {
+  const t = useTextos(TEXTOS);
+  const compra = recibo.lado === "buy";
+  const tokens = recibo.tokens.toLocaleString(undefined, { maximumFractionDigits: recibo.tokens >= 1000 ? 0 : 4 });
+  return (
+    <div
+      role="status"
+      className={cn(
+        "relative rounded-lg border px-3 py-2.5 text-[12px]",
+        compra ? "border-bull/30 bg-bull/[0.08]" : "border-bear/30 bg-bear/[0.08]",
+      )}
+    >
+      <button onClick={onFechar} aria-label="×" className="absolute right-2 top-1.5 text-zinc-500 hover:text-zinc-200">
+        ×
+      </button>
+      <p className={cn("font-bold", compra ? "text-bull" : "text-bear")}>✓ {compra ? t.compraFeita : t.vendaFeita}</p>
+      <p className="tnum mt-0.5 text-zinc-200">
+        {compra ? (
+          <>
+            {recibo.usd > 0 ? formatUsd(recibo.usd) : `${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`} → {tokens} {recibo.simbolo}
+          </>
+        ) : (
+          <>
+            {tokens} {recibo.simbolo} → {recibo.nativo.toFixed(4)} {recibo.simboloNativo}
+            {recibo.usd > 0 && <span className="text-zinc-500"> (≈ {formatUsd(recibo.usd)})</span>}
+          </>
+        )}
+      </p>
+      <a href={recibo.link} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] font-semibold text-marca hover:underline">
+        {t.verNoExplorador}
+      </a>
+    </div>
+  );
 }
