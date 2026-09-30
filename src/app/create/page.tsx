@@ -74,7 +74,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "As a holder you also get your share of the rewards for as long as you hold the coin — just like everyone else.",
     recSoSolana: "Sending rewards to holders is available for Solana launches. On Robinhood Chain, rewards go to the creator.",
     ganhoTitulo: "What you earn as the creator",
-    ganhoPump: (p: number) => `You keep ${100 - p}% of the creator fee from every trade of your coin, and ${p}% goes to Chroma. You approve everything at once in your wallet: creating the coin, your initial buy and the fee setup.`,
+    ganhoPump: (p: number) => `You keep ${100 - p}% of the creator fee from every trade of your coin, and ${p}% goes to Chroma. You approve two steps in your wallet: first creating the coin together with your initial buy (so you buy before anyone else), then the fee setup.`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
     verFaixas: "see the tiers",
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
@@ -86,7 +86,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Launch fee: ${fee} ${s}, paid on submission. Plus the ${rede} network fee.`,
     semTaxa: (rede: string) => `Launching has no Chroma fee — only the ${rede} network fee, paid from your wallet.`,
     semLimite: "There is no limit on how many tokens you can launch.", verTaxas: "see all fees",
-    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aprovar-tudo": "Approve the launch in your wallet…", finalizando: "Finishing the launch…", "aguardando-assinatura": "Step 1 of 2 — approve creating the coin in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", dividindo: "Step 2 of 2 — approve the initial buy and fee split in your wallet…", pronto: "Done!" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aprovar-tudo": "Step 1 of 2 — approve creating the coin and your buy…", finalizando: "Step 2 of 2 — approve the fees in your wallet…", "aguardando-assinatura": "Step 1 of 2 — approve creating the coin in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", dividindo: "Step 2 of 2 — approve the initial buy and fee split in your wallet…", pronto: "Done!" } as Record<string, string>,
   },
   pt: {
     titulo: "Criar token", subtitulo: "Criação e negociação no mesmo lugar: assim que a moeda é criada, ela já fica disponível para compra e venda, com página própria e gráfico ao vivo.",
@@ -109,7 +109,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "Como detentor, você também recebe a sua parte das recompensas enquanto segurar a moeda — igual a todo mundo.",
     recSoSolana: "Enviar as recompensas aos detentores está disponível nos lançamentos da Solana. Na Robinhood Chain, as recompensas vão para o criador.",
     ganhoTitulo: "O que você ganha como criador",
-    ganhoPump: (p: number) => `Você fica com ${100 - p}% da taxa de criador de cada operação da sua moeda, e ${p}% vão para a Chroma. Você aprova tudo de uma vez na carteira: a criação da moeda, a sua compra inicial e a configuração das taxas.`,
+    ganhoPump: (p: number) => `Você fica com ${100 - p}% da taxa de criador de cada operação da sua moeda, e ${p}% vão para a Chroma. Você aprova duas etapas na carteira: primeiro a criação da moeda junto com a sua compra inicial (assim você compra antes de todo mundo), depois a configuração das taxas.`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
     verFaixas: "ver as faixas",
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
@@ -121,7 +121,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Taxa de lançamento: ${fee} ${s}, paga no envio. Mais a taxa de rede da ${rede}.`,
     semTaxa: (rede: string) => `Lançar não tem taxa da Chroma — só a taxa de rede da ${rede}, paga da sua carteira.`,
     semLimite: "Não há limite de quantos tokens você pode lançar.", verTaxas: "ver todas as taxas",
-    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aprovar-tudo": "Aprove o lançamento na sua carteira…", finalizando: "Finalizando o lançamento…", "aguardando-assinatura": "Etapa 1 de 2 — aprove a criação da moeda na carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", dividindo: "Etapa 2 de 2 — aprove na carteira a compra inicial e a divisão das taxas…", pronto: "Pronto!" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aprovar-tudo": "Etapa 1 de 2 — aprove a criação e a sua compra…", finalizando: "Etapa 2 de 2 — aprove as taxas na carteira…", "aguardando-assinatura": "Etapa 1 de 2 — aprove a criação da moeda na carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", dividindo: "Etapa 2 de 2 — aprove na carteira a compra inicial e a divisão das taxas…", pronto: "Pronto!" } as Record<string, string>,
   },
   zh: {
     titulo: "创建代币", subtitulo: "发行与交易一站完成：代币创建后立即可以买卖，拥有独立页面和实时图表。",
@@ -144,7 +144,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "作为持有人，只要你持有该代币，也能和其他人一样获得你的那份奖励。",
     recSoSolana: "将奖励发送给持有人仅适用于 Solana 发行。在 Robinhood Chain 上，奖励归创作者所有。",
     ganhoTitulo: "作为创建者你能获得什么",
-    ganhoPump: (p: number) => `你保留代币每笔交易创作者费用的 ${100 - p}%，${p}% 归 Chroma。你只需在钱包中确认一次：创建代币、首次买入和费用设置。`,
+    ganhoPump: (p: number) => `你保留代币每笔交易创作者费用的 ${100 - p}%，${p}% 归 Chroma。你需要在钱包中确认两步：先是创建代币和你的首次买入（这样你会比任何人都先买入），然后是费用设置。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
     verFaixas: "查看档位",
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
@@ -156,7 +156,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `发行费：${fee} ${s}，提交时支付。另加 ${rede} 网络手续费。`,
     semTaxa: (rede: string) => `发行不收 Chroma 费用 —— 只需从钱包支付 ${rede} 网络手续费。`,
     semLimite: "发行代币数量不限。", verTaxas: "查看全部费用",
-    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aprovar-tudo": "请在钱包中确认发行…", finalizando: "正在完成发行…", "aguardando-assinatura": "第 1 步，共 2 步 —— 请在钱包中确认创建代币…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", dividindo: "第 2 步，共 2 步 —— 请在钱包中确认首次买入和费用分配…", pronto: "完成！" } as Record<string, string>,
+    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aprovar-tudo": "第 1 步，共 2 步 —— 确认创建代币和你的买入…", finalizando: "第 2 步，共 2 步 —— 在钱包中确认费用…", "aguardando-assinatura": "第 1 步，共 2 步 —— 请在钱包中确认创建代币…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", dividindo: "第 2 步，共 2 步 —— 请在钱包中确认首次买入和费用分配…", pronto: "完成！" } as Record<string, string>,
   },
 });
 

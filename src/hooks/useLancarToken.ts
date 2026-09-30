@@ -47,8 +47,8 @@ export type EtapaDoLancamento =
 export const TEXTO_DA_ETAPA: Record<EtapaDoLancamento, string> = {
   parado: "",
   "publicando-arte": "Publicando a arte…",
-  "aprovar-tudo": "Aprove o lançamento na sua carteira…",
-  finalizando: "Finalizando o lançamento…",
+  "aprovar-tudo": "Etapa 1 de 2 — aprove a criação e a sua compra…",
+  finalizando: "Etapa 2 de 2 — aprove as taxas na carteira…",
   "aguardando-assinatura": "Aprove na sua carteira…",
   confirmando: "Confirmando na rede…",
   comprando: "Moeda criada. Aprove a compra inicial…",
@@ -104,7 +104,7 @@ const MENSAGENS = traducoes({
 
 export function useLancarToken() {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction, signAllTransactions } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
   const idioma = useIdioma();
   const m = MENSAGENS[idioma];
 
@@ -206,21 +206,15 @@ export function useLancarToken() {
           criacao.sign([mint]);
 
           /*
-           * Uma aprovação quando a carteira assina as duas juntas. Carteira sem
-           * esse recurso (ou que falhe nele): assina a 1 sozinha — criação e
-           * compra continuam juntas, o criador segue comprando primeiro — e a
-           * 2 é pedida em seguida. Recusa da pessoa para tudo.
+           * DUAS APROVAÇÕES, EM SEQUÊNCIA (30/09/2026).
+           * Assinar as duas juntas não serve: a carteira (MetaMask, Phantom)
+           * SIMULA cada uma antes, e a 2 depende da moeda já existir — ela
+           * aparecia como "reverted" e o botão de confirmar travava. Então a 1
+           * (criação + compra, atômicas: o criador compra primeiro) é assinada
+           * e confirmada, e só então a 2 é montada e pedida.
            */
-          let assinadas: (typeof criacao)[] | null = null;
-          if (signAllTransactions) {
-            try {
-              assinadas = await signAllTransactions([criacao, divisao]);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : String(e);
-              if (/reject|denied|cancel/i.test(msg)) throw e;
-              console.warn("[lancamento] carteira não assinou as duas juntas, seguindo uma a uma:", e);
-            }
-          }
+          void divisao;
+          const assinadas: (typeof criacao)[] | null = null as (typeof criacao)[] | null;
           const divisaoAssinada = assinadas?.[1] ?? null;
 
           setEtapa("confirmando");
@@ -384,7 +378,7 @@ export function useLancarToken() {
         return null;
       }
     },
-    [connection, publicKey, sendTransaction, signAllTransactions, m],
+    [connection, publicKey, sendTransaction, m],
   );
 
   return {
