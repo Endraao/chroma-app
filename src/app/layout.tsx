@@ -32,16 +32,25 @@ const display = Space_Grotesk({
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://chromalaunch.fun"),
   // O App Router serve src/app/icon.png e apple-icon.png como favicon sozinho;
   // estes aqui são para o card que aparece quando o link é compartilhado.
+  // Card escuro próprio (1200x630, scripts/gerar-og.mjs): o logo tem fundo
+  // transparente e WhatsApp/X pintavam de branco na pré-visualização.
   openGraph: {
     title: "Chroma — Launchpad & Terminal Web3",
-    images: ["/logo.png"],
+    description: "Launch and trade meme coins on Solana and Robinhood Chain — live charts, contract audit and referral rewards.",
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Chroma" }],
   },
   title: "Chroma — Launchpad & Terminal Web3",
   description:
-    "Lance e negocie meme coins na Robinhood Chain e na Solana, com gráfico ao vivo, auditoria de contrato e 0,30% de comissão para quem indica.",
-  twitter: { card: "summary_large_image", site: "@ChromaLaunch", creator: "@ChromaLaunch" },
+    "Launch and trade meme coins on Solana and Robinhood Chain — live charts, contract audit and referral rewards.",
+  twitter: {
+    card: "summary_large_image",
+    site: "@ChromaLaunch",
+    creator: "@ChromaLaunch",
+    images: ["/og.png"],
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
