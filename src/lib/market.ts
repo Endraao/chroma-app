@@ -354,6 +354,23 @@ export async function fetchPrice(address: string): Promise<number | null> {
   const key = `price:${address}`;
   try {
     return await cached(key, TTL.price, async () => {
+      /*
+       * Solana: Jupiter primeiro. Nas moedas da curva a DexScreener calcula o
+       * preço uns 3% abaixo do real, e o gráfico desenhava velas vermelhas
+       * sem ninguém ter negociado (a vela ao vivo "caía" para esse número).
+       */
+      if (!address.startsWith("0x")) {
+        try {
+          const r = await fetch(`https://lite-api.jup.ag/price/v3?ids=${address}`, {
+            cache: "no-store",
+            signal: AbortSignal.timeout(4_000),
+          });
+          const p = Number(((await r.json()) as Record<string, { usdPrice?: number }>)[address]?.usdPrice);
+          if (Number.isFinite(p) && p > 0) return p;
+        } catch {
+          /* cai na DexScreener */
+        }
+      }
       const data = await getJson<{ pairs: DexPair[] | null }>(
         `${DEXSCREENER}/latest/dex/tokens/${address}`,
         3,

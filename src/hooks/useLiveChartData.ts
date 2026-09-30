@@ -230,6 +230,10 @@ export function useLiveChartData({
               low: Math.min(tail.low, liveLast.close),
             };
           }
+          // Velas ao vivo mais novas que a última da fonte (minutos sem
+          // negócio, que a fonte não devolve) ficam — antes eram apagadas e
+          // renasciam de outro preço, desenhando velas que ninguém fez.
+          if (tail) merged.push(...prev.filter((c) => c.time > tail.time));
           return merged;
         });
       } catch (error) {
