@@ -198,3 +198,57 @@ export async function estadoNaCurvaDaChroma(
     criador: estado.creator.toBase58(),
   };
 }
+
+/**
+ * O que a Chroma tem pra receber na curva e as transações pra resgatar.
+ *
+ * Na DBC as taxas não caem sozinhas na carteira: ficam guardadas em cada
+ * pool até o "fee claimer" (a carteira da plataforma) resgatar — taxa de
+ * negociação de cada pool e a taxa de lançamento (0,02 SOL) de cada moeda.
+ * Cada pool vira uma transação, simulada antes: a que não tem nada a
+ * resgatar (ou já foi resgatada) fica de fora.
+ */
+export async function transacoesDeResgate(conexao: Connection, carteira: PublicKey) {
+  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
+  const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const pools = await cliente.state.getPoolsFeesByConfig(new PublicKey(CONFIG_DA_CURVA));
+  const max = new BN("18446744073709551615");
+  const { blockhash } = await conexao.getLatestBlockhash("confirmed");
+  const txs: Transaction[] = [];
+  let lamports = 0;
+
+  for (const p of pools) {
+    const negociacao = await cliente.partner.claimPartnerTradingFee({
+      feeClaimer: carteira,
+      payer: carteira,
+      pool: p.poolAddress,
+      maxBaseAmount: max,
+      maxQuoteAmount: max,
+      receiver: carteira,
+    });
+    const lancamento = await cliente.partner
+      .claimPartnerPoolCreationFee({ pool: p.poolAddress, feeReceiver: carteira })
+      .catch(() => null);
+
+    // Tenta as duas juntas; se falhar, cada uma sozinha. A de lançamento vem
+    // PRIMEIRO: o SOL dela paga a conta temporária que o resgate da negociação
+    // abre — com a carteira da plataforma quase vazia, a ordem inversa falhava.
+    const tentativas = [
+      [...(lancamento?.instructions ?? []), ...negociacao.instructions],
+      negociacao.instructions,
+      lancamento?.instructions ?? [],
+    ];
+    for (const instrucoes of tentativas) {
+      if (!instrucoes.length) continue;
+      const tx = new Transaction().add(...instrucoes);
+      tx.feePayer = carteira;
+      tx.recentBlockhash = blockhash;
+      const sim = await conexao.simulateTransaction(tx, undefined, [carteira]).catch(() => null);
+      if (!sim || sim.value.err) continue;
+      txs.push(tx);
+      lamports += Number(p.partnerQuoteFee.toString());
+      break;
+    }
+  }
+  return { txs, pools: pools.length, taxaNegociacaoSol: lamports / LAMPORTS_PER_SOL };
+}
