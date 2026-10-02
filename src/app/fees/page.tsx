@@ -40,11 +40,13 @@ const TEXTOS = traducoes({
   en: {
     faixas: ["Launch", "Gaining traction", "Established", "Top"],
     solLancarNota: "One-time fee, paid at launch. Your coin is born ready to trade, with its own page and live chart on Chroma.",
-    rhCriadorNota: "The creator receives 0.70% of every trade of their coin.",
+    rhCriadorNota: "The creator receives 0.70% of every trade of their coin, plus their own creator tax (0–10%) if they set one at launch.",
+    rhTradeNota: "Charged on buys and sells made through Chroma, on any Robinhood Chain coin — including the ones launched here.",
+    curvaChroma: "Chroma Curve", curvaChromaNota: "Trading fee of coins launched on the Chroma Curve, on any app. Snipers pay up to 25% in the first 2 minutes; the creator's first buy pays the minimum.",
     solTrade: "Trade through Chroma", solTradeNota: "Charged on buys and sells made through Chroma, on any Solana coin — including the ones launched here.",
     solDivisao: "Creator fee",
-    solDivisaoNota: "The creator keeps 100% of the creator fee on every trade of their coin.",
-    titulo: "Fees and limits", intro1: "Each network has its own table. Everything you pay on Chroma is on this page.", intro2: "No fee shows up only when you confirm a trade.",
+    solDivisaoNota: "On the Chroma Curve the creator earns 40% of the trading fee of every trade of their coin, on any app, forever. On the Classic curve, the creator keeps the curve's creator fee.",
+    titulo: "Fees and limits", intro1: "Each network has its own table. Everything you pay on Chroma is on this page.", intro2: "No hidden fees: nothing appears for the first time when you confirm a trade.",
     qualquerRede: "On every network",
     divisao: "Referrer's share", divisaoNota: "Comes out of the platform's cut, not the trader's pocket, and lands in the referrer's wallet in the same swap transaction. Without a referral, this share stays with the platform.",
     limite: "Launch limit", nenhum: "none", limiteNota: "You can launch as many coins as you want. The only cost is the launch fee, charged when you submit.",
@@ -70,11 +72,13 @@ const TEXTOS = traducoes({
   pt: {
     faixas: ["Lançamento", "Pegando tração", "Consolidada", "Topo"],
     solLancarNota: "Taxa única, paga no lançamento. A sua moeda já nasce pronta para negociar, com página própria e gráfico ao vivo na Chroma.",
-    rhCriadorNota: "O criador recebe 0,70% de cada negociação da sua moeda.",
+    rhCriadorNota: "O criador recebe 0,70% de cada negociação da sua moeda, mais a própria taxa do criador (0–10%), se definir uma no lançamento.",
+    rhTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Robinhood Chain — inclusive as lançadas aqui.",
+    curvaChroma: "Curva da Chroma", curvaChromaNota: "Taxa de negociação das moedas lançadas na Curva da Chroma, em qualquer app. Robôs pagam até 25% nos primeiros 2 minutos; a primeira compra do criador paga o mínimo.",
     solTrade: "Operar pela Chroma", solTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Solana — inclusive as lançadas aqui.",
     solDivisao: "Taxa de criador",
-    solDivisaoNota: "O criador fica com 100% da taxa de criador de cada operação da sua moeda.",
-    titulo: "Taxas e limites", intro1: "Cada rede tem a sua própria tabela. Tudo o que você paga na Chroma está nesta página.", intro2: "Nenhuma taxa aparece só na hora de confirmar a operação.",
+    solDivisaoNota: "Na Curva da Chroma o criador ganha 40% da taxa de toda negociação da sua moeda, em qualquer app, pra sempre. Na curva Clássica, o criador fica com a taxa de criador da curva.",
+    titulo: "Taxas e limites", intro1: "Cada rede tem a sua própria tabela. Tudo o que você paga na Chroma está nesta página.", intro2: "Sem taxa escondida: nada aparece pela primeira vez na hora de confirmar.",
     qualquerRede: "Vale em qualquer rede",
     divisao: "Divisão com quem indicou", divisaoNota: "Sai da parte da plataforma, não do bolso do trader, e cai na carteira de quem indicou na mesma transação do swap. Quando não há indicação, essa parte fica com a plataforma.",
     limite: "Limite de lançamentos", nenhum: "nenhum", limiteNota: "Você pode lançar quantas moedas quiser. O único custo é a taxa de lançamento, cobrada no envio.",
@@ -100,11 +104,13 @@ const TEXTOS = traducoes({
   zh: {
     faixas: ["发行期", "起势期", "成熟期", "顶级"],
     solLancarNota: "一次性费用，发行时支付。你的代币一经创建即可交易，在 Chroma 上拥有独立页面和实时图表。",
-    rhCriadorNota: "创作者可获得其代币每笔交易的 0.70%。",
+    rhCriadorNota: "创作者可获得其代币每笔交易的 0.70%，如在发行时设置了创作者税（0–10%），还可获得该税。",
+    rhTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Robinhood Chain 代币 —— 包括在这里发行的代币。",
+    curvaChroma: "Chroma 曲线", curvaChromaNota: "在 Chroma 曲线上发行的代币在任何应用中的交易费。前 2 分钟狙击机器人最高支付 25%；创作者的首次买入只付最低费用。",
     solTrade: "通过 Chroma 交易", solTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Solana 代币 —— 包括在这里发行的代币。",
     solDivisao: "创作者费用",
-    solDivisaoNota: "每笔交易的创作者费用 100% 归创作者。",
-    titulo: "费用与限制", intro1: "每条链都有自己的费率表。你在 Chroma 上支付的所有费用都在此页面。", intro2: "不会有任何费用只在确认交易时才出现。",
+    solDivisaoNota: "在 Chroma 曲线上，创作者永久获得其代币在任何应用中每笔交易 40% 的交易费。在经典曲线上，创作者保留曲线的创作者费用。",
+    titulo: "费用与限制", intro1: "每条链都有自己的费率表。你在 Chroma 上支付的所有费用都在此页面。", intro2: "没有隐藏费用：确认交易时不会出现任何新的费用。",
     qualquerRede: "所有网络通用",
     divisao: "推荐人分成", divisaoNota: "来自平台的份额，而不是交易者的口袋，并在同一笔兑换交易中进入推荐人的钱包。没有推荐时，这部分归平台所有。",
     limite: "发行数量限制", nenhum: "无", limiteNota: "你可以发行任意数量的代币。唯一的成本是提交时收取的发行费。",
@@ -223,13 +229,14 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
             value={labels.launchFee > 0 ? `${labels.launchFee} ${meta.nativeSymbol}` : t.gratis}
             note={t.solLancarNota}
           />
-          <FeeCard icon="percent" label={t.solTrade} value={labels.swap} note={t.solTradeNota} />
+          <FeeCard icon="percent" label={t.solTrade} value={labels.swap} note={rh ? t.rhTradeNota : t.solTradeNota} />
           <FeeCard
             icon="users"
             label={t.solDivisao}
-            value={rh ? "0.70%" : "100%"}
+            value={rh ? "0.70%+" : "40%"}
             note={rh ? t.rhCriadorNota : t.solDivisaoNota}
           />
+          {!rh && <FeeCard icon="percent" label={t.curvaChroma} value="1%" note={t.curvaChromaNota} />}
         </div>
       </section>
     );
