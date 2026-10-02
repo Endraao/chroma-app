@@ -184,7 +184,7 @@ async function montar(
 
   if (!curva || curva.migrada) {
     const mercado = await fetchToken(m.endereco).catch(() => null);
-    if (!mercado) return curva ? null : semMercado(m);
+    if (!mercado) return curva ? null : ((await daCurvaClassica(m, precoDoSol)) ?? semMercado(m));
 
     /*
      * Lançada na curva de lançamento da Solana: progresso e SOL guardado lidos
@@ -260,6 +260,37 @@ async function montar(
 }
 
 /** Registrada, mas a rede não conhece: nem curva, nem par. */
+/**
+ * Moeda da curva clássica da Solana que nenhum site de dados indexou (pouca
+ * ou nenhuma negociação): lida direto da curva. Sem isto o cartão saía com
+ * tudo zerado e o selo "Solana" em vez de "Curva" (02/10/2026).
+ */
+async function daCurvaClassica(m: MoedaRegistrada, precoDoSol: number | null): Promise<TokenSummary | null> {
+  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  if (m.rede !== "solana" || !precoDoSol || !rpc?.startsWith("http")) return null;
+  try {
+    const [{ Connection }, { estadoDaCurvaPump, precoNaCurvaEmSol }] = await Promise.all([
+      import("@solana/web3.js"),
+      import("@/lib/pumpfun"),
+    ]);
+    const conexao = new Connection(rpc, "confirmed");
+    const mint = new PublicKey(m.endereco);
+    const [e, emSol] = await Promise.all([estadoDaCurvaPump(conexao, mint), precoNaCurvaEmSol(conexao, mint)]);
+    if (!e || e.completa || emSol === null) return null;
+    const preco = emSol * precoDoSol;
+    return {
+      ...semMercado(m),
+      priceUsd: preco,
+      marketCapUsd: preco * 1_000_000_000,
+      liquidityUsd: e.solReal * precoDoSol,
+      bondingProgress: e.progresso,
+      dexId: "pumpfun",
+    };
+  } catch {
+    return null;
+  }
+}
+
 function semMercado(m: MoedaRegistrada): TokenSummary {
   return {
     address: m.endereco,

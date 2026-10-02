@@ -88,11 +88,9 @@ export function TokenCard({ token }: { token: TokenSummary }) {
       <div className="tnum mt-3 grid grid-cols-3 gap-2">
         <Numero rotulo={t.preco} valor={`$${formatPrice(token.priceUsd)}`} />
         <Numero rotulo={t.mcap} valor={formatUsd(token.marketCapUsd)} />
-        {token.holders > 0 ? (
-          <Numero rotulo={t.holders} valor={token.holders.toLocaleString("pt-BR")} />
-        ) : (
-          <Numero rotulo={t.liquidez} valor={formatUsd(token.liquidityUsd)} />
-        )}
+        {/* Sempre a liquidez: alternar com holders deixava os cartões diferentes
+            entre si (pedido do dono, 02/10/2026). */}
+        <Numero rotulo={t.liquidez} valor={formatUsd(token.liquidityUsd)} />
       </div>
 
       {/* Rodapé: progresso da curva, ou idade da moeda */}
