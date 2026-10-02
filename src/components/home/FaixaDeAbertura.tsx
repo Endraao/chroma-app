@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { CristalHolografico } from "@/components/ui/CristalHolografico";
 import { textos, type Idioma } from "@/lib/idiomas";
+import { TokenOficial } from "@/components/home/TokenOficial";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 
 /**
@@ -137,6 +138,9 @@ export function FaixaDeAbertura({
               </Button>
             </Link>
           </div>
+
+          {/* O contrato oficial do $CHROMA, à vista (pedido do dono, 02/10/2026). */}
+          <TokenOficial compacto className="mt-3 w-fit max-w-full" />
         </div>
 
         {/*

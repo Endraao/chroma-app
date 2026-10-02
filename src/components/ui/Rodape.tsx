@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { textos, type Idioma } from "@/lib/idiomas";
+import { TokenOficial } from "@/components/home/TokenOficial";
 
 /**
  * O rodapé do site.
@@ -39,6 +40,7 @@ export function Rodape({ idioma }: { idioma: Idioma }) {
           */}
           <p className="holo-texto inline-block text-[12px] font-black tracking-tight">CHROMA</p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-zinc-600">{t.rodapeAviso}</p>
+          <TokenOficial compacto className="mt-3 w-fit max-w-full" />
         </div>
 
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px]">
