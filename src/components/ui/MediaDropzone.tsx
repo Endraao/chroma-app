@@ -232,7 +232,7 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
         </div>
 
         <Button
-          variant="buy"
+          variant="verde"
           size="sm"
           onClick={(e) => {
             e.stopPropagation();

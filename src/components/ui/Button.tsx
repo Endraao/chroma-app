@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-type Variant = "chroma" | "espectro" | "buy" | "sell" | "ghost" | "outline";
+type Variant = "chroma" | "espectro" | "buy" | "sell" | "verde" | "ghost" | "outline";
 type Size = "sm" | "md" | "lg";
 
 /*
@@ -30,8 +30,11 @@ const variants: Record<Variant, string> = {
   espectro:
     "varrer text-[#08090b] font-bold active:translate-y-px " +
     "shadow-[0_0_0_1px_rgba(255,255,255,.08)]",
-  buy: "bg-bull/12 text-bull border border-bull/35 hover:bg-bull/20",
-  sell: "bg-bear/12 text-bear border border-bear/35 hover:bg-bear/20",
+  // Comprar/vender ganham volume próprio (ver .botao-negocio em globals.css).
+  buy: "botao-negocio compra",
+  sell: "botao-negocio venda",
+  // O verde discreto de antes, pra ação secundária (ex.: escolher arquivo).
+  verde: "bg-bull/12 text-bull border border-bull/35 hover:bg-bull/20",
   ghost: "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-100",
   outline:
     "border border-ink-600 bg-ink-800 text-zinc-200 hover:border-marca/50 hover:text-white",

@@ -1193,14 +1193,43 @@ function ReciboDaOperacao({ recibo, onFechar }: { recibo: Recibo; onFechar: () =
   const compra = recibo.lado === "buy";
   // Compacto (pedido do dono): quantidade abreviada, uma linha só.
   const tokens = Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(recibo.tokens);
+
+  /*
+   * Some sozinho depois de 8 s (pedido do dono, 02/10/2026: "fica ali pra
+   * sempre"). Com o mouse em cima, o tempo para — dá pra clicar no ↗ com calma.
+   */
+  const DURACAO = 8000;
+  const fechar = useRef(onFechar);
+  fechar.current = onFechar;
+  const [pausado, setPausado] = useState(false);
+  const restante = useRef(DURACAO);
+  useEffect(() => {
+    if (pausado) return;
+    const inicio = Date.now();
+    const id = setTimeout(() => fechar.current(), restante.current);
+    return () => {
+      clearTimeout(id);
+      restante.current = Math.max(500, restante.current - (Date.now() - inicio));
+    };
+  }, [pausado]);
+
   return (
     <div
       role="status"
+      onMouseEnter={() => setPausado(true)}
+      onMouseLeave={() => setPausado(false)}
+      style={{ animation: "recibo-entrar .25s ease-out" }}
       className={cn(
-        "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px]",
+        "relative flex items-center gap-2 overflow-hidden rounded-md border px-2.5 py-1.5 text-[11px]",
         compra ? "border-bull/25 bg-bull/[0.06]" : "border-bear/25 bg-bear/[0.06]",
       )}
     >
+      {/* A barrinha do tempo que falta pra sumir. */}
+      <span
+        aria-hidden
+        className={cn("absolute inset-x-0 bottom-0 h-[2px] origin-left", compra ? "bg-bull/60" : "bg-bear/60")}
+        style={{ animation: `recibo-tempo ${DURACAO}ms linear forwards`, animationPlayState: pausado ? "paused" : "running" }}
+      />
       <span className={cn("shrink-0 font-bold", compra ? "text-bull" : "text-bear")}>
         ✓ {compra ? t.compraFeita : t.vendaFeita}
       </span>

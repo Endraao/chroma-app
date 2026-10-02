@@ -807,3 +807,113 @@ body::after {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 16px !important;
 }
+
+/*
+ * O botão de COMPRAR/VENDER do painel de negociação (pedido do dono,
+ * 02/10/2026: "mais bonito, com um css bem elaborado").
+ *
+ * É a ação mais importante da página, então ganha volume de verdade:
+ * gradiente da própria cor (claro em cima, fundo embaixo), luz interna na
+ * borda de cima, um halo da cor por baixo e um reflexo que atravessa o botão
+ * quando o mouse chega. Ao clicar ele "afunda" 1px. Desabilitado (sem valor
+ * digitado), tudo isso apaga — o botão só acende quando dá pra negociar.
+ */
+.botao-negocio {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--texto);
+  background: linear-gradient(180deg, var(--c1) 0%, var(--c2) 100%);
+  border: 1px solid var(--borda);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.18),
+    0 8px 22px -10px var(--halo);
+  text-shadow: 0 1px 0 var(--sombra-texto);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+.botao-negocio::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -60%;
+  width: 45%;
+  z-index: -1;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.botao-negocio::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 50% 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent);
+  pointer-events: none;
+}
+.botao-negocio:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06) saturate(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.18),
+    0 12px 30px -10px var(--halo),
+    0 0 0 3px var(--anel);
+}
+.botao-negocio:hover:not(:disabled)::before {
+  left: 120%;
+}
+.botao-negocio:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.25),
+    0 4px 12px -8px var(--halo);
+}
+.botao-negocio:disabled {
+  filter: saturate(0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  text-shadow: none;
+}
+.botao-negocio.compra {
+  --c1: #2ef0b0;
+  --c2: #00b47a;
+  --borda: rgba(46, 240, 176, 0.55);
+  --halo: rgba(0, 209, 143, 0.7);
+  --anel: rgba(0, 209, 143, 0.18);
+  --texto: #03130d;
+  --sombra-texto: rgba(255, 255, 255, 0.25);
+}
+.botao-negocio.venda {
+  --c1: #ff7583;
+  --c2: #e23347;
+  --borda: rgba(255, 117, 131, 0.55);
+  --halo: rgba(255, 77, 94, 0.7);
+  --anel: rgba(255, 77, 94, 0.18);
+  --texto: #ffffff;
+  --sombra-texto: rgba(0, 0, 0, 0.25);
+}
+
+/* O recibo da negociação: entra deslizando e some sozinho (ver ReciboDaOperacao). */
+@keyframes recibo-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes recibo-tempo {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
