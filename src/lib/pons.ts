@@ -242,7 +242,7 @@ function detentoresAtuais(negocios: NegocioDaPons[]): number {
     saldo.set(c, (saldo.get(c) ?? 0) + (n.compra ? n.tokens : -n.tokens));
   }
   // Sobra de arredondamento da venda não é posição.
-  const POEIRA = 1e18;
+  const POEIRA = 1; // 1 moeda inteira (tokens já vêm divididos pela escala)
   return [...saldo.values()].filter((v) => v > POEIRA).length;
 }
 
