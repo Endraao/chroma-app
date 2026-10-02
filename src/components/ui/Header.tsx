@@ -75,13 +75,13 @@ export function Header({ idioma }: { idioma: Idioma }) {
         <BuscaDeMoedas />
 
         {/* Navegação em telas largas */}
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 xl:flex">
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
+                "whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
                 pathname === item.href
                   ? "bg-white/[0.06] text-zinc-100"
                   : "text-zinc-500 hover:bg-white/5 hover:text-zinc-100",
@@ -107,7 +107,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
           <Link
             href="/airdrop"
             className={cn(
-              "group/airdrop relative ml-1.5 flex items-center gap-1.5 overflow-hidden rounded-lg px-3 py-1.5",
+              "group/airdrop relative ml-1.5 flex shrink-0 items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-lg px-3 py-1.5",
               "text-[13px] font-bold transition-all duration-200",
               "border border-marca/40 text-marca",
               "hover:border-marca/70 hover:bg-marca/[0.12] hover:shadow-[0_0_14px_-2px_rgba(34,211,238,.45)]",
@@ -171,7 +171,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
             este botão não havia como chegar em Criar token, Afiliados ou Taxas
             — as páginas existiam e eram inalcançáveis pelo telefone.
           */}
-          <div className="relative md:hidden" ref={boxRef}>
+          <div className="relative xl:hidden" ref={boxRef}>
             <button
               onClick={() => setAberto((v) => !v)}
               aria-label="Abrir menu"

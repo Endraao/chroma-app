@@ -128,7 +128,7 @@ export function SeletorDeRede() {
         aria-haspopup="listbox"
         aria-expanded={aberto}
         className={cn(
-          "flex h-9 items-center gap-2 rounded-lg border px-2.5 text-[13px] font-semibold transition-colors",
+          "flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-2.5 text-[13px] font-semibold transition-colors",
           aberto
             ? "border-marca/50 bg-marca/[0.08] text-zinc-100"
             : "border-ink-600 bg-ink-800 text-zinc-300 hover:border-marca/40 hover:text-zinc-100",
