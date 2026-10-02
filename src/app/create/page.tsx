@@ -245,7 +245,9 @@ export default function CreateTokenPage() {
 
   // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
   const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
-  const [curva, setCurva] = useState<"pump" | "chroma">("pump");
+  // Padrão: a Curva da Chroma (decisão do dono, 02/10/2026) — a Chroma ganha em
+  // toda negociação e o criador leva 40% da taxa. A Clássica segue como opção.
+  const [curva, setCurva] = useState<"pump" | "chroma">(CURVA_CHROMA_DISPONIVEL ? "chroma" : "pump");
   // Robinhood: taxa extra do criador (0 a 10%), igual à da plataforma de lançamento.
   const [taxaDoCriador, setTaxaDoCriador] = useState("");
   const taxaDoCriadorNum = Math.max(0, Math.min(10, Number(taxaDoCriador.replace(",", ".")) || 0));
@@ -517,7 +519,7 @@ export default function CreateTokenPage() {
           </CardHeader>
           <CardBody className="space-y-2">
             <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/[0.06] p-1">
-              {(["pump", "chroma"] as const).map((op) => (
+              {(["chroma", "pump"] as const).map((op) => (
                 <button
                   key={op}
                   type="button"
