@@ -56,6 +56,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "'mint' não é um endereço Solana" }, { status: 400 });
   }
 
+  /* --- Curva da Chroma (Meteora DBC): a pool com a NOSSA config existe. --- */
+  if (corpo.curva === "chroma") {
+    const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+    const { lerPoolDaCurva } = await import("@/lib/meteora-dbc");
+    const { Connection } = await import("@solana/web3.js");
+    const dbc = rpc ? await lerPoolDaCurva(new Connection(rpc, "confirmed"), chaveDoMint.toBase58()).catch(() => null) : null;
+    if (!dbc) return NextResponse.json({ error: "esta moeda não está na curva da Chroma" }, { status: 403 });
+    try {
+      await registrarMoeda({
+        endereco: chaveDoMint.toBase58(),
+        rede: "solana",
+        nome: texto(corpo.nome, LIMITES.nome) || chaveDoMint.toBase58().slice(0, 6),
+        simbolo: texto(corpo.simbolo, LIMITES.simbolo) || "?",
+        descricao: texto(corpo.descricao, LIMITES.descricao) || null,
+        imagem: urlSegura(corpo.imagem),
+        criador: dbc.criador,
+        assinatura: texto(corpo.assinatura, 128) || null,
+        criadaEm: Date.now(),
+        links: linksDo(corpo),
+        recompensas: null,
+      });
+    } catch (erro) {
+      console.warn("[moedas] falha ao registrar (curva chroma):", erro);
+      return NextResponse.json({ error: "Não foi possível registrar agora." }, { status: 500 });
+    }
+    revalidateTag(TAG_DO_UNIVERSO, "max");
+    try {
+      await creditarMoeda(chaveDoMint.toBase58(), dbc.criador, "solana");
+    } catch (erro) {
+      console.warn("[moedas] falha ao pontuar o airdrop (curva chroma):", erro);
+    }
+    return NextResponse.json({ ok: true, mint: chaveDoMint.toBase58() });
+  }
+
   /* --- a prova: a curva existe, e é do nosso programa? --------------- */
   // Moeda lançada pela pump.fun: confere a transação de criação na rede.
   const pump = await conferirLancamentoPump(chaveDoMint, texto(corpo.assinatura, 128), texto(corpo.assinaturaTaxa, 128) || undefined);

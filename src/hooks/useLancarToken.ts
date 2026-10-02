@@ -18,6 +18,7 @@ import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
 import { useIdioma } from "@/components/IdiomaProvider";
 import { anotarOperacao } from "@/lib/posicoes-locais";
 import { TABELA_SOLANA } from "@/lib/tabela-solana";
+import { CURVA_CHROMA_DISPONIVEL, transacaoDeLancamentoNaCurva } from "@/lib/meteora-dbc";
 import { traducoes } from "@/lib/idiomas";
 
 /**
@@ -82,6 +83,8 @@ export interface DadosDoLancamento {
   par?: "SOL" | "USDC";
   /** Robinhood: taxa extra do criador em cada negociação, em % (0 a 10), paga toda a ele */
   taxaDoCriador?: number;
+  /** Solana: em qual curva nasce — a da pump.fun (padrão) ou a Curva da Chroma (Meteora DBC) */
+  curva?: "pump" | "chroma";
 }
 
 const MENSAGENS = traducoes({
@@ -110,7 +113,7 @@ const MENSAGENS = traducoes({
 
 export function useLancarToken() {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction } = useWallet();
+  const { publicKey, sendTransaction, signTransaction } = useWallet();
   const idioma = useIdioma();
   const m = MENSAGENS[idioma];
 
@@ -186,6 +189,7 @@ export function useLancarToken() {
               imagem: publicado.imageUrl,
               assinatura,
               assinaturaTaxa,
+              curva: dados.curva === "chroma" ? "chroma" : undefined,
             }),
           }).catch((erroDeCatalogo) => console.warn("[lancamento] fora do catálogo:", erroDeCatalogo));
 
@@ -194,6 +198,39 @@ export function useLancarToken() {
          * taxa + criação + compra do criador, atômicas. Ver
          * `transacaoUnicaDeLancamento`.
          */
+        /*
+         * CURVA DA CHROMA (Meteora DBC): criação + compra do criador numa
+         * transação só, e a taxa de lançamento é cobrada pela própria curva.
+         * A carteira assina PRIMEIRO; a assinatura da moeda nova entra depois
+         * (ordem recomendada pela Phantom).
+         */
+        if (dados.curva === "chroma" && CURVA_CHROMA_DISPONIVEL && signTransaction) {
+          setEtapa("aprovar-unica");
+          const mint = Keypair.generate();
+          const tx = await transacaoDeLancamentoNaCurva({
+            conexao: connection,
+            criador: publicKey,
+            mint,
+            nome: dados.nome,
+            simbolo: dados.simbolo,
+            uri,
+            compraSol,
+          });
+          const sim = await connection.simulateTransaction(tx);
+          if (sim.value.err) throw new Error(m.recusou);
+          const assinada = await signTransaction(tx);
+          assinada.partialSign(mint);
+          const assinatura = await connection.sendRawTransaction(assinada.serialize());
+          setEtapa("confirmando");
+          const bloco = await connection.getLatestBlockhash();
+          const r = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+          if (r.value.err) throw new Error(m.recusou);
+          mintCriado = mint.publicKey.toBase58();
+          await registrar(assinatura);
+          setEtapa("pronto");
+          return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
+        }
+
         if (dados.par !== "USDC" && TABELA_SOLANA) {
           setEtapa("aprovar-unica");
           const mint = Keypair.generate();
@@ -425,7 +462,7 @@ export function useLancarToken() {
         return null;
       }
     },
-    [connection, publicKey, sendTransaction, m],
+    [connection, publicKey, sendTransaction, signTransaction, m],
   );
 
   return {

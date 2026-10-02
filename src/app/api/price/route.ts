@@ -35,14 +35,24 @@ export async function GET(request: Request) {
     const naCurva = await cached(`preco-curva-sol:${address}`, 2_500, async () => {
       const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
       if (!rpc?.startsWith("http")) return null;
-      const [{ Connection, PublicKey }, { precoNaCurvaEmSol }] = await Promise.all([
+      const [{ Connection, PublicKey }, { precoNaCurvaEmSol }, { estadoNaCurvaDaChroma }] = await Promise.all([
         import("@solana/web3.js"),
         import("@/lib/pumpfun"),
+        import("@/lib/meteora-dbc"),
       ]);
-      const emSol = await precoNaCurvaEmSol(new Connection(rpc, "confirmed"), new PublicKey(address));
-      if (emSol === null) return null;
+      const conexao = new Connection(rpc, "confirmed");
+      let emSol = await precoNaCurvaEmSol(conexao, new PublicKey(address));
+      // Toda moeda da curva de lançamento clássica nasce em 30 / 1,073 bi SOL.
+      let inicial = 30 / 1_073_000_000;
+      if (emSol === null) {
+        // Curva da Chroma (Meteora DBC): nasce em 30 SOL de valor / 1 bi.
+        const chroma = await estadoNaCurvaDaChroma(conexao, address).catch(() => null);
+        if (!chroma || chroma.completa) return null;
+        emSol = chroma.precoSol;
+        inicial = 30 / 1_000_000_000;
+      }
       const sol = (await precosNativos().catch(() => null))?.solana ?? 0;
-      return sol > 0 ? { usd: emSol * sol, sol: emSol } : null;
+      return sol > 0 ? { usd: emSol * sol, sol: emSol, inicial } : null;
     }).catch((e) => {
       console.warn("[price] curva sol falhou:", e);
       return null;
@@ -54,8 +64,7 @@ export async function GET(request: Request) {
         address,
         priceUsd: naCurva.usd,
         priceSol: naCurva.sol,
-        // Toda moeda da curva de lançamento da Solana nasce em 30 / 1,073 bi SOL.
-        precoInicialNativo: 30 / 1_073_000_000,
+        precoInicialNativo: naCurva.inicial,
         at: Date.now(),
       });
     }

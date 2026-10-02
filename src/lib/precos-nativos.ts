@@ -63,18 +63,43 @@ async function pelaJupiter(): Promise<Record<ChainId, number>> {
   return Object.fromEntries(CHAIN_IDS.map((c) => [c, j[MINT_NA_JUPITER[c]]?.usdPrice ?? 0])) as Record<ChainId, number>;
 }
 
+/**
+ * Último preço bom de cada rede, guardado na memória do servidor.
+ *
+ * Sem isso, quando a CoinGecko e a Jupiter falhavam ao mesmo tempo (a
+ * CoinGecko bloqueia IP compartilhado de servidor com frequência), o ETH
+ * valia 0 e o $CHROMA aparecia com market cap 0 na home até alguém
+ * recarregar (02/10/2026). Preço de minutos atrás é muito melhor que zero.
+ */
+let ultimoBom: Record<ChainId, number> | null = null;
+
+/** Coinbase: pública, sem chave, e raramente limita. Terceira fonte. */
+const PAR_NA_COINBASE: Record<ChainId, string> = { solana: "SOL-USD", robinhood: "ETH-USD" } as Record<ChainId, string>;
+async function pelaCoinbase(c: ChainId): Promise<number> {
+  try {
+    const r = await fetch(`https://api.coinbase.com/v2/prices/${PAR_NA_COINBASE[c]}/spot`, { next: { revalidate: 120 } });
+    if (!r.ok) return 0;
+    return Number((await r.json())?.data?.amount) || 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function precosNativos(): Promise<Record<ChainId, number>> {
   const vazio = Object.fromEntries(CHAIN_IDS.map((c) => [c, 0])) as Record<ChainId, number>;
   try {
     // Zero nunca é guardado no cache: a próxima chamada tenta de novo.
-    return await cached("precos-nativos", TTL, async () => {
+    const precos = await cached("precos-nativos", TTL, async () => {
       const [gecko, jup] = await Promise.all([pelaCoinGecko(vazio), pelaJupiter().catch(() => vazio)]);
       const precos = Object.fromEntries(CHAIN_IDS.map((c) => [c, gecko[c] || jup[c] || 0])) as Record<ChainId, number>;
+      for (const c of CHAIN_IDS) if (!precos[c]) precos[c] = await pelaCoinbase(c);
       if (CHAIN_IDS.some((c) => !precos[c])) throw new Error("preço nativo indisponível");
       return precos;
     });
+    ultimoBom = precos;
+    return precos;
   } catch {
-    return vazio;
+    return ultimoBom ?? vazio;
   }
 }
 

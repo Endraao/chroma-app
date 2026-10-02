@@ -144,6 +144,42 @@ async function montar(
    * `migrada`. Nesse ponto ela não negocia mais e o preço dela está congelado
    * no instante da migração — usar esse número seria mostrar um preço morto.
    */
+  /* Na Curva da Chroma (Meteora DBC): tudo sai da pool, desde o primeiro segundo. */
+  const rpcSol = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  if (m.rede === "solana" && !curva && rpcSol?.startsWith("http") && precoDoSol) {
+    try {
+      const [{ Connection }, { estadoNaCurvaDaChroma }] = await Promise.all([
+        import("@solana/web3.js"),
+        import("@/lib/meteora-dbc"),
+      ]);
+      const e = await estadoNaCurvaDaChroma(new Connection(rpcSol, "confirmed"), m.endereco);
+      if (e && !e.completa) {
+        const preco = e.precoSol * precoDoSol;
+        const nova = Date.now() - m.criadaEm < 24 * 3600_000;
+        return {
+          address: m.endereco,
+          chain: "solana",
+          name: m.nome,
+          symbol: m.simbolo,
+          imageUrl: m.imagem ?? undefined,
+          description: m.descricao ?? undefined,
+          priceUsd: preco,
+          change24h: nova ? (e.precoSol / (30 / 1_000_000_000) - 1) * 100 : 0,
+          marketCapUsd: preco * 1_000_000_000,
+          liquidityUsd: e.solReal * precoDoSol,
+          volume24hUsd: 0,
+          holders: 0,
+          createdAt: m.criadaEm,
+          bondingProgress: e.progresso,
+          creator: m.criador,
+          dexId: "chroma-curve",
+        };
+      }
+    } catch {
+      /* sem leitura: segue pelo mercado */
+    }
+  }
+
   if (!curva || curva.migrada) {
     const mercado = await fetchToken(m.endereco).catch(() => null);
     if (!mercado) return curva ? null : semMercado(m);

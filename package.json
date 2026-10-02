@@ -35,6 +35,7 @@
     "test:abi": "node scripts/test-abi-evm.mjs"
   },
   "dependencies": {
+    "@meteora-ag/dynamic-bonding-curve-sdk": "^1.5.13",
     "@neondatabase/serverless": "^1.1.0",
     "@pump-fun/pump-sdk": "^2.0.0",
     "@solana/spl-token": "^0.4.15",

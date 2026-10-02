@@ -27,6 +27,31 @@ import {
   feeLabelFor,
 } from "@/lib/fees";
 import { cn, formatUsd } from "@/lib/utils";
+import { CURVA_CHROMA_DISPONIVEL } from "@/lib/meteora-dbc";
+
+const TEXTO_CURVA = traducoes({
+  en: {
+    titulo: "Bonding curve",
+    classica: "Classic",
+    chroma: "Chroma Curve · new",
+    notaClassica: "The most traded curve on Solana. Graduates at ~85 SOL.",
+    notaChroma: "You earn 40% of the trading fee on every trade of your coin, on any app, forever. Snipers pay up to 25% in the first 2 minutes; your first buy pays the minimum. Graduates to Meteora with locked liquidity.",
+  },
+  pt: {
+    titulo: "Curva de lançamento",
+    classica: "Clássica",
+    chroma: "Curva da Chroma · nova",
+    notaClassica: "A curva mais negociada da Solana. Gradua com ~85 SOL.",
+    notaChroma: "Você ganha 40% da taxa de toda negociação da sua moeda, em qualquer app, pra sempre. Robôs pagam até 25% nos primeiros 2 minutos; sua primeira compra paga o mínimo. Gradua pra Meteora com liquidez travada.",
+  },
+  zh: {
+    titulo: "联合曲线",
+    classica: "经典",
+    chroma: "Chroma 曲线 · 新",
+    notaClassica: "Solana 上交易最活跃的曲线。约 85 SOL 时毕业。",
+    notaChroma: "你的代币在任何应用上的每笔交易，你都永久获得 40% 的交易费。前 2 分钟狙击机器人最高支付 25%；你的首次买入只付最低费用。毕业后迁移至 Meteora，流动性锁定。",
+  },
+});
 import type { ChainId } from "@/lib/types";
 
 /* ------------------------------------------------------------------ */
@@ -169,6 +194,7 @@ const TEXTOS = traducoes({
 
 export default function CreateTokenPage() {
   const t = useTextos(TEXTOS);
+  const tc = useTextos(TEXTO_CURVA);
   const account = useChromaAccount();
   const router = useRouter();
 
@@ -219,6 +245,7 @@ export default function CreateTokenPage() {
 
   // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
   const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
+  const [curva, setCurva] = useState<"pump" | "chroma">("pump");
   // Robinhood: taxa extra do criador (0 a 10%), igual à da plataforma de lançamento.
   const [taxaDoCriador, setTaxaDoCriador] = useState("");
   const taxaDoCriadorNum = Math.max(0, Math.min(10, Number(taxaDoCriador.replace(",", ".")) || 0));
@@ -477,6 +504,40 @@ export default function CreateTokenPage() {
         contrato: o criador recebe a fatia fixa das faixas, e é isso que a
         tela diz agora.
       */}
+      {/*
+        Em qual curva a moeda nasce, na Solana. A Curva da Chroma (Meteora DBC)
+        dá ao criador metade da taxa de TODA negociação, em qualquer site, e
+        tem taxa anti-robô nos primeiros 2 minutos (ver lib/meteora-dbc.ts).
+        Ao usuário nunca se fala o nome de quem opera a curva clássica.
+      */}
+      {chain === "solana" && CURVA_CHROMA_DISPONIVEL && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{tc.titulo}</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/[0.06] p-1">
+              {(["pump", "chroma"] as const).map((op) => (
+                <button
+                  key={op}
+                  type="button"
+                  onClick={() => setCurva(op)}
+                  className={cn(
+                    "rounded-lg py-2.5 text-[13px] font-bold transition-colors",
+                    curva === op ? "bg-ink-700 text-zinc-50" : "text-zinc-500 hover:text-zinc-200",
+                  )}
+                >
+                  {op === "pump" ? tc.classica : tc.chroma}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-zinc-500">
+              {curva === "pump" ? tc.notaClassica : tc.notaChroma}
+            </p>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Recompensas do criador: pro criador ou pros detentores */}
       <Card>
         <CardHeader>
@@ -617,7 +678,8 @@ export default function CreateTokenPage() {
             arte: media.file,
             banner: banner?.file ?? null,
             compraInicial: form.initialBuy.trim() || undefined,
-            recompensas: chain === "solana" ? recompensas : "criador",
+            recompensas: chain === "solana" && curva === "pump" ? recompensas : "criador",
+            curva: chain === "solana" ? curva : undefined,
             taxaDoCriador: chain === "robinhood" ? taxaDoCriadorNum : 0,
             par: chain === "solana" && pair === "USDC" ? "USDC" : "SOL",
           });

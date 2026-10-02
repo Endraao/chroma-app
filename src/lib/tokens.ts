@@ -320,7 +320,10 @@ export async function listTokens(
  */
 async function comCurvaDaSolana(r: { token: TokenSummary; isDemo: boolean }) {
   const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
-  if (r.token.chain !== "solana" || r.isDemo || !rpc?.startsWith("http")) return r;
+  if (r.token.chain !== "solana" || !rpc?.startsWith("http")) return r;
+  const daChroma = await comCurvaDaChroma(r, rpc);
+  if (daChroma) return daChroma;
+  if (r.isDemo) return r;
   try {
     const [{ Connection, PublicKey }, { estadoDaCurvaPump, precoNaCurvaEmSol }, { precosNativos }] = await Promise.all([
       import("@solana/web3.js"),
@@ -360,6 +363,60 @@ async function comCurvaDaSolana(r: { token: TokenSummary; isDemo: boolean }) {
     };
   } catch {
     return r;
+  }
+}
+
+/**
+ * Moeda na Curva da Chroma (Meteora DBC): preço, liquidez e progresso lidos
+ * da pool. Recém-criada, a DexScreener ainda não a conhece e a página abria
+ * como "Token sem liquidez" até alguém recarregar (02/10/2026): nome, arte e
+ * criador saem então do nosso cadastro.
+ */
+async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc: string) {
+  try {
+    const [{ Connection }, { estadoNaCurvaDaChroma }, { precosNativos }] = await Promise.all([
+      import("@solana/web3.js"),
+      import("@/lib/meteora-dbc"),
+      import("@/lib/precos-nativos"),
+    ]);
+    const [estado, precos] = await Promise.all([
+      estadoNaCurvaDaChroma(new Connection(rpc, "confirmed"), r.token.address),
+      precosNativos().catch(() => null),
+    ]);
+    const sol = precos?.solana ?? 0;
+    if (!estado || estado.completa || sol <= 0) return null;
+    const preco = estado.precoSol * sol;
+    const cadastro = r.isDemo
+      ? await import("@/lib/db").then((d) => d.buscarMoedaDaChroma(r.token.address)).catch(() => null)
+      : null;
+    const nasceu = cadastro?.criadaEm ?? r.token.createdAt;
+    const nova = nasceu > 0 && Date.now() - nasceu < 24 * 3600_000;
+    // Preço de nascimento da curva: 30 SOL de valor de mercado / 1 bilhão.
+    const inicialEmSol = 30 / 1_000_000_000;
+    return {
+      isDemo: false,
+      token: {
+        ...r.token,
+        ...(cadastro
+          ? {
+              name: cadastro.nome,
+              symbol: cadastro.simbolo,
+              imageUrl: cadastro.imagem ?? undefined,
+              description: cadastro.descricao ?? undefined,
+              createdAt: cadastro.criadaEm,
+            }
+          : {}),
+        creator: estado.criador,
+        priceUsd: preco,
+        change24h: nova ? (estado.precoSol / inicialEmSol - 1) * 100 : r.token.change24h,
+        marketCapUsd: preco * 1_000_000_000,
+        liquidityUsd: estado.solReal * sol,
+        bondingProgress: estado.progresso,
+        dexId: "chroma-curve",
+      },
+    };
+  } catch {
+    return null;
   }
 }
 
