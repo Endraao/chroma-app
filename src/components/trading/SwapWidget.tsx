@@ -1213,37 +1213,50 @@ function ReciboDaOperacao({ recibo, onFechar }: { recibo: Recibo; onFechar: () =
     };
   }, [pausado]);
 
+  /*
+   * Cartão de confirmação (pedido do dono: "css bem elaborado" NA MENSAGEM).
+   * Ícone com a cor do lado, título + valores, brilho que passa uma vez na
+   * entrada e a barrinha do tempo que falta. Estilos em globals.css (.recibo).
+   */
+  const deOnde = compra
+    ? recibo.usd > 0
+      ? formatUsd(recibo.usd)
+      : `${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`
+    : `${tokens} ${recibo.simbolo}`;
+  const praOnde = compra ? `${tokens} ${recibo.simbolo}` : `${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`;
+
   return (
     <div
       role="status"
       onMouseEnter={() => setPausado(true)}
       onMouseLeave={() => setPausado(false)}
-      style={{ animation: "recibo-entrar .25s ease-out" }}
-      className={cn(
-        "relative flex items-center gap-2 overflow-hidden rounded-md border px-2.5 py-1.5 text-[11px]",
-        compra ? "border-bull/25 bg-bull/[0.06]" : "border-bear/25 bg-bear/[0.06]",
-      )}
+      className={cn("recibo", compra ? "compra" : "venda")}
     >
+      <span aria-hidden className="recibo-icone">
+        <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.5l4.2 4.2L19 7" />
+        </svg>
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="recibo-titulo">{compra ? t.compraFeita : t.vendaFeita}</p>
+        <p className="tnum flex min-w-0 items-center gap-1.5 text-[12px] text-zinc-300">
+          <span className="truncate">{deOnde}</span>
+          <span aria-hidden className="recibo-seta">→</span>
+          <span className="truncate font-semibold text-zinc-50">{praOnde}</span>
+        </p>
+      </div>
+      <a href={recibo.link} target="_blank" rel="noreferrer" title={t.verNoExplorador} className="recibo-acao">
+        ↗
+      </a>
+      <button onClick={onFechar} aria-label="×" className="recibo-acao">
+        ×
+      </button>
       {/* A barrinha do tempo que falta pra sumir. */}
       <span
         aria-hidden
-        className={cn("absolute inset-x-0 bottom-0 h-[2px] origin-left", compra ? "bg-bull/60" : "bg-bear/60")}
-        style={{ animation: `recibo-tempo ${DURACAO}ms linear forwards`, animationPlayState: pausado ? "paused" : "running" }}
+        className="recibo-tempo"
+        style={{ animationDuration: `${DURACAO}ms`, animationPlayState: pausado ? "paused" : "running" }}
       />
-      <span className={cn("shrink-0 font-bold", compra ? "text-bull" : "text-bear")}>
-        ✓ {compra ? t.compraFeita : t.vendaFeita}
-      </span>
-      <span className="tnum min-w-0 flex-1 truncate text-zinc-300">
-        {compra
-          ? `${recibo.usd > 0 ? formatUsd(recibo.usd) : `${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`} → ${tokens} ${recibo.simbolo}`
-          : `${tokens} ${recibo.simbolo} → ${recibo.nativo.toFixed(4)} ${recibo.simboloNativo}`}
-      </span>
-      <a href={recibo.link} target="_blank" rel="noreferrer" title={t.verNoExplorador} className="shrink-0 font-semibold text-marca hover:underline">
-        ↗
-      </a>
-      <button onClick={onFechar} aria-label="×" className="shrink-0 text-zinc-500 hover:text-zinc-200">
-        ×
-      </button>
     </div>
   );
 }
