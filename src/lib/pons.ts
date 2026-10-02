@@ -219,12 +219,31 @@ export async function resumoDaMoedaPons(
     marketCapUsd: precoUsd * m.emissao,
     liquidityUsd: (Number(m.ethReal) / ESCALA) * precoEth,
     volume24hUsd: volumeEth * precoEth,
-    holders: new Set(negocios.filter((n) => n.compra).map((n) => n.carteira)).size,
+    holders: detentoresAtuais(negocios),
     createdAt: criadaEm || Date.now(),
     bondingProgress: progressoNaPons(m),
     creator: m.criador,
     dexId: "pons",
   };
+}
+
+/**
+ * Quem AINDA tem a moeda: compras menos vendas de cada carteira.
+ *
+ * Antes contava todo mundo que já tinha comprado — robô que comprou e vendeu
+ * no mesmo minuto continuava como "holder", e o $CHROMA mostrava 5 com só 2
+ * donos de verdade (02/10/2026). Transferência entre carteiras não passa pela
+ * curva e fica de fora; pra moeda na curva, é quase sempre irrelevante.
+ */
+function detentoresAtuais(negocios: NegocioDaPons[]): number {
+  const saldo = new Map<string, number>();
+  for (const n of negocios) {
+    const c = n.carteira.toLowerCase();
+    saldo.set(c, (saldo.get(c) ?? 0) + (n.compra ? n.tokens : -n.tokens));
+  }
+  // Sobra de arredondamento da venda não é posição.
+  const POEIRA = 1e18;
+  return [...saldo.values()].filter((v) => v > POEIRA).length;
 }
 
 interface NegocioDaPons {
