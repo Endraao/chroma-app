@@ -10,6 +10,7 @@ import { TabelaDeTraders } from "@/components/trading/TabelaDeTraders";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
+import { EVENTO_NEGOCIO, type NegocioRecente } from "@/lib/posicoes-locais";
 import type { ChainId } from "@/lib/types";
 
 interface Negocio {
@@ -49,6 +50,9 @@ export function PainelDeAtividade({
   const [aba, setAba] = useState<"negocios" | "holders">("negocios");
   const [negocios, setNegocios] = useState<Negocio[] | null>(null);
   const [total, setTotal] = useState(0);
+  // Negócios que a PRÓPRIA pessoa acabou de fazer, antes de os índices mostrarem.
+  const [recentes, setRecentes] = useState<Negocio[]>([]);
+  const [lerAgora, setLerAgora] = useState(0);
   const precoNativo = usePrecoNativo(chain);
   const meta = CHAINS[chain];
 
@@ -75,7 +79,30 @@ export function PainelDeAtividade({
       cancelado = true;
       window.clearInterval(id);
     };
+  }, [address, lerAgora]);
+
+  /*
+   * A negociação feita aqui entra na lista na hora, com o que o recibo sabe;
+   * a lista pública é relida algumas vezes logo depois e assume o lugar
+   * quando a negociação aparece nela.
+   */
+  useEffect(() => {
+    const aoNegociar = (e: Event) => {
+      const n = (e as CustomEvent<NegocioRecente>).detail;
+      if (!n || n.moeda.toLowerCase() !== address.toLowerCase()) return;
+      setRecentes((r) => [
+        { carteira: n.carteira, lado: n.lado === "buy" ? "compra" : "venda", tokens: n.tokens, usd: n.usd, em: Date.now(), txHash: n.hash },
+        ...r,
+      ]);
+      for (const ms of [4_000, 12_000, 25_000, 45_000]) window.setTimeout(() => setLerAgora((v) => v + 1), ms);
+    };
+    window.addEventListener(EVENTO_NEGOCIO, aoNegociar);
+    return () => window.removeEventListener(EVENTO_NEGOCIO, aoNegociar);
   }, [address]);
+
+  const jaListados = new Set((negocios ?? []).map((n) => n.txHash));
+  const pendentes = recentes.filter((r) => !jaListados.has(r.txHash) && Date.now() - r.em < 3 * 60_000);
+  const lista = negocios === null && pendentes.length === 0 ? null : [...pendentes, ...(negocios ?? [])];
 
   const linkDaTx = (hash: string) => `${meta.explorer.replace(/\/token\/$/, "/tx/")}${hash}`;
 
@@ -84,7 +111,7 @@ export function PainelDeAtividade({
       {/* Abas */}
       <div className="flex items-center gap-1 border-b border-ink-700 px-3">
         <Aba ativa={aba === "negocios"} onClick={() => setAba("negocios")}>
-          {t.transacoes} {total > 0 && <Contador>{total}</Contador>}
+          {t.transacoes} {total + pendentes.length > 0 && <Contador>{total + pendentes.length}</Contador>}
         </Aba>
         <Aba ativa={aba === "holders"} onClick={() => setAba("holders")}>
           {t.traders}
@@ -100,9 +127,9 @@ export function PainelDeAtividade({
         <div className="p-1">
           <TabelaDeTraders address={address} symbol={symbol} chain={chain} />
         </div>
-      ) : negocios === null ? (
+      ) : lista === null ? (
         <p className="px-4 py-10 text-center text-[13px] text-zinc-600">{t.carregando}</p>
-      ) : negocios.length === 0 ? (
+      ) : lista.length === 0 ? (
         <p className="px-4 py-10 text-center text-[13px] text-zinc-600">
           {t.nenhum}
         </p>
@@ -122,7 +149,7 @@ export function PainelDeAtividade({
               </tr>
             </thead>
             <tbody>
-              {negocios.slice(0, 30).map((n) => {
+              {lista.slice(0, 30).map((n) => {
                 const compra = n.lado === "compra";
                 return (
                   <tr key={n.txHash + n.lado + n.tokens} className="border-t border-ink-700/60">

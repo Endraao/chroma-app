@@ -11,7 +11,7 @@ import { usePublicClient } from "wagmi";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { ABI_DA_CURVA, CHROMA_CURVE_EVM } from "@/lib/chroma-evm";
-import { posicaoLocal } from "@/lib/posicoes-locais";
+import { EVENTO_NEGOCIO, posicaoLocal, type NegocioRecente } from "@/lib/posicoes-locais";
 import { useAccount } from "wagmi";
 
 import { Card, CardBody } from "@/components/ui/Card";
@@ -111,6 +111,21 @@ export function MinhaPosicao({
   const { connection } = useConnection();
   const publicClient = usePublicClient({ chainId: robinhoodChain.id });
 
+  /*
+   * Negociou aqui? Relê saldo e histórico na hora (e de novo logo depois,
+   * quando a rede e os índices alcançam) — antes ficava ~30 s parado.
+   */
+  const [versao, setVersao] = useState(0);
+  useEffect(() => {
+    const aoNegociar = (e: Event) => {
+      const n = (e as CustomEvent<NegocioRecente>).detail;
+      if (!n || n.moeda.toLowerCase() !== address.toLowerCase()) return;
+      for (const ms of [0, 3_000, 10_000, 30_000]) window.setTimeout(() => setVersao((v) => v + 1), ms);
+    };
+    window.addEventListener(EVENTO_NEGOCIO, aoNegociar);
+    return () => window.removeEventListener(EVENTO_NEGOCIO, aoNegociar);
+  }, [address]);
+
   /* O saldo de verdade, lido da rede — não depende do histórico público. */
   useEffect(() => {
     if (!minhaCarteira) {
@@ -161,7 +176,7 @@ export function MinhaPosicao({
       cancelado = true;
       window.clearInterval(id);
     };
-  }, [minhaCarteira, address, chain, connection, publicClient]);
+  }, [minhaCarteira, address, chain, connection, publicClient, versao]);
 
   useEffect(() => {
     if (!minhaCarteira) {
@@ -201,7 +216,7 @@ export function MinhaPosicao({
       cancelado = true;
       window.clearInterval(timer);
     };
-  }, [address, minhaCarteira]);
+  }, [address, minhaCarteira, versao]);
 
   /* Sem carteira, ou sem posição nesta moeda: o painel não existe. */
   const saldoAtual = saldoNaRede ?? doHistorico?.saldo ?? 0;

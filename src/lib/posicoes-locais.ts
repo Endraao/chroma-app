@@ -56,3 +56,30 @@ export function anotarOperacao(
     /* sem storage: a posição usa só o histórico público */
   }
 }
+
+/**
+ * Aviso, dentro da página, de que a pessoa ACABOU de negociar.
+ *
+ * Os índices públicos levam ~30 s pra mostrar a negociação; até lá a lista de
+ * transações e "Sua posição" pareciam não ter mudado (02/10/2026). Com o
+ * aviso, os dois se atualizam na hora com o que o próprio recibo já sabe, e
+ * os dados públicos substituem depois, quando chegarem.
+ */
+export const EVENTO_NEGOCIO = "chroma:negocio";
+
+export interface NegocioRecente {
+  moeda: string;
+  carteira: string;
+  lado: "buy" | "sell";
+  tokens: number;
+  usd: number;
+  hash: string;
+}
+
+export function avisarNegocio(n: NegocioRecente) {
+  try {
+    window.dispatchEvent(new CustomEvent<NegocioRecente>(EVENTO_NEGOCIO, { detail: n }));
+  } catch {
+    /* sem janela (servidor): nada a avisar */
+  }
+}

@@ -4,7 +4,7 @@ import { Preco } from "@/components/ui/Preco";
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
 import { feeLabelFor } from "@/lib/fees";
-import { anotarOperacao } from "@/lib/posicoes-locais";
+import { anotarOperacao, avisarNegocio } from "@/lib/posicoes-locais";
 
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -251,9 +251,11 @@ function SolanaSwap({
     const tokens = comprando ? Number(swap.outAmount ?? 0) : Number(amount);
     const sol = comprando ? Number(amount) : Number(swap.outAmount ?? 0);
     anotarOperacao(publicKey.toBase58(), tokenAddress, side, tokens, sol);
+    const usdDoNegocio = comprando && emDolar ? digitadoNum : sol * (precoDoSol ?? 0);
+    avisarNegocio({ moeda: tokenAddress, carteira: publicKey.toBase58(), lado: side, tokens, usd: usdDoNegocio, hash: swap.signature });
     setRecibo({
       lado: side,
-      usd: comprando && emDolar ? digitadoNum : sol * (precoDoSol ?? 0),
+      usd: usdDoNegocio,
       tokens,
       simbolo: symbol,
       nativo: sol,
@@ -876,9 +878,11 @@ function EvmSwap({
     const tokens = ehCompra ? Number(swap.saida ?? 0) : Number(digitado);
     const eth = ehCompra ? Number(valorNativo) : Number(swap.saida ?? 0);
     anotarOperacao(address, tokenAddress, side, tokens, eth);
+    const usdDoNegocio = ehCompra && compraEmDolar ? Number(digitado) : eth * precoDoEth;
+    avisarNegocio({ moeda: tokenAddress, carteira: address, lado: side, tokens, usd: usdDoNegocio, hash: swap.hash });
     setRecibo({
       lado: side,
-      usd: ehCompra && compraEmDolar ? Number(digitado) : eth * precoDoEth,
+      usd: usdDoNegocio,
       tokens,
       simbolo: symbol,
       nativo: eth,
