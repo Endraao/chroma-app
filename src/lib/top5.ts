@@ -46,6 +46,10 @@ export async function top5(rede: RedeDoTop): Promise<MoedaDoTop[]> {
       if (!simbolo || FORA.has(simbolo.toUpperCase())) continue;
       const endereco = p.relationships.base_token.data.id.replace(`${GECKO[rede]}_`, "");
       const volumeUsd = Number(p.attributes.volume_usd?.h24 ?? 0);
+      const mcapUsd = Number(p.attributes.market_cap_usd ?? p.attributes.fdv_usd ?? 0);
+      // Volume de milhões com market cap de milhares é cópia ou volume falso
+      // (02/10: um "$VRAX" com $10,9M de volume e $3K de mcap). Fica de fora.
+      if (mcapUsd > 0 && (mcapUsd < 50_000 || volumeUsd / mcapUsd > 20)) continue;
       const atual = porSimbolo.get(simbolo.toUpperCase());
       if (atual && atual.volumeUsd >= volumeUsd) continue;
       porSimbolo.set(simbolo.toUpperCase(), {
@@ -53,7 +57,7 @@ export async function top5(rede: RedeDoTop): Promise<MoedaDoTop[]> {
         simbolo,
         nome: simbolo,
         volumeUsd,
-        mcapUsd: Number(p.attributes.market_cap_usd ?? p.attributes.fdv_usd ?? 0),
+        mcapUsd,
         x: null,
         imagem: null,
       });

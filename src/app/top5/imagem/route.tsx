@@ -37,7 +37,7 @@ export async function GET(request: Request) {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          padding: "70px 90px",
+          padding: "56px 90px 48px",
           background: "radial-gradient(circle at 75% 15%, #1b1b24 0%, #07070a 70%)",
           color: "#f4f4f5",
           fontFamily: "sans-serif",
@@ -46,19 +46,19 @@ export async function GET(request: Request) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: 26, letterSpacing: 6, fontWeight: 800, color: "#a78bfa" }}>{`TOP 5 · ${nomeDaRede.toUpperCase()}`}</div>
-            <div style={{ fontSize: 64, fontWeight: 900, marginTop: 6 }}>Trending today</div>
+            <div style={{ fontSize: 58, fontWeight: 900, marginTop: 4 }}>Trending today</div>
           </div>
           <div style={{ fontSize: 24, color: "#8b8b96" }}>{`${hoje} · 24h volume`}</div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", marginTop: 40, gap: 18 }}>
+        <div style={{ display: "flex", flexDirection: "column", marginTop: 28, gap: 14 }}>
           {lista.map((m, i) => (
             <div
               key={m.endereco}
               style={{
                 display: "flex",
                 alignItems: "center",
-                padding: "16px 26px",
+                padding: "12px 26px",
                 borderRadius: 18,
                 background: i === 0 ? "rgba(34,211,238,0.10)" : "rgba(255,255,255,0.04)",
                 border: i === 0 ? "2px solid rgba(34,211,238,0.5)" : "2px solid rgba(255,255,255,0.06)",
