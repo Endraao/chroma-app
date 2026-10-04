@@ -54,10 +54,10 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
         </div>
 
         <div className="grid shrink-0 grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center lg:gap-2.5">
-          {METAS.map((m, i) => (
+          {METAS.map((m) => (
             <div
               key={m.volumeUsd}
-              className={`rounded-xl border px-3 py-2 text-center ${i === 1 ? "border-bull/50 bg-bull/[0.08]" : "border-white/[0.07] bg-white/[0.02]"}`}
+              className="rounded-xl border border-bull/30 bg-bull/[0.05] px-3 py-2 text-center"
             >
               <p className="tnum text-[10.5px] text-zinc-500">
                 {curto(m.volumeUsd)} {t.volume}
@@ -101,12 +101,10 @@ export function CardPromocao({ idioma }: { idioma: Idioma }) {
           </div>
 
           <div className="w-[180px] shrink-0 space-y-1">
-            {METAS.map((m, i) => (
+            {METAS.map((m) => (
               <div
                 key={m.volumeUsd}
-                className={`flex items-center justify-between rounded-lg border px-3 py-1 ${
-                  i === 1 ? "border-bull/45 bg-bull/[0.09]" : "border-white/[0.07] bg-white/[0.02]"
-                }`}
+                className="flex items-center justify-between rounded-lg border border-bull/30 bg-bull/[0.05] px-3 py-1"
               >
                 <span className="tnum text-[11px] text-zinc-400">
                   {curto(m.volumeUsd)} {t.volume}

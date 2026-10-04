@@ -78,6 +78,52 @@ const TEXTOS = traducoes({
   },
 });
 
+/** Perguntas frequentes — cada resposta tem de bater com o que o sistema faz. */
+const PERGUNTAS = traducoes({
+  en: {
+    titulo: "Questions",
+    itens: [
+      ["Do I need to sign up or pay to join?", "No. Every coin launched on Chroma Launchpad on Solana joins automatically. The only cost is the 0.02 SOL launch fee."],
+      ["Where do I see how much I've earned?", "On your coin's page, connected with the wallet that created it. The \"Your creator earnings\" card shows your fees to claim, your bonus and the progress to the next goal."],
+      ["When can I claim my trading fees?", "Anytime, as many times as you want. You only pay the Solana network fee."],
+      ["How do I receive the bonus?", "When your coin hits a goal, the bonus is added to the Claim button. Click it and the bonus is paid in SOL to the creator's wallet within 7 days."],
+      ["Do the bonuses add up?", "The table already shows the total. Reaching $100K gives you $200 in bonus in total: the $50 from the first goal plus $150 more."],
+      ["What happens after my coin graduates from the curve?", "Nothing changes for you. Trades on the new Meteora pool keep counting toward the goals, you keep earning 40% of the fees, and the same Claim button withdraws everything."],
+      ["Can my earnings go to another wallet?", "No. Fees and bonus always go to the wallet that created the coin, so keep that wallet safe."],
+      ["Does it work for coins on Robinhood Chain?", "Not yet. The creator bonus is only for coins launched on Solana."],
+      ["In which currency is the bonus paid?", "In SOL, converted at the SOL price on the day of the payment."],
+    ] as [string, string][],
+  },
+  pt: {
+    titulo: "Perguntas frequentes",
+    itens: [
+      ["Preciso me inscrever ou pagar pra participar?", "Não. Toda moeda lançada na Chroma Launchpad, na rede Solana, já participa automaticamente. O único custo é a taxa de lançamento de 0,02 SOL."],
+      ["Onde vejo quanto já ganhei?", "Na página da sua moeda, conectado com a carteira que criou o token. O card \"Seus ganhos de criador\" mostra as taxas pra sacar, o bônus e o progresso até a próxima meta."],
+      ["Quando posso sacar as taxas?", "A qualquer momento, quantas vezes quiser. Você paga só a taxa de rede da Solana."],
+      ["Como recebo o bônus?", "Quando sua moeda bate uma meta, o bônus entra no botão Sacar. É só clicar: o bônus é pago em SOL na carteira do criador em até 7 dias."],
+      ["Os bônus se somam?", "A tabela já mostra o total. Ao bater $100 mil você recebe $200 de bônus no total: os $50 da primeira meta mais $150."],
+      ["E depois que a moeda se forma e sai da curva?", "Nada muda pra você. As negociações na nova pool da Meteora continuam contando para as metas, você continua ganhando 40% das taxas, e o mesmo botão Sacar saca tudo."],
+      ["Posso receber em outra carteira?", "Não. Taxas e bônus vão sempre para a carteira que criou a moeda — guarde bem essa carteira."],
+      ["Vale para moedas na Robinhood Chain?", "Por enquanto não. O bônus do criador é só para moedas lançadas na rede Solana."],
+      ["Em qual moeda o bônus é pago?", "Em SOL, convertido pelo preço do SOL no dia do pagamento."],
+    ] as [string, string][],
+  },
+  zh: {
+    titulo: "常见问题",
+    itens: [
+      ["需要报名或付费才能参加吗？", "不需要。在 Chroma Launchpad（Solana 网络）上发行的每个代币都会自动参加。唯一的费用是 0.02 SOL 的发币费。"],
+      ["在哪里查看我赚了多少？", "在你的代币页面，用创建代币的钱包连接后，「你的创作者收益」卡片会显示可领取的手续费、奖金以及距离下一个目标的进度。"],
+      ["什么时候可以领取手续费？", "随时都可以，次数不限。你只需支付 Solana 网络费。"],
+      ["如何领取奖金？", "代币达成目标后，奖金会加到「领取」按钮里。点击即可，奖金将在 7 天内以 SOL 支付到创作者钱包。"],
+      ["奖金会累加吗？", "表格显示的就是累计总额。达到 10 万美元时，你的奖金共 200 美元：第一个目标的 50 美元再加 150 美元。"],
+      ["代币从曲线毕业后会怎样？", "对你来说没有变化。Meteora 新池中的交易继续计入目标，你继续获得 40% 的手续费，同一个「领取」按钮可以领取全部。"],
+      ["收益可以转到其他钱包吗？", "不可以。手续费和奖金始终发送到创建代币的钱包，请妥善保管该钱包。"],
+      ["Robinhood Chain 上的代币也适用吗？", "暂时不适用。创作者奖金仅适用于在 Solana 网络上发行的代币。"],
+      ["奖金以什么币种支付？", "以 SOL 支付，按支付当天的 SOL 价格换算。"],
+    ] as [string, string][],
+  },
+});
+
 export async function generateMetadata(): Promise<Metadata> {
   const [title, description] = TEXTOS[await idiomaAtual()].meta;
   return { title, description };
@@ -87,7 +133,9 @@ const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 const taxa = (volume: number) => volume * PARTE_DA_CHROMA;
 
 export default async function CreatorBonus() {
-  const t = TEXTOS[await idiomaAtual()];
+  const idioma = await idiomaAtual();
+  const t = TEXTOS[idioma];
+  const f = PERGUNTAS[idioma];
   return (
     <div className="mx-auto max-w-3xl space-y-8 pt-6">
       <header>
@@ -99,10 +147,10 @@ export default async function CreatorBonus() {
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.ganhosTitulo}</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {METAS.map((m, i) => (
+          {METAS.map((m) => (
             <div
               key={m.volumeUsd}
-              className={`rounded-2xl border p-4 text-center ${i === 1 ? "border-marca/60 bg-marca/[0.07]" : "border-ink-700 bg-ink-900"}`}
+              className="rounded-2xl border border-marca/40 bg-marca/[0.05] p-4 text-center"
             >
               <p className="text-[12px] font-semibold text-zinc-400">
                 {usd(m.volumeUsd)} {t.volume}
@@ -147,6 +195,24 @@ export default async function CreatorBonus() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Perguntas frequentes: abre e fecha sem JavaScript (<details>). */}
+      <section>
+        <h2 className="text-xl font-bold tracking-tight text-zinc-50">{f.titulo}</h2>
+        <div className="mt-3 divide-y divide-ink-700 overflow-hidden rounded-xl border border-ink-700 bg-ink-900">
+          {f.itens.map(([pergunta, resposta]) => (
+            <details key={pergunta} className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-[14.5px] font-semibold text-zinc-100 hover:bg-white/[0.02] [&::-webkit-details-marker]:hidden">
+                {pergunta}
+                <span aria-hidden className="shrink-0 text-[18px] leading-none text-marca transition-transform group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <p className="px-4 pb-4 text-[13.5px] leading-relaxed text-zinc-400">{resposta}</p>
+            </details>
+          ))}
+        </div>
       </section>
 
       <Link href="/create" className="inline-block rounded-lg bg-marca px-5 py-2.5 text-[14px] font-bold text-[#08090b] hover:bg-marca-forte">
