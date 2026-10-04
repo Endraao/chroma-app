@@ -154,7 +154,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
       </div>
       <button
         type="button"
-        disabled={totalUsd < 0.01 || ocupado}
+        disabled={(!temTaxa && totalUsd < 0.01) || ocupado}
         onClick={sacar}
         className="botao-negocio compra mt-3 inline-flex h-11 w-full items-center justify-center text-[15px]"
       >
@@ -167,7 +167,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
             ? t.feito
             : estado === "falhou"
               ? t.falhou
-              : totalUsd < 0.01
+              : !temTaxa && totalUsd < 0.01
                 ? t.nada
                 : t.total(formatUsd(totalGanhoUsd))}
       </p>
