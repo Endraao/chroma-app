@@ -29,6 +29,13 @@ import {
 import { cn, formatUsd } from "@/lib/utils";
 import { CURVA_CHROMA_DISPONIVEL } from "@/lib/meteora-dbc";
 
+/**
+ * Curva Clássica escondida durante a promoção do bônus do criador (decisão do
+ * dono, 03/10/2026): uma opção só evita confusão e todo lançamento testa a
+ * Curva da Chroma de verdade. Pra mostrar de novo, é só trocar pra true.
+ */
+const MOSTRAR_CURVA_CLASSICA = false;
+
 const TEXTO_CURVA = traducoes({
   en: {
     titulo: "Bonding curve",
@@ -524,8 +531,8 @@ export default function CreateTokenPage() {
             <CardTitle>{tc.titulo}</CardTitle>
           </CardHeader>
           <CardBody className="space-y-2">
-            <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/[0.06] p-1">
-              {(["chroma", "pump"] as const).map((op) => (
+            <div className={cn("grid gap-2 rounded-xl border border-white/[0.06] p-1", MOSTRAR_CURVA_CLASSICA ? "grid-cols-2" : "grid-cols-1")}>
+              {(MOSTRAR_CURVA_CLASSICA ? (["chroma", "pump"] as const) : (["chroma"] as const)).map((op) => (
                 <button
                   key={op}
                   type="button"

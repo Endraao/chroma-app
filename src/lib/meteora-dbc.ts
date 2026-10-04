@@ -284,3 +284,47 @@ export async function ganhosDeTodasAsMoedas(conexao: Connection) {
     }),
   );
 }
+
+/**
+ * O que o CRIADOR tem pra sacar numa moeda da curva (40% da taxa de cada
+ * negociação fica guardado na pool até ele resgatar).
+ */
+export async function ganhosDoCriador(
+  conexao: Connection,
+  mint: string,
+): Promise<{ pool: string; criador: string; aReceberSol: number; totalSol: number } | null> {
+  if (!CURVA_CHROMA_DISPONIVEL) return null;
+  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
+  const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
+  const [lido, b] = await Promise.all([
+    cliente.state.getPool(pool).catch(() => null),
+    cliente.state.getPoolFeeBreakdown(pool).catch(() => null),
+  ]);
+  const estado = lido?.poolState;
+  if (!estado || !b || estado.config.toBase58() !== CONFIG_DA_CURVA) return null;
+  return {
+    pool: pool.toBase58(),
+    criador: estado.creator.toBase58(),
+    aReceberSol: Number(b.creator.unclaimedQuoteFee.toString()) / LAMPORTS_PER_SOL,
+    totalSol: Number(b.creator.totalQuoteFee.toString()) / LAMPORTS_PER_SOL,
+  };
+}
+
+/** Transação de saque dos ganhos do criador (assinada pela carteira dele). */
+export async function transacaoDeSaqueDoCriador(conexao: Connection, criador: PublicKey, pool: string): Promise<Transaction> {
+  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
+  const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const max = new BN("18446744073709551615");
+  const tx = await cliente.creator.claimCreatorTradingFee({
+    creator: criador,
+    payer: criador,
+    pool: new PublicKey(pool),
+    maxBaseAmount: max,
+    maxQuoteAmount: max,
+    receiver: criador,
+  });
+  tx.feePayer = criador;
+  tx.recentBlockhash = (await conexao.getLatestBlockhash("confirmed")).blockhash;
+  return tx;
+}
