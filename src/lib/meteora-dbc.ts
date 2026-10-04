@@ -252,3 +252,35 @@ export async function transacoesDeResgate(conexao: Connection, carteira: PublicK
   }
   return { txs, pools: pools.length, taxaNegociacaoSol: lamports / LAMPORTS_PER_SOL };
 }
+
+/**
+ * Quanto a Chroma já ganhou (taxa de parceira, resgatada ou não) com uma
+ * moeda da curva, em SOL. Base do bônus do criador (ver lib/bonus-criador.ts).
+ */
+export async function ganhoDaChromaNaMoeda(conexao: Connection, mint: string): Promise<{ sol: number; pool: string } | null> {
+  if (!CURVA_CHROMA_DISPONIVEL) return null;
+  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
+  const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
+  const b = await cliente.state.getPoolFeeBreakdown(pool).catch(() => null);
+  if (!b) return null;
+  return { sol: Number(b.partner.totalQuoteFee.toString()) / LAMPORTS_PER_SOL, pool: pool.toBase58() };
+}
+
+/** Todas as moedas da curva com o ganho da Chroma e o criador (painel de bônus). */
+export async function ganhosDeTodasAsMoedas(conexao: Connection) {
+  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
+  const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const pools = await cliente.state.getPoolsByConfig(new PublicKey(CONFIG_DA_CURVA));
+  return Promise.all(
+    pools.map(async (p) => {
+      const b = await cliente.state.getPoolFeeBreakdown(p.publicKey).catch(() => null);
+      return {
+        pool: p.publicKey.toBase58(),
+        mint: p.account.poolState.baseMint.toBase58(),
+        criador: p.account.poolState.creator.toBase58(),
+        ganhoSol: b ? Number(b.partner.totalQuoteFee.toString()) / LAMPORTS_PER_SOL : 0,
+      };
+    }),
+  );
+}

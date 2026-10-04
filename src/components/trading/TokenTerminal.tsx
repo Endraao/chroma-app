@@ -20,6 +20,7 @@ import { PainelSobre } from "@/components/trading/PainelSobre";
 import { AvisoRecompensas } from "@/components/trading/AvisoRecompensas";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
 import { TokenHeader } from "@/components/trading/TokenHeader";
+import { BonusDoCriador } from "@/components/trading/BonusDoCriador";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { SecurityReport, TokenSummary } from "@/lib/types";
 
@@ -246,6 +247,9 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             ocupa espaço de quem está chegando agora.
           */}
           <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} precoUsd={price} />
+
+          {/* Bônus do criador: só aparece em moeda da Curva da Chroma (Solana). */}
+          {token.chain === "solana" && <BonusDoCriador address={token.address} />}
 
 
           {/*

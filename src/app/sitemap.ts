@@ -16,7 +16,7 @@ export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const agora = new Date();
-  const fixas = ["", "/create", "/docs", "/fees", "/affiliate", "/airdrop"].map((p) => ({
+  const fixas = ["", "/create", "/docs", "/fees", "/affiliate", "/airdrop", "/creator-bonus"].map((p) => ({
     url: `${SITE}${p}`,
     lastModified: agora,
     changeFrequency: "daily" as const,

@@ -60,7 +60,7 @@ const TEXTOS = traducoes({
         titulo: "Creators",
         itens: [
           "Robinhood Chain: creators earn 0.70% of every trade of their coin, plus their own creator tax.",
-          "Solana: creators keep 100% of the creator fee on every trade.",
+          "Solana (Chroma Curve): creators earn 40% of every trade fee, plus a cash bonus at volume goals — see chromalaunch.fun/creator-bonus.",
         ],
       },
       {
@@ -135,7 +135,7 @@ const TEXTOS = traducoes({
         titulo: "Criadores",
         itens: [
           "Robinhood Chain: o criador ganha 0,70% de cada negociação da moeda, mais a própria taxa do criador.",
-          "Solana: o criador fica com 100% da taxa do criador em cada negociação.",
+          "Solana (Curva da Chroma): o criador ganha 40% da taxa de toda negociação, mais um bônus em dinheiro ao bater metas de volume — veja chromalaunch.fun/creator-bonus.",
         ],
       },
       {
@@ -210,7 +210,7 @@ const TEXTOS = traducoes({
         titulo: "创作者",
         itens: [
           "Robinhood Chain：创作者获得其代币每笔交易的 0.70%，外加自己设置的创作者税。",
-          "Solana：创作者保留每笔交易 100% 的创作者费用。",
+          "Solana（Chroma 曲线）：创作者获得每笔交易 40% 的交易费，达到交易量目标还有现金奖金——详见 chromalaunch.fun/creator-bonus。",
         ],
       },
       {
