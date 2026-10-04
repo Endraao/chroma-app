@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { CristalHolografico } from "@/components/ui/CristalHolografico";
 import { textos, type Idioma } from "@/lib/idiomas";
 import { TokenOficial } from "@/components/home/TokenOficial";
+import { CardPromocao } from "@/components/home/BannerPromocao";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 
 /**
@@ -151,6 +152,11 @@ export function FaixaDeAbertura({
           toda, com o produto abaixo da dobra. Ornamento cede espaço, nunca o
           contrário.
         */}
+        {/* A promoção do criador, no espaço vazio entre o texto e o cristal (telas largas). */}
+        <div className="hidden shrink-0 xl:block">
+          <CardPromocao idioma={idioma} />
+        </div>
+
         {/* Mesmo tamanho do cristal do Airdrop (150), um pouco afastado da borda direita. */}
         <div className="hidden shrink-0 lg:mr-6 lg:block xl:mr-10">
           <CristalHolografico size={150} />

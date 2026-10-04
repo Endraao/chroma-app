@@ -1040,3 +1040,88 @@ body::after {
     opacity: 1;
   }
 }
+
+/*
+ * O CARD DA PROMOÇÃO na abertura da home (pedido do dono, 03/10/2026: "bem
+ * chamativo, tipo um card, o site já é muito quadrado"). É a exceção
+ * proposital ao visual reto do resto: borda em degradê girando devagar,
+ * vidro escuro com luz verde, um reflexo que passa de tempos em tempos e uma
+ * flutuação leve. Ver BannerPromocao.tsx (CardPromocao).
+ */
+@property --promo-angulo {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.promo-card {
+  position: relative;
+  border-radius: 22px;
+  padding: 1.5px;
+  background: conic-gradient(from var(--promo-angulo), #22d3ee, #a78bfa, #f472b6, #00d18f, #22d3ee);
+  box-shadow:
+    0 24px 60px -24px rgba(0, 209, 143, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  animation:
+    promo-girar 7s linear infinite,
+    promo-flutuar 6s ease-in-out infinite;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.promo-card:hover {
+  box-shadow:
+    0 30px 70px -22px rgba(0, 209, 143, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.promo-card-dentro {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20.5px;
+  background:
+    radial-gradient(130% 120% at 0% 0%, rgba(0, 209, 143, 0.22), transparent 55%),
+    radial-gradient(120% 120% at 100% 100%, rgba(167, 139, 250, 0.16), transparent 55%),
+    #0b0d11;
+}
+.promo-card-dentro::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: skewX(-18deg);
+  animation: promo-reflexo 5s ease-in-out infinite;
+  pointer-events: none;
+}
+.promo-valor {
+  background: linear-gradient(180deg, #4ff5bf, #00b47a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@keyframes promo-girar {
+  to {
+    --promo-angulo: 360deg;
+  }
+}
+@keyframes promo-flutuar {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes promo-reflexo {
+  0%,
+  60% {
+    left: -60%;
+  }
+  100% {
+    left: 140%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .promo-card,
+  .promo-card-dentro::after {
+    animation: none;
+  }
+}

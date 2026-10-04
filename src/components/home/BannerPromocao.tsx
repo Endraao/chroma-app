@@ -42,17 +42,8 @@ const cheio = (n: number) => `$${n.toLocaleString("en-US")}`;
 export function BannerPromocao({ idioma }: { idioma: Idioma }) {
   const t = TEXTOS[idioma];
   return (
-    <Link
-      href="/creator-bonus"
-      className="group relative block overflow-hidden rounded-xl border border-bull/35 bg-ink-900 transition-colors hover:border-bull/70"
-    >
-      {/* Luz verde atrás do texto: o cartão é dinheiro, não aviso. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{ background: "radial-gradient(120% 140% at 0% 0%, rgba(0,209,143,0.16), transparent 55%)" }}
-      />
-      <div className="relative flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+    <Link href="/creator-bonus" className="promo-card group block">
+      <div className="promo-card-dentro flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
         <div className="min-w-0">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-[0.14em] text-bull">
             <span className="size-1.5 animate-pulse rounded-full bg-bull" />
@@ -66,7 +57,7 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
           {METAS.map((m, i) => (
             <div
               key={m.volumeUsd}
-              className={`rounded-lg border px-3 py-2 text-center ${i === 1 ? "border-bull/50 bg-bull/[0.08]" : "border-ink-700 bg-ink-950/60"}`}
+              className={`rounded-xl border px-3 py-2 text-center ${i === 1 ? "border-bull/50 bg-bull/[0.08]" : "border-white/[0.07] bg-white/[0.02]"}`}
             >
               <p className="tnum text-[10.5px] text-zinc-500">
                 {curto(m.volumeUsd)} {t.volume}
@@ -75,10 +66,53 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
               <p className="text-[10px] font-semibold text-zinc-400">{t.paraVoce}</p>
             </div>
           ))}
-          <span className="botao-negocio compra inline-flex h-10 items-center px-4 text-[13.5px]">
+          <span className="inline-flex h-10 items-center rounded-xl bg-bull/90 px-4 text-[13.5px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
             {t.cta} <span className="ml-1.5 transition-transform group-hover:translate-x-0.5">→</span>
           </span>
         </div>
+      </div>
+    </Link>
+  );
+}
+
+/**
+ * A versão CARD da promoção, flutuando no espaço vazio da abertura (telas
+ * largas). Em tela menor quem aparece é o banner acima, embaixo da abertura.
+ */
+export function CardPromocao({ idioma }: { idioma: Idioma }) {
+  const t = TEXTOS[idioma];
+  return (
+    <Link href="/creator-bonus" className="promo-card group block w-[340px]">
+      <div className="promo-card-dentro px-5 py-4">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-bull">
+          <span className="size-1.5 animate-pulse rounded-full bg-bull" />
+          {t.selo}
+        </span>
+        <p className="mt-2.5 text-[21px] font-black leading-[1.1] text-zinc-50">{t.titulo}</p>
+        <p className="mt-1.5 text-[12px] leading-snug text-zinc-400">{t.sub}</p>
+
+        <div className="mt-3 space-y-1.5">
+          {METAS.map((m, i) => (
+            <div
+              key={m.volumeUsd}
+              className={`flex items-center justify-between rounded-xl border px-3 py-1.5 ${
+                i === 1 ? "border-bull/45 bg-bull/[0.09]" : "border-white/[0.07] bg-white/[0.02]"
+              }`}
+            >
+              <span className="tnum text-[11.5px] text-zinc-400">
+                {curto(m.volumeUsd)} {t.volume}
+              </span>
+              <span className="tnum flex items-baseline gap-1.5">
+                <span className="promo-valor text-[19px] font-black">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd)}</span>
+                <span className="text-[10.5px] font-semibold text-zinc-500">{t.paraVoce}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <span className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-bull/90 py-2 text-[13px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
+          {t.cta} <span className="transition-transform group-hover:translate-x-0.5">→</span>
+        </span>
       </div>
     </Link>
   );

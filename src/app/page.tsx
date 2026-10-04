@@ -215,7 +215,10 @@ export default async function HomePage({
       />
 
       {/* O "post" da promoção do criador (pedido do dono, 03/10/2026). */}
-      <BannerPromocao idioma={idioma} />
+      {/* Em tela larga a promoção mora dentro da abertura (CardPromocao). */}
+      <div className="xl:hidden">
+        <BannerPromocao idioma={idioma} />
+      </div>
 
       {/* Criadas na Chroma — ao vivo, das duas redes */}
       <PainelDaChroma moedas={lancadasNaChroma} />
