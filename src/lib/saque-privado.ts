@@ -175,6 +175,14 @@ export async function enviarEmPrivado(params: {
     throw e;
   }
   const notas = depositado.outputUtxos.filter((u) => u.amount > 0n);
+  // A posição na árvore vem na resposta do depósito; garante que a nota a tem
+  // (sem ela a prova do saque não sai: "UTXO must have an index").
+  for (const n of notas) {
+    if (n.index !== undefined) continue;
+    const c = n.commitment ?? (await k.sdk.computeUtxoCommitment(n));
+    const i = depositado.outputCommitments.findIndex((x) => x === c);
+    n.index = depositado.commitmentIndices[i >= 0 ? i : 0];
+  }
   // Agora com a posição na árvore: é essa versão que o saque usa.
   gravarPendente({ nota: paraBase64(k.sdk.serializeUtxo(notas[0])), destino, carteira: dono, deposito: depositado.signature });
 
