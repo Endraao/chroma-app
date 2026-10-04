@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
@@ -91,6 +91,9 @@ const TEXTOS = traducoes({
 
 const sol = (l: bigint) => (Number(l) / 1e9).toFixed(4);
 
+// Pela ponte do site (/api/rpc/solana), que segura as rajadas da Cloak.
+const RPC_DA_PONTE = () => `${window.location.origin}/api/rpc/solana`;
+
 /** Lê "0,05" ou "0.05" direto em lamports, sem conta de ponto flutuante. */
 function paraLamports(texto: string): bigint | null {
   const m = texto.trim().replace(",", ".").match(/^(\d*)(?:\.(\d{0,9}))?$/);
@@ -113,11 +116,10 @@ function enderecoValido(s: string) {
  */
 export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacarTaxas: () => Promise<void> }) {
   const t = useTextos(TEXTOS);
-  const { connection } = useConnection();
   const { publicKey, signTransaction, signMessage } = useWallet();
   const [aberto, setAberto] = useState(false);
   const [destino, setDestino] = useState("");
-  const [valor, setValor] = useState(() => Math.max(taxasSol, 0.01).toFixed(4));
+  const [valor, setValor] = useState(() => Math.max(taxasSol, 0.02).toFixed(4));
   const [estado, setEstado] = useState<"" | "sacando" | EtapaDoSaque | "feito" | "falhou">("");
   const [pct, setPct] = useState<number | undefined>();
   const [erro, setErro] = useState("");
@@ -165,9 +167,9 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
         setEstado("sacando");
         await sacarTaxas();
       }
-      return enviarEmPrivado({ rpcUrl: connection.rpcEndpoint, carteira: c, destino: destino.trim(), lamports: lamports!, aoMudar });
+      return enviarEmPrivado({ rpcUrl: RPC_DA_PONTE(), carteira: c, destino: destino.trim(), lamports: lamports!, aoMudar });
     });
-  const retomar = () => rodar(() => retomarSaquePrivado({ rpcUrl: connection.rpcEndpoint, carteira: carteira(), aoMudar }));
+  const retomar = () => rodar(() => retomarSaquePrivado({ rpcUrl: RPC_DA_PONTE(), carteira: carteira(), aoMudar }));
 
   const status =
     estado === "sacando"
