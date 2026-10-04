@@ -103,9 +103,6 @@ async function kit(rpcUrl: string, carteira: CarteiraParaSaque) {
     signMessage: carteira.signMessage,
     depositorPublicKey: enderecoDaCarteira,
     walletPublicKey: enderecoDaCarteira,
-    // Sem o envelope da nota na rede (a nota fica guardada aqui): a transação
-    // de depósito encolhe e não estoura 1232 bytes quando a carteira mexe nela.
-    disableChainNotes: true,
   };
   return { sdk, opcoes, enderecoDaCarteira };
 }
@@ -166,7 +163,10 @@ export async function enviarEmPrivado(params: {
         externalAmount: lamports,
         depositor: k.enderecoDaCarteira,
       },
-      { ...k.opcoes, onProofProgress: (pct: number) => aoMudar("deposito", pct) },
+      // Só no DEPÓSITO: sem o envelope da nota na rede (a nota fica guardada
+      // aqui), a transação encolhe e não estoura 1232 bytes quando a carteira
+      // mexe nela. No saque a Cloak EXIGE o envelope.
+      { ...k.opcoes, disableChainNotes: true, onProofProgress: (pct: number) => aoMudar("deposito", pct) },
     );
   } catch (e) {
     // Falhou ANTES de o depósito ir pra rede (recusou na carteira, sem saldo,
