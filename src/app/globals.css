@@ -1090,6 +1090,20 @@ body::after {
   animation: promo-reflexo 5s ease-in-out infinite;
   pointer-events: none;
 }
+/* Variante BANNER (formato flap.sh): parada, cantos menores, barra na esquerda. */
+.promo-banner {
+  border-radius: 16px;
+  animation: promo-girar 7s linear infinite;
+}
+.promo-banner .promo-card-dentro {
+  border-radius: 14.5px;
+}
+.promo-barra {
+  width: 6px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #00d18f, #22d3ee 50%, #a78bfa);
+  box-shadow: 0 0 18px rgba(0, 209, 143, 0.6);
+}
 .promo-valor {
   background: linear-gradient(180deg, #4ff5bf, #00b47a);
   -webkit-background-clip: text;

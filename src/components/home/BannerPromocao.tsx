@@ -76,43 +76,47 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
 }
 
 /**
- * A versão CARD da promoção, flutuando no espaço vazio da abertura (telas
- * largas). Em tela menor quem aparece é o banner acima, embaixo da abertura.
+ * A versão BANNER da promoção, no lado direito da abertura (telas largas),
+ * no formato do banner da flap.sh (pedido do dono, 03/10/2026): retângulo
+ * deitado, barra colorida na esquerda, texto + CTA de um lado e os valores do
+ * outro. Em tela menor quem aparece é o BannerPromocao acima.
  */
 export function CardPromocao({ idioma }: { idioma: Idioma }) {
   const t = TEXTOS[idioma];
   return (
-    <Link href="/creator-bonus" className="promo-card group block w-[340px]">
-      <div className="promo-card-dentro px-5 py-4">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-bull">
-          <span className="size-1.5 animate-pulse rounded-full bg-bull" />
-          {t.selo}
-        </span>
-        <p className="mt-2.5 text-[21px] font-black leading-[1.1] text-zinc-50">{t.titulo}</p>
-        <p className="mt-1.5 text-[12px] leading-snug text-zinc-400">{t.sub}</p>
+    <Link href="/creator-bonus" className="promo-card promo-banner group block w-full">
+      <div className="promo-card-dentro flex items-stretch">
+        <span aria-hidden className="promo-barra" />
+        <div className="flex min-w-0 flex-1 items-center gap-5 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-bull">
+              <span className="size-1.5 animate-pulse rounded-full bg-bull" />
+              {t.selo}
+            </span>
+            <p className="mt-2.5 text-[24px] font-black leading-[1.08] text-zinc-50">{t.titulo}</p>
+            <p className="mt-1.5 text-[12px] leading-snug text-zinc-400">{t.sub}</p>
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-bull/90 px-4 py-2 text-[13px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
+              {t.cta} <span className="transition-transform group-hover:translate-x-0.5">→</span>
+            </span>
+          </div>
 
-        <div className="mt-3 space-y-1.5">
-          {METAS.map((m, i) => (
-            <div
-              key={m.volumeUsd}
-              className={`flex items-center justify-between rounded-xl border px-3 py-1.5 ${
-                i === 1 ? "border-bull/45 bg-bull/[0.09]" : "border-white/[0.07] bg-white/[0.02]"
-              }`}
-            >
-              <span className="tnum text-[11.5px] text-zinc-400">
-                {curto(m.volumeUsd)} {t.volume}
-              </span>
-              <span className="tnum flex items-baseline gap-1.5">
-                <span className="promo-valor text-[19px] font-black">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd)}</span>
-                <span className="text-[10.5px] font-semibold text-zinc-500">{t.paraVoce}</span>
-              </span>
-            </div>
-          ))}
+          <div className="w-[180px] shrink-0 space-y-1.5">
+            {METAS.map((m, i) => (
+              <div
+                key={m.volumeUsd}
+                className={`flex items-center justify-between rounded-xl border px-3 py-1.5 ${
+                  i === 1 ? "border-bull/45 bg-bull/[0.09]" : "border-white/[0.07] bg-white/[0.02]"
+                }`}
+              >
+                <span className="tnum text-[11px] text-zinc-400">
+                  {curto(m.volumeUsd)} {t.volume}
+                </span>
+                <span className="promo-valor tnum text-[18px] font-black">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd)}</span>
+              </div>
+            ))}
+            <p className="text-right text-[10.5px] font-semibold text-zinc-500">{t.paraVoce}</p>
+          </div>
         </div>
-
-        <span className="mt-3 flex items-center justify-center gap-1.5 rounded-xl bg-bull/90 py-2 text-[13px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
-          {t.cta} <span className="transition-transform group-hover:translate-x-0.5">→</span>
-        </span>
       </div>
     </Link>
   );

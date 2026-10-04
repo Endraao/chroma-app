@@ -152,13 +152,13 @@ export function FaixaDeAbertura({
           toda, com o produto abaixo da dobra. Ornamento cede espaço, nunca o
           contrário.
         */}
-        {/* A promoção do criador, no espaço vazio entre o texto e o cristal (telas largas). */}
-        <div className="hidden shrink-0 xl:block">
+        {/* A promoção do criador, como o banner da flap.sh, no lado direito (telas largas). */}
+        <div className="hidden min-w-0 max-w-[600px] flex-1 xl:block">
           <CardPromocao idioma={idioma} />
         </div>
 
-        {/* Mesmo tamanho do cristal do Airdrop (150), um pouco afastado da borda direita. */}
-        <div className="hidden shrink-0 lg:mr-6 lg:block xl:mr-10">
+        {/* Mesmo tamanho do cristal do Airdrop (150). Em tela larga o banner ocupa o lugar dele. */}
+        <div className="hidden shrink-0 lg:mr-6 lg:block xl:hidden">
           <CristalHolografico size={150} />
         </div>
       </div>
