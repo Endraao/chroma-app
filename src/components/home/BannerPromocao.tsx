@@ -53,7 +53,7 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
           <p className="mt-1 text-[13px] text-zinc-400">{t.sub}</p>
         </div>
 
-        <div className="grid shrink-0 grid-cols-3 gap-2 lg:flex lg:flex-wrap lg:items-center lg:gap-2.5">
+        <div className="grid shrink-0 grid-cols-2 gap-2 lg:flex lg:flex-wrap lg:items-center lg:gap-2.5">
           {METAS.map((m, i) => (
             <div
               key={m.volumeUsd}
@@ -66,7 +66,7 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
               <p className="text-[10px] font-semibold text-zinc-400">{t.paraVoce}</p>
             </div>
           ))}
-          <span className="col-span-3 inline-flex h-10 items-center justify-center rounded-xl bg-bull/90 px-4 text-[13.5px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
+          <span className="col-span-2 inline-flex h-10 items-center justify-center rounded-xl bg-bull/90 px-4 text-[13.5px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
             {t.cta} <span className="ml-1.5 transition-transform group-hover:translate-x-0.5">→</span>
           </span>
         </div>
@@ -100,11 +100,11 @@ export function CardPromocao({ idioma }: { idioma: Idioma }) {
             </span>
           </div>
 
-          <div className="w-[180px] shrink-0 space-y-1.5">
+          <div className="w-[180px] shrink-0 space-y-1">
             {METAS.map((m, i) => (
               <div
                 key={m.volumeUsd}
-                className={`flex items-center justify-between rounded-xl border px-3 py-1.5 ${
+                className={`flex items-center justify-between rounded-lg border px-3 py-1 ${
                   i === 1 ? "border-bull/45 bg-bull/[0.09]" : "border-white/[0.07] bg-white/[0.02]"
                 }`}
               >

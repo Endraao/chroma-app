@@ -23,6 +23,7 @@ export const PARTE_DA_CHROMA = 0.004;
 export const METAS = [
   { volumeUsd: 25_000, bonusUsd: 50 },
   { volumeUsd: 100_000, bonusUsd: 200 },
+  { volumeUsd: 250_000, bonusUsd: 500 },
   { volumeUsd: 500_000, bonusUsd: 1_000 },
 ] as const;
 

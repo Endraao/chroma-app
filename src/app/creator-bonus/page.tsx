@@ -11,73 +11,73 @@ import { traducoes } from "@/lib/idiomas";
  */
 const TEXTOS = traducoes({
   en: {
-    meta: ["Creator bonus — Chroma", "Launch on the Chroma Curve and earn a cash bonus when your coin hits volume goals."],
+    meta: ["Creator bonus — Chroma", "Launch on Chroma Launchpad and earn a cash bonus when your coin hits volume goals."],
     titulo: "Creator bonus",
     intro:
       "Launch coins with Chroma Launchpad and, on top of 40% of every trade fee, earn a cash bonus when your coin hits volume goals. The more your community trades, the more you earn.",
     ganhosTitulo: "What you earn per coin",
-    ganhosNota: "40% of every trade fee + the cash bonus. Trading fees are yours to claim anytime, on-chain.",
     paraVoce: "to you",
     volume: "volume",
-    tabelaVolume: "Your coin's volume",
-    tabelaBonus: "Your bonus (total)",
+    colVolume: "Your coin's volume",
+    colTaxas: "Trading fees (40%)",
+    colBonus: "Cash bonus",
+    colTotal: "Total to you",
+    nota: "Everything is claimed with the Claim button on your coin's page, straight to the wallet that created the coin.",
+    destaque: "No other launchpad pays you trading fees plus a cash bonus for volume.",
     regras: "Rules",
     itens: [
-      "Only coins launched on the Chroma Curve (Solana) qualify.",
+      "Only coins launched on Chroma Launchpad, on Solana, qualify.",
       "Volume counts on every app — Jupiter, Phantom, Chroma or any other — because the fee is charged by the curve itself.",
       "Progress is measured on-chain, and you can follow it live on your coin's page.",
-      "The bonus is the total for each goal: reaching $100K pays $200 in total (including the $50 of the first goal).",
-      "Paid in SOL to the creator's wallet within 7 days of reaching a goal.",
-      "Wash trading doesn't pay: each trade costs 1% and returns only 0.4% to the creator.",
-      "Chroma may update or end the program for new goals at any time; goals already reached are always paid.",
+      "Trading fees arrive instantly; the bonus is paid in SOL to the creator's wallet within 7 days of the claim.",
     ],
-    cta: "Launch on the Chroma Curve",
+    cta: "Launch on Chroma",
   },
   pt: {
-    meta: ["Bônus do criador — Chroma", "Lance na Curva da Chroma e ganhe um bônus em dinheiro quando sua moeda bater metas de volume."],
+    meta: ["Bônus do criador — Chroma", "Lance na Chroma Launchpad e ganhe um bônus em dinheiro quando sua moeda bater metas de volume."],
     titulo: "Bônus do criador",
     intro:
       "Lance moedas utilizando a Chroma Launchpad e, além de 40% da taxa de toda negociação, ganhe um bônus em dinheiro quando sua moeda bater metas de volume. Quanto mais sua comunidade negocia, mais você ganha.",
     ganhosTitulo: "Quanto você ganha por moeda",
-    ganhosNota: "40% da taxa de toda negociação + o bônus em dinheiro. As taxas são suas pra sacar quando quiser, na rede.",
     paraVoce: "pra você",
     volume: "de volume",
-    tabelaVolume: "Volume da sua moeda",
-    tabelaBonus: "Seu bônus (total)",
+    colVolume: "Volume da sua moeda",
+    colTaxas: "Taxas de negociação (40%)",
+    colBonus: "Bônus em dinheiro",
+    colTotal: "Total pra você",
+    nota: "Tudo sacado pelo botão Sacar na página da sua moeda, direto pra carteira que criou o token.",
+    destaque: "Nenhuma outra launchpad paga taxa de negociação + bônus em dinheiro por volume.",
     regras: "Regras",
     itens: [
-      "Só valem moedas lançadas na Curva da Chroma (Solana).",
+      "Só valem moedas lançadas dentro da Chroma Launchpad, na rede Solana.",
       "O volume conta em qualquer app — Jupiter, Phantom, Chroma ou outro — porque a taxa é cobrada pela própria curva.",
       "O progresso é medido na rede, e dá pra acompanhar ao vivo na página da sua moeda.",
-      "O bônus é o total de cada meta: chegar a $100 mil paga $200 no total (incluindo os $50 da primeira meta).",
-      "Pago em SOL na carteira do criador em até 7 dias depois de bater a meta.",
-      "Volume falso não compensa: cada negociação custa 1% e devolve só 0,4% ao criador.",
-      "A Chroma pode atualizar ou encerrar o programa para metas novas a qualquer momento; metas já batidas são sempre pagas.",
+      "As taxas caem na hora; o bônus é pago em SOL na carteira do criador em até 7 dias depois do saque.",
     ],
-    cta: "Lançar na Curva da Chroma",
+    cta: "Lançar na Chroma",
   },
   zh: {
-    meta: ["创作者奖金 — Chroma", "在 Chroma 曲线上发币，代币达到交易量目标即可获得现金奖金。"],
+    meta: ["创作者奖金 — Chroma", "在 Chroma Launchpad 发币，代币达到交易量目标即可获得现金奖金。"],
     titulo: "创作者奖金",
     intro:
       "使用 Chroma Launchpad 发币，除了每笔交易 40% 的交易费外，代币达到交易量目标时还可获得现金奖金。你的社区交易越多，你赚得越多。",
     ganhosTitulo: "每个代币你能赚多少",
-    ganhosNota: "每笔交易 40% 的交易费 + 现金奖金。交易费随时可在链上领取。",
     paraVoce: "归你",
     volume: "交易量",
-    tabelaVolume: "你的代币交易量",
-    tabelaBonus: "你的奖金（累计）",
+    colVolume: "你的代币交易量",
+    colTaxas: "交易手续费（40%）",
+    colBonus: "现金奖金",
+    colTotal: "你的总收益",
+    nota: "全部通过代币页面的「领取」按钮，直接领取到创建代币的钱包。",
+    destaque: "没有其他发射平台同时支付交易手续费 + 交易量现金奖金。",
     regras: "规则",
     itens: [
-      "仅限在 Chroma 曲线（Solana）上发行的代币。",
+      "仅限在 Chroma Launchpad 上（Solana 网络）发行的代币。",
       "在任何应用中的交易量都计入——Jupiter、Phantom、Chroma 或其他——因为费用由曲线本身收取。",
       "进度在链上计算，可在你的代币页面实时查看。",
-      "奖金为每个目标的累计总额：达到 10 万美元共支付 200 美元（包括第一个目标的 50 美元）。",
-      "达成目标后 7 天内以 SOL 支付到创作者钱包。",
-      "刷量无利可图：每笔交易花费 1%，只返还 0.4% 给创作者。",
-      "Chroma 可随时更新或结束新目标的计划；已达成的目标始终会支付。",
+      "交易手续费即时到账；奖金在领取后 7 天内以 SOL 支付到创作者钱包。",
     ],
-    cta: "在 Chroma 曲线上发币",
+    cta: "在 Chroma 发币",
   },
 });
 
@@ -87,6 +87,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
+const taxa = (volume: number) => volume * PARTE_DA_CHROMA;
 
 export default async function CreatorBonus() {
   const t = TEXTOS[await idiomaAtual()];
@@ -100,35 +101,44 @@ export default async function CreatorBonus() {
       {/* Os números grandes: taxa (40%) + bônus, por meta. */}
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.ganhosTitulo}</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {METAS.map((m, i) => (
             <div
               key={m.volumeUsd}
-              className={`rounded-2xl border p-5 text-center ${i === 1 ? "border-marca/60 bg-marca/[0.07]" : "border-ink-700 bg-ink-900"}`}
+              className={`rounded-2xl border p-4 text-center ${i === 1 ? "border-marca/60 bg-marca/[0.07]" : "border-ink-700 bg-ink-900"}`}
             >
-              <p className="text-[13px] font-semibold text-zinc-400">
+              <p className="text-[12px] font-semibold text-zinc-400">
                 {usd(m.volumeUsd)} {t.volume}
               </p>
-              <p className="holo-texto tnum mt-2 text-[40px] font-black leading-none">{usd(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd)}</p>
-              <p className="mt-2 text-[13px] font-bold text-zinc-200">{t.paraVoce}</p>
+              <p className="holo-texto tnum mt-2 text-[30px] font-black leading-none">{usd(taxa(m.volumeUsd) + m.bonusUsd)}</p>
+              <p className="mt-2 text-[12.5px] font-bold text-zinc-200">{t.paraVoce}</p>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[12.5px] text-zinc-500">{t.ganhosNota}</p>
       </section>
 
+      {/* Quebra de cada meta: taxa + bônus = total. */}
       <div className="overflow-hidden rounded-xl border border-marca/30">
-        <div className="grid grid-cols-2 bg-marca/[0.08] px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-marca">
-          <span>{t.tabelaVolume}</span>
-          <span className="text-right">{t.tabelaBonus}</span>
+        <div className="grid grid-cols-4 gap-2 bg-marca/[0.08] px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-wider text-marca sm:px-5">
+          <span>{t.colVolume}</span>
+          <span className="text-right">{t.colTaxas}</span>
+          <span className="text-right">{t.colBonus}</span>
+          <span className="text-right">{t.colTotal}</span>
         </div>
         {METAS.map((m) => (
-          <div key={m.volumeUsd} className="tnum grid grid-cols-2 border-t border-ink-700 px-5 py-3 text-[15px]">
+          <div key={m.volumeUsd} className="tnum grid grid-cols-4 gap-2 border-t border-ink-700 px-4 py-3 text-[14px] sm:px-5 sm:text-[15px]">
             <span className="text-zinc-300">{usd(m.volumeUsd)}</span>
-            <span className="text-right font-bold text-zinc-50">{usd(m.bonusUsd)}</span>
+            <span className="text-right text-zinc-200">{usd(taxa(m.volumeUsd))}</span>
+            <span className="text-right text-zinc-200">+ {usd(m.bonusUsd)}</span>
+            <span className="text-right font-black text-bull">{usd(taxa(m.volumeUsd) + m.bonusUsd)}</span>
           </div>
         ))}
+        <p className="border-t border-ink-700 px-4 py-2.5 text-[12.5px] text-zinc-400 sm:px-5">{t.nota}</p>
       </div>
+
+      <p className="rounded-xl border border-bull/30 bg-bull/[0.06] px-4 py-3 text-center text-[14px] font-bold text-zinc-50">
+        🏆 {t.destaque}
+      </p>
 
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.regras}</h2>
