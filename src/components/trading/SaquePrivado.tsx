@@ -149,7 +149,9 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
       setEstado("feito");
     } catch (e) {
       setEstado("falhou");
-      setErro(e instanceof Error && e.message.length < 200 ? e.message : "");
+      console.error("[saque privado]", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(msg.length > 220 ? msg.slice(0, 220) + "…" : msg);
     }
   };
 
