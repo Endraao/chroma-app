@@ -63,7 +63,23 @@ async function avisarNoTelegram(mint: string, aPagarUsd: number) {
 }
 
 export async function GET(request: Request) {
-  const address = new URL(request.url).searchParams.get("address") ?? "";
+  const url = new URL(request.url);
+  // Teste do aviso no Telegram: manda UMA mensagem e nunca mais (fica marcado no banco).
+  if (url.searchParams.has("testar-aviso")) {
+    const { lerDoCacheDoBanco, gravarNoCacheDoBanco } = await import("@/lib/db");
+    if (await lerDoCacheDoBanco("bonus-aviso-testado").catch(() => null)) return NextResponse.json({ ok: false, motivo: "já testado" });
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const chat = process.env.TELEGRAM_CHAT_DONO;
+    if (!token || !chat) return NextResponse.json({ ok: false, motivo: `faltando: ${!token ? "TELEGRAM_BOT_TOKEN " : ""}${!chat ? "TELEGRAM_CHAT_DONO" : ""}` });
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chat, text: "✅ Teste: os avisos de pedido de bônus da Chroma vão chegar aqui." }),
+    }).then((x) => x.json()).catch(() => null);
+    if (r?.ok) await gravarNoCacheDoBanco("bonus-aviso-testado", { em: Date.now() });
+    return NextResponse.json({ ok: !!r?.ok, telegram: r?.description ?? null });
+  }
+  const address = url.searchParams.get("address") ?? "";
   if (!MINT.test(address)) return NextResponse.json({ error: "endereço inválido" }, { status: 400 });
   const dados = await progresso(address);
   if (!dados) return NextResponse.json({ error: "fora da curva" }, { status: 404 });
