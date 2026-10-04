@@ -39,6 +39,12 @@ import { CHAINS, CHAIN_IDS } from "@/lib/web3";
  * Os números seguem numa régua de rodapé, do jeito que um terminal mostra
  * estado: rótulo minúsculo, valor em mono, divididos por fio de 1px.
  */
+const PROMO: Record<Idioma, { selo: string; texto: string }> = {
+  en: { selo: "Creator promo", texto: "$500K volume = $3,000 to the creator: 40% of every trade fee + cash bonus" },
+  pt: { selo: "Promo do criador", texto: "$500 mil de volume = $3.000 pro criador: 40% da taxa + bônus em dinheiro" },
+  zh: { selo: "创作者活动", texto: "交易量 50 万美元 = 创作者获得 3,000 美元：每笔交易 40% 手续费 + 现金奖金" },
+};
+
 export function FaixaDeAbertura({
   idioma,
   quantidadeDeTokens,
@@ -141,6 +147,16 @@ export function FaixaDeAbertura({
 
           {/* O contrato oficial do $CHROMA, à vista (pedido do dono, 02/10/2026). */}
           <TokenOficial compacto className="mt-3 w-fit max-w-full" />
+
+          {/* A promoção do criador, à vista de quem chega (pedido do dono, 03/10/2026). */}
+          <Link
+            href="/creator-bonus"
+            className="group mt-2 flex w-fit max-w-full items-center gap-2 rounded-lg border border-bull/35 bg-bull/[0.07] px-3 py-2 text-[12.5px] transition-colors hover:border-bull/70"
+          >
+            <span className="shrink-0 font-black uppercase tracking-wider text-bull">{PROMO[idioma].selo}</span>
+            <span className="min-w-0 truncate text-zinc-200">{PROMO[idioma].texto}</span>
+            <span className="shrink-0 font-bold text-bull group-hover:translate-x-0.5">→</span>
+          </Link>
         </div>
 
         {/*

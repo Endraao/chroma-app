@@ -43,7 +43,7 @@ const TEXTO_CURVA = traducoes({
     chroma: "Chroma Curve · new",
     notaClassica: "The most traded curve on Solana. Graduates at ~85 SOL.",
     ganho: "You earn 40% of the trading fee on every trade of your coin, on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay up to 25%.",
-    bonus: "+ Creator bonus up to $1,000 →",
+    bonus: "Example: $100K volume → $600 to you · see the creator bonus →",
     notaChroma: "You earn 40% of the trading fee on every trade of your coin, on any app, forever. Snipers pay up to 25% in the first 2 minutes; your first buy pays the minimum. Graduates to Meteora with locked liquidity.",
   },
   pt: {
@@ -52,7 +52,7 @@ const TEXTO_CURVA = traducoes({
     chroma: "Curva da Chroma · nova",
     notaClassica: "A curva mais negociada da Solana. Gradua com ~85 SOL.",
     ganho: "Você ganha 40% da taxa de toda negociação da sua moeda, em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam até 25%.",
-    bonus: "+ Bônus do criador de até $1.000 →",
+    bonus: "Exemplo: $100 mil de volume → $600 pra você · veja o bônus do criador →",
     notaChroma: "Você ganha 40% da taxa de toda negociação da sua moeda, em qualquer app, pra sempre. Robôs pagam até 25% nos primeiros 2 minutos; sua primeira compra paga o mínimo. Gradua pra Meteora com liquidez travada.",
   },
   zh: {
@@ -61,7 +61,7 @@ const TEXTO_CURVA = traducoes({
     chroma: "Chroma 曲线 · 新",
     notaClassica: "Solana 上交易最活跃的曲线。约 85 SOL 时毕业。",
     ganho: "你的代币在任何应用上的每笔交易，你都永久获得 40% 的交易费。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人最高支付 25%。",
-    bonus: "+ 最高 1,000 美元的创作者奖金 →",
+    bonus: "示例：交易量 10 万美元 → 你获得 600 美元 · 查看创作者奖金 →",
     notaChroma: "你的代币在任何应用上的每笔交易，你都永久获得 40% 的交易费。前 2 分钟狙击机器人最高支付 25%；你的首次买入只付最低费用。毕业后迁移至 Meteora，流动性锁定。",
   },
 });
