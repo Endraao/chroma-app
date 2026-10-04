@@ -153,7 +153,17 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
     } catch (e) {
       setEstado("falhou");
       console.error("[saque privado]", e);
-      const msg = e instanceof Error ? e.message : String(e);
+      let msg = e instanceof Error ? e.message : String(e);
+      // Em produção o kit da Solana esconde a mensagem do nó num pacote
+      // codificado ("npx @solana/errors decode … '<base64>'"): abre aqui.
+      const pacote = msg.match(/decode -- \S+ '([A-Za-z0-9+/=]+)'/)?.[1];
+      if (pacote) {
+        try {
+          const ctx = new URLSearchParams(atob(pacote));
+          const doNo = ctx.get("__serverMessage") || ctx.get("message") || ctx.get("statusCode");
+          if (doNo) msg = `${ctx.get("__code") ?? ""} ${doNo}`.trim();
+        } catch {}
+      }
       setErro(msg === "DEPOSITO_NAO_ACONTECEU" ? t.naoAconteceu : msg.length > 220 ? msg.slice(0, 220) + "…" : msg);
     }
   };

@@ -103,6 +103,9 @@ async function kit(rpcUrl: string, carteira: CarteiraParaSaque) {
     signMessage: carteira.signMessage,
     depositorPublicKey: enderecoDaCarteira,
     walletPublicKey: enderecoDaCarteira,
+    // Sem o envelope da nota na rede (a nota fica guardada aqui): a transação
+    // de depósito encolhe e não estoura 1232 bytes quando a carteira mexe nela.
+    disableChainNotes: true,
   };
   return { sdk, opcoes, enderecoDaCarteira };
 }
