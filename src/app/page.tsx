@@ -10,7 +10,7 @@ import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
 import { FORA_DA_VITRINE, moedasDaChroma } from "@/lib/moedas-da-chroma";
-import { CHAIN_IDS, CHAINS, REDE_PADRAO } from "@/lib/web3";
+import { CHAIN_IDS, CHAINS } from "@/lib/web3";
 import { BannerPromocao } from "@/components/home/BannerPromocao";
 import type { ChainId, TokenSummary } from "@/lib/types";
 
@@ -159,7 +159,7 @@ export default async function HomePage({
       ? "todas"
       : CHAIN_IDS.includes(filtros.chain as ChainId)
         ? (filtros.chain as ChainId)
-        : REDE_PADRAO;
+        : "todas"; // Sem rede na URL = todas as redes (pedido do dono, 04/10/2026).
   const busca = (filtros.q ?? "").trim().toLowerCase();
 
   const [principal, daCasa] = await Promise.all([

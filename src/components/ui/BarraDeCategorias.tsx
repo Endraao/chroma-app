@@ -131,7 +131,8 @@ const TODAS_AS_REDES: Item = {
       <img src={chainIcon("solana")} alt="" width={11} height={11} className="absolute bottom-0 right-0 size-[11px] rounded-full ring-1 ring-ink-950" />
     </span>
   ),
-  casa: (p: string, _s: string | null, chain: string | null) => p === "/" && chain === "todas",
+  // É o padrão da home: "/" sem rede na URL também conta.
+  casa: (p: string, _s: string | null, chain: string | null) => p === "/" && (chain === "todas" || !chain),
 };
 
 const REDES: Item[] = [TODAS_AS_REDES, ...CHAIN_IDS.map((id) => ({
