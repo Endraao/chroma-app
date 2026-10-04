@@ -53,7 +53,7 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
           <p className="mt-1 text-[13px] text-zinc-400">{t.sub}</p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2.5">
+        <div className="grid shrink-0 grid-cols-3 gap-2 lg:flex lg:flex-wrap lg:items-center lg:gap-2.5">
           {METAS.map((m, i) => (
             <div
               key={m.volumeUsd}
@@ -66,7 +66,7 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
               <p className="text-[10px] font-semibold text-zinc-400">{t.paraVoce}</p>
             </div>
           ))}
-          <span className="inline-flex h-10 items-center rounded-xl bg-bull/90 px-4 text-[13.5px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
+          <span className="col-span-3 inline-flex h-10 items-center justify-center rounded-xl bg-bull/90 px-4 text-[13.5px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
             {t.cta} <span className="ml-1.5 transition-transform group-hover:translate-x-0.5">→</span>
           </span>
         </div>
