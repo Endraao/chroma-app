@@ -38,6 +38,7 @@ const TEXTOS = traducoes({
     entrada: "Into the pool",
     saida: "Out to your wallet",
     semMensagem: "Your wallet can't sign messages. Use Phantom or Solflare.",
+    naoAconteceu: "The shielding never happened — nothing left your wallet. You can try again now.",
   },
   pt: {
     abrir: "🔒 Sacar em privado",
@@ -61,6 +62,7 @@ const TEXTOS = traducoes({
     entrada: "Entrada no cofre",
     saida: "Saída pra sua carteira",
     semMensagem: "Sua carteira não assina mensagens. Use Phantom ou Solflare.",
+    naoAconteceu: "O depósito não chegou a acontecer — nada saiu da sua carteira. Pode tentar de novo agora.",
   },
   zh: {
     abrir: "🔒 隐私提现",
@@ -83,6 +85,7 @@ const TEXTOS = traducoes({
     entrada: "存入隐私池",
     saida: "转出到你的钱包",
     semMensagem: "你的钱包不支持消息签名。请使用 Phantom 或 Solflare。",
+    naoAconteceu: "存入未发生——你的钱包没有任何资金转出。现在可以重试。",
   },
 });
 
@@ -151,7 +154,7 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
       setEstado("falhou");
       console.error("[saque privado]", e);
       const msg = e instanceof Error ? e.message : String(e);
-      setErro(msg.length > 220 ? msg.slice(0, 220) + "…" : msg);
+      setErro(msg === "DEPOSITO_NAO_ACONTECEU" ? t.naoAconteceu : msg.length > 220 ? msg.slice(0, 220) + "…" : msg);
     }
   };
 

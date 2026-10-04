@@ -195,6 +195,25 @@ export async function retomarSaquePrivado(params: {
   const k = await kit(params.rpcUrl, params.carteira);
   const nota = await k.sdk.deserializeUtxo(deBase64(p.nota));
   nota.commitment = await k.sdk.computeUtxoCommitment(nota);
+
+  // Nota sem posição na árvore = a cópia guardada ANTES do depósito. Procura
+  // na árvore da Cloak: se o depósito entrou, acha a posição; se não entrou,
+  // nada saiu da carteira e a nota guardada é descartada.
+  if (nota.index === undefined) {
+    const lista = await k.sdk.fetchCommitments(k.opcoes.relayUrl, { mint: k.sdk.NATIVE_SOL_MINT, sync: true });
+    const achada = lista.find((c) => {
+      try {
+        return BigInt(c.commitment.startsWith("0x") || /^[0-9]+$/.test(c.commitment) ? c.commitment : `0x${c.commitment}`) === nota.commitment;
+      } catch {
+        return false;
+      }
+    });
+    if (!achada) {
+      gravarPendente(null);
+      throw new Error("DEPOSITO_NAO_ACONTECEU");
+    }
+    nota.index = achada.index;
+  }
   try {
     const saque = await sacarNota(k, [nota], p.destino, {}, params.aoMudar);
     gravarPendente(null);
