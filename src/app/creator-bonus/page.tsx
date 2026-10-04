@@ -26,7 +26,7 @@ const TEXTOS = traducoes({
     destaque: "No other launchpad pays you trading fees and a cash bonus for volume.",
     regras: "Rules",
     itens: [
-      "Valid for coins launched on Chroma Launchpad, on the Solana network.",
+      "Valid only for coins launched on Chroma Launchpad, on the Solana network.",
       "Every trade counts, wherever it happens: Chroma, Jupiter, Phantom, Fomo or any other app. The fee is charged by the coin itself, not by the app.",
       "Track your progress live on your coin's page — everything is measured on-chain.",
     ],
@@ -48,7 +48,7 @@ const TEXTOS = traducoes({
     destaque: "Nenhuma outra launchpad paga taxa de negociação e bônus em dinheiro por volume.",
     regras: "Regras",
     itens: [
-      "Vale para moedas lançadas na Chroma Launchpad, na rede Solana.",
+      "Vale para moedas lançadas dentro da Chroma Launchpad, apenas na rede Solana.",
       "Toda negociação conta, não importa onde aconteça: Chroma, Jupiter, Phantom, Fomo ou qualquer outro app. A taxa é cobrada pela própria moeda, não pelo app.",
       "Acompanhe seu progresso ao vivo na página da sua moeda — tudo é medido direto na rede.",
     ],
@@ -70,7 +70,7 @@ const TEXTOS = traducoes({
     destaque: "没有其他发射平台同时为交易量支付交易手续费和现金奖金。",
     regras: "规则",
     itens: [
-      "适用于在 Chroma Launchpad 上（Solana 网络）发行的代币。",
+      "仅适用于在 Chroma Launchpad 上发行的代币，且仅限 Solana 网络。",
       "每笔交易都计入，无论在哪里发生：Chroma、Jupiter、Phantom、Fomo 或任何其他应用。手续费由代币本身收取，而不是由应用收取。",
       "在你的代币页面实时查看进度——一切都在链上计算。",
     ],
