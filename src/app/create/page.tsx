@@ -35,6 +35,8 @@ import { CURVA_CHROMA_DISPONIVEL } from "@/lib/meteora-dbc";
  * Curva da Chroma de verdade. Pra mostrar de novo, é só trocar pra true.
  */
 const MOSTRAR_CURVA_CLASSICA = false;
+// Banner da moeda: nunca usado nem testado — escondido até ser (04/10/2026).
+const MOSTRAR_BANNER = false;
 
 const TEXTO_CURVA = traducoes({
   en: {
@@ -420,8 +422,8 @@ export default function CreateTokenPage() {
         </CardBody>
       </Card>
 
-      {/* Banner */}
-      <Card>
+      {/* Banner: escondido (04/10/2026) — nunca foi usado nem testado. */}
+      {MOSTRAR_BANNER && (<Card>
         <button
           onClick={() => setShowBanner((v) => !v)}
           className="flex w-full items-center gap-2 px-4 py-3 text-left"
@@ -468,7 +470,7 @@ export default function CreateTokenPage() {
             />
           </CardBody>
         )}
-      </Card>
+      </Card>)}
 
       {/* Identidade */}
       <Card>
