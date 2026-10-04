@@ -10,52 +10,51 @@ import { ganhosDeTodasAsMoedas } from "@/lib/meteora-dbc";
  * Painel do BÔNUS DO CRIADOR, só na máquina local (ver lib/bonus-criador.ts).
  *
  * Lista toda moeda da Curva da Chroma, quanto a Chroma ganhou com ela, o
- * bônus conquistado pelo criador e quanto falta pagar. O "já pago" fica
- * anotado neste navegador (localStorage): pague em SOL pra carteira do
- * criador e marque aqui. Em produção a página não faz nada.
+ * bônus conquistado, se o criador já PEDIU (botão "Claim" na página da moeda)
+ * e quanto falta pagar. Pague em SOL pra carteira do criador e clique em
+ * "Marcar pago": fica no banco, e a página da moeda para de mostrar o bônus.
+ * Em produção a página não faz nada.
  */
 type Linha = { pool: string; mint: string; criador: string; ganhoSol: number };
-const CHAVE = "chroma:bonus-pago";
-
-function lerPagos(): Record<string, number> {
-  try {
-    return JSON.parse(window.localStorage.getItem(CHAVE) ?? "{}");
-  } catch {
-    return {};
-  }
-}
+type Registro = { pagoUsd: number; pedidoUsd: number };
 
 export default function PainelDeBonus() {
   const { connection } = useConnection();
   const [linhas, setLinhas] = useState<Linha[] | null>(null);
   const [sol, setSol] = useState(0);
-  const [pagos, setPagos] = useState<Record<string, number>>({});
+  const [regs, setRegs] = useState<Record<string, Registro>>({});
   const [erro, setErro] = useState("");
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
-    setPagos(lerPagos());
     Promise.all([
       ganhosDeTodasAsMoedas(connection),
       fetch("/api/price?address=So11111111111111111111111111111111111111112").then((r) => r.json()),
     ])
-      .then(([l, p]) => {
+      .then(async ([l, p]) => {
         setLinhas(l.sort((a, b) => b.ganhoSol - a.ganhoSol));
         setSol(Number(p?.priceUsd) || 0);
+        const r = await Promise.all(
+          l.map((x) =>
+            fetch(`/api/bonus-criador?address=${x.mint}`, { cache: "no-store" })
+              .then((q) => (q.ok ? q.json() : null))
+              .catch(() => null),
+          ),
+        );
+        setRegs(Object.fromEntries(l.map((x, i) => [x.mint, { pagoUsd: r[i]?.pagoUsd ?? 0, pedidoUsd: r[i]?.pedidoUsd ?? 0 }])));
       })
       .catch((e) => setErro(e instanceof Error ? e.message : String(e)));
   }, [connection]);
 
   if (process.env.NODE_ENV === "production") return <p className="p-8 text-zinc-500">Indisponível.</p>;
 
-  const marcarPago = (mint: string, usd: number) => {
-    const novo = { ...pagos, [mint]: usd };
-    setPagos(novo);
-    try {
-      window.localStorage.setItem(CHAVE, JSON.stringify(novo));
-    } catch {
-      /* sem armazenamento: anote à parte */
-    }
+  const marcarPago = async (mint: string, usd: number) => {
+    const r = await fetch("/api/bonus-criador", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ address: mint, pago: usd }),
+    });
+    if (r.ok) setRegs((x) => ({ ...x, [mint]: { pagoUsd: usd, pedidoUsd: x[mint]?.pedidoUsd ?? 0 } }));
   };
 
   return (
@@ -74,6 +73,7 @@ export default function PainelDeBonus() {
               <th className="text-right">Chroma ganhou</th>
               <th className="text-right">Volume ~</th>
               <th className="text-right">Bônus</th>
+              <th className="text-right">Pedido</th>
               <th className="text-right">Pago</th>
               <th className="text-right">A pagar</th>
               <th />
@@ -82,7 +82,8 @@ export default function PainelDeBonus() {
           <tbody>
             {linhas.map((l) => {
               const p = progressoDoBonus(l.ganhoSol * sol);
-              const pago = pagos[l.mint] ?? 0;
+              const pago = regs[l.mint]?.pagoUsd ?? 0;
+              const pedido = regs[l.mint]?.pedidoUsd ?? 0;
               const devido = Math.max(0, p.conquistadoUsd - pago);
               return (
                 <tr key={l.pool} className="border-t border-ink-700 text-zinc-300">
@@ -95,13 +96,17 @@ export default function PainelDeBonus() {
                   <td className="tnum text-right">{l.ganhoSol.toFixed(4)} SOL</td>
                   <td className="tnum text-right">${Math.round(p.volumeUsd).toLocaleString("en-US")}</td>
                   <td className="tnum text-right">${p.conquistadoUsd}</td>
+                  <td className={`tnum text-right ${pedido > pago ? "font-bold text-warn" : ""}`}>{pedido > pago ? `$${pedido}` : "—"}</td>
                   <td className="tnum text-right">${pago}</td>
                   <td className={`tnum text-right font-bold ${devido > 0 ? "text-bull" : "text-zinc-600"}`}>
                     {devido > 0 ? `$${devido} (${sol > 0 ? (devido / sol).toFixed(4) : "?"} SOL)` : "—"}
                   </td>
                   <td className="text-right">
                     {devido > 0 && (
-                      <button onClick={() => marcarPago(l.mint, p.conquistadoUsd)} className="rounded border border-marca/50 px-2 py-0.5 text-marca hover:bg-marca/10">
+                      <button
+                        onClick={() => marcarPago(l.mint, p.conquistadoUsd)}
+                        className="rounded border border-marca/50 px-2 py-0.5 text-marca hover:bg-marca/10"
+                      >
                         Marcar pago
                       </button>
                     )}
