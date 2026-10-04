@@ -37,7 +37,7 @@ const TEXTOS: Record<Idioma, { selo: string; titulo: string; sub: string; volume
 };
 
 const curto = (n: number) => (n >= 1000 ? `$${n / 1000}K` : `$${n}`);
-const cheio = (n: number) => `$${n.toLocaleString("en-US")}`;
+const cheio = (n: number, idioma: Idioma) => `$${n.toLocaleString(idioma === "pt" ? "pt-BR" : "en-US")}`;
 
 export function BannerPromocao({ idioma }: { idioma: Idioma }) {
   const t = TEXTOS[idioma];
@@ -62,7 +62,7 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
               <p className="tnum text-[10.5px] text-zinc-500">
                 {curto(m.volumeUsd)} {t.volume}
               </p>
-              <p className="tnum text-[18px] font-black text-bull">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd)}</p>
+              <p className="tnum text-[18px] font-black text-bull">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd, idioma)}</p>
               <p className="text-[10px] font-semibold text-zinc-400">{t.paraVoce}</p>
             </div>
           ))}
@@ -100,16 +100,16 @@ export function CardPromocao({ idioma }: { idioma: Idioma }) {
             </span>
           </div>
 
-          <div className="w-[180px] shrink-0 space-y-1">
+          <div className="w-[205px] shrink-0 space-y-1">
             {METAS.map((m) => (
               <div
                 key={m.volumeUsd}
                 className="flex items-center justify-between rounded-lg border border-bull/30 bg-bull/[0.05] px-3 py-1"
               >
-                <span className="tnum text-[11px] text-zinc-400">
+                <span className="tnum whitespace-nowrap text-[11px] text-zinc-400">
                   {curto(m.volumeUsd)} {t.volume}
                 </span>
-                <span className="promo-valor tnum text-[18px] font-black">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd)}</span>
+                <span className="promo-valor tnum text-[18px] font-black">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd, idioma)}</span>
               </div>
             ))}
             <p className="text-right text-[10.5px] font-semibold text-zinc-500">{t.paraVoce}</p>

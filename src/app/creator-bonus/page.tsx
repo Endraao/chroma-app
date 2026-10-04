@@ -150,59 +150,88 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title, description };
 }
 
-const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
+const SELO = { en: "Creator promo", pt: "Promoção do criador", zh: "创作者活动" } as const;
+const BOTAO = "inline-flex items-center gap-1.5 rounded-xl bg-bull/90 px-5 py-2.5 text-[14px] font-black text-[#03130d] transition-colors hover:bg-bull";
+
 const taxa = (volume: number) => volume * PARTE_DA_CHROMA;
 
+/**
+ * Mesmo visual do banner da home (BannerPromocao): borda em degradê girando,
+ * vidro escuro com luz verde e valores em verde — pedido do dono (04/10/2026):
+ * "parece 2 páginas diferentes mostrando a mesma promoção".
+ */
 export default async function CreatorBonus() {
   const idioma = await idiomaAtual();
   const t = TEXTOS[idioma];
   const f = PERGUNTAS[idioma];
+  const usd = (n: number) => `$${n.toLocaleString(idioma === "pt" ? "pt-BR" : "en-US")}`;
+  const curto = (n: number) => `$${n / 1000}K`;
   return (
     <div className="mx-auto max-w-3xl space-y-8 pt-6">
-      <header>
-        <h1 className="text-3xl font-black tracking-tight text-zinc-50">{t.titulo}</h1>
-        <p className="mt-2 text-[14px] leading-relaxed text-zinc-400">{t.intro}</p>
-      </header>
+      <section className="promo-card promo-banner">
+        <div className="promo-card-dentro flex items-stretch">
+          <span aria-hidden className="promo-barra" />
+          <div className="min-w-0 flex-1 p-6 sm:p-8">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-[0.16em] text-bull">
+              <span className="size-1.5 animate-pulse rounded-full bg-bull" />
+              {SELO[idioma]}
+            </span>
+            <h1 className="mt-3 text-[34px] font-black leading-[1.05] tracking-tight text-zinc-50 sm:text-[42px]">{t.titulo}</h1>
+            <p className="mt-3 max-w-[560px] text-[15px] leading-relaxed text-zinc-300">{t.intro}</p>
+            <Link href="/create" className={`${BOTAO} mt-5`}>
+              {t.cta} <span aria-hidden>→</span>
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      {/* Os números grandes: taxa (40%) + bônus, por meta. */}
+      {/* Os números grandes: taxa (40%) + bônus, por meta. A maior com a borda da promoção. */}
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.ganhosTitulo}</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {METAS.map((m) => (
-            <div
-              key={m.volumeUsd}
-              className="rounded-2xl border border-marca/40 bg-marca/[0.05] p-4 text-center"
-            >
-              <p className="text-[12px] font-semibold text-zinc-400">
-                {usd(m.volumeUsd)} {t.volume}
-              </p>
-              <p className="holo-texto tnum mt-2 text-[30px] font-black leading-none">{usd(taxa(m.volumeUsd) + m.bonusUsd)}</p>
-              <p className="mt-2 text-[12.5px] font-bold text-zinc-200">{t.paraVoce}</p>
-            </div>
-          ))}
+          {METAS.map((m, i) => {
+            const dentro = (
+              <div className="flex h-full flex-col items-center px-3 py-4 text-center">
+                <p className="whitespace-nowrap text-[12px] font-semibold text-zinc-400">
+                  {curto(m.volumeUsd)} {t.volume}
+                </p>
+                <p className="promo-valor tnum mt-2 text-[30px] font-black leading-none">{usd(taxa(m.volumeUsd) + m.bonusUsd)}</p>
+                <p className="mt-2 text-[12.5px] font-bold text-zinc-200">{t.paraVoce}</p>
+              </div>
+            );
+            return i === METAS.length - 1 ? (
+              <div key={m.volumeUsd} className="promo-card promo-banner">
+                <div className="promo-card-dentro h-full">{dentro}</div>
+              </div>
+            ) : (
+              <div key={m.volumeUsd} className="rounded-2xl border border-bull/30 bg-bull/[0.05]">
+                {dentro}
+              </div>
+            );
+          })}
         </div>
       </section>
 
       {/* Quebra de cada meta: taxa + bônus = total. */}
-      <div className="overflow-hidden rounded-xl border border-marca/30">
-        <div className="grid grid-cols-4 gap-2 bg-marca/[0.08] px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-wider text-marca sm:px-5">
+      <div className="overflow-hidden rounded-2xl border border-bull/30 bg-bull/[0.03]">
+        <div className="grid grid-cols-4 gap-2 bg-bull/[0.08] px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-wider text-bull sm:px-5">
           <span>{t.colVolume}</span>
           <span className="text-right">{t.colTaxas}</span>
           <span className="text-right">{t.colBonus}</span>
           <span className="text-right">{t.colTotal}</span>
         </div>
         {METAS.map((m) => (
-          <div key={m.volumeUsd} className="tnum grid grid-cols-4 gap-2 border-t border-ink-700 px-4 py-3 text-[14px] sm:px-5 sm:text-[15px]">
+          <div key={m.volumeUsd} className="tnum grid grid-cols-4 gap-2 border-t border-white/[0.06] px-4 py-3 text-[14px] sm:px-5 sm:text-[15px]">
             <span className="text-zinc-300">{usd(m.volumeUsd)}</span>
             <span className="text-right text-zinc-200">{usd(taxa(m.volumeUsd))}</span>
             <span className="text-right text-zinc-200">+ {usd(m.bonusUsd)}</span>
-            <span className="text-right font-black text-bull">{usd(taxa(m.volumeUsd) + m.bonusUsd)}</span>
+            <span className="promo-valor text-right font-black">{usd(taxa(m.volumeUsd) + m.bonusUsd)}</span>
           </div>
         ))}
-        <p className="border-t border-ink-700 px-4 py-2.5 text-[12.5px] text-zinc-400 sm:px-5">{t.nota}</p>
+        <p className="border-t border-white/[0.06] px-4 py-2.5 text-[12.5px] text-zinc-400 sm:px-5">{t.nota}</p>
       </div>
 
-      <p className="rounded-xl border border-bull/30 bg-bull/[0.06] px-4 py-3 text-center text-[14px] font-bold text-zinc-50">
+      <p className="rounded-2xl border border-bull/30 bg-bull/[0.06] px-4 py-3 text-center text-[14px] font-bold text-zinc-50">
         🏆 {t.destaque}
       </p>
 
@@ -210,15 +239,15 @@ export default async function CreatorBonus() {
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.maisTitulo}</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Link href="/affiliate" className="group rounded-2xl border border-marca/40 bg-marca/[0.05] p-5 transition-colors hover:bg-marca/[0.09]">
+          <Link href="/affiliate" className="group rounded-2xl border border-bull/30 bg-bull/[0.05] p-5 transition-colors hover:bg-bull/[0.09]">
             <p className="text-[15px] font-bold text-zinc-50">🔗 {t.indicacaoTitulo}</p>
             <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-400">{t.indicacaoTexto}</p>
-            <p className="mt-3 text-[13px] font-bold text-marca">{t.indicacaoLink}</p>
+            <p className="mt-3 text-[13px] font-bold text-bull">{t.indicacaoLink}</p>
           </Link>
-          <Link href="/airdrop" className="group rounded-2xl border border-marca/40 bg-marca/[0.05] p-5 transition-colors hover:bg-marca/[0.09]">
+          <Link href="/airdrop" className="group rounded-2xl border border-bull/30 bg-bull/[0.05] p-5 transition-colors hover:bg-bull/[0.09]">
             <p className="text-[15px] font-bold text-zinc-50">⭐ {t.pontosTitulo}</p>
             <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-400">{t.pontosTexto}</p>
-            <p className="mt-3 text-[13px] font-bold text-marca">{t.pontosLink}</p>
+            <p className="mt-3 text-[13px] font-bold text-bull">{t.pontosLink}</p>
           </Link>
         </div>
       </section>
@@ -228,7 +257,7 @@ export default async function CreatorBonus() {
         <ul className="mt-3 space-y-2">
           {t.itens.map((i) => (
             <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-zinc-400">
-              <span aria-hidden className="mt-[9px] size-1 shrink-0 rounded-full bg-marca" />
+              <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-bull" />
               {i}
             </li>
           ))}
@@ -238,12 +267,12 @@ export default async function CreatorBonus() {
       {/* Perguntas frequentes: abre e fecha sem JavaScript (<details>). */}
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{f.titulo}</h2>
-        <div className="mt-3 divide-y divide-ink-700 overflow-hidden rounded-xl border border-ink-700 bg-ink-900">
+        <div className="mt-3 divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-bull/20 bg-ink-900">
           {f.itens.map(([pergunta, resposta]) => (
             <details key={pergunta} className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-[14.5px] font-semibold text-zinc-100 hover:bg-white/[0.02] [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-[14.5px] font-semibold text-zinc-100 hover:bg-bull/[0.04] [&::-webkit-details-marker]:hidden">
                 {pergunta}
-                <span aria-hidden className="shrink-0 text-[18px] leading-none text-marca transition-transform group-open:rotate-45">
+                <span aria-hidden className="shrink-0 text-[20px] leading-none text-bull transition-transform group-open:rotate-45">
                   +
                 </span>
               </summary>
@@ -253,8 +282,8 @@ export default async function CreatorBonus() {
         </div>
       </section>
 
-      <Link href="/create" className="inline-block rounded-lg bg-marca px-5 py-2.5 text-[14px] font-bold text-[#08090b] hover:bg-marca-forte">
-        {t.cta} →
+      <Link href="/create" className={BOTAO}>
+        {t.cta} <span aria-hidden>→</span>
       </Link>
     </div>
   );
