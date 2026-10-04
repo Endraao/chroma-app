@@ -5,7 +5,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
-import { ganhosDoCriador, transacaoDeSaqueDoCriador } from "@/lib/meteora-dbc";
+import { ganhosDoCriador, transacoesDeSaqueDoCriador } from "@/lib/meteora-dbc";
 import { formatUsd } from "@/lib/utils";
 
 const TEXTOS = traducoes({
@@ -65,7 +65,7 @@ type Bonus = { conquistadoUsd: number; pagoUsd: number; pedidoUsd: number };
 export function GanhosDoCriador({ address }: { address: string }) {
   const t = useTextos(TEXTOS);
   const { connection } = useConnection();
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey, signAllTransactions } = useWallet();
   const [dados, setDados] = useState<Awaited<ReturnType<typeof ganhosDoCriador>>>(null);
   const [bonus, setBonus] = useState<Bonus | null>(null);
   const [sol, setSol] = useState(0);
@@ -102,16 +102,18 @@ export function GanhosDoCriador({ address }: { address: string }) {
 
   const sacar = async () => {
     try {
-      if (temTaxa && signTransaction) {
+      if (temTaxa && signAllTransactions) {
         setEstado("aprovar");
-        const tx = await transacaoDeSaqueDoCriador(connection, publicKey, dados.pool);
-        const sim = await connection.simulateTransaction(tx);
-        if (sim.value.err) throw new Error("simulação");
-        const assinada = await signTransaction(tx);
+        // Curva + pool da Meteora (se a moeda já se formou); já vêm simuladas.
+        const txs = await transacoesDeSaqueDoCriador(connection, publicKey, address);
+        if (!txs.length) throw new Error("simulação");
+        const assinadas = await signAllTransactions(txs);
         setEstado("confirmando");
-        const assinatura = await connection.sendRawTransaction(assinada.serialize());
-        const r = await connection.confirmTransaction(assinatura, "confirmed");
-        if (r.value.err) throw new Error("recusada");
+        for (const tx of assinadas) {
+          const assinatura = await connection.sendRawTransaction(tx.serialize());
+          const r = await connection.confirmTransaction(assinatura, "confirmed");
+          if (r.value.err) throw new Error("recusada");
+        }
       }
       if (bonusDisponivel > 0 && !bonusJaPedido) {
         await fetch("/api/bonus-criador", {

@@ -4,12 +4,13 @@ import { useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { Button } from "@/components/ui/Button";
-import { transacoesDeResgate } from "@/lib/meteora-dbc";
+import { transacoesDeResgate, transacoesDeResgateNaMeteora } from "@/lib/meteora-dbc";
 
 /**
  * Resgate das taxas da Chroma na Curva da Chroma (Meteora DBC), só na máquina
  * local. Precisa da CARTEIRA DA PLATAFORMA conectada: é ela o "fee claimer"
- * da config. Em produção a página não faz nada.
+ * da config e dona da metade da liquidez das moedas que já se formaram (pool
+ * da Meteora) — as duas taxas saem aqui. Em produção a página não faz nada.
  */
 export default function ResgatarTaxasDaCurva() {
   const { connection } = useConnection();
@@ -26,7 +27,13 @@ export default function ResgatarTaxasDaCurva() {
     }
     try {
       setEstado("Procurando taxas nas moedas da curva…");
-      const { txs, pools, taxaNegociacaoSol } = await transacoesDeResgate(connection, publicKey);
+      const [curva, meteora] = await Promise.all([
+        transacoesDeResgate(connection, publicKey),
+        transacoesDeResgateNaMeteora(connection, publicKey),
+      ]);
+      const { pools } = curva;
+      const txs = [...curva.txs, ...meteora.txs];
+      const taxaNegociacaoSol = curva.taxaNegociacaoSol + meteora.taxaSol;
       if (!txs.length) return setEstado(`Nada a resgatar agora (${pools} moeda(s) na curva).`);
       setEstado(`${txs.length} resgate(s) prontos (${taxaNegociacaoSol.toFixed(6)} SOL de negociação + taxas de lançamento). Aprove na carteira…`);
       const assinadas = await signAllTransactions(txs);

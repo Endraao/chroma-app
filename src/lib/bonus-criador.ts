@@ -11,7 +11,8 @@
  * ganhar US$ 50 na primeira meta.
  *
  * O progresso é medido pelo que a Chroma ganhou de verdade (taxa de parceira
- * lida da pool), não por volume declarado. O "volume" mostrado é esse ganho
+ * na curva + metade da taxa da pool da Meteora depois que a moeda se forma,
+ * lidas da rede), não por volume declarado. O "volume" mostrado é esse ganho
  * convertido pela taxa normal de 1% — aproximação honesta: nos 2 primeiros
  * minutos a taxa anti-robô é maior, e a meta chega um pouco antes.
  */

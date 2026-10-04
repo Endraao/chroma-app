@@ -1,4 +1,4 @@
-import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction } from "@solana/web3.js";
+import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import BN from "bn.js";
 
 /**
@@ -254,17 +254,119 @@ export async function transacoesDeResgate(conexao: Connection, carteira: PublicK
 }
 
 /**
- * Quanto a Chroma já ganhou (taxa de parceira, resgatada ou não) com uma
- * moeda da curva, em SOL. Base do bônus do criador (ver lib/bonus-criador.ts).
+ * ---------------------------------------------------------------------------
+ * DEPOIS QUE A MOEDA SE FORMA (pool DAMM v2 da Meteora)
+ * ---------------------------------------------------------------------------
+ * Quando a curva enche, a moeda migra sozinha pra uma pool DAMM v2 (taxa fixa
+ * de 1%, config FixedBps100 da Meteora). A liquidez fica travada pra sempre em
+ * DUAS posições: metade da Chroma, metade do criador. Cada posição recebe sua
+ * parte da taxa da pool (80% da taxa vai pras posições, 20% pra Meteora) —
+ * as mesmas proporções da curva: 0,4% do volume pra cada lado.
+ *
+ * A pool cobra a taxa só em SOL (collectFeeMode = OnlyB), então tudo aqui
+ * soma lamports. A curva continua existindo depois da migração: o que sobrou
+ * de taxa nela ainda se saca por ela.
+ */
+async function poolNaMeteora(conexao: Connection, mint: string) {
+  const [dbc, amm] = await Promise.all([import("@meteora-ag/dynamic-bonding-curve-sdk"), import("@meteora-ag/cp-amm-sdk")]);
+  const pool = dbc.deriveDammV2PoolAddress(
+    dbc.DAMM_V2_MIGRATION_FEE_ADDRESS[dbc.MigrationFeeOption.FixedBps100],
+    new PublicKey(mint),
+    SOL,
+  );
+  const cliente = new amm.CpAmm(conexao);
+  const estado = await cliente.fetchPoolState(pool).catch(() => null);
+  return estado ? { amm, cliente, pool, estado } : null;
+}
+
+/** A parte de cada lado (Chroma ou criador) na taxa da pool da Meteora: metade, em lamports. */
+function metadeDaTaxaNaMeteora(estado: { metrics: { totalLpBFee: BN } }): number {
+  return Number(estado.metrics.totalLpBFee.toString()) / 2;
+}
+
+/** As posições de uma carteira na pool da Meteora, com a taxa ainda não sacada. */
+async function posicoesNaMeteora(conexao: Connection, mint: string, dono: PublicKey) {
+  const m = await poolNaMeteora(conexao, mint);
+  if (!m) return null;
+  const posicoes = await m.cliente.getUserPositionByPool(m.pool, dono).catch(() => []);
+  return {
+    ...m,
+    posicoes: posicoes.map((p) => ({ ...p, aReceber: Number(m.amm.getUnClaimLpFee(m.estado, p.positionState).feeTokenB.toString()) })),
+  };
+}
+
+/** Grupos de instruções que sacam a taxa das posições de `dono` na pool da Meteora. */
+async function instrucoesDeSaqueNaMeteora(conexao: Connection, mint: string, dono: PublicKey) {
+  const m = await posicoesNaMeteora(conexao, mint, dono);
+  if (!m) return { grupos: [] as TransactionInstruction[][], lamports: 0 };
+  const comTaxa = m.posicoes.filter((p) => p.aReceber > 0);
+  const txs = await Promise.all(
+    comTaxa.map((p) =>
+      m.cliente.claimPositionFee({
+        owner: dono,
+        position: p.position,
+        pool: m.pool,
+        positionNftAccount: p.positionNftAccount,
+        tokenAMint: m.estado.tokenAMint,
+        tokenBMint: m.estado.tokenBMint,
+        tokenAVault: m.estado.tokenAVault,
+        tokenBVault: m.estado.tokenBVault,
+        tokenAProgram: m.amm.getTokenProgram(m.estado.tokenAFlag),
+        tokenBProgram: m.amm.getTokenProgram(m.estado.tokenBFlag),
+      }),
+    ),
+  );
+  return { grupos: txs.map((tx) => tx.instructions), lamports: comTaxa.reduce((s, p) => s + p.aReceber, 0) };
+}
+
+/**
+ * Junta grupos de instruções no menor número de transações que cabem (limite
+ * de 1232 bytes) e devolve só as que passam na simulação.
+ */
+async function montarTransacoes(conexao: Connection, pagador: PublicKey, grupos: TransactionInstruction[][]) {
+  const { blockhash } = await conexao.getLatestBlockhash("confirmed");
+  const nova = (instrucoes: TransactionInstruction[]) => {
+    const tx = new Transaction().add(...instrucoes);
+    tx.feePayer = pagador;
+    tx.recentBlockhash = blockhash;
+    return tx;
+  };
+  const cabe = (tx: Transaction) => {
+    try {
+      return tx.serialize({ requireAllSignatures: false, verifySignatures: false }).length <= 1232;
+    } catch {
+      return false;
+    }
+  };
+  const lotes: TransactionInstruction[][] = [];
+  for (const g of grupos.filter((x) => x.length)) {
+    const ultimo = lotes[lotes.length - 1];
+    if (ultimo && cabe(nova([...ultimo, ...g]))) lotes[lotes.length - 1] = [...ultimo, ...g];
+    else lotes.push(g);
+  }
+  const txs: Transaction[] = [];
+  for (const l of lotes) {
+    const tx = nova(l);
+    const sim = await conexao.simulateTransaction(tx).catch(() => null);
+    if (sim && !sim.value.err) txs.push(tx);
+  }
+  return txs;
+}
+
+/**
+ * Quanto a Chroma já ganhou com uma moeda da curva, em SOL: na curva e, se a
+ * moeda já se formou, na pool da Meteora. Base do bônus do criador (ver
+ * lib/bonus-criador.ts) — conta TODA negociação, antes e depois de formar.
  */
 export async function ganhoDaChromaNaMoeda(conexao: Connection, mint: string): Promise<{ sol: number; pool: string } | null> {
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
   const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
-  const b = await cliente.state.getPoolFeeBreakdown(pool).catch(() => null);
+  const [b, m] = await Promise.all([cliente.state.getPoolFeeBreakdown(pool).catch(() => null), poolNaMeteora(conexao, mint)]);
   if (!b) return null;
-  return { sol: Number(b.partner.totalQuoteFee.toString()) / LAMPORTS_PER_SOL, pool: pool.toBase58() };
+  const lamports = Number(b.partner.totalQuoteFee.toString()) + (m ? metadeDaTaxaNaMeteora(m.estado) : 0);
+  return { sol: lamports / LAMPORTS_PER_SOL, pool: pool.toBase58() };
 }
 
 /** Todas as moedas da curva com o ganho da Chroma e o criador (painel de bônus). */
@@ -274,20 +376,23 @@ export async function ganhosDeTodasAsMoedas(conexao: Connection) {
   const pools = await cliente.state.getPoolsByConfig(new PublicKey(CONFIG_DA_CURVA));
   return Promise.all(
     pools.map(async (p) => {
-      const b = await cliente.state.getPoolFeeBreakdown(p.publicKey).catch(() => null);
+      const mint = p.account.poolState.baseMint.toBase58();
+      const [b, m] = await Promise.all([cliente.state.getPoolFeeBreakdown(p.publicKey).catch(() => null), poolNaMeteora(conexao, mint)]);
+      const lamports = (b ? Number(b.partner.totalQuoteFee.toString()) : 0) + (m ? metadeDaTaxaNaMeteora(m.estado) : 0);
       return {
         pool: p.publicKey.toBase58(),
-        mint: p.account.poolState.baseMint.toBase58(),
+        mint,
         criador: p.account.poolState.creator.toBase58(),
-        ganhoSol: b ? Number(b.partner.totalQuoteFee.toString()) / LAMPORTS_PER_SOL : 0,
+        ganhoSol: lamports / LAMPORTS_PER_SOL,
       };
     }),
   );
 }
 
 /**
- * O que o CRIADOR tem pra sacar numa moeda da curva (40% da taxa de cada
- * negociação fica guardado na pool até ele resgatar).
+ * O que o CRIADOR tem pra sacar numa moeda da curva: 40% da taxa de cada
+ * negociação fica guardado (na curva e, depois que a moeda se forma, na
+ * posição dele na pool da Meteora) até ele resgatar.
  */
 export async function ganhosDoCriador(
   conexao: Connection,
@@ -303,28 +408,59 @@ export async function ganhosDoCriador(
   ]);
   const estado = lido?.poolState;
   if (!estado || !b || estado.config.toBase58() !== CONFIG_DA_CURVA) return null;
+  const m = await posicoesNaMeteora(conexao, mint, estado.creator);
+  const naMeteoraAReceber = m ? m.posicoes.reduce((s, p) => s + p.aReceber, 0) : 0;
+  const naMeteoraTotal = m ? metadeDaTaxaNaMeteora(m.estado) : 0;
   return {
     pool: pool.toBase58(),
     criador: estado.creator.toBase58(),
-    aReceberSol: Number(b.creator.unclaimedQuoteFee.toString()) / LAMPORTS_PER_SOL,
-    totalSol: Number(b.creator.totalQuoteFee.toString()) / LAMPORTS_PER_SOL,
+    aReceberSol: (Number(b.creator.unclaimedQuoteFee.toString()) + naMeteoraAReceber) / LAMPORTS_PER_SOL,
+    totalSol: (Number(b.creator.totalQuoteFee.toString()) + naMeteoraTotal) / LAMPORTS_PER_SOL,
   };
 }
 
-/** Transação de saque dos ganhos do criador (assinada pela carteira dele). */
-export async function transacaoDeSaqueDoCriador(conexao: Connection, criador: PublicKey, pool: string): Promise<Transaction> {
+/**
+ * Transações de saque do criador (assinadas pela carteira dele): a taxa
+ * guardada na curva + a da posição dele na pool da Meteora, se a moeda já se
+ * formou. Normalmente cabe tudo numa transação só.
+ */
+export async function transacoesDeSaqueDoCriador(conexao: Connection, criador: PublicKey, mint: string): Promise<Transaction[]> {
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
   const max = new BN("18446744073709551615");
-  const tx = await cliente.creator.claimCreatorTradingFee({
-    creator: criador,
-    payer: criador,
-    pool: new PublicKey(pool),
-    maxBaseAmount: max,
-    maxQuoteAmount: max,
-    receiver: criador,
-  });
-  tx.feePayer = criador;
-  tx.recentBlockhash = (await conexao.getLatestBlockhash("confirmed")).blockhash;
-  return tx;
+  const b = await cliente.state.getPoolFeeBreakdown(pool).catch(() => null);
+  const naCurva =
+    b && Number(b.creator.unclaimedQuoteFee.toString()) > 0
+      ? (
+          await cliente.creator.claimCreatorTradingFee({
+            creator: criador,
+            payer: criador,
+            pool,
+            maxBaseAmount: max,
+            maxQuoteAmount: max,
+            receiver: criador,
+          })
+        ).instructions
+      : [];
+  const naMeteora = await instrucoesDeSaqueNaMeteora(conexao, mint, criador);
+  return montarTransacoes(conexao, criador, [naCurva, ...naMeteora.grupos]);
+}
+
+/**
+ * Transações que sacam a parte da CHROMA nas pools da Meteora (moedas que já
+ * se formaram). Complementa transacoesDeResgate, que cuida da curva.
+ */
+export async function transacoesDeResgateNaMeteora(conexao: Connection, carteira: PublicKey) {
+  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
+  const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const pools = await cliente.state.getPoolsByConfig(new PublicKey(CONFIG_DA_CURVA));
+  let lamports = 0;
+  const grupos: TransactionInstruction[][] = [];
+  for (const p of pools) {
+    const r = await instrucoesDeSaqueNaMeteora(conexao, p.account.poolState.baseMint.toBase58(), carteira);
+    lamports += r.lamports;
+    grupos.push(...r.grupos);
+  }
+  return { txs: await montarTransacoes(conexao, carteira, grupos), taxaSol: lamports / LAMPORTS_PER_SOL };
 }
