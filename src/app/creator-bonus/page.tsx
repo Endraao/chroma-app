@@ -30,6 +30,13 @@ const TEXTOS = traducoes({
       "Every trade counts, wherever it happens: Chroma, Jupiter, Phantom, Fomo or any other app. The fee is charged by the coin itself, not by the app.",
       "Track your progress live on your coin's page — everything is measured on-chain.",
     ],
+    maisTitulo: "More ways to earn",
+    indicacaoTitulo: "Referral link: 0.30% of every trade",
+    indicacaoTexto: "Share your link with your community. Every trade made on Chroma through it pays you 0.30%, on-chain, in the same transaction.",
+    indicacaoLink: "Get your referral link →",
+    pontosTitulo: "Chroma Rewards points",
+    pontosTexto: "Launching coins, trading and referring friends also earns you Chroma Rewards points.",
+    pontosLink: "See Rewards →",
     cta: "Launch on Chroma",
   },
   pt: {
@@ -52,6 +59,13 @@ const TEXTOS = traducoes({
       "Toda negociação conta, não importa onde aconteça: Chroma, Jupiter, Phantom, Fomo ou qualquer outro app. A taxa é cobrada pela própria moeda, não pelo app.",
       "Acompanhe seu progresso ao vivo na página da sua moeda — tudo é medido direto na rede.",
     ],
+    maisTitulo: "Mais formas de ganhar",
+    indicacaoTitulo: "Link de indicação: 0,30% de cada negociação",
+    indicacaoTexto: "Compartilhe seu link com a sua comunidade. Cada negociação feita na Chroma pelo seu link te paga 0,30%, na rede, na mesma transação.",
+    indicacaoLink: "Pegar meu link de indicação →",
+    pontosTitulo: "Pontos de Recompensas da Chroma",
+    pontosTexto: "Lançar moedas, negociar e indicar amigos também rende pontos de Recompensas da Chroma.",
+    pontosLink: "Ver Recompensas →",
     cta: "Lançar na Chroma",
   },
   zh: {
@@ -74,6 +88,13 @@ const TEXTOS = traducoes({
       "每笔交易都计入，无论在哪里发生：Chroma、Jupiter、Phantom、Fomo 或任何其他应用。手续费由代币本身收取，而不是由应用收取。",
       "在你的代币页面实时查看进度——一切都在链上计算。",
     ],
+    maisTitulo: "更多赚钱方式",
+    indicacaoTitulo: "推荐链接：每笔交易 0.30%",
+    indicacaoTexto: "把你的链接分享给社区。每一笔通过你的链接在 Chroma 完成的交易都会在同一笔交易中、在链上支付你 0.30%。",
+    indicacaoLink: "获取我的推荐链接 →",
+    pontosTitulo: "Chroma 奖励积分",
+    pontosTexto: "发币、交易和邀请好友还能获得 Chroma 奖励积分。",
+    pontosLink: "查看奖励 →",
     cta: "在 Chroma 发币",
   },
 });
@@ -184,6 +205,23 @@ export default async function CreatorBonus() {
       <p className="rounded-xl border border-bull/30 bg-bull/[0.06] px-4 py-3 text-center text-[14px] font-bold text-zinc-50">
         🏆 {t.destaque}
       </p>
+
+      {/* Indicação (0,30%) e pontos de Recompensas: somam com o bônus. */}
+      <section>
+        <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.maisTitulo}</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <Link href="/affiliate" className="group rounded-2xl border border-marca/40 bg-marca/[0.05] p-5 transition-colors hover:bg-marca/[0.09]">
+            <p className="text-[15px] font-bold text-zinc-50">🔗 {t.indicacaoTitulo}</p>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-400">{t.indicacaoTexto}</p>
+            <p className="mt-3 text-[13px] font-bold text-marca">{t.indicacaoLink}</p>
+          </Link>
+          <Link href="/airdrop" className="group rounded-2xl border border-marca/40 bg-marca/[0.05] p-5 transition-colors hover:bg-marca/[0.09]">
+            <p className="text-[15px] font-bold text-zinc-50">⭐ {t.pontosTitulo}</p>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-400">{t.pontosTexto}</p>
+            <p className="mt-3 text-[13px] font-bold text-marca">{t.pontosLink}</p>
+          </Link>
+        </div>
+      </section>
 
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.regras}</h2>
