@@ -39,6 +39,10 @@ const DESTINOS_DE_DADOS = [
   // Auditoria de contrato
   "https://api.gopluslabs.io",
 
+  // Saque privado do criador (Cloak): o envio do saque e os circuitos da prova ZK.
+  "https://api.cloak.ag",
+  "https://storage.googleapis.com/cloak-circuits/",
+
   // Nós da Solana, inclusive o canal de tempo real
   "https://*.helius-rpc.com",
   "wss://*.helius-rpc.com",
@@ -86,6 +90,8 @@ function politicaDeConteudo({ desenvolvimento }) {
       [
         "'self'",
         "'unsafe-inline'",
+        // WebAssembly e só ele (não libera eval): a prova ZK do saque privado (Cloak).
+        "'wasm-unsafe-eval'",
         // O recarregamento automático do modo de desenvolvimento usa eval.
         ...(desenvolvimento ? ["'unsafe-eval'"] : []),
       ],

@@ -7,6 +7,7 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import { ganhosDoCriador, transacoesDeSaqueDoCriador } from "@/lib/meteora-dbc";
 import { formatUsd } from "@/lib/utils";
+import { SaquePrivado } from "@/components/trading/SaquePrivado";
 
 const TEXTOS = traducoes({
   en: {
@@ -100,20 +101,26 @@ export function GanhosDoCriador({ address }: { address: string }) {
   const temTaxa = dados.aReceberSol > 0.000001;
   const ocupado = estado === "aprovar" || estado === "confirmando";
 
+  // As taxas guardadas (curva + pool da Meteora, se a moeda já se formou) vão
+  // pra carteira. Quem garante que só o criador saca é o programa na rede.
+  const sacarTaxas = async () => {
+    if (!signAllTransactions) throw new Error("carteira");
+    const txs = await transacoesDeSaqueDoCriador(connection, publicKey, address); // já vêm simuladas
+    if (!txs.length) throw new Error("simulação");
+    const assinadas = await signAllTransactions(txs);
+    for (const tx of assinadas) {
+      const assinatura = await connection.sendRawTransaction(tx.serialize());
+      const r = await connection.confirmTransaction(assinatura, "confirmed");
+      if (r.value.err) throw new Error("recusada");
+    }
+    ler();
+  };
+
   const sacar = async () => {
     try {
-      if (temTaxa && signAllTransactions) {
+      if (temTaxa) {
         setEstado("aprovar");
-        // Curva + pool da Meteora (se a moeda já se formou); já vêm simuladas.
-        const txs = await transacoesDeSaqueDoCriador(connection, publicKey, address);
-        if (!txs.length) throw new Error("simulação");
-        const assinadas = await signAllTransactions(txs);
-        setEstado("confirmando");
-        for (const tx of assinadas) {
-          const assinatura = await connection.sendRawTransaction(tx.serialize());
-          const r = await connection.confirmTransaction(assinatura, "confirmed");
-          if (r.value.err) throw new Error("recusada");
-        }
+        await sacarTaxas();
       }
       if (bonusDisponivel > 0 && !bonusJaPedido) {
         await fetch("/api/bonus-criador", {
@@ -164,6 +171,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
                 ? t.nada
                 : t.total(formatUsd(totalGanhoUsd))}
       </p>
+      <SaquePrivado taxasSol={dados.aReceberSol} sacarTaxas={sacarTaxas} />
     </div>
   );
 }

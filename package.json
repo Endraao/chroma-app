@@ -35,6 +35,7 @@
     "test:abi": "node scripts/test-abi-evm.mjs"
   },
   "dependencies": {
+    "@cloak.dev/sdk": "^0.2.5",
     "@meteora-ag/cp-amm-sdk": "^1.5.1",
     "@meteora-ag/dynamic-bonding-curve-sdk": "^1.5.13",
     "@neondatabase/serverless": "^1.1.0",
