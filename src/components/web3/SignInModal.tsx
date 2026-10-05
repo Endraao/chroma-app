@@ -215,9 +215,10 @@ function MainStep({ onShowAll }: { onShowAll: (rede: WalletNetwork) => void }) {
   return (
     <div className="space-y-4">
       <AbrirNaCarteira />
-      <GoogleRow />
+      {/* Google: só aparece quando o login social existir de verdade (pedido do dono, 05/10/2026). */}
+      {SOCIAL_LOGIN_ENABLED && <GoogleRow />}
 
-      <Divider>{t.ouConecte}</Divider>
+      {SOCIAL_LOGIN_ENABLED && <Divider>{t.ouConecte}</Divider>}
 
       <ChainGroup
         rede="solana"
