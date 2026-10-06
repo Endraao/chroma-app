@@ -91,21 +91,21 @@ const MENSAGENS = traducoes({
   en: {
     conecte: "Connect a Solana wallet first.", semCarteira: "Launching on Solana is not configured yet.",
     compraInvalida: "The initial buy amount is not a valid number.", imagem: "Could not upload the image.",
-    recusou: "the network rejected the transaction", demorou: "The coin was created, but the network is slow to show it. Open its page in a minute.",
+    recusou: "the network rejected the transaction", semSaldo: (precisa: string, tem: string) => `Not enough SOL: launching with this initial buy needs about ${precisa} SOL and your wallet has ${tem} SOL. Add SOL or lower the initial buy.`, demorou: "The coin was created, but the network is slow to show it. Open its page in a minute.",
     semDivisao: "Your coin was created. Finish the last step on its page.",
     expirou: "The approval took too long and the network turned it down. Nothing was charged — just click again.",
   },
   pt: {
     conecte: "Conecte uma carteira Solana antes.", semCarteira: "O lançamento na Solana ainda não está configurado.",
     compraInvalida: "O valor da compra inicial não é um número válido.", imagem: "Não foi possível enviar a imagem.",
-    recusou: "a rede recusou a transação", demorou: "A moeda foi criada, mas a rede está demorando para mostrá-la. Abra a página dela em um minuto.",
+    recusou: "a rede recusou a transação", semSaldo: (precisa: string, tem: string) => `Saldo insuficiente: lançar com essa compra inicial precisa de uns ${precisa} SOL e sua carteira tem ${tem} SOL. Coloque mais SOL ou diminua a compra inicial.`, demorou: "A moeda foi criada, mas a rede está demorando para mostrá-la. Abra a página dela em um minuto.",
     semDivisao: "Sua moeda foi criada. Conclua a última etapa na página dela.",
     expirou: "A aprovação demorou demais e a rede recusou. Nada foi cobrado — é só clicar de novo.",
   },
   zh: {
     conecte: "请先连接 Solana 钱包。", semCarteira: "Solana 发行尚未配置。",
     compraInvalida: "首次买入金额不是有效数字。", imagem: "无法上传图片。",
-    recusou: "网络拒绝了该交易", demorou: "代币已创建，但网络显示较慢。请一分钟后打开其页面。",
+    recusou: "网络拒绝了该交易", semSaldo: (precisa: string, tem: string) => `SOL 不足：使用此首次买入发币大约需要 ${precisa} SOL，你的钱包有 ${tem} SOL。请充值 SOL 或降低首次买入。`, demorou: "代币已创建，但网络显示较慢。请一分钟后打开其页面。",
     semDivisao: "你的代币已创建。请在代币页面完成最后一步。",
     expirou: "确认耗时过长，网络已拒绝。未产生任何费用——再点一次即可。",
   },
@@ -205,6 +205,15 @@ export function useLancarToken() {
          * (ordem recomendada pela Phantom).
          */
         if (dados.curva === "chroma" && CURVA_CHROMA_DISPONIVEL && signTransaction) {
+          /*
+           * Saldo ANTES de tudo. Sem isso, faltando SOL a simulação falhava, a
+           * carteira nem abria e a tela ficava em "aprove na carteira" sem dizer
+           * o porquê (05/10/2026). Custo: 0,02 de taxa + ~0,015 das contas da
+           * moeda + a compra inicial + ~0,001 de rede.
+           */
+          const precisa = 0.02 + 0.015 + compraSol + 0.001;
+          const tem = (await connection.getBalance(publicKey)) / 1e9;
+          if (tem < precisa) throw new Error(m.semSaldo(precisa.toFixed(3), tem.toFixed(3)));
           setEtapa("aprovar-unica");
           const mint = Keypair.generate();
           const tx = await transacaoDeLancamentoNaCurva({
