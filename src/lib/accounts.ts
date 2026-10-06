@@ -511,11 +511,17 @@ export async function linkWallet(params: {
     return { ok: false, error: "Não encontramos a conta para vincular.", status: 500 };
   }
 
+  // DO NOTHING (antes: DO UPDATE): numa corrida, a segunda requisição não pode
+  // tomar a carteira que a primeira acabou de gravar em outra conta.
   await sql.query(
     `INSERT INTO carteiras (endereco, conta, chain) VALUES ($1, $2, $3)
-     ON CONFLICT (endereco) DO UPDATE SET conta = excluded.conta, chain = excluded.chain`,
+     ON CONFLICT (endereco) DO NOTHING`,
     [chaveDoEndereco(params.endereco), alvo[0].conta, params.chain],
   );
+  const depois = await findByWallet(params.endereco);
+  if (depois && depois.nickname !== conta.nickname) {
+    return { ok: false, error: "Esta carteira já pertence a outra conta.", status: 409 };
+  }
 
   const account = await findByNickname(conta.nickname);
   return account

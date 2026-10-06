@@ -11,6 +11,7 @@ import { useDisconnect } from "wagmi";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { SignInModal } from "@/components/web3/SignInModal";
+import { useDonoDaCarteira } from "@/hooks/useDonoDaCarteira";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { chainIcon } from "@/lib/chain-icons";
@@ -27,9 +28,9 @@ import { cn, formatUsd, shortenAddress } from "@/lib/utils";
  * de fato usa — lançar moeda, conferir saldo e abrir o perfil.
  */
 const TEXTOS = traducoes({
-  en: { entrar: "Sign in", carteiraExterna: "external wallet", criar: "Create token", abrirMenu: "Open account menu", escolherApelido: "Choose a nickname", verPerfil: "View profile", suasRedes: "Your networks", esconderSaldo: "Hide balance", mostrarSaldo: "Show balance", naoPertence: "This wallet is not linked to your account yet", vincular: "link", conectar: "connect", emEth: "In ETH", emSol: "In SOL", emMoedas: "In coins", moeda: "coin", moedas: "coins", taxas: "Fees", indicacoes: "Referrals", sair: "Sign out" },
-  pt: { entrar: "Entrar", carteiraExterna: "carteira externa", criar: "Criar token", abrirMenu: "Abrir menu da conta", escolherApelido: "Escolher apelido", verPerfil: "Ver perfil", suasRedes: "Suas redes", esconderSaldo: "Esconder saldo", mostrarSaldo: "Mostrar saldo", naoPertence: "Esta carteira ainda não pertence à sua conta", vincular: "vincular", conectar: "conectar", emEth: "Em ETH", emSol: "Em SOL", emMoedas: "Em moedas", moeda: "moeda", moedas: "moedas", taxas: "Taxas", indicacoes: "Indicações", sair: "Sair" },
-  zh: { entrar: "登录", carteiraExterna: "外部钱包", criar: "创建代币", abrirMenu: "打开账户菜单", escolherApelido: "选择昵称", verPerfil: "查看资料", suasRedes: "你的网络", esconderSaldo: "隐藏余额", mostrarSaldo: "显示余额", naoPertence: "该钱包尚未关联到你的账户", vincular: "关联", conectar: "连接", emEth: "ETH 余额", emSol: "SOL 余额", emMoedas: "代币", moeda: "个代币", moedas: "个代币", taxas: "费用", indicacoes: "推荐", sair: "退出" },
+  en: { entrar: "Sign in", carteiraExterna: "external wallet", criar: "Create token", abrirMenu: "Open account menu", escolherApelido: "Choose a nickname", verPerfil: "View profile", suasRedes: "Your networks", esconderSaldo: "Hide balance", mostrarSaldo: "Show balance", naoPertence: "This wallet is not linked to your account yet", deOutra: (n: string) => `This wallet belongs to @${n}`, vincular: "link", conectar: "connect", emEth: "In ETH", emSol: "In SOL", emMoedas: "In coins", moeda: "coin", moedas: "coins", taxas: "Fees", indicacoes: "Referrals", sair: "Sign out" },
+  pt: { entrar: "Entrar", carteiraExterna: "carteira externa", criar: "Criar token", abrirMenu: "Abrir menu da conta", escolherApelido: "Escolher apelido", verPerfil: "Ver perfil", suasRedes: "Suas redes", esconderSaldo: "Esconder saldo", mostrarSaldo: "Mostrar saldo", naoPertence: "Esta carteira ainda não pertence à sua conta", deOutra: (n: string) => `Esta carteira é da conta @${n}`, vincular: "vincular", conectar: "conectar", emEth: "Em ETH", emSol: "Em SOL", emMoedas: "Em moedas", moeda: "moeda", moedas: "moedas", taxas: "Taxas", indicacoes: "Indicações", sair: "Sair" },
+  zh: { entrar: "登录", carteiraExterna: "外部钱包", criar: "创建代币", abrirMenu: "打开账户菜单", escolherApelido: "选择昵称", verPerfil: "查看资料", suasRedes: "你的网络", esconderSaldo: "隐藏余额", mostrarSaldo: "显示余额", naoPertence: "该钱包尚未关联到你的账户", deOutra: (n: string) => `该钱包属于 @${n}`, vincular: "关联", conectar: "连接", emEth: "ETH 余额", emSol: "SOL 余额", emMoedas: "代币", moeda: "个代币", moedas: "个代币", taxas: "费用", indicacoes: "推荐", sair: "退出" },
 });
 
 export function AccountMenu() {
@@ -43,6 +44,11 @@ export function AccountMenu() {
   const [saldoVisivel, setSaldoVisivel] = useState(true);
 
   const account = useChromaAccount();
+  // Carteira conectada que já é de OUTRA conta: não oferece "vincular".
+  const donoConectada: Record<ChainId, string | null> = {
+    solana: useDonoDaCarteira(account.carteiras?.solana ? null : (account.conectadas.solana ?? null)),
+    robinhood: useDonoDaCarteira(account.carteiras?.robinhood ? null : (account.conectadas.robinhood ?? null)),
+  };
   // Conectou a carteira daquela rede: fecha e esquece (senão reabriria ao desconectar).
   useEffect(() => {
     if (redeDoModal && account.conectadas[redeDoModal]) setRedeDoModal(null);
@@ -227,7 +233,14 @@ export function AccountMenu() {
                             não tem pra onde ir. O atalho leva direto pra tela
                             que resolve, em vez de deixar a pessoa procurar.
                           */}
-                          {!vinculada && (
+                          {!vinculada && donoConectada[id] && donoConectada[id] !== account.account?.nickname ? (
+                            <span
+                              title={t.deOutra(donoConectada[id]!)}
+                              className="rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] font-bold text-zinc-500"
+                            >
+                              @{donoConectada[id]}
+                            </span>
+                          ) : !vinculada && (
                             <Link
                               href="/profile?aba=conta"
                               onClick={() => setMenuOpen(false)}

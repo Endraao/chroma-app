@@ -11,6 +11,7 @@ import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SignInModal } from "@/components/web3/SignInModal";
+import { useDonoDaCarteira } from "@/hooks/useDonoDaCarteira";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { chainIcon } from "@/lib/chain-icons";
 import { MOEDA_DA_REDE } from "@/lib/affiliate-types";
@@ -37,7 +38,7 @@ const TEXTOS = traducoes({
     conecteDaConta: "Connect this account's wallet to authorize the link.",
     titulo: "Wallets that get paid", vinculadaMin: "linked", ou: " or ",
     aviso: (r: React.ReactNode) => <>To link a new wallet, reconnect your {r} — it authorizes, because it already belongs to this account. You can keep both connected at the same time.</>,
-    recebeEm: (m: string) => `paid in ${m}`, nenhuma: (r: string) => `Connect a compatible wallet to receive your ${r} referral fees`, falta: (e: string) => `${e} is connected — click Link and sign with your account wallet to finish`,
+    recebeEm: (m: string) => `paid in ${m}`, nenhuma: (r: string) => `Connect a compatible wallet to receive your ${r} referral fees`, falta: (e: string) => `${e} is connected — click Link and sign with your account wallet to finish`, deOutra: (e: string, n: string, r: string) => `${e} already belongs to @${n}. Connect another ${r} wallet to link it here.`,
     assinando: "Signing…", conectar: "Connect", trocarPraEsta: "Switch to this one", vinculada: "Linked", vincular: "Link",
     umaAssinatura: "a signature", naoTransacao: "is not a transaction",
     explica: (a: React.ReactNode, b: React.ReactNode) => <>Linking asks for {a} from the wallet already on the account — that is how we confirm the new wallet is yours too. Signing a message {b}: it does not move funds nor grant any permission over them.</>,
@@ -48,7 +49,7 @@ const TEXTOS = traducoes({
     conecteDaConta: "Conecte a carteira desta conta para autorizar a vinculação.",
     titulo: "Carteiras que recebem", vinculadaMin: "vinculada", ou: " ou ",
     aviso: (r: React.ReactNode) => <>Para vincular uma carteira nova, reconecte a sua {r} — é ela que autoriza, porque já pertence a esta conta. Você pode manter as duas conectadas ao mesmo tempo.</>,
-    recebeEm: (m: string) => `recebe em ${m}`, nenhuma: (r: string) => `Conecte uma carteira compatível para receber suas taxas de indicação da rede ${r}`, falta: (e: string) => `${e} está conectada — clique em Vincular e assine com a carteira da sua conta pra terminar`,
+    recebeEm: (m: string) => `recebe em ${m}`, nenhuma: (r: string) => `Conecte uma carteira compatível para receber suas taxas de indicação da rede ${r}`, falta: (e: string) => `${e} está conectada — clique em Vincular e assine com a carteira da sua conta pra terminar`, deOutra: (e: string, n: string, r: string) => `${e} já é da conta @${n}. Conecte outra carteira da ${r} pra vincular aqui.`,
     assinando: "Assinando…", conectar: "Conectar", trocarPraEsta: "Trocar pra esta", vinculada: "Vinculada", vincular: "Vincular",
     umaAssinatura: "uma assinatura", naoTransacao: "não é uma transação",
     explica: (a: React.ReactNode, b: React.ReactNode) => <>Vincular pede {a} da carteira que já está na conta — é assim que confirmamos que a carteira nova também é sua. Assinar uma mensagem {b}: não move fundos nem dá qualquer permissão sobre eles.</>,
@@ -59,7 +60,7 @@ const TEXTOS = traducoes({
     conecteDaConta: "请连接该账户的钱包以授权关联。",
     titulo: "收款钱包", vinculadaMin: "已关联", ou: " 或 ",
     aviso: (r: React.ReactNode) => <>要关联新钱包，请重新连接你的 {r} —— 它已属于该账户，由它授权。两个钱包可以同时保持连接。</>,
-    recebeEm: (m: string) => `以 ${m} 收款`, nenhuma: (r: string) => `连接兼容的钱包以接收 ${r} 的推荐费用`, falta: (e: string) => `${e} 已连接——点击「关联」并用账户钱包签名即可完成`,
+    recebeEm: (m: string) => `以 ${m} 收款`, nenhuma: (r: string) => `连接兼容的钱包以接收 ${r} 的推荐费用`, falta: (e: string) => `${e} 已连接——点击「关联」并用账户钱包签名即可完成`, deOutra: (e: string, n: string, r: string) => `${e} 已属于 @${n}。请连接另一个 ${r} 钱包来关联到这里。`,
     assinando: "签名中…", conectar: "连接", trocarPraEsta: "改用此钱包", vinculada: "已关联", vincular: "关联",
     umaAssinatura: "一次签名", naoTransacao: "不是交易",
     explica: (a: React.ReactNode, b: React.ReactNode) => <>关联需要账户中已有钱包的{a} —— 以此确认新钱包也属于你。签名消息{b}：不会转移资金，也不会授予任何权限。</>,
@@ -81,6 +82,11 @@ export function LinkedWallets() {
   const { signMessageAsync: assinarEvm } = useSignMessage();
 
   const nickname = account.account?.nickname ?? null;
+  // Carteira conectada que já é de OUTRA conta: avisa e não oferece "Vincular".
+  const donoConectada: Record<ChainId, string | null> = {
+    solana: useDonoDaCarteira(account.carteiras.solana ? null : (account.conectadas.solana ?? null)),
+    robinhood: useDonoDaCarteira(account.carteiras.robinhood ? null : (account.conectadas.robinhood ?? null)),
+  };
 
   /** As redes cuja carteira já pertence à conta — as que podem autorizar. */
   const redesDaConta = Object.keys(account.carteiras ?? {}) as ChainId[];
@@ -234,6 +240,7 @@ export function LinkedWallets() {
           // Sem diferenciar maiúsculas: o mesmo endereço EVM vem "checksum" de
           // um lado e em minúsculas do outro, e aparecia "Trocar pra esta" pra
           // própria carteira já vinculada.
+          const deOutra = !vinculada && donoConectada[chain] && donoConectada[chain] !== nickname ? donoConectada[chain] : null;
           const precisaTrocar = Boolean(
             vinculada && conectada && vinculada.toLowerCase() !== conectada.toLowerCase(),
           );
@@ -268,7 +275,11 @@ export function LinkedWallets() {
                     shortenAddress(vinculada, 6)
                   ) : (
                     <span className="font-sans text-warn">
-                      {conectada ? t.falta(shortenAddress(conectada, 4)) : t.nenhuma(meta.label)}
+                      {deOutra && conectada
+                        ? t.deOutra(shortenAddress(conectada, 4), deOutra, meta.label)
+                        : conectada
+                          ? t.falta(shortenAddress(conectada, 4))
+                          : t.nenhuma(meta.label)}
                     </span>
                   )}
                 </div>
@@ -277,7 +288,7 @@ export function LinkedWallets() {
               <Button
                 variant={vinculada ? "ghost" : "chroma"}
                 size="sm"
-                disabled={ocupada === chain || (Boolean(vinculada) && !precisaTrocar)}
+                disabled={ocupada === chain || Boolean(deOutra) || (Boolean(vinculada) && !precisaTrocar)}
                 onClick={() => vincular(chain)}
               >
                 {ocupada === chain
