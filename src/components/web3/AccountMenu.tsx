@@ -15,6 +15,7 @@ import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useWalletBalance } from "@/hooks/useWalletBalance";
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
+import type { ChainId } from "@/lib/types";
 import { cn, formatUsd, shortenAddress } from "@/lib/utils";
 
 /**
@@ -35,10 +36,17 @@ export function AccountMenu() {
   const t = useTextos(TEXTOS);
   const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // "conectar" de uma rede, já logado: a lista de carteiras DAQUELA rede.
+  // Sem isso o modal abria e fechava na hora (já logado = nada a fazer).
+  const [redeDoModal, setRedeDoModal] = useState<ChainId | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [saldoVisivel, setSaldoVisivel] = useState(true);
 
   const account = useChromaAccount();
+  // Conectou a carteira daquela rede: fecha e esquece (senão reabriria ao desconectar).
+  useEffect(() => {
+    if (redeDoModal && account.conectadas[redeDoModal]) setRedeDoModal(null);
+  }, [redeDoModal, account.conectadas]);
   const { sol, eth, usd, emMoedas, quantasMoedas } = useWalletBalance();
   const { wallet: solanaWallet, disconnect: disconnectSolana } = useWallet();
   const { disconnect: disconnectEvm } = useDisconnect();
@@ -237,7 +245,7 @@ export function AccountMenu() {
                         <button
                           onClick={() => {
                             setMenuOpen(false);
-                            setModalOpen(true);
+                            setRedeDoModal(id);
                           }}
                           className="shrink-0 rounded-md border border-marca/30 px-1.5 py-0.5 text-[10px] font-bold text-marca transition-colors hover:bg-marca/10"
                         >
@@ -318,6 +326,11 @@ export function AccountMenu() {
       </div>
 
       <SignInModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <SignInModal
+        open={redeDoModal !== null && !account.conectadas[redeDoModal]}
+        onClose={() => setRedeDoModal(null)}
+        rede={redeDoModal === "solana" ? "solana" : "evm"}
+      />
     </div>
   );
 }
