@@ -24,6 +24,12 @@ const TEXTOS = traducoes({
     colTotal: "Total to you",
     nota: "Trading fees are claimed instantly with the Claim button on your coin's page. The bonus is requested with the same button and paid in SOL within 7 days. Everything goes straight to the wallet that created the coin.",
     destaque: "No other launchpad pays you trading fees and a cash bonus for volume.",
+    difTitulo: "Why launch on Chroma",
+    difOutras: "Other launchpads",
+    difOutrasTexto: "Most of the fee on every trade stays with the platform.",
+    difChroma: "Chroma",
+    difChromaTexto: "We pass it on to you: 40% of every trade fee goes straight to the creator, forever — plus a cash bonus at every volume goal.",
+    difRodape: "Your community can trade wherever it already does — Jupiter, Phantom, Axiom, Photon, Telegram bots. Every trade, on any app, pays you and counts toward the bonus.",
     regras: "Rules",
     itens: [
       "Valid only for coins launched on Chroma Launchpad, on the Solana network.",
@@ -53,6 +59,12 @@ const TEXTOS = traducoes({
     colTotal: "Total pra você",
     nota: "As taxas você saca na hora, pelo botão Sacar na página da sua moeda. O bônus é pedido no mesmo botão e pago em SOL em até 7 dias. Tudo vai direto pra carteira que criou a moeda.",
     destaque: "Nenhuma outra launchpad paga taxa de negociação e bônus em dinheiro por volume.",
+    difTitulo: "Por que lançar na Chroma",
+    difOutras: "Outras launchpads",
+    difOutrasTexto: "A maior parte da taxa de cada negociação fica com a plataforma.",
+    difChroma: "Chroma",
+    difChromaTexto: "A gente repassa pra você: 40% da taxa de toda negociação vai direto pro criador, pra sempre — e ainda tem bônus em dinheiro a cada meta de volume.",
+    difRodape: "Sua comunidade negocia onde já está acostumada — Jupiter, Phantom, Axiom, Photon, bots do Telegram. Toda negociação, em qualquer app, paga você e conta pro bônus.",
     regras: "Regras",
     itens: [
       "Vale para moedas lançadas dentro da Chroma Launchpad, apenas na rede Solana.",
@@ -82,6 +94,12 @@ const TEXTOS = traducoes({
     colTotal: "你的总收益",
     nota: "交易手续费可随时通过代币页面的「领取」按钮即时领取。奖金通过同一按钮申请，7 天内以 SOL 支付。全部直接进入创建代币的钱包。",
     destaque: "没有其他发射平台同时为交易量支付交易手续费和现金奖金。",
+    difTitulo: "为什么在 Chroma 发币",
+    difOutras: "其他发射平台",
+    difOutrasTexto: "每笔交易的大部分手续费归平台所有。",
+    difChroma: "Chroma",
+    difChromaTexto: "我们把它转给你：每笔交易 40% 的手续费永久直接归创作者——每达成一个交易量目标还有现金奖金。",
+    difRodape: "你的社区可以在习惯的地方交易——Jupiter、Phantom、Axiom、Photon、Telegram 机器人。任何应用中的每笔交易都会付给你，并计入奖金。",
     regras: "规则",
     itens: [
       "仅适用于在 Chroma Launchpad 上发行的代币，且仅限 Solana 网络。",
@@ -234,6 +252,22 @@ export default async function CreatorBonus() {
       <p className="rounded-2xl border border-bull/30 bg-bull/[0.06] px-4 py-3 text-center text-[14px] font-bold text-zinc-50">
         🏆 {t.destaque}
       </p>
+
+      {/* Outras launchpads × Chroma: pra onde vai a taxa (pedido do dono, 06/10/2026). */}
+      <section>
+        <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.difTitulo}</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
+            <p className="text-[13px] font-bold uppercase tracking-wider text-zinc-500">{t.difOutras}</p>
+            <p className="mt-2 text-[15px] leading-relaxed text-zinc-400">{t.difOutrasTexto}</p>
+          </div>
+          <div className="rounded-2xl border border-bull/40 bg-bull/[0.07] p-5">
+            <p className="text-[13px] font-bold uppercase tracking-wider text-bull">{t.difChroma}</p>
+            <p className="mt-2 text-[15px] leading-relaxed text-zinc-100">{t.difChromaTexto}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-[13px] leading-relaxed text-zinc-400">{t.difRodape}</p>
+      </section>
 
       {/* Indicação (0,30%) e pontos de Recompensas: somam com o bônus. */}
       <section>
