@@ -106,15 +106,6 @@ export const CHAINS: Record<
    * launchpad funciona: é lá que dá pra criar moeda, e criar moeda é o que
    * esta plataforma faz de diferente.
    */
-  robinhood: {
-    label: "Robinhood Chain",
-    kind: "evm",
-    nativeSymbol: "ETH",
-    explorer: "https://robinhoodchain.blockscout.com/token/",
-    accent: "text-chroma-mint",
-    gecko: "robinhood",
-    dexscreener: "robinhood",
-  },
   solana: {
     label: "Solana",
     kind: "solana",
@@ -123,6 +114,15 @@ export const CHAINS: Record<
     accent: "text-chroma-violet",
     gecko: "solana",
     dexscreener: "solana",
+  },
+  robinhood: {
+    label: "Robinhood Chain",
+    kind: "evm",
+    nativeSymbol: "ETH",
+    explorer: "https://robinhoodchain.blockscout.com/token/",
+    accent: "text-chroma-mint",
+    gecko: "robinhood",
+    dexscreener: "robinhood",
   },
 };
 
@@ -136,7 +136,8 @@ export const CHAIN_IDS = Object.keys(CHAINS) as ChainId[];
  * as cópias — e a que ficasse pra trás abriria numa rede diferente das demais,
  * sem ninguém notar até alguém reclamar.
  */
-export const REDE_PADRAO: ChainId = "robinhood";
+// Solana desde 05/10/2026: é onde vivem a Curva da Chroma e a promoção do criador.
+export const REDE_PADRAO: ChainId = "solana";
 
 /**
  * Dá pra LANÇAR moeda pela Chroma nesta rede?
