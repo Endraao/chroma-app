@@ -499,6 +499,17 @@ export async function linkWallet(params: {
   }
 
   /*
+   * UMA CARTEIRA POR REDE (pedido do dono, 05/10/2026). Antes, vincular uma
+   * segunda carteira na mesma rede deixava a primeira pendurada na conta: as
+   * duas achavam a conta, mas a tela só mostrava uma. Pra trocar, desvincula
+   * primeiro (unlinkWallet).
+   */
+  const atual = walletForChain(conta, params.chain);
+  if (atual && chaveDoEndereco(atual) !== chaveDoEndereco(params.endereco)) {
+    return { ok: false, error: "Esta conta já tem uma carteira nesta rede. Desvincule a atual antes de vincular outra.", status: 409 };
+  }
+
+  /*
    * A chave primária da tabela de carteiras fecha a corrida que a checagem
    * acima não fecha sozinha: duas requisições simultâneas passariam as duas
    * pelo if e as duas gravariam. Aqui a segunda esbarra no banco.
@@ -535,4 +546,41 @@ function indicadorValido(bruto: string | null | undefined, apelido: string, cart
   if (!ref) return null;
   if (ref === apelido.toLowerCase() || ref === carteira.toLowerCase()) return null;
   return ref;
+}
+
+/**
+ * DESVINCULAR a carteira de uma rede (pedido do dono, 05/10/2026).
+ *
+ * Regras, nesta ordem:
+ *   - quem pede é uma carteira da conta (a rota confere a assinatura);
+ *   - a conta nunca fica SEM carteira: sem nenhuma, ninguém mais consegue
+ *     achar nem entrar nela;
+ *   - se a carteira saindo era a principal da conta (contas.wallet), a
+ *     principal passa a ser a que ficou.
+ */
+export async function unlinkWallet(params: { contaDe: string; chain: ChainId }): Promise<LinkResult> {
+  const conta = await findByWallet(params.contaDe);
+  if (!conta) return { ok: false, error: "Esta carteira ainda não tem conta na Chroma.", status: 404 };
+
+  const alvo = (await sql.query("SELECT conta FROM apelidos WHERE nickname = $1", [conta.nickname])) as unknown as { conta: number }[];
+  const id = alvo[0]?.conta;
+  if (!id) return { ok: false, error: "Não encontramos a conta.", status: 500 };
+
+  const todas = (await sql.query("SELECT endereco, chain FROM carteiras WHERE conta = $1", [id])) as unknown as { endereco: string; chain: ChainId }[];
+  const saem = todas.filter((c) => c.chain === params.chain);
+  const ficam = todas.filter((c) => c.chain !== params.chain);
+  if (saem.length === 0) return { ok: false, error: "Esta conta não tem carteira nesta rede.", status: 404 };
+  if (ficam.length === 0) {
+    return { ok: false, error: "Esta é a única carteira da conta. Vincule outra antes de desvincular esta.", status: 409 };
+  }
+
+  await sql.query("DELETE FROM carteiras WHERE conta = $1 AND chain = $2", [id, params.chain]);
+  const principalSaiu = saem.some((c) => c.endereco === chaveDoEndereco(conta.wallet));
+  if (principalSaiu) {
+    const nova = ficam[0];
+    await sql.query("UPDATE contas SET wallet = $1, kind = $2 WHERE id = $3", [nova.endereco, nova.chain === "solana" ? "solana" : "evm", id]);
+  }
+
+  const account = await findByNickname(conta.nickname);
+  return account ? { ok: true, account } : { ok: false, error: "Não foi possível desvincular a carteira.", status: 500 };
 }

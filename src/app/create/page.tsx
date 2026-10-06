@@ -121,7 +121,7 @@ const TEXTOS = traducoes({
     ganhoEvm: "You receive 0.70% of every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.",
     taxaCriadorTitulo: "Creator tax (optional)", taxaCriadorNota: (total: string) => `Extra fee on every trade, paid entirely to you (0–10%). With the value you choose, traders pay ${total}% in total.`,
     verFaixas: "see the tiers",
-    totalNaCarteira: (total: string, usd: string) => <>You need about <strong>{total} SOL</strong>{usd} in your wallet: 0.02 launch fee + ~0.015 for the coin&apos;s accounts on Solana + your initial buy + network fee.</>,
+    totalNaCarteira: (total: string) => <>Required balance: <strong>{total} SOL</strong>. Includes the launch fee (0.02 SOL), the creation of the coin&apos;s accounts on Solana (~0.015 SOL), your initial buy and the network fee.</>,
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
     segundaConfirmacao: "your wallet asks for a second confirmation for this buy, right after creating",
     naoCustodia: "Chroma is non-custodial: the coin is yours and the transaction comes from your wallet. The initial buy pays the same price as anyone else — there is no token reserve for the creator. What you buy here shows up in the security panel as creator concentration.",
@@ -161,7 +161,7 @@ const TEXTOS = traducoes({
     ganhoEvm: "Você recebe 0,70% de cada negociação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.",
     taxaCriadorTitulo: "Taxa do criador (opcional)", taxaCriadorNota: (total: string) => `Taxa extra em cada negociação, paga toda para você (de 0 a 10%). Com o valor escolhido, quem negocia paga ${total}% no total.`,
     verFaixas: "ver as faixas",
-    totalNaCarteira: (total: string, usd: string) => <>Você precisa ter uns <strong>{total} SOL</strong>{usd} na carteira: 0,02 de taxa de lançamento + ~0,015 das contas da moeda na Solana + a sua compra inicial + taxa de rede.</>,
+    totalNaCarteira: (total: string) => <>Saldo necessário: <strong>{total} SOL</strong>. Inclui a taxa de lançamento (0,02 SOL), a criação das contas da moeda na Solana (~0,015 SOL), a sua compra inicial e a taxa de rede.</>,
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
     segundaConfirmacao: "a carteira pede uma segunda confirmação para esta compra, logo depois de criar",
     naoCustodia: "A Chroma não faz custódia: a moeda é sua e a transação sai da sua carteira. A compra inicial paga o mesmo preço que qualquer outra pessoa — não existe reserva de tokens para o criador. O que você comprar aqui aparece no painel de segurança como concentração do criador.",
@@ -201,7 +201,7 @@ const TEXTOS = traducoes({
     ganhoEvm: "你的代币每笔交易你都能获得 0.70%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。",
     taxaCriadorTitulo: "创作者税（可选）", taxaCriadorNota: (total: string) => `每笔交易的额外费用，全部归你（0–10%）。按你选择的数值，交易者总共支付 ${total}%。`,
     verFaixas: "查看档位",
-    totalNaCarteira: (total: string, usd: string) => <>你的钱包需要约 <strong>{total} SOL</strong>{usd}：0.02 发币费 + 约 0.015 Solana 上的代币账户 + 你的首次买入 + 网络费。</>,
+    totalNaCarteira: (total: string) => <>所需余额：<strong>{total} SOL</strong>。包括发币费（0.02 SOL）、在 Solana 上创建代币账户（约 0.015 SOL）、你的首次买入和网络费。</>,
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
     segundaConfirmacao: "创建后钱包会立即请求第二次确认以完成这笔买入",
     naoCustodia: "Chroma 不托管资产：代币属于你，交易从你的钱包发出。首次买入与其他人价格相同 —— 没有为创建者预留代币。你在这里买入的部分会在安全面板中显示为创建者持仓集中度。",
@@ -683,10 +683,7 @@ export default function CreateTokenPage() {
           {/* Quanto precisa ter na carteira, antes do clique (Curva da Chroma). */}
           {chain === "solana" && curva === "chroma" && (
             <p className="rounded-lg border border-marca/25 bg-marca/[0.06] px-3 py-2 text-[12px] leading-relaxed text-zinc-300">
-              {t.totalNaCarteira(
-                (0.036 + (compraInicial > 0 ? compraInicial : 0)).toFixed(3),
-                precoNativo !== null ? ` (≈ ${formatUsd((0.036 + (compraInicial > 0 ? compraInicial : 0)) * precoNativo)})` : "",
-              )}
+              {t.totalNaCarteira((0.036 + (compraInicial > 0 ? compraInicial : 0)).toFixed(3))}
             </p>
           )}
           <p className="text-[11px] leading-relaxed text-zinc-500">

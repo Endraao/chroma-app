@@ -39,7 +39,10 @@ const TEXTOS = traducoes({
     titulo: "Wallets that get paid", vinculadaMin: "linked", ou: " or ",
     aviso: (r: React.ReactNode) => <>To link a new wallet, reconnect your {r} — it authorizes, because it already belongs to this account. You can keep both connected at the same time.</>,
     recebeEm: (m: string) => `paid in ${m}`, nenhuma: (r: string) => `Connect a compatible wallet to receive your ${r} referral fees`, falta: (e: string) => `${e} is connected — click Link and sign with your account wallet to finish`, deOutra: (e: string, n: string, r: string) => `${e} already belongs to @${n}. Connect another ${r} wallet to link it here.`,
-    assinando: "Signing…", conectar: "Connect", trocarPraEsta: "Switch to this one", vinculada: "Linked", vincular: "Link",
+    assinando: "Signing…", conectar: "Connect", trocarPraEsta: "Switch to this one", vinculada: "Linked", vincular: "Link", desvincular: "Unlink", desvinculando: "Unlinking…",
+    confirmaDesvinculo: (e: string, r: string) => `Unlink ${e} from your account? It stops receiving your ${r} referral fees. You can link another wallet afterwards.`,
+    unica: "This is your account's only wallet — link another one before unlinking it.",
+    outraConectada: (e: string) => `${e} is connected, but this account already has a wallet here. Unlink the current one first to link it.`,
     umaAssinatura: "a signature", naoTransacao: "is not a transaction",
     explica: (a: React.ReactNode, b: React.ReactNode) => <>Linking asks for {a} from the wallet already on the account — that is how we confirm the new wallet is yours too. Signing a message {b}: it does not move funds nor grant any permission over them.</>,
   },
@@ -50,7 +53,10 @@ const TEXTOS = traducoes({
     titulo: "Carteiras que recebem", vinculadaMin: "vinculada", ou: " ou ",
     aviso: (r: React.ReactNode) => <>Para vincular uma carteira nova, reconecte a sua {r} — é ela que autoriza, porque já pertence a esta conta. Você pode manter as duas conectadas ao mesmo tempo.</>,
     recebeEm: (m: string) => `recebe em ${m}`, nenhuma: (r: string) => `Conecte uma carteira compatível para receber suas taxas de indicação da rede ${r}`, falta: (e: string) => `${e} está conectada — clique em Vincular e assine com a carteira da sua conta pra terminar`, deOutra: (e: string, n: string, r: string) => `${e} já é da conta @${n}. Conecte outra carteira da ${r} pra vincular aqui.`,
-    assinando: "Assinando…", conectar: "Conectar", trocarPraEsta: "Trocar pra esta", vinculada: "Vinculada", vincular: "Vincular",
+    assinando: "Assinando…", conectar: "Conectar", trocarPraEsta: "Trocar pra esta", vinculada: "Vinculada", vincular: "Vincular", desvincular: "Desvincular", desvinculando: "Desvinculando…",
+    confirmaDesvinculo: (e: string, r: string) => `Desvincular ${e} da sua conta? Ela deixa de receber suas taxas de indicação da ${r}. Depois você pode vincular outra carteira.`,
+    unica: "Esta é a única carteira da conta — vincule outra antes de desvincular esta.",
+    outraConectada: (e: string) => `${e} está conectada, mas a conta já tem uma carteira aqui. Desvincule a atual primeiro pra vincular esta.`,
     umaAssinatura: "uma assinatura", naoTransacao: "não é uma transação",
     explica: (a: React.ReactNode, b: React.ReactNode) => <>Vincular pede {a} da carteira que já está na conta — é assim que confirmamos que a carteira nova também é sua. Assinar uma mensagem {b}: não move fundos nem dá qualquer permissão sobre eles.</>,
   },
@@ -61,7 +67,10 @@ const TEXTOS = traducoes({
     titulo: "收款钱包", vinculadaMin: "已关联", ou: " 或 ",
     aviso: (r: React.ReactNode) => <>要关联新钱包，请重新连接你的 {r} —— 它已属于该账户，由它授权。两个钱包可以同时保持连接。</>,
     recebeEm: (m: string) => `以 ${m} 收款`, nenhuma: (r: string) => `连接兼容的钱包以接收 ${r} 的推荐费用`, falta: (e: string) => `${e} 已连接——点击「关联」并用账户钱包签名即可完成`, deOutra: (e: string, n: string, r: string) => `${e} 已属于 @${n}。请连接另一个 ${r} 钱包来关联到这里。`,
-    assinando: "签名中…", conectar: "连接", trocarPraEsta: "改用此钱包", vinculada: "已关联", vincular: "关联",
+    assinando: "签名中…", conectar: "连接", trocarPraEsta: "改用此钱包", vinculada: "已关联", vincular: "关联", desvincular: "取消关联", desvinculando: "取消中…",
+    confirmaDesvinculo: (e: string, r: string) => `要从账户中取消关联 ${e} 吗？它将不再接收你在 ${r} 的推荐费用。之后你可以关联其他钱包。`,
+    unica: "这是账户唯一的钱包——请先关联另一个钱包再取消关联。",
+    outraConectada: (e: string) => `${e} 已连接，但账户在此已有钱包。请先取消关联当前钱包。`,
     umaAssinatura: "一次签名", naoTransacao: "不是交易",
     explica: (a: React.ReactNode, b: React.ReactNode) => <>关联需要账户中已有钱包的{a} —— 以此确认新钱包也属于你。签名消息{b}：不会转移资金，也不会授予任何权限。</>,
   },
@@ -112,6 +121,52 @@ export function LinkedWallets() {
     }
 
     return assinarEvm({ message: mensagem });
+  }
+
+  /** Tira da conta a carteira desta rede (assinada por uma carteira da conta). */
+  async function desvincular(chain: ChainId) {
+    const atual = account.carteiras[chain];
+    if (!atual || !nickname) return;
+    if (redesDaConta.length <= 1) {
+      setErro(t.unica);
+      return;
+    }
+    if (!account.assinante) {
+      setErro(t.reconecte(redesDaConta.map((c) => CHAINS[c].label).join(" ou ")));
+      return;
+    }
+    if (!window.confirm(t.confirmaDesvinculo(shortenAddress(atual, 4), CHAINS[chain].label))) return;
+    setOcupada(chain);
+    setErro(null);
+    try {
+      // eslint-disable-next-line react-hooks/purity
+      const momento = Date.now();
+      const mensagem = [
+        "Chroma — unlink wallet",
+        "",
+        `Account: @${nickname}`,
+        `Network: ${chain}`,
+        `Time: ${new Date(momento).toISOString()}`,
+        "",
+        "Signing only proves this account is yours.",
+        "It does not move funds or grant any permission over them.",
+      ].join("\n");
+      const assinatura = await assinar(mensagem);
+      if (!assinatura) return;
+      const res = await fetch("/api/account/unlink", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ assinante: account.assinante, chain, mensagem, assinatura }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? "Não foi possível desvincular a carteira.");
+      account.aplicarCarteiras(data.account.carteiras ?? {});
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setErro(/reject|denied|User rejected/i.test(msg) ? null : msg);
+    } finally {
+      setOcupada(null);
+    }
   }
 
   async function vincular(chain: ChainId) {
@@ -272,7 +327,12 @@ export function LinkedWallets() {
                 </div>
                 <div className="text-[11.5px] leading-snug text-zinc-500">
                   {vinculada ? (
-                    shortenAddress(vinculada, 6)
+                    <>
+                      {shortenAddress(vinculada, 6)}
+                      {precisaTrocar && conectada && (
+                        <span className="block font-sans text-warn">{t.outraConectada(shortenAddress(conectada, 4))}</span>
+                      )}
+                    </>
                   ) : (
                     <span className="font-sans text-warn">
                       {deOutra && conectada
@@ -285,22 +345,27 @@ export function LinkedWallets() {
                 </div>
               </div>
 
-              <Button
-                variant={vinculada ? "ghost" : "chroma"}
-                size="sm"
-                disabled={ocupada === chain || Boolean(deOutra) || (Boolean(vinculada) && !precisaTrocar)}
-                onClick={() => vincular(chain)}
-              >
-                {ocupada === chain
-                  ? t.assinando
-                  : vinculada && !precisaTrocar
-                    ? t.vinculada // já ligada à conta: não importa se está conectada agora
-                    : !conectada
-                      ? t.conectar
-                      : precisaTrocar
-                        ? t.trocarPraEsta
-                        : t.vincular}
-              </Button>
+              {vinculada ? (
+                /* Já ligada à conta: a única ação é desvincular (uma carteira por rede). */
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={ocupada === chain || redesDaConta.length <= 1}
+                  title={redesDaConta.length <= 1 ? t.unica : undefined}
+                  onClick={() => desvincular(chain)}
+                >
+                  {ocupada === chain ? t.desvinculando : t.desvincular}
+                </Button>
+              ) : (
+                <Button
+                  variant="chroma"
+                  size="sm"
+                  disabled={ocupada === chain || Boolean(deOutra)}
+                  onClick={() => vincular(chain)}
+                >
+                  {ocupada === chain ? t.assinando : !conectada ? t.conectar : t.vincular}
+                </Button>
+              )}
             </div>
           );
         })}

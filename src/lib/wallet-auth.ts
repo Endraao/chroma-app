@@ -71,6 +71,20 @@ export function mensagemDeVinculo(params: {
   ].join("\n");
 }
 
+/** O texto que a carteira da conta assina pra DESVINCULAR a carteira de uma rede. */
+export function mensagemDeDesvinculo(params: { nickname: string; chain: ChainId; momento: number }): string {
+  return [
+    "Chroma — unlink wallet",
+    "",
+    `Account: @${params.nickname}`,
+    `Network: ${params.chain}`,
+    `Time: ${new Date(params.momento).toISOString()}`,
+    "",
+    "Signing only proves this account is yours.",
+    "It does not move funds or grant any permission over them.",
+  ].join("\n");
+}
+
 /** Extrai o `Momento:` da mensagem pra checar se ainda está no prazo. */
 export function momentoDaMensagem(mensagem: string): number | null {
   const linha = /^Time: (.+)$/m.exec(mensagem);
