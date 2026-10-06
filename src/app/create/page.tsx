@@ -99,6 +99,8 @@ const TEXTOS = traducoes({
     trocarPara: (rede: string) => `Switch to ${rede}`,
     imutavel: (agora: React.ReactNode) => <>The coin&apos;s data — image, banner and social links — can only be added {agora} and cannot be changed or edited after creation.</>,
     agora: "now", rede: "Network", gasEm: (s: string) => `gas in ${s}`, par: "Liquidity pair", parSub: "what your token is priced against",
+    custo: (taxa: string) => <>Launching costs <strong>{taxa}</strong> + network fee. Your first buy is separate: it buys your own coin.</>,
+    imagemFixa: "The image can't be changed after the coin is created.",
     midia: "Image or video", obrigatorio: "required", selecione: "Select the video or image you want to upload.", arraste: "or drag and drop it here.",
     tamanho: "File size and type", img15: "Image — max 15 MB. '.jpg', '.gif' or '.png' recommended.", video30: "Video — max 30 MB. '.mp4' recommended.",
     resolucao: "Resolution and aspect ratio", img1000: "Image — at least 200x200px; 1000x1000px and 1:1 ratio recommended.", video1080: "Video — 16:9 or 9:16, 1080p or higher recommended.",
@@ -117,7 +119,7 @@ const TEXTOS = traducoes({
     ganhoPump: (_p: number) => `You keep 100% of the creator fee from every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
     ganhoEvm: "You receive 0.70% of every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.",
-    taxaCriadorTitulo: "Creator tax (optional)", taxaCriadorNota: (total: string) => `Extra fee on every trade, paid entirely to you — up to 10%. Traders pay ${total}% in total.`,
+    taxaCriadorTitulo: "Creator tax (optional)", taxaCriadorNota: (total: string) => `Extra fee on every trade, paid entirely to you (0–10%). With the value you choose, traders pay ${total}% in total.`,
     verFaixas: "see the tiers",
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
     segundaConfirmacao: "your wallet asks for a second confirmation for this buy, right after creating",
@@ -136,6 +138,8 @@ const TEXTOS = traducoes({
     trocarPara: (rede: string) => `Trocar para ${rede}`,
     imutavel: (agora: React.ReactNode) => <>Os dados da moeda — imagem, banner e links de redes sociais — só podem ser adicionados {agora} e não poderão ser alterados nem editados depois da criação.</>,
     agora: "agora", rede: "Rede", gasEm: (s: string) => `gás em ${s}`, par: "Par de liquidez", parSub: "contra o que seu token é cotado",
+    custo: (taxa: string) => <>Lançar custa <strong>{taxa}</strong> + taxa de rede. A sua primeira compra é à parte: ela compra a sua própria moeda.</>,
+    imagemFixa: "A imagem não pode ser trocada depois que a moeda for criada.",
     midia: "Imagem ou vídeo", obrigatorio: "obrigatório", selecione: "Selecione o vídeo ou a imagem que deseja enviar.", arraste: "ou arraste e solte aqui.",
     tamanho: "Tamanho e tipo do arquivo", img15: "Imagem — máximo 15 MB. Recomenda-se o formato '.jpg', '.gif' ou '.png'.", video30: "Vídeo — máximo 30 MB. Formato '.mp4' recomendado.",
     resolucao: "Resolução e proporção da tela", img1000: "Imagem — mínimo 200x200px; 1000x1000px e proporção 1:1 recomendadas.", video1080: "Vídeo — Formato 16:9 ou 9:16, resolução 1080p ou superior recomendada.",
@@ -154,7 +158,7 @@ const TEXTOS = traducoes({
     ganhoPump: (_p: number) => `Você fica com 100% da taxa de criador de cada operação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
     ganhoEvm: "Você recebe 0,70% de cada negociação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.",
-    taxaCriadorTitulo: "Taxa do criador (opcional)", taxaCriadorNota: (total: string) => `Taxa extra em cada negociação, paga toda para você — até 10%. Quem negocia paga ${total}% no total.`,
+    taxaCriadorTitulo: "Taxa do criador (opcional)", taxaCriadorNota: (total: string) => `Taxa extra em cada negociação, paga toda para você (de 0 a 10%). Com o valor escolhido, quem negocia paga ${total}% no total.`,
     verFaixas: "ver as faixas",
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
     segundaConfirmacao: "a carteira pede uma segunda confirmação para esta compra, logo depois de criar",
@@ -173,6 +177,8 @@ const TEXTOS = traducoes({
     trocarPara: (rede: string) => `切换到 ${rede}`,
     imutavel: (agora: React.ReactNode) => <>代币资料 —— 图片、横幅和社交链接 —— 只能{agora}添加，创建后无法修改或编辑。</>,
     agora: "现在", rede: "网络", gasEm: (s: string) => `以 ${s} 支付 Gas`, par: "流动性交易对", parSub: "你的代币以什么计价",
+    custo: (taxa: string) => <>发币费用 <strong>{taxa}</strong> + 网络费。你的首次买入是单独的：它买入你自己的代币。</>,
+    imagemFixa: "代币创建后，图片无法更改。",
     midia: "图片或视频", obrigatorio: "必填", selecione: "选择要上传的视频或图片。", arraste: "或拖放到这里。",
     tamanho: "文件大小与类型", img15: "图片 —— 最大 15 MB，推荐 '.jpg'、'.gif' 或 '.png'。", video30: "视频 —— 最大 30 MB，推荐 '.mp4'。",
     resolucao: "分辨率与比例", img1000: "图片 —— 至少 200x200px，推荐 1000x1000px、1:1。", video1080: "视频 —— 16:9 或 9:16，推荐 1080p 或更高。",
@@ -191,7 +197,7 @@ const TEXTOS = traducoes({
     ganhoPump: (_p: number) => `你保留代币每笔交易 100% 的创作者费用。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
     ganhoEvm: "你的代币每笔交易你都能获得 0.70%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。",
-    taxaCriadorTitulo: "创作者税（可选）", taxaCriadorNota: (total: string) => `每笔交易的额外费用，全部归你——最高 10%。交易者总共支付 ${total}%。`,
+    taxaCriadorTitulo: "创作者税（可选）", taxaCriadorNota: (total: string) => `每笔交易的额外费用，全部归你（0–10%）。按你选择的数值，交易者总共支付 ${total}%。`,
     verFaixas: "查看档位",
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
     segundaConfirmacao: "创建后钱包会立即请求第二次确认以完成这笔买入",
@@ -232,7 +238,9 @@ export default function CreateTokenPage() {
   const lancamentoSolana = useLancarToken();
   const lancamentoEvm = useLancarTokenEvm();
 
-  const [chain, setChain] = useState<ChainId>(REDE_PADRAO);
+  // Abre na Solana: é onde vive a Curva da Chroma e a promoção do criador
+  // (feedback de um testador, 05/10/2026: "abre na Robinhood, rede errada").
+  const [chain, setChain] = useState<ChainId>("solana");
 
   /*
    * A partir daqui a tela não sabe mais em que rede está: ela fala com
@@ -365,6 +373,53 @@ export default function CreateTokenPage() {
         </CardBody>
       </Card>
 
+      {/* Quanto custa lançar, antes de qualquer campo. */}
+      <p className="px-1 text-[12px] leading-relaxed text-zinc-300">
+        {t.custo(chain === "solana" ? "0.02 SOL" : "0.001 ETH")}
+      </p>
+
+      {/*
+        Em qual curva a moeda nasce, na Solana. A Curva da Chroma (Meteora DBC)
+        dá ao criador metade da taxa de TODA negociação, em qualquer site, e
+        tem taxa anti-robô nos primeiros 2 minutos (ver lib/meteora-dbc.ts).
+        Ao usuário nunca se fala o nome de quem opera a curva clássica.
+      */}
+      {chain === "solana" && CURVA_CHROMA_DISPONIVEL && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{tc.titulo}</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-2">
+            <div className={cn("grid gap-2 rounded-xl border border-white/[0.06] p-1", MOSTRAR_CURVA_CLASSICA ? "grid-cols-2" : "grid-cols-1")}>
+              {(MOSTRAR_CURVA_CLASSICA ? (["chroma", "pump"] as const) : (["chroma"] as const)).map((op) => (
+                <button
+                  key={op}
+                  type="button"
+                  onClick={() => setCurva(op)}
+                  className={cn(
+                    "rounded-lg py-2.5 text-[13px] font-bold transition-colors",
+                    curva === op ? "bg-ink-700 text-zinc-50" : "text-zinc-500 hover:text-zinc-200",
+                  )}
+                >
+                  {op === "pump" ? tc.classica : tc.chroma}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11.5px] leading-relaxed text-zinc-500">
+              {curva === "pump" ? tc.notaClassica : tc.notaChroma}
+              {curva === "chroma" && (
+                <>
+                  {" "}
+                  <Link href="/creator-bonus" className="font-semibold text-marca hover:underline">
+                    {tc.bonus}
+                  </Link>
+                </>
+              )}
+            </p>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Par de liquidez */}
       <Card>
         <CardHeader>
@@ -404,6 +459,7 @@ export default function CreateTokenPage() {
             title={t.selecione}
             subtitle={t.arraste}
           />
+          <p className="text-[11.5px] font-semibold text-warn">⚠ {t.imagemFixa}</p>
 
           <MediaSpecList
             columns={[
@@ -521,48 +577,6 @@ export default function CreateTokenPage() {
         contrato: o criador recebe a fatia fixa das faixas, e é isso que a
         tela diz agora.
       */}
-      {/*
-        Em qual curva a moeda nasce, na Solana. A Curva da Chroma (Meteora DBC)
-        dá ao criador metade da taxa de TODA negociação, em qualquer site, e
-        tem taxa anti-robô nos primeiros 2 minutos (ver lib/meteora-dbc.ts).
-        Ao usuário nunca se fala o nome de quem opera a curva clássica.
-      */}
-      {chain === "solana" && CURVA_CHROMA_DISPONIVEL && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{tc.titulo}</CardTitle>
-          </CardHeader>
-          <CardBody className="space-y-2">
-            <div className={cn("grid gap-2 rounded-xl border border-white/[0.06] p-1", MOSTRAR_CURVA_CLASSICA ? "grid-cols-2" : "grid-cols-1")}>
-              {(MOSTRAR_CURVA_CLASSICA ? (["chroma", "pump"] as const) : (["chroma"] as const)).map((op) => (
-                <button
-                  key={op}
-                  type="button"
-                  onClick={() => setCurva(op)}
-                  className={cn(
-                    "rounded-lg py-2.5 text-[13px] font-bold transition-colors",
-                    curva === op ? "bg-ink-700 text-zinc-50" : "text-zinc-500 hover:text-zinc-200",
-                  )}
-                >
-                  {op === "pump" ? tc.classica : tc.chroma}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11.5px] leading-relaxed text-zinc-500">
-              {curva === "pump" ? tc.notaClassica : tc.notaChroma}
-              {curva === "chroma" && (
-                <>
-                  {" "}
-                  <Link href="/creator-bonus" className="font-semibold text-marca hover:underline">
-                    {tc.bonus}
-                  </Link>
-                </>
-              )}
-            </p>
-          </CardBody>
-        </Card>
-      )}
-
       {/* Recompensas do criador: pro criador ou pros detentores (só na curva Clássica;
           na Curva da Chroma a parte do criador vai sempre pra ele). */}
       {!(chain === "solana" && curva === "chroma" && CURVA_CHROMA_DISPONIVEL) && (
