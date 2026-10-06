@@ -195,7 +195,7 @@ export function useChromaAccount() {
            * conta e vale pras duas redes, em qualquer aparelho. Ver a nota em
            * `db.ts`.
            */
-          body: JSON.stringify({ nickname, wallet, kind, indicadoPor: refGuardado() }),
+          body: JSON.stringify({ nickname, wallet, kind, indicadoPor: indicadorPermitido(refGuardado()) }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error ?? "Não foi possível concluir o registro.");
@@ -240,6 +240,11 @@ export function useChromaAccount() {
   }, [account, wallet]);
 
   /** O identificador usado no link de indicação. */
+  // Toda conta que entra neste navegador fica anotada (ver indicadorPermitido).
+  useEffect(() => {
+    if (account?.nickname) anotarContaDoNavegador(account.nickname);
+  }, [account?.nickname]);
+
   const referralId = account?.nickname ?? wallet ?? null;
 
   /*
@@ -295,4 +300,40 @@ export function useChromaAccount() {
     checkAvailability,
     disconnectSolana,
   };
+}
+
+/*
+ * AUTO-INDICAÇÃO NO MESMO NAVEGADOR (achado pelo dono, 05/10/2026).
+ * ---------------------------------------------------------------------------
+ * O `?ref=` fica guardado no navegador e não some ao sair da conta. Quem saía
+ * da conta A e criava a conta B ali mesmo deixava B "indicada por A" — e
+ * passava a ganhar comissão das próprias compras. Toda conta que já entrou
+ * neste navegador fica anotada, e nenhuma delas pode indicar uma conta nova
+ * criada aqui.
+ */
+const CONTAS_DO_NAVEGADOR = "chroma.contas-do-navegador";
+
+function contasDoNavegador(): string[] {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(CONTAS_DO_NAVEGADOR) ?? "[]");
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function anotarContaDoNavegador(apelido: string) {
+  try {
+    const lista = contasDoNavegador();
+    const a = apelido.toLowerCase();
+    if (!lista.includes(a)) window.localStorage.setItem(CONTAS_DO_NAVEGADOR, JSON.stringify([...lista, a].slice(-20)));
+  } catch {
+    /* storage bloqueado: segue sem a trava local */
+  }
+}
+
+function indicadorPermitido(ref: string | null): string | null {
+  if (!ref) return null;
+  const r = ref.trim().replace(/^@/, "").toLowerCase();
+  return contasDoNavegador().includes(r) ? null : ref;
 }
