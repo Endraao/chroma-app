@@ -3,6 +3,7 @@ import { Preco } from "@/components/ui/Preco";
 
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
+import { explicarErroDaCarteira } from "@/lib/erros-da-carteira";
 import { feeLabelFor } from "@/lib/fees";
 import { anotarOperacao, avisarNegocio } from "@/lib/posicoes-locais";
 
@@ -100,7 +101,7 @@ const TEXTOS = traducoes({
     verExplorer: "View on explorer ↗", voceBaga: "You pay", saldoDois: "Balance:", voceRecebe: "You receive (estimated)",
     slippage: "Slippage", taxa12: "1.2% fee", taxaDe: (p: string) => `${p} fee`,
     curvaEncheu: "The curve is full. The liquidity still has to be moved to Uniswap — anyone can do it, it only costs the network fee. After that the coin trades anywhere.",
-    levando: "Moving to Uniswap…", levar: "Move to Uniswap", indisponivel: "Unavailable right now",
+    levando: "Moving to Uniswap…", levar: "Move to Uniswap", indisponivel: "Unavailable right now", saldoInsuficiente: "Insufficient balance",
     duasAssinaturas: "Selling asks for two signatures: one allowing the curve to take the tokens and one for the sale itself. The approval is for the exact amount, never unlimited.",
     verTransacao: "view transaction",
   },
@@ -125,7 +126,7 @@ const TEXTOS = traducoes({
     verExplorer: "Ver no explorer ↗", voceBaga: "Você paga", saldoDois: "Saldo:", voceRecebe: "Você recebe (estimado)",
     slippage: "Slippage", taxa12: "taxa 1.2%", taxaDe: (p: string) => `taxa ${p}`,
     curvaEncheu: "A curva encheu. Falta levar a liquidez pra Uniswap — qualquer pessoa pode fazer isso, custa só a taxa de rede. Depois disso a moeda negocia em qualquer lugar.",
-    levando: "Levando pra Uniswap…", levar: "Levar pra Uniswap", indisponivel: "Indisponível agora",
+    levando: "Levando pra Uniswap…", levar: "Levar pra Uniswap", indisponivel: "Indisponível agora", saldoInsuficiente: "Saldo insuficiente",
     duasAssinaturas: "Vender pede duas assinaturas: uma autorizando a curva a retirar os tokens e outra da venda em si. A autorização é pelo valor exato, não infinita.",
     verTransacao: "ver a transação",
   },
@@ -150,7 +151,7 @@ const TEXTOS = traducoes({
     verExplorer: "在浏览器中查看 ↗", voceBaga: "你支付", saldoDois: "余额：", voceRecebe: "你将获得（预估）",
     slippage: "滑点", taxa12: "手续费 1.2%", taxaDe: (p: string) => `手续费 ${p}`,
     curvaEncheu: "曲线已满，还需把流动性迁移到 Uniswap —— 任何人都可以操作，只需支付网络手续费。之后代币可以在任何地方交易。",
-    levando: "正在迁移到 Uniswap…", levar: "迁移到 Uniswap", indisponivel: "暂不可用",
+    levando: "正在迁移到 Uniswap…", levar: "迁移到 Uniswap", indisponivel: "暂不可用", saldoInsuficiente: "余额不足",
     duasAssinaturas: "卖出需要两次签名：一次授权曲线转走代币，一次执行卖出本身。授权额度精确到本次数量，绝不无限授权。",
     verTransacao: "查看交易",
   },
@@ -455,7 +456,7 @@ function SolanaSwap({
         {swap.error && (
           <p className="text-[11px] leading-relaxed text-bear">
             {/* "No routes found" da Jupiter: quase sempre valor pequeno demais (poeira) ou moeda sem liquidez. */}
-            {/NO_ROUTES_FOUND|No routes found|COULD_NOT_FIND_ANY_ROUTE/i.test(swap.error) ? t.semRota : traduzirDoServidor(swap.error, idiomaSol)}
+            {/NO_ROUTES_FOUND|No routes found|COULD_NOT_FIND_ANY_ROUTE/i.test(swap.error) ? t.semRota : explicarErroDaCarteira(traduzirDoServidor(swap.error, idiomaSol), idiomaSol)}
           </p>
         )}
         {recibo && <ReciboDaOperacao recibo={recibo} onFechar={() => setRecibo(null)} />}
@@ -894,6 +895,9 @@ function EvmSwap({
   }, [swap.hash]);
 
   const saldo = ehCompra ? saldoEth : saldoToken;
+  // Valor maior que o saldo: o botão já diz, em vez de a carteira recusar em inglês.
+  const quantiaPedida = ehCompra ? Number(valorNativo) : Number(digitado);
+  const semSaldo = saldo !== null && quantiaPedida > 0 && quantiaPedida > saldo;
 
   /*
    * MIGRAÇÃO NA ROBINHOOD.
@@ -1120,14 +1124,16 @@ function EvmSwap({
             variant={ehCompra ? "buy" : "sell"}
             size="lg"
             className="w-full"
-            disabled={!podeOperar || !swap.pronto || swap.ocupado}
+            disabled={!podeOperar || !swap.pronto || swap.ocupado || semSaldo}
             onClick={swap.executar}
           >
             {swap.ocupado
               ? swap.passo || t.processando
               : !podeOperar
                 ? t.indisponivel
-                : `${ehCompra ? t.comprar : t.vender} ${symbol}`}
+                : semSaldo
+                  ? t.saldoInsuficiente
+                  : `${ehCompra ? t.comprar : t.vender} ${symbol}`}
           </Button>
         </RequireChainWallet>
 
@@ -1141,7 +1147,9 @@ function EvmSwap({
           </p>
         )}
 
-        {swap.erro && <p className="text-[11px] leading-relaxed text-bear">{swap.erro}</p>}
+        {swap.erro && explicarErroDaCarteira(swap.erro, idioma) && (
+          <p className="text-[11px] leading-relaxed text-bear">{explicarErroDaCarteira(swap.erro, idioma)}</p>
+        )}
 
         {/* O link troca o sufixo /token/ do explorador por /tx/: o hash é de transação. */}
         {recibo && <ReciboDaOperacao recibo={recibo} onFechar={() => setRecibo(null)} />}
