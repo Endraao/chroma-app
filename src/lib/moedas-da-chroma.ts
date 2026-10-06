@@ -5,6 +5,7 @@ import { unstable_cache } from "next/cache";
 import { PublicKey } from "@solana/web3.js";
 
 import { cached } from "@/lib/cache";
+import { precosNativos } from "@/lib/precos-nativos";
 import { listarMoedasDaChroma, type MoedaRegistrada } from "@/lib/db";
 import { SOL_MINT } from "@/lib/jupiter";
 import { fetchPrice, fetchToken } from "@/lib/market";
@@ -82,10 +83,30 @@ export const FORA_DA_VITRINE = new Set(
   ].map((a) => a.toLowerCase()),
 );
 
-export const moedasDaChroma = unstable_cache(moedasDaChromaSemCache, ["moedas-da-chroma-v1"], {
+const moedasDaChromaComCache = unstable_cache(moedasSemZero, ["moedas-da-chroma-v1"], {
   revalidate: 15,
   tags: ["universo"],
 });
+
+/*
+ * Valor de mercado 0 numa moeda da vitrine é sempre falha de cotação, nunca
+ * verdade. Esse resultado não pode ir pro cache compartilhado (ficava 15 s
+ * mostrando "$0" pra todo mundo): o erro impede o cache, e a página recebe a
+ * lista montada na hora mesmo assim.
+ */
+async function moedasSemZero(): Promise<TokenSummary[]> {
+  const lista = await moedasDaChromaSemCache();
+  if (lista.some((t) => !(t.marketCapUsd > 0))) throw new Error("cotação incompleta");
+  return lista;
+}
+
+export async function moedasDaChroma(): Promise<TokenSummary[]> {
+  try {
+    return await moedasDaChromaComCache();
+  } catch {
+    return moedasDaChromaSemCache();
+  }
+}
 
 async function moedasDaChromaSemCache(): Promise<TokenSummary[]> {
   let registros: MoedaRegistrada[];
@@ -102,7 +123,9 @@ async function moedasDaChromaSemCache(): Promise<TokenSummary[]> {
 
   const [estados, precoDoSol] = await Promise.all([
     lerCurvasDaRede(solanas.map((m) => m.endereco)),
-    fetchPrice(SOL_MINT).catch(() => null),
+    fetchPrice(SOL_MINT)
+      .catch(() => null)
+      .then(async (p) => (p && p > 0 ? p : ((await precosNativos().catch(() => null))?.solana || null))),
   ]);
 
   const saida = await Promise.all(

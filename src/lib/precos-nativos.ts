@@ -72,6 +72,21 @@ async function pelaJupiter(): Promise<Record<ChainId, number>> {
  * recarregar (02/10/2026). Preço de minutos atrás é muito melhor que zero.
  */
 let ultimoBom: Record<ChainId, number> | null = null;
+let gravadoEm = 0;
+
+/** Guarda o último preço bom no banco (no máximo 1x por minuto, sem esperar). */
+function guardarNoBanco(precos: Record<ChainId, number>) {
+  if (Date.now() - gravadoEm < 60_000) return;
+  gravadoEm = Date.now();
+  void import("@/lib/db").then((d) => d.gravarNoCacheDoBanco("precos-nativos", precos)).catch(() => {});
+}
+
+async function lerDoBanco(): Promise<Record<ChainId, number> | null> {
+  const p = await import("@/lib/db").then((d) => d.lerDoCacheDoBanco<Record<ChainId, number>>("precos-nativos")).catch(() => null);
+  if (!p || CHAIN_IDS.some((c) => !(p[c] > 0))) return null;
+  ultimoBom = p;
+  return p;
+}
 
 /** Coinbase: pública, sem chave, e raramente limita. Terceira fonte. */
 const PAR_NA_COINBASE: Record<ChainId, string> = { solana: "SOL-USD", robinhood: "ETH-USD" } as Record<ChainId, string>;
@@ -97,9 +112,12 @@ export async function precosNativos(): Promise<Record<ChainId, number>> {
       return precos;
     });
     ultimoBom = precos;
+    guardarNoBanco(precos);
     return precos;
   } catch {
-    return ultimoBom ?? vazio;
+    // Servidor recém-ligado não tem `ultimoBom` na memória: o banco tem
+    // (05/10/2026 — cards da home alternavam "$0" no primeiro acesso).
+    return ultimoBom ?? (await lerDoBanco()) ?? vazio;
   }
 }
 
