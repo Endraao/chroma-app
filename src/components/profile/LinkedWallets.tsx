@@ -70,7 +70,9 @@ export function LinkedWallets() {
   const t = useTextos(TEXTOS);
   const idioma = useIdioma();
   const account = useChromaAccount();
-  const [modalAberto, setModalAberto] = useState(false);
+  // A rede cuja carteira falta conectar: a lista de carteiras DAQUELA rede.
+  // Sem a rede, o modal via "já logado" e fechava na hora (05/10/2026).
+  const [modalAberto, setModalAberto] = useState<ChainId | null>(null);
   const [ocupada, setOcupada] = useState<ChainId | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvou, setSalvou] = useState<ChainId | null>(null);
@@ -111,7 +113,7 @@ export function LinkedWallets() {
 
     if (!endereco) {
       // Sem a carteira da rede conectada não há endereço pra vincular.
-      setModalAberto(true);
+      setModalAberto(chain);
       return;
     }
     if (!nickname) {
@@ -299,7 +301,11 @@ export function LinkedWallets() {
         </p>
       </CardBody>
 
-      <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} />
+      <SignInModal
+        open={modalAberto !== null && !account.conectadas[modalAberto]}
+        onClose={() => setModalAberto(null)}
+        rede={modalAberto === "solana" ? "solana" : "evm"}
+      />
     </Card>
   );
 }
