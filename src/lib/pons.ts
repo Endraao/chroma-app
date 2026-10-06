@@ -206,7 +206,9 @@ export async function resumoDaMoedaPons(
   const p0 = precoInicialNaPons(m);
   const nova = criadaEm > 0 && Date.now() - criadaEm < 24 * 3600_000;
   const negocios = await negociosDaPons(m).catch(() => []);
-  const volumeEth = negocios.reduce((s, n) => s + n.eth, 0);
+  // Só as últimas 24h (antes somava tudo desde o lançamento). `time` em segundos.
+  const ontem = Date.now() / 1000 - 24 * 3600;
+  const volumeEth = negocios.filter((n) => n.time >= ontem).reduce((s, n) => s + n.eth, 0);
   return {
     address: m.moeda,
     chain: "robinhood",
@@ -246,6 +248,8 @@ function detentoresAtuais(negocios: NegocioDaPons[]): number {
   return [...saldo.values()].filter((v) => v > POEIRA).length;
 }
 
+const TEMPO_DO_BLOCO = new Map<bigint, number>();
+
 interface NegocioDaPons {
   time: number;
   carteira: string;
@@ -267,7 +271,7 @@ interface NegocioDaPons {
  * `Negociado` dele, na mesma transação.
  */
 async function negociosDaPons(m: MoedaDaPons): Promise<NegocioDaPons[]> {
-  return cached(`negocios-pons:${m.moeda}`, 4_000, async () => {
+  return cached(`negocios-pons:${m.moeda}`, 15_000, async () => {
     const ultimo = await cliente.getBlockNumber();
     const desde = ultimo > JANELA_DE_BLOCOS ? ultimo - JANELA_DE_BLOCOS : 0n;
     const [compras, vendas, nossos] = await Promise.all([
@@ -284,9 +288,12 @@ async function negociosDaPons(m: MoedaDaPons): Promise<NegocioDaPons[]> {
     const traderDaTx = new Map(nossos.map((l) => [l.transactionHash, l.args.trader!]));
 
     const blocos = [...new Set([...compras, ...vendas].map((l) => l.blockNumber))];
-    const tempos = new Map<bigint, number>();
+    // O horário de um bloco nunca muda: guardado, só os blocos novos vão à rede.
+    const tempos = TEMPO_DO_BLOCO;
     await Promise.all(
-      blocos.map(async (b) => tempos.set(b, Number((await cliente.getBlock({ blockNumber: b })).timestamp))),
+      blocos
+        .filter((b) => !tempos.has(b))
+        .map(async (b) => tempos.set(b, Number((await cliente.getBlock({ blockNumber: b })).timestamp))),
     );
 
     const lista: (NegocioDaPons & { ordem: bigint })[] = [];

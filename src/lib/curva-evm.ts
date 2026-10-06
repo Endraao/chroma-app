@@ -154,10 +154,14 @@ export async function resumoDaMoedaEvm(
   /* Migrada: o preço da curva congelou; quem sabe agora é o mercado. */
   if (!dados || dados.curva.migrada) return null;
 
-  const [precos, holders] = await Promise.all([
+  const [precos, holders, negocios] = await Promise.all([
     precosNativos().catch(() => null),
     contarHolders(moeda).catch(() => 0),
+    negociosDaCurvaEvm(moeda).catch(() => [] as NegocioDaCurva[]),
   ]);
+  // Volume das últimas 24h, dos negócios (antes era o acumulado desde o lançamento).
+  const ontem = Date.now() / 1000 - 24 * 3600;
+  const volume24hEth = negocios.filter((n) => n.time >= ontem).reduce((t, n) => t + n.eth, 0);
   const precoEth = precos?.robinhood ?? 0;
   const { curva } = dados;
   const precoUsd = precoEmEth(curva) * precoEth;
@@ -189,8 +193,7 @@ export async function resumoDaMoedaEvm(
     marketCapUsd: precoUsd * dados.emissao,
     /* A liquidez da curva é o ETH de verdade que está dentro dela. */
     liquidityUsd: (Number(curva.ethReal) / ESCALA) * precoEth,
-    /* Acumulado desde o lançamento, não 24h: a curva não guarda por dia. */
-    volume24hUsd: (Number(curva.volumeAcumulado) / ESCALA) * precoEth,
+    volume24hUsd: volume24hEth * precoEth,
     holders,
     createdAt: extra?.criadaEm ?? Date.now(),
     bondingProgress: progressoDaCurvaEvm(curva, dados.tokenAVenda),

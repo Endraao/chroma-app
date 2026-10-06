@@ -411,6 +411,9 @@ async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc
         change24h: nova ? (estado.precoSol / inicialEmSol - 1) * 100 : r.token.change24h,
         marketCapUsd: preco * 1_000_000_000,
         liquidityUsd: estado.solReal * sol,
+        // A Jupiter conta o cofre da própria curva (as moedas ainda à venda)
+        // como "holder": uma moeda sem ninguém segurando aparecia com 1.
+        holders: Math.max(0, (r.token.holders ?? 0) - 1),
         bondingProgress: estado.progresso,
         dexId: "chroma-curve",
       },
