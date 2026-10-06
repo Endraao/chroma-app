@@ -241,8 +241,17 @@ export function useChromaAccount() {
 
   /** O identificador usado no link de indicação. */
   // Toda conta que entra neste navegador fica anotada (ver indicadorPermitido).
+  // E o `?ref=` guardado só serve pra CRIAR conta: entrou numa conta (nova ou
+  // antiga), ele já foi usado ou não vale mais — sai do navegador. Sem isso,
+  // sair da conta A e criar a B herdava "indicada por A" (05/10/2026).
   useEffect(() => {
-    if (account?.nickname) anotarContaDoNavegador(account.nickname);
+    if (!account?.nickname) return;
+    anotarContaDoNavegador(account.nickname);
+    try {
+      window.localStorage.removeItem("chroma.affiliate");
+    } catch {
+      /* storage bloqueado */
+    }
   }, [account?.nickname]);
 
   const referralId = account?.nickname ?? wallet ?? null;
