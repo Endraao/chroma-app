@@ -107,7 +107,10 @@ export default function AffiliatePage() {
       .then((r) => r.json())
       .then(setGanhos)
       .catch(() => {});
-  }, [account.chaveDeBusca]);
+    // Refaz quando a conta nasce ou ganha carteira: a primeira busca pode
+    // ter saído no meio da criação da conta e voltado "sem carteira".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account.chaveDeBusca, account.account?.nickname, Object.values(account.carteiras ?? {}).join(",")]);
 
   const link = account.referralId ? `${origem}/?ref=${account.referralId}` : "";
 
