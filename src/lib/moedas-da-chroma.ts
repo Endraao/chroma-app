@@ -177,7 +177,7 @@ async function montar(
         import("@solana/web3.js"),
         import("@/lib/meteora-dbc"),
       ]);
-      const e = await estadoNaCurvaDaChroma(new Connection(rpcSol, "confirmed"), m.endereco);
+      const e = await estadoNaCurvaDaChroma(new Connection(rpcSol, { commitment: "confirmed", disableRetryOnRateLimit: true }), m.endereco);
       if (e && !e.completa) {
         const preco = e.precoSol * precoDoSol;
         const nova = Date.now() - m.criadaEm < 24 * 3600_000;
@@ -222,7 +222,7 @@ async function montar(
           import("@solana/web3.js"),
           import("@/lib/pumpfun"),
         ]);
-        const e = await estadoDaCurvaPump(new Connection(rpc, "confirmed"), new PublicKey(m.endereco));
+        const e = await estadoDaCurvaPump(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), new PublicKey(m.endereco));
         if (e && !e.completa) {
           naCurvaPump = { bondingProgress: e.progresso, liquidityUsd: e.solReal * (precoDoSol ?? 0) };
         }
@@ -296,7 +296,7 @@ async function daCurvaClassica(m: MoedaRegistrada, precoDoSol: number | null): P
       import("@solana/web3.js"),
       import("@/lib/pumpfun"),
     ]);
-    const conexao = new Connection(rpc, "confirmed");
+    const conexao = new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true });
     const mint = new PublicKey(m.endereco);
     const [e, emSol] = await Promise.all([estadoDaCurvaPump(conexao, mint), precoNaCurvaEmSol(conexao, mint)]);
     if (!e || e.completa || emSol === null) return null;

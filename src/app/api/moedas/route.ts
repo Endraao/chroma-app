@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
     const { lerPoolDaCurva } = await import("@/lib/meteora-dbc");
     const { Connection } = await import("@solana/web3.js");
-    const dbc = rpc ? await lerPoolDaCurva(new Connection(rpc, "confirmed"), chaveDoMint.toBase58()).catch(() => null) : null;
+    const dbc = rpc ? await lerPoolDaCurva(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), chaveDoMint.toBase58()).catch(() => null) : null;
     if (!dbc) return NextResponse.json({ error: "esta moeda não está na curva da Chroma" }, { status: 403 });
     try {
       await registrarMoeda({

@@ -23,7 +23,7 @@ async function progresso(address: string) {
   return cached(`bonus:${address}`, 60_000, async () => {
     const [{ Connection }, { ganhoDaChromaNaMoeda }] = await Promise.all([import("@solana/web3.js"), import("@/lib/meteora-dbc")]);
     const [ganho, precos] = await Promise.all([
-      ganhoDaChromaNaMoeda(new Connection(rpc, "confirmed"), address),
+      ganhoDaChromaNaMoeda(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), address),
       precosNativos().catch(() => null),
     ]);
     const sol = precos?.solana ?? 0;

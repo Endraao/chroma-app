@@ -15,7 +15,7 @@ async function negociosNaCurvaDaSolana(address: string) {
       import("@solana/web3.js"),
       import("@/lib/pumpfun"),
     ]);
-    const estado = await estadoDaCurvaPump(new Connection(rpc, "confirmed"), new PublicKey(address));
+    const estado = await estadoDaCurvaPump(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), new PublicKey(address));
     if (!estado || estado.completa) return null;
     const sol = (await precosNativos().catch(() => null))?.solana ?? 0;
     return await negociosDaCurvaSolana(address, sol);

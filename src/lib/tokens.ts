@@ -411,7 +411,7 @@ async function comCurvaDaSolana(r: { token: TokenSummary; isDemo: boolean }) {
       import("@/lib/pumpfun"),
       import("@/lib/precos-nativos"),
     ]);
-    const conn = new Connection(rpc, "confirmed");
+    const conn = new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true });
     const mint = new PublicKey(r.token.address);
     const [estado, emSol, precos] = await Promise.all([
       estadoDaCurvaPump(conn, mint),
@@ -461,7 +461,7 @@ async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc
       import("@/lib/precos-nativos"),
     ]);
     const [estado, precos] = await Promise.all([
-      estadoNaCurvaDaChroma(new Connection(rpc, "confirmed"), r.token.address),
+      estadoNaCurvaDaChroma(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), r.token.address),
       precosNativos().catch(() => null),
     ]);
     const sol = precos?.solana ?? 0;

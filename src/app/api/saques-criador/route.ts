@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   if (!rpc?.startsWith("http")) return NextResponse.json({ error: "sem rpc" }, { status: 503 });
   const dados = await cached(`saques-criador:${mint}`, 20_000, async () => {
     const [{ Connection }, { saquesDoCriador }] = await Promise.all([import("@solana/web3.js"), import("@/lib/saques-do-criador")]);
-    return saquesDoCriador(new Connection(rpc, "confirmed"), mint);
+    return saquesDoCriador(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), mint);
   }).catch(() => null);
   if (!dados) return NextResponse.json({ error: "fora da curva" }, { status: 404 });
   return NextResponse.json(dados, { headers: { "cache-control": "no-store" } });

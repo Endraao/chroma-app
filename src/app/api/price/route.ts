@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         import("@/lib/pumpfun"),
         import("@/lib/meteora-dbc"),
       ]);
-      const conexao = new Connection(rpc, "confirmed");
+      const conexao = new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true });
       let emSol = await precoNaCurvaEmSol(conexao, new PublicKey(address));
       // Toda moeda da curva de lançamento clássica nasce em 30 / 1,073 bi SOL.
       let inicial = 30 / 1_073_000_000;
