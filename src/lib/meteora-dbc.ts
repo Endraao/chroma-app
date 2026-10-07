@@ -39,7 +39,10 @@ type ClienteDbc = InstanceType<KitDbc["DynamicBondingCurveClient"]>;
 async function acharPool(sdk: KitDbc, cliente: ClienteDbc, mint: string) {
   for (const config of CONFIGS_DA_CURVA) {
     const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(config));
-    const estado = (await cliente.state.getPool(pool).catch(() => null))?.poolState;
+    // Uma segunda tentativa: RPC devolve 429 em rajada, e moeda recém-lançada
+    // sem a curva vira "Token sem liquidez" na página.
+    const ler = () => cliente.state.getPool(pool);
+    const estado = (await ler().catch(() => ler()).catch(() => null))?.poolState;
     if (estado && estado.config.toBase58() === config) return { pool, estado, config };
   }
   return null;

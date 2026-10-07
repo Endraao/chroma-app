@@ -1,5 +1,6 @@
 import "server-only";
 import { after } from "next/server";
+import { cache } from "react";
 import { classificarPendentes, soNegociaveis } from "@/lib/negociaveis";
 
 import { unstable_cache } from "next/cache";
@@ -507,7 +508,11 @@ async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc
  * A moeda, com os links (site, X, Telegram) informados no lançamento quando
  * ela nasceu na Chroma — o mercado só conhece os que o time pagou pra exibir.
  */
-export async function getToken(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
+/**
+ * `cache` do React: a página da moeda pede o token duas vezes (metadados +
+ * página) — sem isto, cada abertura fazia todas as consultas em dobro.
+ */
+export const getToken = cache(async function getToken(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
   const r = await comCurvaDaSolana(await getTokenBase(address));
   const registro = await buscarMoedaDaChroma(address).catch(() => null);
   const l = registro?.links ?? {};
@@ -523,7 +528,7 @@ export async function getToken(address: string): Promise<{ token: TokenSummary; 
       criadorNaChroma: registro.criador,
     },
   };
-}
+});
 
 async function getTokenBase(address: string): Promise<{ token: TokenSummary; isDemo: boolean }> {
   /*
@@ -557,7 +562,13 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
 
   const doMercado = await fetchToken(address);
   // Moeda nova que a DEX ainda não indexou: usa o que a vitrine já sabe dela.
-  const daVitrine = doMercado ? null : (await universo()).find((t) => t.address.toLowerCase() === address.toLowerCase());
+  // Só o que a vitrine JÁ sabe: montá-la do zero levava ~30 s e travava a
+  // página da moeda logo depois do lançamento (07/10/2026). A curva da Chroma
+  // (comCurvaDaSolana) preenche o resto direto da rede.
+  const vitrine = doMercado
+    ? []
+    : await Promise.race([universo().catch(() => []), new Promise<TokenSummary[]>((ok) => setTimeout(() => ok([]), 1_500))]);
+  const daVitrine = vitrine.find((t) => t.address.toLowerCase() === address.toLowerCase());
   const achado = doMercado ?? daVitrine ?? null;
   // Sem imagem na fonte de mercado: o leitor de logo (mesma fonte da tela inicial), nas duas redes.
   const real = achado && !achado.imageUrl

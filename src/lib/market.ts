@@ -139,6 +139,8 @@ async function getJson<T>(url: string, revalidateSeconds = 10): Promise<T> {
     const res = await fetch(url, {
       headers: { accept: "application/json" },
       next: { revalidate: revalidateSeconds },
+      // Fonte travada não pode segurar a página: 8 s e desiste.
+      signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) {
       const erro = new Error(`${url} respondeu ${res.status}`);
