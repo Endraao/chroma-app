@@ -21,7 +21,7 @@ const TEXTOS = traducoes({
     bonusACaminho: (v: string) => `Your ${v} bonus is on the way — paid in SOL within 7 days.`,
     nada: "Nothing to claim yet — you earn 40% of every trade fee, plus a bonus at each volume goal.",
     falhou: "The claim didn't go through. Nothing was charged — try again.",
-    total: (v: string) => `${v} earned in total`,
+    total: (sol: string, usd: string) => `${sol} SOL earned in total (≈ ${usd})`,
   },
   pt: {
     titulo: "Seus ganhos de criador",
@@ -34,7 +34,7 @@ const TEXTOS = traducoes({
     bonusACaminho: (v: string) => `Seu bônus de ${v} está a caminho — pago em SOL em até 7 dias.`,
     nada: "Nada pra sacar ainda — você ganha 40% da taxa de toda negociação, mais um bônus a cada meta de volume.",
     falhou: "O saque não foi. Nada foi cobrado — tente de novo.",
-    total: (v: string) => `${v} ganhos no total`,
+    total: (sol: string, usd: string) => `${sol} SOL ganhos no total (≈ ${usd})`,
   },
   zh: {
     titulo: "你的创作者收益",
@@ -47,7 +47,7 @@ const TEXTOS = traducoes({
     bonusACaminho: (v: string) => `你的 ${v} 奖金正在路上——7 天内以 SOL 支付。`,
     nada: "暂无可领取收益——你可获得每笔交易 40% 的交易费，每个交易量目标还有奖金。",
     falhou: "领取未成功，未产生任何费用——请重试。",
-    total: (v: string) => `累计收益 ${v}`,
+    total: (sol: string, usd: string) => `累计收益 ${sol} SOL（≈ ${usd}）`,
   },
 });
 
@@ -87,7 +87,8 @@ export function GanhosDoCriador({ address }: { address: string }) {
   useEffect(() => {
     if (!publicKey) return;
     ler();
-    const id = window.setInterval(ler, 60_000);
+    // 15 s: o valor do card não pode ficar pra trás de uma venda recém-feita.
+    const id = window.setInterval(ler, 15_000);
     return () => window.clearInterval(id);
   }, [publicKey, ler]);
 
@@ -97,7 +98,9 @@ export function GanhosDoCriador({ address }: { address: string }) {
   const bonusDisponivel = bonus ? Math.max(0, bonus.conquistadoUsd - bonus.pagoUsd) : 0;
   const bonusJaPedido = bonus ? bonus.pedidoUsd >= bonus.conquistadoUsd && bonusDisponivel > 0 : false;
   const totalUsd = taxasUsd + (bonusJaPedido ? 0 : bonusDisponivel);
-  const totalGanhoUsd = dados.totalSol * sol + (bonus?.conquistadoUsd ?? 0);
+  // Total = taxas de criador já sacadas + a sacar, lidas direto da rede. O
+  // bônus fica fora: ele é pago à parte e aparece no cartão do bônus.
+  const totalGanhoUsd = dados.totalSol * sol;
   const temTaxa = dados.aReceberSol > 0.000001;
   const ocupado = estado === "aprovar" || estado === "confirmando";
 
@@ -169,7 +172,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
               ? t.falhou
               : !temTaxa && totalUsd < 0.01
                 ? t.nada
-                : t.total(formatUsd(totalGanhoUsd))}
+                : t.total(dados.totalSol.toFixed(4), formatUsd(totalGanhoUsd))}
       </p>
       <SaquePrivado taxasSol={dados.aReceberSol} sacarTaxas={sacarTaxas} />
     </div>
