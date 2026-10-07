@@ -2,7 +2,6 @@ import "server-only";
 
 import { Connection, PublicKey, type ParsedTransactionWithMeta } from "@solana/web3.js";
 
-import { cached } from "@/lib/cache";
 import type { NegocioDoPool } from "@/lib/market";
 
 /**
@@ -23,6 +22,8 @@ const LIDAS = new Map<string, NegocioDoPool | null>();
 /** Última lista boa de cada moeda: uma leitura que falha não pode trocar a lista viva pela da fonte lenta. */
 const ULTIMA = new Map<string, NegocioDoPool[]>();
 const MAX_LIDAS = 4_000;
+const RECENTE = new Map<string, { lista: NegocioDoPool[]; em: number }>();
+const EM_ANDAMENTO = new Map<string, Promise<NegocioDoPool[] | null>>();
 
 function lerNegocio(tx: ParsedTransactionWithMeta | null, mint: string, assinatura: string, precoUsd: number, precoSol: number): NegocioDoPool | null {
   if (!tx?.meta || tx.meta.err) return null;
@@ -82,7 +83,16 @@ function lerNegocio(tx: ParsedTransactionWithMeta | null, mint: string, assinatu
 export async function negociosPelaRede(mint: string, pool: string, precoUsd: number, precoSol: number): Promise<NegocioDoPool[] | null> {
   const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
   if (!rpc?.startsWith("http")) return null;
-  return cached(`negocios-rede:${mint}`, 2_500, async () => {
+  /*
+   * Sem "servir o velho e renovar por trás" (o `cached` faz isso): na Vercel a
+   * renovação por trás às vezes morre com a resposta, e a lista ficava até
+   * 50 s parada. Aqui: guardado 2 s; passou disso, lê de novo e espera.
+   */
+  const guardado = RECENTE.get(mint);
+  if (guardado && Date.now() - guardado.em < 2_000) return guardado.lista;
+  const andando = EM_ANDAMENTO.get(mint);
+  if (andando) return andando;
+  const leitura = (async () => {
     const conexao = new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true });
     const assinaturas = (await conexao.getSignaturesForAddress(new PublicKey(pool), { limit: 30 })).filter((s) => !s.err);
     const novas = assinaturas.filter((s) => !LIDAS.has(s.signature)).map((s) => s.signature);
@@ -105,6 +115,11 @@ export async function negociosPelaRede(mint: string, pool: string, precoUsd: num
     }
     const lista = assinaturas.map((s) => LIDAS.get(s.signature)).filter((n): n is NegocioDoPool => !!n);
     ULTIMA.set(mint, lista);
+    RECENTE.set(mint, { lista, em: Date.now() });
     return lista;
-  }).catch(() => ULTIMA.get(mint) ?? null);
+  })()
+    .catch(() => ULTIMA.get(mint) ?? null)
+    .finally(() => EM_ANDAMENTO.delete(mint));
+  EM_ANDAMENTO.set(mint, leitura);
+  return leitura;
 }
