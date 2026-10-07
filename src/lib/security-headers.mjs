@@ -25,6 +25,22 @@
  * script, ele não consegue mandar o que roubou pra um servidor que não esteja
  * aqui. Adicionar destino aqui é decisão de segurança, não de conveniência.
  */
+/** Só a ORIGEM (protocolo + domínio) do RPC configurado — nunca o caminho com a chave. */
+function origensDoRpc() {
+  const saida = [];
+  for (const url of [process.env.NEXT_PUBLIC_SOLANA_RPC, process.env.NEXT_PUBLIC_SOLANA_WS]) {
+    try {
+      if (!url) continue;
+      const u = new URL(url);
+      saida.push(`${u.protocol}//${u.host}`);
+      if (u.protocol === "https:") saida.push(`wss://${u.host}`);
+    } catch {
+      /* URL inválida: ignora */
+    }
+  }
+  return saida;
+}
+
 const DESTINOS_DE_DADOS = [
   "'self'",
 
@@ -46,6 +62,11 @@ const DESTINOS_DE_DADOS = [
   // Nós da Solana, inclusive o canal de tempo real
   "https://*.helius-rpc.com",
   "wss://*.helius-rpc.com",
+  // RPC Fast (plano Focus, 07/10/2026) — e, por segurança, a origem exata
+  // do RPC/WebSocket configurados na Vercel, seja qual for o provedor.
+  "https://*.rpcfast.com",
+  "wss://*.rpcfast.com",
+  ...origensDoRpc(),
   "https://api.mainnet-beta.solana.com",
   "wss://api.mainnet-beta.solana.com",
   "https://api.devnet.solana.com",
