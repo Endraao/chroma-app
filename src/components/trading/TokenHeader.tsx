@@ -259,20 +259,22 @@ const NOMES_DE_PLATAFORMA: Record<string, string> = {
   launchlab: "LaunchLab",
   orca: "Orca",
   pons: "Pons",
+  pumpfun: "pump.fun",
+  pumpswap: "PumpSwap",
   uniswap: "Uniswap",
 };
 
 /**
  * Ícones da REDE e da PLATAFORMA de origem ao lado do nome (pedido do dono,
- * 07/10/2026, igual à fomo). Moeda da Chroma leva o nosso logo. A curva de
- * lançamento de terceiros da Solana nunca é nomeada (regra do dono): sem selo.
+ * 07/10/2026, igual à fomo). Moeda da Chroma leva o nosso logo. A pump.fun
+ * também aparece — o dono liberou só este ícone (07/10/2026).
  */
 function SelosDeOrigem({ token }: { token: TokenSummary }) {
   const dex = (token.dexId ?? "").toLowerCase();
   const daChroma = dex === "chroma-curve" || !!token.criadorNaChroma;
   const plataforma = daChroma
     ? { nome: "Chroma", icone: "/logo.png" }
-    : !dex || dex.includes("pump")
+    : !dex
       ? null
       : { nome: NOMES_DE_PLATAFORMA[dex] ?? dex.charAt(0).toUpperCase() + dex.slice(1), icone: `https://dd.dexscreener.com/ds-data/dexes/${dex}.png` };
   return (
