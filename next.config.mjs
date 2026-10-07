@@ -15,7 +15,12 @@ const nextConfig = {
   poweredByHeader: false,
 
   async headers() {
-    return [{ source: "/:path*", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento }) }];
+    return [
+      // Tudo, MENOS /p/…: ninguém nos coloca em iframe.
+      { source: "/:path((?!p/).*)", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento }) },
+      // /p/…: a negociação dentro do post do X (player card) — só o X pode embutir.
+      { source: "/p/:path*", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento, embutivel: true }) },
+    ];
   },
   // Ver scripts/build.mjs: separa os artefatos de dev e de produção.
   distDir: process.env.NEXT_DIST_DIR || ".next",

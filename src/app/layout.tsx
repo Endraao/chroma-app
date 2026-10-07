@@ -5,7 +5,8 @@ import { Suspense } from "react";
 
 import { WalletProviders } from "@/components/web3/WalletProviders";
 import { Header } from "@/components/ui/Header";
-import { Moldura } from "@/components/ui/Moldura";
+import { CascaDoSite } from "@/components/ui/CascaDoSite";
+import { MolduraOuNada } from "@/components/ui/MolduraOuNada";
 import { Rodape } from "@/components/ui/Rodape";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { IdiomaProvider } from "@/components/IdiomaProvider";
@@ -86,8 +87,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {/* useSearchParams precisa de um limite de Suspense no App Router. */}
           <Suspense fallback={null}>
           </Suspense>
-          <RpcNotice />
-          <Header idioma={idioma} />
+          <CascaDoSite
+            topo={
+              <>
+                <RpcNotice />
+                <Header idioma={idioma} />
+              </>
+            }
+            rodape={<Rodape idioma={idioma} />}
+          >
           {/*
             Sem Suspense aqui de propósito.
 
@@ -96,7 +104,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             a moldura inteira, a página ia junto pro `<div hidden>` que o React
             usa enquanto espera, e o site abria com o cabeçalho e mais nada.
           */}
-          <Moldura>{children}</Moldura>
+          <MolduraOuNada>{children}</MolduraOuNada>
 
           {/*
             O rodapé fica FORA da moldura de propósito: dentro, ele nasceria
@@ -104,7 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             aviso de risco pro lado. Fora, ele atravessa a largura inteira em
             toda página, que é onde um aviso de risco tem que estar.
           */}
-          <Rodape idioma={idioma} />
+          </CascaDoSite>
         </WalletProviders>
         </IdiomaProvider>
       </body>

@@ -102,7 +102,14 @@ const DESTINOS_DE_DADOS = [
  * que qualquer coisa injetada MANDE o resultado pra fora, que é o passo sem o
  * qual o roubo não se completa.
  */
-function politicaDeConteudo({ desenvolvimento }) {
+/**
+ * Quem pode nos mostrar dentro de um iframe — SÓ a página de negociar dentro
+ * do post (/p/…, o "player card" do X, 07/10/2026). Toda transação ainda pede
+ * aprovação na carteira, que abre a janela dela por cima de tudo.
+ */
+const PODEM_EMBUTIR = ["https://x.com", "https://*.x.com", "https://twitter.com", "https://*.twitter.com"];
+
+function politicaDeConteudo({ desenvolvimento, embutivel = false }) {
   const regras = [
     ["default-src", ["'self'"]],
 
@@ -147,7 +154,7 @@ function politicaDeConteudo({ desenvolvimento }) {
      * por cima de um botão qualquer, e o clique da pessoa vira aprovação de
      * transação na nossa página.
      */
-    ["frame-ancestors", ["'none'"]],
+    ["frame-ancestors", embutivel ? ["'self'", ...PODEM_EMBUTIR] : ["'none'"]],
 
     // As carteiras abrem janela própria; frame só de origem conhecida.
     ["frame-src", ["'self'", "https://*.walletconnect.com", "https://*.walletconnect.org"]],
@@ -168,17 +175,15 @@ function politicaDeConteudo({ desenvolvimento }) {
  * @param desenvolvimento afrouxa só o necessário pro modo de desenvolvimento
  * funcionar (eval do recarregamento automático e o websocket do localhost).
  */
-export function cabecalhosDeSeguranca({ desenvolvimento = false } = {}) {
+export function cabecalhosDeSeguranca({ desenvolvimento = false, embutivel = false } = {}) {
   const cabecalhos = [
     {
       key: "Content-Security-Policy",
-      value: politicaDeConteudo({ desenvolvimento }),
+      value: politicaDeConteudo({ desenvolvimento, embutivel }),
     },
-    {
-      // Redundante com frame-ancestors, mas navegador velho só entende este.
-      key: "X-Frame-Options",
-      value: "DENY",
-    },
+    // Redundante com frame-ancestors, mas navegador velho só entende este.
+    // A página embutível não leva (ele não tem como listar o X).
+    ...(embutivel ? [] : [{ key: "X-Frame-Options", value: "DENY" }]),
     {
       // Impede o navegador de adivinhar o tipo do conteúdo e executar o que
       // deveria ser dado. Ver também a rota de mídia, que repete isto.

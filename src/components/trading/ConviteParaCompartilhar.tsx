@@ -14,21 +14,21 @@ const TEXTOS = traducoes({
     texto: (p: string, s: string) =>
       `Send $${s} to your friends, group or community. Every time someone who came through your link buys or sells — here or on any coin afterwards — you get ${p} of the amount traded, straight to your wallet, in the same transaction. No sign-up, no withdrawal, forever.`,
     copiar: "Copy my link", copiado: "Link copied!", postar: "Post on X", entrar: "Sign in to get your link",
-    tweet: (s: string) => `$${s} is live on Chroma 👇`,
+    tweet: (s: string) => `${s} — buy it right here in this post 👇`,
   },
   pt: {
     titulo: "Compartilhe e ganhe em cada operação",
     texto: (p: string, s: string) =>
       `Mande a $${s} pros seus amigos, grupo ou comunidade. Toda vez que alguém que entrou pelo seu link comprar ou vender — nesta moeda ou em qualquer outra depois — você recebe ${p} do valor negociado, direto na sua carteira, na mesma transação. Sem cadastro, sem saque, pra sempre.`,
     copiar: "Copiar meu link", copiado: "Link copiado!", postar: "Postar no X", entrar: "Entre para gerar o seu link",
-    tweet: (s: string) => `$${s} está no ar na Chroma 👇`,
+    tweet: (s: string) => `${s} — compre aqui mesmo, dentro do post 👇`,
   },
   zh: {
     titulo: "分享，每笔交易都有收益",
     texto: (p: string, s: string) =>
       `把 $${s} 分享给你的朋友、群组或社区。每当通过你的链接进来的人买入或卖出 —— 无论是这个代币还是之后的任何代币 —— 你都能获得交易金额的 ${p}，在同一笔交易中直接打入你的钱包。无需注册、无需提现、永久有效。`,
     copiar: "复制我的链接", copiado: "链接已复制！", postar: "发到 X", entrar: "登录以获取你的链接",
-    tweet: (s: string) => `$${s} 已在 Chroma 上线 👇`,
+    tweet: (s: string) => `${s} — 直接在这条帖子里买 👇`,
   },
 });
 
@@ -46,7 +46,8 @@ export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
 
   useEffect(() => setOrigem(window.location.origin), []);
 
-  const link = account.referralId ? `${origem}/token/${token.address}?ref=${account.referralId}` : "";
+  // /e/…: no X o post vira uma janela de compra (player card); fora do X, abre a moeda.
+  const link = account.referralId ? `${origem}/e/${token.address}?ref=${account.referralId}` : "";
 
   async function copiar() {
     if (!link) return;
