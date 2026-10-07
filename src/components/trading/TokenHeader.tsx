@@ -97,6 +97,7 @@ export function TokenHeader({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-base font-bold text-zinc-50">{token.name}</h1>
             <span className="text-sm font-semibold text-zinc-500">${token.symbol}</span>
+            <SelosDeOrigem token={token} />
             <Badge tone="neutral" className={meta.accent}>
               {meta.label}
             </Badge>
@@ -248,4 +249,44 @@ function Numero({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: s
 /** 0.3896761904… → "0.4"; 42.7 → "43". Menos de 1% com uma casa, pra não mostrar "0%". */
 function pctDaCurva(p: number): string {
   return p < 1 ? p.toFixed(1) : p.toFixed(0);
+}
+
+/** Nome bonito de cada DEX/plataforma (o resto vai com a 1ª letra maiúscula). */
+const NOMES_DE_PLATAFORMA: Record<string, string> = {
+  meteoradbc: "Meteora",
+  meteora: "Meteora",
+  raydium: "Raydium",
+  launchlab: "LaunchLab",
+  orca: "Orca",
+  pons: "Pons",
+  uniswap: "Uniswap",
+};
+
+/**
+ * Ícones da REDE e da PLATAFORMA de origem ao lado do nome (pedido do dono,
+ * 07/10/2026, igual à fomo). Moeda da Chroma leva o nosso logo. A curva de
+ * lançamento de terceiros da Solana nunca é nomeada (regra do dono): sem selo.
+ */
+function SelosDeOrigem({ token }: { token: TokenSummary }) {
+  const dex = (token.dexId ?? "").toLowerCase();
+  const daChroma = dex === "chroma-curve" || !!token.criadorNaChroma;
+  const plataforma = daChroma
+    ? { nome: "Chroma", icone: "/logo.png" }
+    : !dex || dex.includes("pump")
+      ? null
+      : { nome: NOMES_DE_PLATAFORMA[dex] ?? dex.charAt(0).toUpperCase() + dex.slice(1), icone: `https://dd.dexscreener.com/ds-data/dexes/${dex}.png` };
+  return (
+    <span className="flex items-center gap-1">
+      <img src={`/chains/${token.chain}.png`} alt={token.chain} title={token.chain === "solana" ? "Solana" : "Robinhood Chain"} className="size-[18px] rounded-full" />
+      {plataforma && (
+        <img
+          src={plataforma.icone}
+          alt={plataforma.nome}
+          title={plataforma.nome}
+          className="size-[18px] rounded-full bg-ink-800 object-cover"
+          onError={(e) => (e.currentTarget.style.display = "none")}
+        />
+      )}
+    </span>
+  );
 }
