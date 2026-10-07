@@ -45,11 +45,11 @@ export function PainelDaChroma({ moedas }: { moedas: TokenSummary[] }) {
   const visiveis = tudo ? ordenadas : ordenadas.slice(0, POR_PAGINA);
 
   return (
-    <section className="rounded-xl border border-bull/20 bg-gradient-to-b from-bull/[0.05] to-transparent p-4">
+    <section className="rounded-xl border border-marca/20 bg-gradient-to-b from-marca/[0.05] to-transparent p-4">
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-bull opacity-60" />
-          <span className="relative inline-flex size-2 rounded-full bg-bull" />
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-marca opacity-60" />
+          <span className="relative inline-flex size-2 rounded-full bg-marca" />
         </span>
         <h2 className="mr-2 text-[16px] font-black tracking-tight text-zinc-50">{t.titulo}</h2>
         {/* No celular as abas descem pra uma linha só delas, lado a lado. */}
@@ -60,7 +60,7 @@ export function PainelDaChroma({ moedas }: { moedas: TokenSummary[] }) {
             onClick={() => setAba(a)}
             className={cn(
               "rounded-md px-3 py-1 text-[12.5px] font-semibold transition-colors",
-              aba === a ? "bg-bull text-black" : "text-zinc-400 hover:bg-ink-800 hover:text-zinc-100",
+              aba === a ? "bg-marca text-black" : "text-zinc-400 hover:bg-ink-800 hover:text-zinc-100",
             )}
           >
             {t[a]}

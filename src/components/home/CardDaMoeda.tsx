@@ -46,7 +46,8 @@ export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSum
       href={`/token/${token.address}`}
       className={cn(
         "group flex min-w-0 flex-col rounded-2xl border bg-ink-900/70 p-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-ink-900",
-        destaque || emAlta ? "border-bull/35 hover:border-bull/70" : "border-white/[0.07] hover:border-white/20",
+        // Chroma = azul da marca; "em alta" = verde (subindo).
+        destaque ? "border-marca/35 hover:border-marca/70" : emAlta ? "border-bull/35 hover:border-bull/70" : "border-white/[0.07] hover:border-white/20",
       )}
     >
       <div className="relative aspect-square overflow-hidden rounded-xl bg-ink-800">

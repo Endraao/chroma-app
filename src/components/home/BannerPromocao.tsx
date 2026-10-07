@@ -45,8 +45,8 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
     <Link href="/creator-bonus" className="promo-card group block">
       <div className="promo-card-dentro flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
         <div className="min-w-0">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-[0.14em] text-bull">
-            <span className="size-1.5 animate-pulse rounded-full bg-bull" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-marca/15 px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-[0.14em] text-marca">
+            <span className="size-1.5 animate-pulse rounded-full bg-marca" />
             {t.selo}
           </span>
           <p className="mt-2 text-[22px] font-black leading-tight text-zinc-50 sm:text-[26px]">{t.titulo}</p>
@@ -57,16 +57,16 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
           {METAS.map((m) => (
             <div
               key={m.volumeUsd}
-              className="rounded-xl border border-bull/30 bg-bull/[0.05] px-3 py-2 text-center"
+              className="rounded-xl border border-marca/30 bg-marca/[0.05] px-3 py-2 text-center"
             >
               <p className="tnum text-[10.5px] text-zinc-500">
                 {curto(m.volumeUsd)} {t.volume}
               </p>
-              <p className="tnum text-[18px] font-black text-bull">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd, idioma)}</p>
+              <p className="tnum text-[18px] font-black text-marca">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd, idioma)}</p>
               <p className="text-[10px] font-semibold text-zinc-400">{t.paraVoce}</p>
             </div>
           ))}
-          <span className="col-span-2 inline-flex h-10 items-center justify-center rounded-xl bg-bull/90 px-4 text-[13.5px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
+          <span className="col-span-2 inline-flex h-10 items-center justify-center rounded-xl bg-marca/90 px-4 text-[13.5px] font-black text-[#031318] transition-colors group-hover:bg-marca">
             {t.cta} <span className="ml-1.5 transition-transform group-hover:translate-x-0.5">→</span>
           </span>
         </div>
@@ -89,13 +89,13 @@ export function CardPromocao({ idioma }: { idioma: Idioma }) {
         <span aria-hidden className="promo-barra" />
         <div className="flex min-w-0 flex-1 items-center gap-5 px-5 py-4">
           <div className="min-w-0 flex-1">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-bull">
-              <span className="size-1.5 animate-pulse rounded-full bg-bull" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-marca/15 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-marca">
+              <span className="size-1.5 animate-pulse rounded-full bg-marca" />
               {t.selo}
             </span>
             <p className="mt-2.5 text-[24px] font-black leading-[1.08] text-zinc-50">{t.titulo}</p>
             <p className="mt-1.5 text-[12px] leading-snug text-zinc-400">{t.sub}</p>
-            <span className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-bull/90 px-4 py-2 text-[13px] font-black text-[#03130d] transition-colors group-hover:bg-bull">
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-marca/90 px-4 py-2 text-[13px] font-black text-[#031318] transition-colors group-hover:bg-marca">
               {t.cta} <span className="transition-transform group-hover:translate-x-0.5">→</span>
             </span>
           </div>
@@ -104,7 +104,7 @@ export function CardPromocao({ idioma }: { idioma: Idioma }) {
             {METAS.map((m) => (
               <div
                 key={m.volumeUsd}
-                className="flex items-center justify-between rounded-lg border border-bull/30 bg-bull/[0.05] px-3 py-1"
+                className="flex items-center justify-between rounded-lg border border-marca/30 bg-marca/[0.05] px-3 py-1"
               >
                 <span className="tnum whitespace-nowrap text-[11px] text-zinc-400">
                   {curto(m.volumeUsd)} {t.volume}

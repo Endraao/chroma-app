@@ -22,8 +22,8 @@ const TEXTOS = traducoes({
 export function AvisoRecompensas() {
   const t = useTextos(TEXTOS);
   return (
-    <div className="rounded-xl border border-bull/30 bg-bull/[0.07] p-3">
-      <p className="flex items-center gap-2 text-[13px] font-bold text-bull">
+    <div className="rounded-xl border border-marca/30 bg-marca/[0.07] p-3">
+      <p className="flex items-center gap-2 text-[13px] font-bold text-marca">
         <span aria-hidden>🎁</span>
         {t.titulo}
       </p>

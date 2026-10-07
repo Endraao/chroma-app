@@ -169,7 +169,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const SELO = { en: "Creator promo", pt: "Promoção do criador", zh: "创作者活动" } as const;
-const BOTAO = "inline-flex items-center gap-1.5 rounded-xl bg-bull/90 px-5 py-2.5 text-[14px] font-black text-[#03130d] transition-colors hover:bg-bull";
+const BOTAO = "inline-flex items-center gap-1.5 rounded-xl bg-marca/90 px-5 py-2.5 text-[14px] font-black text-[#031318] transition-colors hover:bg-marca";
 
 const taxa = (volume: number) => volume * PARTE_DA_CHROMA;
 
@@ -190,8 +190,8 @@ export default async function CreatorBonus() {
         <div className="promo-card-dentro flex items-stretch">
           <span aria-hidden className="promo-barra" />
           <div className="min-w-0 flex-1 p-6 sm:p-8">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-bull/15 px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-[0.16em] text-bull">
-              <span className="size-1.5 animate-pulse rounded-full bg-bull" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-marca/15 px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-[0.16em] text-marca">
+              <span className="size-1.5 animate-pulse rounded-full bg-marca" />
               {SELO[idioma]}
             </span>
             <h1 className="mt-3 text-[34px] font-black leading-[1.05] tracking-tight text-zinc-50 sm:text-[42px]">{t.titulo}</h1>
@@ -222,7 +222,7 @@ export default async function CreatorBonus() {
                 <div className="promo-card-dentro h-full">{dentro}</div>
               </div>
             ) : (
-              <div key={m.volumeUsd} className="rounded-2xl border border-bull/30 bg-bull/[0.05]">
+              <div key={m.volumeUsd} className="rounded-2xl border border-marca/30 bg-marca/[0.05]">
                 {dentro}
               </div>
             );
@@ -231,8 +231,8 @@ export default async function CreatorBonus() {
       </section>
 
       {/* Quebra de cada meta: taxa + bônus = total. */}
-      <div className="overflow-hidden rounded-2xl border border-bull/30 bg-bull/[0.03]">
-        <div className="grid grid-cols-4 gap-2 bg-bull/[0.08] px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-wider text-bull sm:px-5">
+      <div className="overflow-hidden rounded-2xl border border-marca/30 bg-marca/[0.03]">
+        <div className="grid grid-cols-4 gap-2 bg-marca/[0.08] px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-wider text-marca sm:px-5">
           <span>{t.colVolume}</span>
           <span className="text-right">{t.colTaxas}</span>
           <span className="text-right">{t.colBonus}</span>
@@ -249,7 +249,7 @@ export default async function CreatorBonus() {
         <p className="border-t border-white/[0.06] px-4 py-2.5 text-[12.5px] text-zinc-400 sm:px-5">{t.nota}</p>
       </div>
 
-      <p className="rounded-2xl border border-bull/30 bg-bull/[0.06] px-4 py-3 text-center text-[14px] font-bold text-zinc-50">
+      <p className="rounded-2xl border border-marca/30 bg-marca/[0.06] px-4 py-3 text-center text-[14px] font-bold text-zinc-50">
         🏆 {t.destaque}
       </p>
 
@@ -261,8 +261,8 @@ export default async function CreatorBonus() {
             <p className="text-[13px] font-bold uppercase tracking-wider text-zinc-500">{t.difOutras}</p>
             <p className="mt-2 text-[15px] leading-relaxed text-zinc-400">{t.difOutrasTexto}</p>
           </div>
-          <div className="rounded-2xl border border-bull/40 bg-bull/[0.07] p-5">
-            <p className="text-[13px] font-bold uppercase tracking-wider text-bull">{t.difChroma}</p>
+          <div className="rounded-2xl border border-marca/40 bg-marca/[0.07] p-5">
+            <p className="text-[13px] font-bold uppercase tracking-wider text-marca">{t.difChroma}</p>
             <p className="mt-2 text-[15px] leading-relaxed text-zinc-100">{t.difChromaTexto}</p>
           </div>
         </div>
@@ -273,15 +273,15 @@ export default async function CreatorBonus() {
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.maisTitulo}</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Link href="/affiliate" className="group rounded-2xl border border-bull/30 bg-bull/[0.05] p-5 transition-colors hover:bg-bull/[0.09]">
+          <Link href="/affiliate" className="group rounded-2xl border border-marca/30 bg-marca/[0.05] p-5 transition-colors hover:bg-marca/[0.09]">
             <p className="text-[15px] font-bold text-zinc-50">🔗 {t.indicacaoTitulo}</p>
             <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-400">{t.indicacaoTexto}</p>
-            <p className="mt-3 text-[13px] font-bold text-bull">{t.indicacaoLink}</p>
+            <p className="mt-3 text-[13px] font-bold text-marca">{t.indicacaoLink}</p>
           </Link>
-          <Link href="/airdrop" className="group rounded-2xl border border-bull/30 bg-bull/[0.05] p-5 transition-colors hover:bg-bull/[0.09]">
+          <Link href="/airdrop" className="group rounded-2xl border border-marca/30 bg-marca/[0.05] p-5 transition-colors hover:bg-marca/[0.09]">
             <p className="text-[15px] font-bold text-zinc-50">⭐ {t.pontosTitulo}</p>
             <p className="mt-2 text-[13.5px] leading-relaxed text-zinc-400">{t.pontosTexto}</p>
-            <p className="mt-3 text-[13px] font-bold text-bull">{t.pontosLink}</p>
+            <p className="mt-3 text-[13px] font-bold text-marca">{t.pontosLink}</p>
           </Link>
         </div>
       </section>
@@ -291,7 +291,7 @@ export default async function CreatorBonus() {
         <ul className="mt-3 space-y-2">
           {t.itens.map((i) => (
             <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-zinc-400">
-              <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-bull" />
+              <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-marca" />
               {i}
             </li>
           ))}
@@ -301,12 +301,12 @@ export default async function CreatorBonus() {
       {/* Perguntas frequentes: abre e fecha sem JavaScript (<details>). */}
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{f.titulo}</h2>
-        <div className="mt-3 divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-bull/20 bg-ink-900">
+        <div className="mt-3 divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-marca/20 bg-ink-900">
           {f.itens.map(([pergunta, resposta]) => (
             <details key={pergunta} className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-[14.5px] font-semibold text-zinc-100 hover:bg-bull/[0.04] [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 text-[14.5px] font-semibold text-zinc-100 hover:bg-marca/[0.04] [&::-webkit-details-marker]:hidden">
                 {pergunta}
-                <span aria-hidden className="shrink-0 text-[20px] leading-none text-bull transition-transform group-open:rotate-45">
+                <span aria-hidden className="shrink-0 text-[20px] leading-none text-marca transition-transform group-open:rotate-45">
                   +
                 </span>
               </summary>

@@ -156,8 +156,8 @@ export function GanhosDoCriador({ address }: { address: string }) {
   };
 
   return (
-    <div className="rounded-xl border border-bull/30 bg-ink-900 p-4">
-      <p className="text-[12px] font-bold uppercase tracking-wider text-bull">{t.titulo}</p>
+    <div className="rounded-xl border border-marca/30 bg-ink-900 p-4">
+      <p className="text-[12px] font-bold uppercase tracking-wider text-marca">{t.titulo}</p>
       <p className="tnum mt-2 text-[26px] font-black text-zinc-50">{formatUsd(totalUsd)}</p>
       <div className="tnum mt-2 space-y-1 text-[12px]">
         <div className="flex justify-between text-zinc-400">
@@ -175,7 +175,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
         type="button"
         disabled={(!temTaxa && totalUsd < 0.01) || ocupado}
         onClick={sacar}
-        className="botao-negocio compra mt-3 inline-flex h-11 w-full items-center justify-center text-[15px]"
+        className="botao-negocio marca mt-3 inline-flex h-11 w-full items-center justify-center text-[15px]"
       >
         {estado === "aprovar" ? t.aprovar : estado === "confirmando" ? t.confirmando : t.claim(formatUsd(totalUsd))}
       </button>
@@ -194,7 +194,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
         <div className="mt-3 border-t border-white/[0.06] pt-3">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[12.5px] font-bold text-zinc-300">{t.totalGanho}</span>
-            <span className="tnum text-[17px] font-black text-bull">{dados.totalSol.toFixed(4)} SOL</span>
+            <span className="tnum text-[17px] font-black text-marca">{dados.totalSol.toFixed(4)} SOL</span>
           </div>
           <p className="tnum text-right text-[12px] text-zinc-400">≈ {formatUsd(totalGanhoUsd)}</p>
           <button
@@ -230,7 +230,7 @@ function ListaDeSaques({ historico, sol, t }: { historico: Historico | null; sol
             href={`https://solscan.io/tx/${x.assinatura}`}
             target="_blank"
             rel="noreferrer"
-            className="font-semibold text-zinc-200 hover:text-bull"
+            className="font-semibold text-zinc-200 hover:text-marca"
           >
             +{x.sol.toFixed(4)} SOL <span className="text-zinc-500">≈ {formatUsd(x.sol * sol)} ↗</span>
           </a>

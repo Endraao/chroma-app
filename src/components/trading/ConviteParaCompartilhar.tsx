@@ -60,9 +60,9 @@ export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-bull/30 bg-gradient-to-br from-bull/[0.12] via-bull/[0.04] to-transparent p-4">
+    <div className="relative overflow-hidden rounded-xl border border-marca/30 bg-gradient-to-br from-marca/[0.12] via-marca/[0.04] to-transparent p-4">
       <div className="flex items-center gap-2">
-        <span className="grid size-7 place-items-center rounded-full bg-bull/20 text-[15px]">💸</span>
+        <span className="grid size-7 place-items-center rounded-full bg-marca/20 text-[15px]">💸</span>
         <p className="text-[14px] font-black tracking-tight text-zinc-50">{t.titulo}</p>
       </div>
       <p className="mt-2 text-[12px] leading-relaxed text-zinc-300">{t.texto(feeLabel.affiliate, token.symbol)}</p>
@@ -71,7 +71,7 @@ export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
         <div className="mt-3 flex gap-2">
           <button
             onClick={copiar}
-            className="flex-1 rounded-lg bg-bull px-3 py-2 text-[13px] font-bold text-black transition-opacity hover:opacity-90"
+            className="flex-1 rounded-lg bg-marca px-3 py-2 text-[13px] font-bold text-black transition-opacity hover:opacity-90"
           >
             {copiado ? t.copiado : t.copiar}
           </button>
@@ -79,13 +79,13 @@ export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
             href={`https://x.com/intent/tweet?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-lg border border-bull/40 px-3 py-2 text-[13px] font-bold text-bull transition-colors hover:bg-bull/10"
+            className="rounded-lg border border-marca/40 px-3 py-2 text-[13px] font-bold text-marca transition-colors hover:bg-marca/10"
           >
             {t.postar}
           </a>
         </div>
       ) : (
-        <p className="mt-3 text-[12px] font-semibold text-bull">{t.entrar}</p>
+        <p className="mt-3 text-[12px] font-semibold text-marca">{t.entrar}</p>
       )}
     </div>
   );

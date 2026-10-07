@@ -75,7 +75,7 @@ export function BonusDoCriador({ address }: { address: string }) {
         <span>{formatUsd(p.volumeUsd)}</span>
         <span>{p.proxima ? formatUsd(p.proxima.volumeUsd) : formatUsd(METAS[METAS.length - 1].volumeUsd)}</span>
       </div>
-      {p.conquistadoUsd > 0 && <p className="mt-2 text-[12px] font-semibold text-bull">{t.ganho(formatUsd(p.conquistadoUsd))}</p>}
+      {p.conquistadoUsd > 0 && <p className="mt-2 text-[12px] font-semibold text-marca">{t.ganho(formatUsd(p.conquistadoUsd))}</p>}
     </div>
   );
 }

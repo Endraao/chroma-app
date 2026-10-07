@@ -240,7 +240,7 @@ export default async function HomePage({
                 href={linkCom({ sort: s.key })}
                 className={
                   sort === s.key
-                    ? "shrink-0 whitespace-nowrap rounded-md bg-bull px-3 py-1.5 text-[13px] font-bold text-black"
+                    ? "shrink-0 whitespace-nowrap rounded-md bg-marca px-3 py-1.5 text-[13px] font-bold text-black"
                     : "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-400 transition-colors hover:bg-ink-800 hover:text-zinc-100"
                 }
               >

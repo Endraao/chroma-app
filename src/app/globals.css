@@ -888,6 +888,16 @@ body::after {
   --texto: #03130d;
   --sombra-texto: rgba(255, 255, 255, 0.25);
 }
+/* Ação da Chroma (sacar, promoção): azul da marca — verde/vermelho são só compra/venda. */
+.botao-negocio.marca {
+  --c1: #67e8f9;
+  --c2: #06b6d4;
+  --borda: rgba(103, 232, 249, 0.55);
+  --halo: rgba(34, 211, 238, 0.7);
+  --anel: rgba(34, 211, 238, 0.18);
+  --texto: #031318;
+  --sombra-texto: rgba(255, 255, 255, 0.25);
+}
 .botao-negocio.venda {
   --c1: #ff7583;
   --c2: #e23347;
@@ -1057,9 +1067,9 @@ body::after {
   position: relative;
   border-radius: 22px;
   padding: 1.5px;
-  background: conic-gradient(from var(--promo-angulo), #22d3ee, #a78bfa, #f472b6, #00d18f, #22d3ee);
+  background: conic-gradient(from var(--promo-angulo), #22d3ee, #a78bfa, #38bdf8, #06b6d4, #22d3ee);
   box-shadow:
-    0 24px 60px -24px rgba(0, 209, 143, 0.55),
+    0 24px 60px -24px rgba(34, 211, 238, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.04);
   animation:
     promo-girar 7s linear infinite,
@@ -1068,7 +1078,7 @@ body::after {
 }
 .promo-card:hover {
   box-shadow:
-    0 30px 70px -22px rgba(0, 209, 143, 0.75),
+    0 30px 70px -22px rgba(34, 211, 238, 0.75),
     0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 .promo-card-dentro {
@@ -1076,7 +1086,7 @@ body::after {
   overflow: hidden;
   border-radius: 20.5px;
   background:
-    radial-gradient(130% 120% at 0% 0%, rgba(0, 209, 143, 0.22), transparent 55%),
+    radial-gradient(130% 120% at 0% 0%, rgba(34, 211, 238, 0.22), transparent 55%),
     radial-gradient(120% 120% at 100% 100%, rgba(167, 139, 250, 0.16), transparent 55%),
     #0b0d11;
 }
@@ -1101,11 +1111,11 @@ body::after {
 .promo-barra {
   width: 6px;
   flex-shrink: 0;
-  background: linear-gradient(180deg, #00d18f, #22d3ee 50%, #a78bfa);
-  box-shadow: 0 0 18px rgba(0, 209, 143, 0.6);
+  background: linear-gradient(180deg, #67e8f9, #22d3ee 50%, #a78bfa);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.6);
 }
 .promo-valor {
-  background: linear-gradient(180deg, #4ff5bf, #00b47a);
+  background: linear-gradient(180deg, #a5f3fc, #22d3ee);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

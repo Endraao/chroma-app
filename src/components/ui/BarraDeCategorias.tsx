@@ -221,7 +221,7 @@ export function BarraDeCategorias({
             href="/create"
             title={aberta ? undefined : t["Criar token"]}
             className={cn(
-              "flex h-10 items-center gap-2.5 rounded-lg bg-bull font-bold text-ink-950 transition-colors hover:bg-bull/85",
+              "flex h-10 items-center gap-2.5 rounded-lg bg-marca font-bold text-ink-950 transition-colors hover:bg-marca/85",
               aberta ? "px-3" : "justify-center",
             )}
           >
