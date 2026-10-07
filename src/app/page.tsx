@@ -7,6 +7,9 @@ import { FaixaDeAbertura } from "@/components/home/FaixaDeAbertura";
 import { formatUsd } from "@/lib/utils";
 import { PainelDaChroma } from "@/components/home/PainelDaChroma";
 import { SubindoAgora } from "@/components/home/SubindoAgora";
+import { AoVivoProvider } from "@/components/home/AoVivo";
+import { ListaEmAlta } from "@/components/home/ListaEmAlta";
+import { pontuacaoEmAlta } from "@/lib/tokens";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
@@ -174,6 +177,7 @@ export default async function HomePage({
   const daChromaNaRede = lancadasNaChroma.filter((t) => chain === "todas" || t.chain === chain);
 
   const { isDemo } = principal;
+  const emAlta = [...principal.tokens].sort((a, b) => pontuacaoEmAlta(b) - pontuacaoEmAlta(a)).slice(0, 30);
   const todasAsMoedas = sort === "chroma" ? daChromaNaRede : principal.tokens;
   // Busca do cabeçalho: nome, símbolo ou começo do endereço.
   const tokens = busca
@@ -257,10 +261,20 @@ export default async function HomePage({
             outraRede={t.todasAsRedes}
           />
         ) : (
-          <>
-            <SubindoAgora tokens={tokens} />
-            <Grade tokens={tokens} destaque={sort === "chroma"} />
-          </>
+          <AoVivoProvider tokens={[...emAlta.slice(0, 30), ...tokens.slice(0, 60)]}>
+            {/* No celular a faixa corre em cima; no computador a lista fica fixa na esquerda (estilo fomo). */}
+            <div className="lg:hidden">
+              <SubindoAgora tokens={tokens} />
+            </div>
+            <div className="lg:grid lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-5">
+              <aside className="hidden lg:block">
+                <div className="sticky top-20">
+                  <ListaEmAlta tokens={emAlta} />
+                </div>
+              </aside>
+              <Grade tokens={tokens} destaque={sort === "chroma"} />
+            </div>
+          </AoVivoProvider>
         )}
       </section>
     </div>
@@ -269,7 +283,7 @@ export default async function HomePage({
 
 function Grade({ tokens, destaque = false }: { tokens: TokenSummary[]; destaque?: boolean }) {
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {tokens.map((token) => (
         <CardDaMoeda key={token.address} token={token} destaque={destaque} />
       ))}
