@@ -11,7 +11,7 @@ import { cached } from "@/lib/cache";
  * então a vitrine inteira custa poucos pedidos por minuto.
  */
 const MINT = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-const MAX = 90;
+const MAX = 200;
 
 async function fechamentos(mint: string): Promise<number[]> {
   return cached(`minigrafico:${mint}`, 180_000, async () => {
@@ -26,15 +26,25 @@ async function fechamentos(mint: string): Promise<number[]> {
 }
 
 export async function GET(request: Request) {
-  const mints = [...new Set((new URL(request.url).searchParams.get("mints") ?? "").split(",").filter((m) => MINT.test(m)))].slice(0, MAX);
+  return responder((new URL(request.url).searchParams.get("mints") ?? "").split(","));
+}
+
+/** POST { mints: [...] }: a vitrine inteira não cabe numa URL. */
+export async function POST(request: Request) {
+  const corpo = (await request.json().catch(() => ({}))) as { mints?: unknown };
+  return responder(Array.isArray(corpo.mints) ? corpo.mints.map(String) : []);
+}
+
+async function responder(lista: string[]) {
+  const mints = [...new Set(lista.filter((m) => MINT.test(m)))].slice(0, MAX);
   const saida: Record<string, number[]> = {};
-  // Em lotes de 15: rajada grande demais vira recusa.
-  for (let i = 0; i < mints.length; i += 15) {
-    const lote = mints.slice(i, i + 15);
+  // Em lotes de 25: rajada grande demais vira recusa.
+  for (let i = 0; i < mints.length; i += 25) {
+    const lote = mints.slice(i, i + 25);
     const series = await Promise.all(lote.map(fechamentos));
     lote.forEach((m, j) => {
       if (series[j].length >= 4) saida[m] = series[j];
     });
   }
-  return NextResponse.json(saida, { headers: { "cache-control": "public, max-age=60" } });
+  return NextResponse.json(saida);
 }

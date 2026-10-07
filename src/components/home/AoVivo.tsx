@@ -54,11 +54,23 @@ async function buscar(rede: string, enderecos: string[], sinal: AbortSignal): Pr
   return Array.isArray(j) ? j : [];
 }
 
-export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; children: React.ReactNode }) {
+export function AoVivoProvider({
+  tokens,
+  doGrafico,
+  children,
+}: {
+  tokens: TokenSummary[];
+  /** Moedas que ganham mini-gráfico (a vitrine inteira); sem isso, as mesmas de `tokens`. */
+  doGrafico?: TokenSummary[];
+  children: React.ReactNode;
+}) {
   const [dados, setDados] = useState<Map<string, DadoVivo>>(new Map());
   const chave = tokens.map((t) => `${t.chain}:${t.address}`).join("|");
   const lista = useRef(tokens);
   lista.current = tokens;
+  const listaDoGrafico = useRef(doGrafico ?? tokens);
+  listaDoGrafico.current = doGrafico ?? tokens;
+  const chaveDoGrafico = (doGrafico ?? tokens).map((t) => t.address).join("|");
 
   useEffect(() => {
     let vivo = true;
@@ -129,10 +141,10 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
     // A primeira leitura sempre (aba aberta em segundo plano também ganha o
     // gráfico); as seguintes só com a aba à vista.
     const ler = async (primeira = false) => {
-      const mints = lista.current.filter((t) => t.chain === "solana").map((t) => t.address);
+      const mints = [...new Set(listaDoGrafico.current.filter((t) => t.chain === "solana").map((t) => t.address))].slice(0, 200);
       if (!mints.length || (!primeira && document.visibilityState !== "visible")) return;
       try {
-        const r = await fetch(`/api/minigraficos?mints=${mints.slice(0, 90).join(",")}`);
+        const r = await fetch("/api/minigraficos", { method: "POST", body: JSON.stringify({ mints }) });
         if (!r.ok) return;
         const j = (await r.json()) as Record<string, number[]>;
         if (vivo) setGraficos(new Map(Object.entries(j).map(([k, v]) => [k.toLowerCase(), v])));
@@ -146,7 +158,7 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
       vivo = false;
       window.clearInterval(id);
     };
-  }, [chave]);
+  }, [chaveDoGrafico]);
 
   return (
     <Contexto.Provider value={dados}>

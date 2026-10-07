@@ -262,7 +262,7 @@ export default async function HomePage({
             outraRede={t.todasAsRedes}
           />
         ) : (
-          <AoVivoProvider tokens={[...emAlta.slice(0, 30), ...tokens.slice(0, 60)]}>
+          <AoVivoProvider tokens={[...emAlta.slice(0, 30), ...tokens.slice(0, 60)]} doGrafico={[...emAlta, ...tokens]}>
             {/* No celular a faixa corre em cima; no computador a lista fica fixa na esquerda (estilo fomo). */}
             <div className="lg:hidden">
               <SubindoAgora tokens={tokens} />
