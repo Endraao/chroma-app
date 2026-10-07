@@ -39,8 +39,8 @@ export interface ProgressoDoBonus {
   pct: number;
 }
 
-export function progressoDoBonus(ganhoDaChromaUsd: number): ProgressoDoBonus {
-  const volumeUsd = ganhoDaChromaUsd / PARTE_DA_CHROMA;
+/** Recebe o VOLUME REAL da moeda (ver lib/volume-real.ts), não a taxa. */
+export function progressoDoBonus(volumeUsd: number): ProgressoDoBonus {
   let conquistadoUsd = 0;
   let anterior = 0;
   for (const meta of METAS) {

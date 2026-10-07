@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useConnection } from "@solana/wallet-adapter-react";
 
-import { progressoDoBonus } from "@/lib/bonus-criador";
 import { ganhosDeTodasAsMoedas } from "@/lib/meteora-dbc";
 
 /**
@@ -16,7 +15,7 @@ import { ganhosDeTodasAsMoedas } from "@/lib/meteora-dbc";
  * Em produção a página não faz nada.
  */
 type Linha = { pool: string; mint: string; criador: string; ganhoSol: number };
-type Registro = { pagoUsd: number; pedidoUsd: number };
+type Registro = { pagoUsd: number; pedidoUsd: number; volumeUsd: number; conquistadoUsd: number };
 
 export default function PainelDeBonus() {
   const { connection } = useConnection();
@@ -41,7 +40,10 @@ export default function PainelDeBonus() {
               .catch(() => null),
           ),
         );
-        setRegs(Object.fromEntries(l.map((x, i) => [x.mint, { pagoUsd: r[i]?.pagoUsd ?? 0, pedidoUsd: r[i]?.pedidoUsd ?? 0 }])));
+        setRegs(Object.fromEntries(l.map((x, i) => [
+              x.mint,
+              { pagoUsd: r[i]?.pagoUsd ?? 0, pedidoUsd: r[i]?.pedidoUsd ?? 0, volumeUsd: r[i]?.volumeUsd ?? 0, conquistadoUsd: r[i]?.conquistadoUsd ?? 0 },
+            ])));
       })
       .catch((e) => setErro(e instanceof Error ? e.message : String(e)));
   }, [connection]);
@@ -54,7 +56,7 @@ export default function PainelDeBonus() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ address: mint, pago: usd }),
     });
-    if (r.ok) setRegs((x) => ({ ...x, [mint]: { pagoUsd: usd, pedidoUsd: x[mint]?.pedidoUsd ?? 0 } }));
+    if (r.ok) setRegs((x) => ({ ...x, [mint]: { ...x[mint], pagoUsd: usd } }));
   };
 
   return (
@@ -81,7 +83,8 @@ export default function PainelDeBonus() {
           </thead>
           <tbody>
             {linhas.map((l) => {
-              const p = progressoDoBonus(l.ganhoSol * sol);
+              // Volume REAL e bônus vêm da rota (sem a taxa anti-sniper).
+              const p = { volumeUsd: regs[l.mint]?.volumeUsd ?? 0, conquistadoUsd: regs[l.mint]?.conquistadoUsd ?? 0 };
               const pago = regs[l.mint]?.pagoUsd ?? 0;
               const pedido = regs[l.mint]?.pedidoUsd ?? 0;
               const devido = Math.max(0, p.conquistadoUsd - pago);

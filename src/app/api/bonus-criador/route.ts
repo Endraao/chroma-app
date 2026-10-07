@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { cached } from "@/lib/cache";
-import { progressoDoBonus } from "@/lib/bonus-criador";
+import { PARTE_DA_CHROMA, progressoDoBonus } from "@/lib/bonus-criador";
 import { precosNativos } from "@/lib/precos-nativos";
 
 /**
@@ -28,7 +28,10 @@ async function progresso(address: string) {
     ]);
     const sol = precos?.solana ?? 0;
     if (!ganho || sol <= 0) return null;
-    return progressoDoBonus(ganho.sol * sol);
+    // Volume de verdade — a taxa anti-sniper não conta pro bônus (07/10/2026).
+    const { volumeRealSol } = await import("@/lib/volume-real");
+    const volumeSol = (await volumeRealSol(ganho.pool, ganho.sol).catch(() => null)) ?? ganho.sol / PARTE_DA_CHROMA;
+    return progressoDoBonus(volumeSol * sol);
   }).catch(() => null);
 }
 
