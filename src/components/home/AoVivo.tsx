@@ -126,9 +126,11 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
   const [graficos, setGraficos] = useState<Map<string, number[]>>(new Map());
   useEffect(() => {
     let vivo = true;
-    const ler = async () => {
+    // A primeira leitura sempre (aba aberta em segundo plano também ganha o
+    // gráfico); as seguintes só com a aba à vista.
+    const ler = async (primeira = false) => {
       const mints = lista.current.filter((t) => t.chain === "solana").map((t) => t.address);
-      if (!mints.length || document.visibilityState !== "visible") return;
+      if (!mints.length || (!primeira && document.visibilityState !== "visible")) return;
       try {
         const r = await fetch(`/api/minigraficos?mints=${mints.slice(0, 90).join(",")}`);
         if (!r.ok) return;
@@ -138,8 +140,8 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
         /* sem histórico: o card usa as variações */
       }
     };
-    void ler();
-    const id = window.setInterval(ler, 60_000);
+    void ler(true);
+    const id = window.setInterval(() => void ler(), 60_000);
     return () => {
       vivo = false;
       window.clearInterval(id);
