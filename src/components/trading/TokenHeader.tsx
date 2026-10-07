@@ -28,9 +28,9 @@ import type { TokenSummary } from "@/lib/types";
  * fonte, mais o que passou na nossa frente desde que a página abriu.
  */
 const TEXTOS = traducoes({
-  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders", top10: "Top 10 hold", criadoHa: (x: string) => `created ${x} ago` },
-  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders", top10: "Top 10 detêm", criadoHa: (x: string) => `criado ${x} atrás` },
-  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人", top10: "前 10 持有", criadoHa: (x: string) => `${x}前创建` },
+  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders", top10: "Top 10 hold", top10Dica: "Known token: the largest wallets are the project's treasury, locked reserves and exchanges — not a red flag here.", criadoHa: (x: string) => `created ${x} ago` },
+  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders", top10: "Top 10 detêm", top10Dica: "Token conhecido: as maiores carteiras são tesouraria do projeto, reservas travadas e corretoras — aqui não é sinal de risco.", criadoHa: (x: string) => `criado ${x} atrás` },
+  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人", top10: "前 10 持有", top10Dica: "知名代币：最大的钱包是项目金库、锁定储备和交易所——此处并非风险信号。", criadoHa: (x: string) => `${x}前创建` },
 });
 
 export function TokenHeader({
@@ -39,12 +39,15 @@ export function TokenHeader({
   stats,
   volumeDaSessao,
   top10Pct,
+  top10Confiavel = false,
 }: {
   token: TokenSummary;
   price: number;
   stats: StatsAoVivo;
   volumeDaSessao: number;
   top10Pct: number;
+  /** Token conhecido: concentração é tesouraria/corretora — sem pintar de vermelho. */
+  top10Confiavel?: boolean;
 }) {
   const t = useTextos(TEXTOS);
   const [copied, setCopied] = useState(false);
@@ -203,7 +206,8 @@ export function TokenHeader({
           <Numero
             rotulo={t.top10}
             valor={`${top10Pct.toFixed(1)}%`}
-            cor={top10Pct > 50 ? "text-bear" : top10Pct > 25 ? "text-warn" : undefined}
+            cor={top10Confiavel ? undefined : top10Pct > 50 ? "text-bear" : top10Pct > 25 ? "text-warn" : undefined}
+            dica={top10Confiavel ? t.top10Dica : undefined}
           />
         )}
               </div>
@@ -239,10 +243,13 @@ export function TokenHeader({
  * volta achando que ainda está na Chroma.
  */
 
-function Numero({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: string }) {
+function Numero({ rotulo, valor, cor, dica }: { rotulo: string; valor: string; cor?: string; dica?: string }) {
   return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wider text-zinc-600">{rotulo}</div>
+    <div title={dica}>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-600">
+        {rotulo}
+        {dica && <span className="ml-1 cursor-help text-zinc-500">ⓘ</span>}
+      </div>
       <div className={cn("tnum text-[13px] font-bold", cor ?? "text-zinc-100")}>{valor}</div>
     </div>
   );

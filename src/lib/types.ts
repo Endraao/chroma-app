@@ -120,6 +120,11 @@ export interface SecurityReport {
     top10Pct: number;
     creatorPct: number;
   };
+  /**
+   * Token de lista conhecida (RAY, JUP, USDC…): a concentração é tesouraria do
+   * projeto e corretora, não baleia — o número continua, sem alarme.
+   */
+  confiavel?: boolean;
   warnings: string[];
 }
 

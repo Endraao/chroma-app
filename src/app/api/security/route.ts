@@ -596,6 +596,7 @@ async function fetchSolana(address: string): Promise<SecurityReport | null> {
       top10Pct: sumTop(holders, 10),
       creatorPct: maiorDetentorPct,
     },
+    confiavel: daListaDeConfianca,
     warnings: avisosDosChecks(checks),
   };
 }
