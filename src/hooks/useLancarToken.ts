@@ -226,7 +226,15 @@ export function useLancarToken() {
             compraSol,
           });
           const sim = await connection.simulateTransaction(tx);
-          if (sim.value.err) throw new Error(m.recusou);
+          if (sim.value.err) {
+            // O motivo da rede, não só "recusou" (07/10/2026: sem ele não dava
+            // pra saber o que corrigir).
+            const logs = sim.value.logs ?? [];
+            console.warn("[lançamento] simulação recusada", sim.value.err, logs);
+            if (logs.some((l) => /insufficient lamports|insufficient funds/i.test(l))) throw new Error(m.semSaldo(precisa.toFixed(3), tem.toFixed(3)));
+            const motivo = logs.map((l) => l.match(/Error Message: (.+?).?$/)?.[1] ?? l.match(/failed: (.+)$/)?.[1]).find(Boolean);
+            throw new Error(motivo ? `${m.recusou}: ${motivo}` : `${m.recusou} (${JSON.stringify(sim.value.err)})`);
+          }
           const assinada = await signTransaction(tx);
           assinada.partialSign(mint);
           const assinatura = await connection.sendRawTransaction(assinada.serialize());
