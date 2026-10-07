@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import { NumeroVivo, useHistoricoVivo, useTokenVivo } from "@/components/home/AoVivo";
+import { NumeroVivo, useHistoricoVivo, useSerieDoGrafico, useTokenVivo } from "@/components/home/AoVivo";
 import { Sparkline } from "@/components/ui/Sparkline";
 import { useTextos } from "@/components/IdiomaProvider";
 import { chainIcon } from "@/lib/chain-icons";
@@ -32,6 +32,8 @@ export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSum
   const t = useTextos(TEXTOS);
   const token = useTokenVivo(base);
   const vivos = useHistoricoVivo(base);
+  const serie = useSerieDoGrafico(base);
+  const serieSobe = serie ? serie[serie.length - 1] >= serie[0] : true;
   const naCurva = token.bondingProgress !== null;
   const [agora] = useState(() => Date.now());
   const nova = agora - token.createdAt < NOVA_POR_MS;
@@ -73,6 +75,10 @@ export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSum
             {t.curva} {Math.round(token.bondingProgress ?? 0)}%
           </span>
         ) : null}
+        {/* Gráfico por cima da arte, no canto (estilo pump.fun). Sem histórico real, as variações. */}
+        <div className="pointer-events-none absolute bottom-1.5 right-1.5 w-[58%]">
+          <Sparkline serie={serie} changes={base.priceChanges} vivos={vivos} up={serie ? serieSobe : pct >= 0} sobreposto altura={34} />
+        </div>
         {temPct && (
           <span
             className={cn(
@@ -93,12 +99,6 @@ export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSum
           valor={token.marketCapUsd}
           formatar={formatUsd}
           className="tnum mt-1 block text-[20px] font-black leading-tight tracking-tight text-zinc-50"
-        />
-        <Sparkline
-          changes={base.priceChanges}
-          vivos={vivos}
-          up={pct >= 0}
-          className="mt-1.5"
         />
         <div className="tnum mt-1.5 flex items-center gap-2 border-t border-white/[0.06] pt-1.5 text-[11px] text-zinc-500">
           {token.volume24hUsd > 0 && (

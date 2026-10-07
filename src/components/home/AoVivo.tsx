@@ -27,6 +27,8 @@ export interface DadoVivo {
 }
 
 const Contexto = createContext<Map<string, DadoVivo>>(new Map());
+/** Histórico de 24 h (velas de 15 min) por moeda, pro mini-gráfico dos cards. */
+const ContextoGraficos = createContext<Map<string, number[]>>(new Map());
 const INTERVALO_MS = 1_000;
 const HISTORICO_MAX = 40;
 /** Valor de mercado acima disso × liquidez é dado quebrado (par fantasma). */
@@ -120,7 +122,35 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
     };
   }, [chave]);
 
-  return <Contexto.Provider value={dados}>{children}</Contexto.Provider>;
+  // Mini-gráficos: o histórico real de 24 h, relido a cada minuto.
+  const [graficos, setGraficos] = useState<Map<string, number[]>>(new Map());
+  useEffect(() => {
+    let vivo = true;
+    const ler = async () => {
+      const mints = lista.current.filter((t) => t.chain === "solana").map((t) => t.address);
+      if (!mints.length || document.visibilityState !== "visible") return;
+      try {
+        const r = await fetch(`/api/minigraficos?mints=${mints.slice(0, 90).join(",")}`);
+        if (!r.ok) return;
+        const j = (await r.json()) as Record<string, number[]>;
+        if (vivo) setGraficos(new Map(Object.entries(j).map(([k, v]) => [k.toLowerCase(), v])));
+      } catch {
+        /* sem histórico: o card usa as variações */
+      }
+    };
+    void ler();
+    const id = window.setInterval(ler, 60_000);
+    return () => {
+      vivo = false;
+      window.clearInterval(id);
+    };
+  }, [chave]);
+
+  return (
+    <Contexto.Provider value={dados}>
+      <ContextoGraficos.Provider value={graficos}>{children}</ContextoGraficos.Provider>
+    </Contexto.Provider>
+  );
 }
 
 /** O token com os números ao vivo por cima (quando já chegaram). */
@@ -193,4 +223,15 @@ export function useHistoricoVivo(token: TokenSummary): number[] {
   if (!vivo || !(token.priceUsd > 0)) return [];
   if (token.marketCapUsd > 0 && (vivo.marketCapUsd > token.marketCapUsd * 50 || vivo.marketCapUsd < token.marketCapUsd / 20)) return [];
   return vivo.historico.map((p) => p / token.priceUsd);
+}
+
+/**
+ * Série de preços pro mini-gráfico: as 24 h reais + os preços que chegaram ao
+ * vivo nesta visita. Undefined quando não há histórico (Robinhood, moeda nova).
+ */
+export function useSerieDoGrafico(token: TokenSummary): number[] | undefined {
+  const historico = useContext(ContextoGraficos).get(token.address.toLowerCase());
+  const vivos = useHistoricoVivo(token);
+  if (!historico?.length) return undefined;
+  return [...historico, ...vivos.map((v) => v * token.priceUsd)];
 }

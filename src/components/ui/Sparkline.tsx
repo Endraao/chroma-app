@@ -18,6 +18,8 @@ export function Sparkline({
   className,
   vivos = [],
   altura = 28,
+  serie,
+  sobreposto = false,
 }: {
   changes?: { m5?: number; h1?: number; h6?: number; h24?: number };
   up: boolean;
@@ -25,10 +27,15 @@ export function Sparkline({
   /** preços ao vivo em proporção ao de agora (1 = preço do servidor) */
   vivos?: number[];
   altura?: number;
+  /** Preços de verdade (histórico 24 h): desenhados ponto a ponto, sem suavizar — cara de gráfico. */
+  serie?: number[];
+  /** Por cima da imagem da moeda (estilo pump.fun): só a linha fina com brilho, sem fundo nem ponto. */
+  sobreposto?: boolean;
 }) {
   const id = useId().replace(/:/g, "");
+  const real = serie && serie.length >= 8 ? serie.filter((v) => Number.isFinite(v) && v > 0) : null;
   const base = buildPoints(changes) ?? (vivos.length >= 2 ? [1] : null);
-  const points = base ? [...base, ...vivos.filter((v) => Number.isFinite(v) && v > 0)] : null;
+  const points = real ?? (base ? [...base, ...vivos.filter((v) => Number.isFinite(v) && v > 0)] : null);
   if (!points) return null;
 
   const width = 100;
@@ -43,7 +50,9 @@ export function Sparkline({
     y: max === min ? height / 2 : height - 4 - ((value - min) / span) * (height - 8),
   }));
 
-  const linha = curvaSuave(xy);
+  // Com histórico real: reta entre cada ponto (o zigue-zague do mercado);
+  // só com as variações (5 pontos): curva suave.
+  const linha = real ? xy.map((p, i) => `${i ? "L" : "M"} ${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ") : curvaSuave(xy);
   const area = `${linha} L ${width},${height} L 0,${height} Z`;
   const cor = up ? "#00d18f" : "#ff4d5e";
   const ultimo = xy[xy.length - 1];
@@ -57,22 +66,23 @@ export function Sparkline({
             <stop offset="100%" stopColor={cor} stopOpacity="0" />
           </linearGradient>
         </defs>
-        <path d={area} fill={`url(#spark-${id})`} />
+        {!sobreposto && <path d={area} fill={`url(#spark-${id})`} />}
         <path
           d={linha}
           fill="none"
           stroke={cor}
-          strokeWidth={1.75}
+          strokeWidth={sobreposto ? 1.5 : 1.75}
+          style={sobreposto ? { filter: `drop-shadow(0 0 3px ${cor})` } : undefined}
           strokeLinejoin="round"
           strokeLinecap="round"
           vectorEffect="non-scaling-stroke"
         />
       </svg>
       {/* Ponto fora do SVG esticado, pra continuar redondo. */}
-      <span
+      {!sobreposto && <span
         className="absolute size-[7px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-ink-950"
         style={{ left: `${ultimo.x}%`, top: `${(ultimo.y / height) * 100}%`, backgroundColor: cor }}
-      />
+      />}
     </div>
   );
 }
