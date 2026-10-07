@@ -25,19 +25,29 @@ import type { ChainId, TokenSummary } from "./types";
 export type SortKey = "hot" | "new" | "volume" | "marketCap" | "gainers";
 
 /**
- * "Em alta" (padrão da home desde 06/10/2026, pedido do dono: "deixa parecido
- * com a fomo"): o que está SE MEXENDO agora vem primeiro — alta dos últimos
- * 5 min e 1 h, volume e moeda recém-nascida. Moeda parada afunda.
+ * "Em alta" no critério da fomo (pedido do dono, 06/10/2026: "o top 1 da
+ * chroma é uma moeda de 6k; na fomo são moedas muito mais interessantes").
+ * A fomo só destaca moeda com valor de mercado e volume de verdade.
+ */
+export function ehMoedaSeria(t: TokenSummary): boolean {
+  return t.marketCapUsd >= 150_000 && t.volume24hUsd >= 50_000 && t.liquidityUsd >= 15_000;
+}
+
+/**
+ * Ordem "em alta": moeda séria primeiro; dentro dela, volume e alta das
+ * últimas horas pesam mais. Moeda minúscula recém-nascida não sobe pro topo.
  */
 export function pontuacaoEmAlta(t: TokenSummary): number {
   const c = t.priceChanges ?? {};
-  const m5 = Math.max(-50, Math.min(300, Number(c.m5) || 0));
-  const h1 = Math.max(-80, Math.min(1000, Number(c.h1) || 0));
-  const vol = Math.log10((t.volume24hUsd || 0) + 1) * 12;
-  const idadeMin = (Date.now() - t.createdAt) / 60_000;
-  const recem = idadeMin < 60 ? 25 * (1 - idadeMin / 60) : 0;
-  const desdeOLancamento = !c.m5 && !c.h1 && idadeMin < 24 * 60 ? Math.min(400, Math.max(-80, t.change24h)) * 0.08 : 0;
-  return vol + m5 * 0.6 + h1 * 0.12 + recem + desdeOLancamento;
+  const corta = (v: unknown, a: number, b: number) => Math.max(a, Math.min(b, Number(v) || 0));
+  const vol = Math.log10((t.volume24hUsd || 0) + 1) * 10;
+  return (
+    (ehMoedaSeria(t) ? 100 : 0) +
+    vol +
+    corta(c.m5, -30, 100) * 0.3 +
+    corta(c.h1, -50, 300) * 0.15 +
+    corta(c.h24 ?? t.change24h, -90, 2000) * 0.02
+  );
 }
 
 /** Nomes de marca famosa copiados: deixam a vitrine com cara de golpe. */

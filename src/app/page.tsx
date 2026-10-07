@@ -9,8 +9,7 @@ import { PainelDaChroma } from "@/components/home/PainelDaChroma";
 import { SubindoAgora } from "@/components/home/SubindoAgora";
 import { AoVivoProvider } from "@/components/home/AoVivo";
 import { ListaEmAlta } from "@/components/home/ListaEmAlta";
-import { FeedAoVivo } from "@/components/home/FeedAoVivo";
-import { pontuacaoEmAlta } from "@/lib/tokens";
+import { ehMoedaSeria, pontuacaoEmAlta } from "@/lib/tokens";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
@@ -178,7 +177,8 @@ export default async function HomePage({
   const daChromaNaRede = lancadasNaChroma.filter((t) => chain === "todas" || t.chain === chain);
 
   const { isDemo } = principal;
-  const emAlta = [...principal.tokens].sort((a, b) => pontuacaoEmAlta(b) - pontuacaoEmAlta(a)).slice(0, 30);
+  // A coluna "Em alta" só com moeda séria (critério da fomo): ver ehMoedaSeria.
+  const emAlta = principal.tokens.filter(ehMoedaSeria).sort((a, b) => pontuacaoEmAlta(b) - pontuacaoEmAlta(a)).slice(0, 30);
   const todasAsMoedas = sort === "chroma" ? daChromaNaRede : principal.tokens;
   // Busca do cabeçalho: nome, símbolo ou começo do endereço.
   const tokens = busca
@@ -271,7 +271,6 @@ export default async function HomePage({
               <aside className="hidden lg:block">
                 <div className="sticky top-20 space-y-4">
                   <ListaEmAlta tokens={emAlta} />
-                  <FeedAoVivo tokens={emAlta} />
                 </div>
               </aside>
               <Grade tokens={tokens} destaque={sort === "chroma"} />
