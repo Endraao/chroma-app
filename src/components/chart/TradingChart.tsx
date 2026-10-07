@@ -412,6 +412,15 @@ export function TradingChart({
     if (serieAplicadaRef.current !== serie) {
       chart.applyNewData(dados);
       /*
+       * Zoom de abertura nas últimas ~120 velas (06/10/2026: com todas
+       * espremidas, 4 h de velas de 1 min viravam um "código de barras").
+       */
+      const larguraDoPainel = chart.getSize("candle_pane", DomPosition.Main)?.width ?? 0;
+      if (larguraDoPainel > 0 && dados.length > 120) {
+        chart.setBarSpace(Math.max(3, Math.min(14, larguraDoPainel / 120)));
+        chart.scrollToRealTime(0);
+      }
+      /*
        * Moeda nova, com poucas velas: elas abrem NO MEIO do gráfico, e não
        * coladas no canto direito (pedido do dono, 30/09/2026). Com velas
        * suficientes pra encher metade da tela, volta a distância de sempre.
@@ -958,10 +967,15 @@ export const FONTE_TV =
 
 const ESTILO_ESCURO = {
   grid: {
-    horizontal: { color: "#1a1b1f" },
-    vertical: { color: "#1a1b1f" },
+    horizontal: { color: "#16171b" },
+    vertical: { color: "#16171b" },
   },
   candle: {
+    /*
+     * Respiro em cima e embaixo (estilo fomo): as velas ocupam o meio do
+     * gráfico, e não a altura toda — senão 1% de variação parecia um tombo.
+     */
+    margin: { top: 0.18, bottom: 0.14 },
     bar: {
       upColor: VERDE,
       downColor: VERMELHO,
