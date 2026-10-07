@@ -50,7 +50,7 @@ export async function saquesDoCriador(conexao: Connection, mint: string): Promis
   for (let i = 0; i < assinaturas.length; i += 5) {
     const lote = assinaturas.slice(i, i + 5);
     const txs = await Promise.all(
-      lote.map((s) => conexao.getParsedTransaction(s.signature, { maxSupportedTransactionVersion: 0 }).catch(() => null)),
+      lote.map((s) => conexao.getParsedTransaction(s.signature, { maxSupportedTransactionVersion: 1 }).catch(() => null)),
     );
     txs.forEach((tx, j) => {
       const sol = valorDoSaque(tx, g.criador, [g.pool, mint]);

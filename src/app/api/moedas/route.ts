@@ -390,7 +390,7 @@ async function lerTransacao(rpc: string, assinatura: string): Promise<TxLida | n
       jsonrpc: "2.0",
       id: 1,
       method: "getTransaction",
-      params: [assinatura, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 }],
+      params: [assinatura, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 1 }],
     }),
   });
   const json = (await resposta.json()) as { result?: TxLida | null };

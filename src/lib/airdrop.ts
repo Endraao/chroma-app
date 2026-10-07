@@ -260,7 +260,7 @@ export async function verificarSwapECreditar(
   }
 
   const tx = await conexao().getTransaction(assinatura, {
-    maxSupportedTransactionVersion: 0,
+    maxSupportedTransactionVersion: 1,
     commitment: "confirmed",
   });
 
