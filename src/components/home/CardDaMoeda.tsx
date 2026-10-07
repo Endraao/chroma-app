@@ -10,9 +10,9 @@ import type { TokenSummary } from "@/lib/types";
 import { cn, formatPct, formatUsd, miniatura, shortenAddress, timeAgo } from "@/lib/utils";
 
 const TEXTOS = traducoes({
-  en: { nova: "NEW", curva: "CURVE" },
-  pt: { nova: "NOVA", curva: "CURVA" },
-  zh: { nova: "新", curva: "曲线" },
+  en: { nova: "NEW", curva: "CURVE", emAlta: "HOT" },
+  pt: { nova: "NOVA", curva: "CURVA", emAlta: "EM ALTA" },
+  zh: { nova: "新", curva: "曲线", emAlta: "热门" },
 });
 
 /** Até quando a moeda leva o selo de nova. */
@@ -25,17 +25,40 @@ const NOVA_POR_MS = 15 * 60_000;
  */
 export function CardDaMoeda({ token, destaque = false }: { token: TokenSummary; destaque?: boolean }) {
   const t = useTextos(TEXTOS);
-  const up = token.change24h >= 0;
   const naCurva = token.bondingProgress !== null;
   const [agora] = useState(() => Date.now());
   const nova = agora - token.createdAt < NOVA_POR_MS;
+
+  /*
+   * O card PISCA quando o valor muda entre uma atualização e outra (a home
+   * atualiza sozinha): verde se subiu, vermelho se caiu. É o que dá a
+   * sensação de mercado vivo (pedido do dono, 06/10/2026).
+   */
+  const anterior = useRef(token.marketCapUsd);
+  const [pisca, setPisca] = useState<"" | "sobe" | "desce">("");
+  useEffect(() => {
+    const antes = anterior.current;
+    anterior.current = token.marketCapUsd;
+    if (!antes || antes === token.marketCapUsd) return;
+    setPisca(token.marketCapUsd > antes ? "sobe" : "desce");
+    const id = window.setTimeout(() => setPisca(""), 1200);
+    return () => window.clearTimeout(id);
+  }, [token.marketCapUsd]);
+
+  const c = token.priceChanges ?? {};
+  const m5 = Number(c.m5) || 0;
+  const emAlta = (m5 >= 30 && m5 <= 50_000) || (agora - token.createdAt < 30 * 60_000 && token.change24h >= 300 && token.change24h <= 50_000);
+  const pct = token.change24h;
+  const temPct = Number.isFinite(pct) && pct !== 0 && Math.abs(pct) <= 50_000;
 
   return (
     <Link href={`/token/${token.address}`} className="group block min-w-0">
       <div
         className={cn(
           "relative aspect-square overflow-hidden rounded-lg border bg-ink-800 transition-colors",
-          destaque || nova ? "border-bull/60" : "border-ink-700 group-hover:border-marca/50",
+          destaque || nova || emAlta ? "border-bull/60" : "border-ink-700 group-hover:border-marca/50",
+          pisca === "sobe" && "card-pisca-sobe",
+          pisca === "desce" && "card-pisca-desce",
         )}
       >
         <ImagemDaMoeda token={token} />
@@ -50,7 +73,11 @@ export function CardDaMoeda({ token, destaque = false }: { token: TokenSummary; 
         />
 
 
-        {nova ? (
+        {emAlta ? (
+          <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-orange-500/90 px-2 py-0.5 text-[10px] font-black text-black shadow-[0_0_12px_rgba(249,115,22,0.6)]">
+            🔥 {t.emAlta}
+          </span>
+        ) : nova ? (
           <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-bull">
             <span className="size-1.5 animate-pulse rounded-full bg-bull" />
             {t.nova}
@@ -60,6 +87,16 @@ export function CardDaMoeda({ token, destaque = false }: { token: TokenSummary; 
             {t.curva} {Math.round(token.bondingProgress ?? 0)}%
           </span>
         ) : null}
+        {temPct && (
+          <span
+            className={cn(
+              "tnum absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-[13px] font-black shadow-lg",
+              pct >= 0 ? "bg-bull text-black" : "bg-bear text-white",
+            )}
+          >
+            {pct >= 0 ? "▲" : "▼"} {formatPct(Math.abs(pct)).replace(/^[+-]/, "")}
+          </span>
+        )}
       </div>
 
       <div className="mt-2 px-0.5">
@@ -67,11 +104,20 @@ export function CardDaMoeda({ token, destaque = false }: { token: TokenSummary; 
         <p className="truncate text-[12px] text-zinc-500">${token.symbol}</p>
 
         <p className="tnum mt-1 flex items-baseline gap-1.5">
-          <span className="text-[15px] font-bold text-zinc-100">{formatUsd(token.marketCapUsd)}</span>
-          <span className="text-[11px] text-zinc-500">MC</span>
-          <span className={cn("ml-auto text-[11px] font-semibold", up ? "text-bull" : "text-bear")}>
-            {formatPct(token.change24h)}
+          <span
+            className={cn(
+              "text-[15px] font-bold transition-colors duration-500",
+              pisca === "sobe" ? "text-bull" : pisca === "desce" ? "text-bear" : "text-zinc-100",
+            )}
+          >
+            {formatUsd(token.marketCapUsd)}
           </span>
+          <span className="text-[11px] text-zinc-500">MC</span>
+          {token.volume24hUsd > 0 && (
+            <span className="ml-auto text-[11px] text-zinc-500">
+              Vol <span className="text-zinc-300">{formatUsd(token.volume24hUsd)}</span>
+            </span>
+          )}
         </p>
 
         <p className="tnum mt-1 flex items-center gap-1.5 text-[11.5px] text-zinc-500">

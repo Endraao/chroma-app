@@ -22,7 +22,30 @@ import type { ChainId, TokenSummary } from "./types";
  * Todo token de demonstração vem com `isDemo: true` pra interface poder avisar.
  */
 
-export type SortKey = "new" | "volume" | "marketCap" | "gainers";
+export type SortKey = "hot" | "new" | "volume" | "marketCap" | "gainers";
+
+/**
+ * "Em alta" (padrão da home desde 06/10/2026, pedido do dono: "deixa parecido
+ * com a fomo"): o que está SE MEXENDO agora vem primeiro — alta dos últimos
+ * 5 min e 1 h, volume e moeda recém-nascida. Moeda parada afunda.
+ */
+export function pontuacaoEmAlta(t: TokenSummary): number {
+  const c = t.priceChanges ?? {};
+  const m5 = Math.max(-50, Math.min(300, Number(c.m5) || 0));
+  const h1 = Math.max(-80, Math.min(1000, Number(c.h1) || 0));
+  const vol = Math.log10((t.volume24hUsd || 0) + 1) * 12;
+  const idadeMin = (Date.now() - t.createdAt) / 60_000;
+  const recem = idadeMin < 60 ? 25 * (1 - idadeMin / 60) : 0;
+  const desdeOLancamento = !c.m5 && !c.h1 && idadeMin < 24 * 60 ? Math.min(400, Math.max(-80, t.change24h)) * 0.08 : 0;
+  return vol + m5 * 0.6 + h1 * 0.12 + recem + desdeOLancamento;
+}
+
+/** Nomes de marca famosa copiados: deixam a vitrine com cara de golpe. */
+const MARCA_COPIADA = /^(lego|bybit|binance|coinbase|spacex|tesla|apple|nike|ferrari|google|amazon|openai|nvidia|microsoft|meta|x|twitter|kraken|okx|phantom|solana|bitcoin|ethereum|usdc|usdt|tether)$/i;
+export function pareceMarcaCopiada(t: TokenSummary): boolean {
+  const nome = (t.name ?? "").trim().split(/[s-·|]+/)[0] ?? "";
+  return MARCA_COPIADA.test(nome) || MARCA_COPIADA.test((t.symbol ?? "").trim());
+}
 
 const MINUTE = 60_000;
 
@@ -86,6 +109,8 @@ function sortTokens(list: TokenSummary[], sort: SortKey): TokenSummary[] {
       return copy.sort((a, b) => b.marketCapUsd - a.marketCapUsd);
     case "gainers":
       return copy.sort((a, b) => b.change24h - a.change24h);
+    case "hot":
+      return copy.sort((a, b) => pontuacaoEmAlta(b) - pontuacaoEmAlta(a));
     default:
       return copy.sort((a, b) => b.createdAt - a.createdAt);
   }
@@ -197,7 +222,7 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    * curta. Mil dólares é o mesmo corte que a lista antiga já aplicava.
    */
   const deMercado = [...porEndereco.values()].filter(
-    (t) => t.liquidityUsd >= 1_000 && !FORA_DA_VITRINE.has(t.address.toLowerCase()),
+    (t) => t.liquidityUsd >= 1_000 && !FORA_DA_VITRINE.has(t.address.toLowerCase()) && !pareceMarcaCopiada(t),
   );
 
   /*
@@ -232,7 +257,7 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    * pouco —, e sem passar por cima de quem já veio de uma fonte de mercado.
    */
   for (const t of [...daCurvaSol, ...daPons, ...ponsGraduadas]) {
-    if (FORA_DA_VITRINE.has(t.address.toLowerCase())) continue;
+    if (FORA_DA_VITRINE.has(t.address.toLowerCase()) || pareceMarcaCopiada(t)) continue;
     const chave = `${t.chain}:${t.address.toLowerCase()}`;
     if (!porChave.has(chave)) porChave.set(chave, t);
   }
@@ -270,7 +295,8 @@ const universoEmCache = unstable_cache(montarUniverso, ["universo-v6"], {
    * quase todo o limite do IP. Moeda lançada aqui aparece na hora mesmo assim
    * (a tag é renovada no lançamento).
    */
-  revalidate: 120,
+  // 30 s: a vitrine tem de parecer viva (era 120 s e nada se mexia).
+  revalidate: 30,
   tags: [TAG_DO_UNIVERSO],
 });
 

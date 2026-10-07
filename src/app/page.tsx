@@ -6,6 +6,7 @@ import { CardDaMoeda } from "@/components/home/CardDaMoeda";
 import { FaixaDeAbertura } from "@/components/home/FaixaDeAbertura";
 import { formatUsd } from "@/lib/utils";
 import { PainelDaChroma } from "@/components/home/PainelDaChroma";
+import { SubindoAgora } from "@/components/home/SubindoAgora";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 const TEXTOS = traducoes({
   en: {
-    abaChroma: "Created on Chroma",
+    abaChroma: "Created on Chroma", abaEmAlta: "🔥 Trending",
     abaRecentes: "Newest",
     abaAltas: "Top gainers",
     abaVolume: "24h volume",
@@ -53,7 +54,7 @@ const TEXTOS = traducoes({
       `${n} ${n === 1 ? "coin" : "coins"} listed in this filter. The biggest and just-launched sections appear when there are more coins.`,
   },
   pt: {
-    abaChroma: "Criadas na Chroma",
+    abaChroma: "Criadas na Chroma", abaEmAlta: "🔥 Em alta",
     abaRecentes: "Recentes",
     abaAltas: "Maiores altas",
     abaVolume: "Volume 24h",
@@ -88,7 +89,7 @@ const TEXTOS = traducoes({
       `${n} ${n === 1 ? "moeda listada" : "moedas listadas"} neste filtro. As seções de maiores e de recém-chegadas aparecem quando houver mais moedas.`,
   },
   zh: {
-    abaChroma: "Chroma 发行",
+    abaChroma: "Chroma 发行", abaEmAlta: "🔥 热门",
     abaRecentes: "最新",
     abaAltas: "涨幅榜",
     abaVolume: "24小时交易量",
@@ -130,8 +131,9 @@ type AbaDoMercado = SortKey | "chroma";
 
 const SORTS: {
   key: AbaDoMercado;
-  rotulo: "abaChroma" | "abaRecentes" | "abaAltas" | "abaVolume" | "abaMcap";
+  rotulo: "abaChroma" | "abaEmAlta" | "abaRecentes" | "abaAltas" | "abaVolume" | "abaMcap";
 }[] = [
+  { key: "hot", rotulo: "abaEmAlta" },
   { key: "new", rotulo: "abaRecentes" },
   { key: "gainers", rotulo: "abaAltas" },
   { key: "volume", rotulo: "abaVolume" },
@@ -152,7 +154,7 @@ export default async function HomePage({
   searchParams: Promise<{ sort?: string; chain?: string; q?: string }>;
 }) {
   const filtros = await searchParams;
-  const sort = (filtros.sort as AbaDoMercado) || "new";
+  const sort = (filtros.sort as AbaDoMercado) || "hot";
   const ordem: SortKey = sort === "chroma" ? "new" : sort;
   const chain: ChainId | "todas" =
     filtros.chain === "todas"
@@ -188,7 +190,7 @@ export default async function HomePage({
     const proximaChain = params.chain === undefined ? chain : params.chain;
     const q = new URLSearchParams();
     if (busca && params.chain === undefined) q.set("q", busca);
-    if (proximoSort !== "new") q.set("sort", proximoSort);
+    if (proximoSort !== "hot") q.set("sort", proximoSort);
     if (proximaChain) q.set("chain", proximaChain);
     const s = q.toString();
     return s ? `/?${s}#mercado` : "/#mercado";
@@ -255,7 +257,10 @@ export default async function HomePage({
             outraRede={t.todasAsRedes}
           />
         ) : (
-          <Grade tokens={tokens} destaque={sort === "chroma"} />
+          <>
+            <SubindoAgora tokens={tokens} />
+            <Grade tokens={tokens} destaque={sort === "chroma"} />
+          </>
         )}
       </section>
     </div>

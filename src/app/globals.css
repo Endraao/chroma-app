@@ -1139,3 +1139,13 @@ body::after {
     animation: none;
   }
 }
+
+/* ---- Vitrine viva (estilo Fomo, 06/10/2026) ---- */
+@keyframes card-sobe { 0% { box-shadow: 0 0 0 0 rgba(0,209,143,0); } 25% { box-shadow: 0 0 0 3px rgba(0,209,143,0.9), 0 0 28px rgba(0,209,143,0.55); } 100% { box-shadow: 0 0 0 0 rgba(0,209,143,0); } }
+@keyframes card-desce { 0% { box-shadow: 0 0 0 0 rgba(255,77,106,0); } 25% { box-shadow: 0 0 0 3px rgba(255,77,106,0.9), 0 0 28px rgba(255,77,106,0.5); } 100% { box-shadow: 0 0 0 0 rgba(255,77,106,0); } }
+.card-pisca-sobe { animation: card-sobe 1.2s ease-out; }
+.card-pisca-desce { animation: card-desce 1.2s ease-out; }
+@keyframes faixa-correr { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.faixa-correndo { animation: faixa-correr 60s linear infinite; }
+.faixa-correndo:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .faixa-correndo, .card-pisca-sobe, .card-pisca-desce { animation: none; } }
