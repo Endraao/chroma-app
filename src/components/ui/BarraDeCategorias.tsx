@@ -12,9 +12,9 @@ import { traducoes } from "@/lib/idiomas";
 
 /* Rótulos da barra, pelo texto em português (que é a chave em CATEGORIAS). */
 const TEXTOS = traducoes<Record<string, string>>({
-  en: { "Todas as redes": "All networks", Tudo: "All", Quentes: "Trending", "Maiores altas": "Top gainers", Maiores: "Biggest", "Recém-chegadas": "Just launched", Afiliados: "Affiliates", Taxas: "Fees", "Criar token": "Create token", recolher: "Collapse categories", expandir: "Expand categories" },
-  pt: { "Todas as redes": "Todas as redes", Tudo: "Tudo", Quentes: "Quentes", "Maiores altas": "Maiores altas", Maiores: "Maiores", "Recém-chegadas": "Recém-chegadas", Afiliados: "Afiliados", Taxas: "Taxas", "Criar token": "Criar token", recolher: "Recolher categorias", expandir: "Expandir categorias" },
-  zh: { "Todas as redes": "全部网络", Tudo: "全部", Quentes: "热门", "Maiores altas": "涨幅榜", Maiores: "市值最高", "Recém-chegadas": "新上线", Afiliados: "推广伙伴", Taxas: "费用", "Criar token": "创建代币", recolher: "收起分类", expandir: "展开分类" },
+  en: { Categorias: "Categories", "Todas as redes": "All networks", Tudo: "All", Quentes: "Trending", "Maiores altas": "Top gainers", Maiores: "Biggest", "Recém-chegadas": "Just launched", Afiliados: "Affiliates", Taxas: "Fees", "Criar token": "Create token", recolher: "Collapse categories", expandir: "Expand categories" },
+  pt: { Categorias: "Categorias", "Todas as redes": "Todas as redes", Tudo: "Tudo", Quentes: "Quentes", "Maiores altas": "Maiores altas", Maiores: "Maiores", "Recém-chegadas": "Recém-chegadas", Afiliados: "Afiliados", Taxas: "Taxas", "Criar token": "Criar token", recolher: "Recolher categorias", expandir: "Expandir categorias" },
+  zh: { Categorias: "分类", "Todas as redes": "全部网络", Tudo: "全部", Quentes: "热门", "Maiores altas": "涨幅榜", Maiores: "市值最高", "Recém-chegadas": "新上线", Afiliados: "推广伙伴", Taxas: "费用", "Criar token": "创建代币", recolher: "收起分类", expandir: "展开分类" },
 });
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
@@ -203,7 +203,7 @@ export function BarraDeCategorias({
             aberta ? "justify-between px-2.5" : "justify-center",
           )}
         >
-          {aberta && <span className="rotulo">Categorias</span>}
+          {aberta && <span className="rotulo">{t.Categorias}</span>}
           <IconeSeta virada={aberta} />
         </button>
 
