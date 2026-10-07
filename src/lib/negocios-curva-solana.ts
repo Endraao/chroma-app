@@ -7,6 +7,23 @@ import type { NegocioDoPool } from "@/lib/market";
 
 const PROGRAMA_DA_CURVA = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
 
+/**
+ * A chave da Helius (as transações decodificadas são recurso SÓ dela). Vem de
+ * HELIUS_RPC — o RPC principal pode ser outro (RPC Fast, 07/10/2026) — e, sem
+ * ela, do próprio NEXT_PUBLIC_SOLANA_RPC, se ele for da Helius.
+ */
+export function chaveDaHelius(): string | null {
+  for (const url of [process.env.HELIUS_RPC, process.env.NEXT_PUBLIC_SOLANA_RPC]) {
+    try {
+      const chave = url ? new URL(url).searchParams.get("api-key") : null;
+      if (chave) return chave;
+    } catch {
+      /* URL inválida: tenta a próxima */
+    }
+  }
+  return null;
+}
+
 interface TxDaHelius {
   signature: string;
   timestamp: number;
@@ -29,8 +46,7 @@ interface TxDaHelius {
  * chama cai na fonte de sempre.
  */
 export async function negociosDaCurvaSolana(mint: string, precoDoSol: number): Promise<NegocioDoPool[] | null> {
-  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
-  const chave = rpc ? new URL(rpc).searchParams.get("api-key") : null;
+  const chave = chaveDaHelius();
   if (!chave || precoDoSol <= 0) return null;
 
   const [curva] = PublicKey.findProgramAddressSync(
@@ -91,8 +107,7 @@ const WSOL = "So11111111111111111111111111111111111111112";
  * decodificadas pela Helius. Compra = o token sai do cofre da pool; venda = entra.
  */
 export async function negociosDaCurvaDaChroma(mint: string, pool: string, precoDoSol: number): Promise<NegocioDoPool[] | null> {
-  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
-  const chave = rpc ? new URL(rpc).searchParams.get("api-key") : null;
+  const chave = chaveDaHelius();
   if (!chave || precoDoSol <= 0) return null;
 
   return cached(`negocios-curva-chroma:${mint}`, 3_000, async () => {

@@ -99,7 +99,8 @@ function semLocalhost(url: string): string {
 
 function daHelius(mint: string): Promise<{ cdn: string; imagem: string; simbolo: string }> {
   return cached(`logo-helius:${mint}`, 60 * 60 * 1000, async () => {
-    const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+    // getAsset é recurso da Helius: usa a dela mesmo com outro RPC principal.
+    const rpc = process.env.HELIUS_RPC || process.env.NEXT_PUBLIC_SOLANA_RPC;
     const vazio = { cdn: "", imagem: "", simbolo: "" };
     if (!rpc?.startsWith("https")) return vazio;
     try {

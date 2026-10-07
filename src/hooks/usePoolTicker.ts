@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Connection, PublicKey } from "@solana/web3.js";
 
-import { SOLANA_RPC } from "@/lib/web3";
+import { SOLANA_RPC, SOLANA_WS } from "@/lib/web3";
 
 /**
  * Preço ao vivo lido DIRETO DA POOL, por WebSocket.
@@ -133,7 +133,7 @@ export function usePoolTicker({
 
     let cancelado = false;
     const inscricoes: number[] = [];
-    const conexao = new Connection(SOLANA_RPC, { commitment: "processed" });
+    const conexao = new Connection(SOLANA_RPC, { commitment: "processed", wsEndpoint: SOLANA_WS });
     // Preso numa variável: na limpeza, o ref já pode apontar pra outra pool.
     const reservas = reservasRef.current;
 
