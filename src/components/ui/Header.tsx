@@ -24,6 +24,7 @@ const NAV = [
   { href: "/", chave: "navExplorar" },
   { href: "/create", chave: "navCriar" },
   { href: "/affiliate", chave: "navAfiliados" },
+  { href: "/ranking", chave: "navRanking" },
   { href: "/fees", chave: "navTaxas" },
 ] as const;
 

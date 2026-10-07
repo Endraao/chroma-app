@@ -48,6 +48,7 @@ export interface Textos {
   navCriar: string;
   navAirdrop: string;
   navAfiliados: string;
+  navRanking: string;
   navTaxas: string;
 
   conectar: string;
@@ -78,6 +79,7 @@ const en: Textos = {
   navCriar: "Create token",
   navAirdrop: "Rewards",
   navAfiliados: "Affiliates",
+  navRanking: "Leaderboard",
   navTaxas: "Fees",
 
   conectar: "Connect wallet",
@@ -110,6 +112,7 @@ const pt: Textos = {
   navCriar: "Criar token",
   navAirdrop: "Recompensas",
   navAfiliados: "Afiliados",
+  navRanking: "Ranking",
   navTaxas: "Taxas",
 
   conectar: "Conectar carteira",
@@ -142,6 +145,7 @@ const zh: Textos = {
   navCriar: "创建代币",
   navAirdrop: "奖励",
   navAfiliados: "推广伙伴",
+  navRanking: "排行榜",
   navTaxas: "费用",
 
   conectar: "连接钱包",
