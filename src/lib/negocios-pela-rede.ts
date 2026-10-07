@@ -20,6 +20,8 @@ import type { NegocioDoPool } from "@/lib/market";
  */
 const WSOL = "So11111111111111111111111111111111111111112";
 const LIDAS = new Map<string, NegocioDoPool | null>();
+/** Última lista boa de cada moeda: uma leitura que falha não pode trocar a lista viva pela da fonte lenta. */
+const ULTIMA = new Map<string, NegocioDoPool[]>();
 const MAX_LIDAS = 4_000;
 
 function lerNegocio(tx: ParsedTransactionWithMeta | null, mint: string, assinatura: string, precoUsd: number, precoSol: number): NegocioDoPool | null {
@@ -50,17 +52,26 @@ export async function negociosPelaRede(mint: string, pool: string, precoUsd: num
   if (!rpc?.startsWith("http")) return null;
   return cached(`negocios-rede:${mint}`, 2_500, async () => {
     const conexao = new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true });
-    const assinaturas = (await conexao.getSignaturesForAddress(new PublicKey(pool), { limit: 40 })).filter((s) => !s.err);
+    const assinaturas = (await conexao.getSignaturesForAddress(new PublicKey(pool), { limit: 30 })).filter((s) => !s.err);
     const novas = assinaturas.filter((s) => !LIDAS.has(s.signature)).map((s) => s.signature);
-    if (novas.length) {
-      const txs = await conexao.getParsedTransactions(novas, { maxSupportedTransactionVersion: 0, commitment: "confirmed" });
-      txs.forEach((tx, i) => LIDAS.set(novas[i], lerNegocio(tx, mint, novas[i], precoUsd, precoSol)));
+    // Em lotes de 10: um pacote de 40 transações decodificadas às vezes falhava inteiro.
+    for (let i = 0; i < novas.length; i += 10) {
+      const lote = novas.slice(i, i + 10);
+      const txs = await conexao
+        .getParsedTransactions(lote, { maxSupportedTransactionVersion: 0, commitment: "confirmed" })
+        .catch(() => null);
+      if (!txs) continue; // tenta de novo na próxima leitura
+      txs.forEach((tx, j) => LIDAS.set(lote[j], lerNegocio(tx, mint, lote[j], precoUsd, precoSol)));
+    }
+    {
       // Memória limitada: some o mais antigo.
       for (const k of LIDAS.keys()) {
         if (LIDAS.size <= MAX_LIDAS) break;
         LIDAS.delete(k);
       }
     }
-    return assinaturas.map((s) => LIDAS.get(s.signature)).filter((n): n is NegocioDoPool => !!n);
-  }).catch(() => null);
+    const lista = assinaturas.map((s) => LIDAS.get(s.signature)).filter((n): n is NegocioDoPool => !!n);
+    ULTIMA.set(mint, lista);
+    return lista;
+  }).catch(() => ULTIMA.get(mint) ?? null);
 }
