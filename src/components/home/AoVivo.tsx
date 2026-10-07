@@ -141,7 +141,8 @@ export function AoVivoProvider({
     // A primeira leitura sempre (aba aberta em segundo plano também ganha o
     // gráfico); as seguintes só com a aba à vista.
     const ler = async (primeira = false) => {
-      const mints = [...new Set(listaDoGrafico.current.filter((t) => t.chain === "solana").map((t) => t.address))].slice(0, 200);
+      // Solana (Jupiter) e Robinhood (GeckoTerminal, aos poucos) — ver /api/minigraficos.
+      const mints = [...new Set(listaDoGrafico.current.map((t) => t.address))].slice(0, 300);
       if (!mints.length || (!primeira && document.visibilityState !== "visible")) return;
       try {
         const r = await fetch("/api/minigraficos", { method: "POST", body: JSON.stringify({ mints }) });
