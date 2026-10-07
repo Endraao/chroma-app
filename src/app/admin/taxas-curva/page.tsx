@@ -36,10 +36,14 @@ export default function ResgatarTaxasDaCurva() {
       const taxaNegociacaoSol = curva.taxaNegociacaoSol + meteora.taxaSol;
       if (!txs.length) return setEstado(`Nada a resgatar agora (${pools} moeda(s) na curva).`);
       setEstado(`${txs.length} resgate(s) prontos (${taxaNegociacaoSol.toFixed(6)} SOL de negociação + taxas de lançamento). Aprove na carteira…`);
+      // Blockhash novo e "finalized" na hora de assinar: o montado lá atrás
+      // vencia ou ainda não existia no nó da simulação ("Blockhash not found").
+      const { blockhash } = await connection.getLatestBlockhash("finalized");
+      for (const tx of txs) tx.recentBlockhash = blockhash;
       const assinadas = await signAllTransactions(txs);
       let ok = 0;
       for (const tx of assinadas) {
-        const assinatura = await connection.sendRawTransaction(tx.serialize());
+        const assinatura = await connection.sendRawTransaction(tx.serialize(), { preflightCommitment: "confirmed" });
         const r = await connection.confirmTransaction(assinatura, "confirmed");
         if (!r.value.err) ok++;
       }

@@ -241,10 +241,17 @@ export async function transacoesDeResgate(conexao: Connection, carteira: PublicK
   const pools = (await Promise.all(CONFIGS_DA_CURVA.map((c) => cliente.state.getPoolsFeesByConfig(new PublicKey(c))))).flat();
   const max = new BN("18446744073709551615");
   const { blockhash } = await conexao.getLatestBlockhash("confirmed");
-  const txs: Transaction[] = [];
+  // Cada moeda vira um GRUPO de instruções já simulado; no fim os grupos são
+  // empacotados no menor número de transações — com 100 moedas eram 100
+  // confirmações na carteira (07/10/2026).
+  const grupos: TransactionInstruction[][] = [];
   let lamports = 0;
 
   for (const p of pools) {
+    const pendente = Number(p.partnerQuoteFee.toString());
+    // Menos de 0,0001 SOL de negociação não vale uma confirmação sozinho.
+    const migalha = pendente < 100_000;
+
     const negociacao = await cliente.partner.claimPartnerTradingFee({
       feeClaimer: carteira,
       payer: carteira,
@@ -262,7 +269,7 @@ export async function transacoesDeResgate(conexao: Connection, carteira: PublicK
     // abre — com a carteira da plataforma quase vazia, a ordem inversa falhava.
     const tentativas = [
       [...(lancamento?.instructions ?? []), ...negociacao.instructions],
-      negociacao.instructions,
+      migalha ? [] : negociacao.instructions,
       lancamento?.instructions ?? [],
     ];
     for (const instrucoes of tentativas) {
@@ -272,12 +279,36 @@ export async function transacoesDeResgate(conexao: Connection, carteira: PublicK
       tx.recentBlockhash = blockhash;
       const sim = await conexao.simulateTransaction(tx, undefined, [carteira]).catch(() => null);
       if (!sim || sim.value.err) continue;
-      txs.push(tx);
-      lamports += Number(p.partnerQuoteFee.toString());
+      grupos.push(instrucoes);
+      lamports += pendente;
       break;
     }
   }
-  return { txs, pools: pools.length, taxaNegociacaoSol: lamports / LAMPORTS_PER_SOL };
+
+  // Empacota: junta grupos enquanto couber em 1232 bytes E a simulação passar.
+  const nova = (instrucoes: TransactionInstruction[]) => {
+    const tx = new Transaction().add(...instrucoes);
+    tx.feePayer = carteira;
+    tx.recentBlockhash = blockhash;
+    return tx;
+  };
+  const cabe = (tx: Transaction) => {
+    try {
+      return tx.serialize({ requireAllSignatures: false, verifySignatures: false }).length <= 1232;
+    } catch {
+      return false;
+    }
+  };
+  const lotes: TransactionInstruction[][] = [];
+  for (const g of grupos) {
+    const ultimo = lotes[lotes.length - 1];
+    const junto = ultimo ? nova([...ultimo, ...g]) : null;
+    const passa =
+      junto && cabe(junto) && (await conexao.simulateTransaction(junto, undefined, [carteira]).then((r) => !r.value.err).catch(() => false));
+    if (passa) lotes[lotes.length - 1] = [...ultimo, ...g];
+    else lotes.push(g);
+  }
+  return { txs: lotes.map(nova), pools: pools.length, taxaNegociacaoSol: lamports / LAMPORTS_PER_SOL };
 }
 
 /**
