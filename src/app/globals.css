@@ -1151,3 +1151,12 @@ body::after {
 @media (prefers-reduced-motion: reduce) { .faixa-correndo, .card-pisca-sobe, .card-pisca-desce { animation: none; } }
 @keyframes negocio-entra { from { opacity: 0; transform: translateY(-6px); background: rgba(0,209,143,0.12); } to { opacity: 1; transform: none; background: transparent; } }
 .negocio-entra { animation: negocio-entra 0.6s ease-out; }
+
+/* Barra de rolagem invisível que só aparece com o mouse em cima (lista "Em alta"). */
+.rolagem-discreta {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.rolagem-discreta:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}

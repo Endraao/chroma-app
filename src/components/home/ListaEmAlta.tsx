@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 import { NumeroVivo, useHistoricoVivo, useTokenVivo } from "@/components/home/AoVivo";
 import { Sparkline } from "@/components/ui/Sparkline";
@@ -22,6 +23,30 @@ const TEXTOS = traducoes({
  */
 export function ListaEmAlta({ tokens }: { tokens: TokenSummary[] }) {
   const t = useTextos(TEXTOS);
+  const caixa = useRef<HTMLDivElement>(null);
+  const [altura, setAltura] = useState<number>();
+
+  // Altura em linhas inteiras: a última moeda nunca aparece cortada pela metade.
+  useEffect(() => {
+    const medir = () => {
+      const el = caixa.current;
+      const linha = el?.firstElementChild as HTMLElement | null;
+      if (!el || !linha?.offsetHeight) return;
+      const livre = window.innerHeight - el.getBoundingClientRect().top - 24;
+      const cabem = Math.max(3, Math.floor(livre / linha.offsetHeight));
+      setAltura(cabem * linha.offsetHeight);
+    };
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, []);
+
+  // Mesmo símbolo duas vezes (cópia): fica só a de maior valor de mercado.
+  const unicas = [...tokens]
+    .sort((a, b) => b.marketCapUsd - a.marketCapUsd)
+    .filter((x, i, todas) => todas.findIndex((y) => y.symbol.toUpperCase() === x.symbol.toUpperCase()) === i);
+  const lista = tokens.filter((x) => unicas.includes(x));
+
   return (
     <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-ink-900/70">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
@@ -31,8 +56,8 @@ export function ListaEmAlta({ tokens }: { tokens: TokenSummary[] }) {
           {t.aoVivo}
         </span>
       </div>
-      <div className="max-h-[calc(100vh-150px)] overflow-y-auto [scrollbar-width:thin]">
-        {tokens.slice(0, 40).map((x) => (
+      <div ref={caixa} style={{ maxHeight: altura }} className="rolagem-discreta max-h-[calc(100vh-150px)] overflow-y-auto">
+        {lista.slice(0, 40).map((x) => (
           <Linha key={`${x.chain}:${x.address}`} token={x} />
         ))}
       </div>
