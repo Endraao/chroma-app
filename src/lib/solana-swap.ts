@@ -301,6 +301,8 @@ export interface SwapRequest {
   grossRaw: bigint;
   inputMint: string;
   affiliate: string | null;
+  /** moeda da Curva da Chroma: taxa do site reduzida (ver fees.ts) */
+  naCurvaDaChroma?: boolean;
   onStep?: (step: string) => void;
 }
 
@@ -309,7 +311,7 @@ export interface SwapRequest {
  * instruções de taxa, manda o usuário assinar e envia pra rede.
  */
 export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution> {
-  const { connection, publicKey, signTransaction, quote, grossRaw, inputMint, affiliate, onStep } =
+  const { connection, publicKey, signTransaction, quote, grossRaw, inputMint, affiliate, naCurvaDaChroma = false, onStep } =
     req;
 
   if (!PLATFORM_FEE_WALLET_SOL) {
@@ -346,7 +348,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
       slippagePct: Math.max(1, quote.slippageBps / 100),
     });
     const baseNaCurva = ehVendaNaCurva ? BigInt(quote.otherAmountThreshold) : grossRaw;
-    const splitNaCurva = computeFeesRaw(baseNaCurva, affiliate, "solana");
+    const splitNaCurva = computeFeesRaw(baseNaCurva, affiliate, "solana", naCurvaDaChroma);
     const inexistentesNaCurva = await contasInexistentes(
       connection,
       [recipients.platform, recipients.affiliate].filter((c): c is PublicKey => c !== null),
@@ -415,7 +417,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
    */
   const ehVenda = inputMint !== SOL_MINT;
   const baseDaTaxa = ehVenda ? BigInt(quote.otherAmountThreshold) : grossRaw;
-  const split = computeFeesRaw(baseDaTaxa, affiliate, "solana");
+  const split = computeFeesRaw(baseDaTaxa, affiliate, "solana", naCurvaDaChroma);
 
   const inexistentes = await contasInexistentes(
     connection,

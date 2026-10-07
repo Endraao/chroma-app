@@ -205,8 +205,18 @@ export function computeFees(
 }
 
 /** Mesma conta em inteiros (lamports / wei), que é o que a transação usa. */
-export function computeFeesRaw(grossRaw: bigint, affiliate: string | null, chain: ChainId) {
-  const totalFee = (grossRaw * BigInt(swapFeeBps(chain))) / BigInt(BPS_DENOMINATOR);
+/**
+ * Taxa do SITE nas moedas da Curva da Chroma: só os 0,30% da indicação.
+ * A Chroma já ganha ~0,4% de todo o volume dessas moedas pela própria curva
+ * (taxa de parceira), então cobrar mais 0,95% em cima deixava negociar pelo
+ * site mais caro que pela Jupiter (06/10/2026). Sem indicação, os 0,30% ficam
+ * com a plataforma. O bônus do criador sai da taxa da curva, não desta.
+ */
+export const TAXA_DO_SITE_NA_CURVA_DA_CHROMA_BPS = AFFILIATE_FEE_BPS;
+
+export function computeFeesRaw(grossRaw: bigint, affiliate: string | null, chain: ChainId, naCurvaDaChroma = false) {
+  const bps = naCurvaDaChroma ? TAXA_DO_SITE_NA_CURVA_DA_CHROMA_BPS : swapFeeBps(chain);
+  const totalFee = (grossRaw * BigInt(bps)) / BigInt(BPS_DENOMINATOR);
   const affiliateFee = affiliate
     ? (grossRaw * BigInt(AFFILIATE_FEE_BPS)) / BigInt(BPS_DENOMINATOR)
     : 0n;

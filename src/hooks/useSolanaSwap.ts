@@ -35,6 +35,8 @@ interface Options {
    * DEX alguma ainda — e cotar seria gastar requisição pra receber erro.
    */
   enabled?: boolean;
+  /** moeda da Curva da Chroma: taxa do site reduzida (ver fees.ts) */
+  naCurvaDaChroma?: boolean;
 }
 
 export type SwapPhase = "idle" | "quoting" | "ready" | "executing" | "done" | "error";
@@ -48,6 +50,7 @@ export function useSolanaSwap({
   affiliate,
   affiliateRef,
   enabled = true,
+  naCurvaDaChroma = false,
 }: Options) {
   const { connection } = useConnection();
   const { publicKey, signTransaction, connected } = useWallet();
@@ -154,7 +157,7 @@ export function useSolanaSwap({
   const grossRaw = inputDecimals === null ? 0n : parseUnits(amount, inputDecimals);
 
   // A rota de swap implementada hoje é só a da Solana.
-  const fees = computeFeesRaw(grossRaw, affiliate, "solana");
+  const fees = computeFeesRaw(grossRaw, affiliate, "solana", naCurvaDaChroma);
 
   /*
    * Quanto de fato vai pra rota.
@@ -223,8 +226,8 @@ export function useSolanaSwap({
    */
   const taxaNaSaida = useMemo(() => {
     if (!quote || !ehVenda) return 0n;
-    return computeFeesRaw(BigInt(quote.otherAmountThreshold), affiliate, "solana").totalFee;
-  }, [quote, ehVenda, affiliate]);
+    return computeFeesRaw(BigInt(quote.otherAmountThreshold), affiliate, "solana", naCurvaDaChroma).totalFee;
+  }, [quote, ehVenda, affiliate, naCurvaDaChroma]);
 
   const outAmount = useMemo(() => {
     if (!quote || outputDecimals === null) return 0;
@@ -260,6 +263,7 @@ export function useSolanaSwap({
         grossRaw,
         inputMint,
         affiliate,
+        naCurvaDaChroma,
         onStep: setStep,
       });
 

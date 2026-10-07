@@ -39,6 +39,7 @@ interface Opcoes {
   slippageBps: number;
   affiliate: string | null;
   affiliateRef: string | null;
+  naCurvaDaChroma?: boolean;
 }
 
 /**

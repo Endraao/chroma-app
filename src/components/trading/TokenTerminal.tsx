@@ -234,6 +234,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
               tokenAddress={token.address}
               pool={token.pairAddress ?? null}
               priceUsd={price}
+              naCurvaDaChroma={token.dexId === "chroma-curve"}
             />
           </Suspense>
 

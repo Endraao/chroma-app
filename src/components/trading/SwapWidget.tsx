@@ -163,6 +163,7 @@ export function SwapWidget({
   tokenAddress,
   pool = null,
   priceUsd,
+  naCurvaDaChroma = false,
 }: {
   symbol: string;
   chain: ChainId;
@@ -171,11 +172,13 @@ export function SwapWidget({
   pool?: string | null;
   /** preço ao vivo, vindo do gráfico — a ponte entre token e dólar */
   priceUsd: number;
+  /** moeda da Curva da Chroma: taxa do site reduzida (ver fees.ts) */
+  naCurvaDaChroma?: boolean;
 }) {
   const meta = CHAINS[chain];
 
   return meta.kind === "solana" ? (
-    <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} />
+    <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} naCurvaDaChroma={naCurvaDaChroma} />
   ) : (
     <EvmSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} pool={pool} />
   );
@@ -191,6 +194,7 @@ function SolanaSwap({
   tokenAddress,
   pool = null,
   priceUsd,
+  naCurvaDaChroma = false,
 }: {
   symbol: string;
   chain: ChainId;
@@ -198,6 +202,7 @@ function SolanaSwap({
   /** o par na DEX (id da pool v4 na Robinhood), quando conhecido */
   pool?: string | null;
   priceUsd: number;
+  naCurvaDaChroma?: boolean;
 }) {
   const t = useTextos(TEXTOS);
   const [side, setSide] = useState<TradeSide>("buy");
@@ -235,6 +240,7 @@ function SolanaSwap({
     digitadoNum > 0 ? String(emDolar && precoDoSol ? digitadoNum / precoDoSol : digitadoNum) : "";
 
   const swap = useTradeSolana({
+    naCurvaDaChroma,
     tokenMint: tokenAddress,
     tokenSymbol: symbol,
     side,
@@ -424,7 +430,7 @@ function SolanaSwap({
           <div className="flex justify-between">
             <span className="text-zinc-500">{t.rota}</span>
             <span className="text-zinc-300">
-              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.curvaDaChromaMaiusc : `${swap.quote && "routePlan" in swap.quote && swap.quote.routePlan.length && swap.quote.routePlan.every((r) => /^pump.?fun$/i.test(r.swapInfo.label ?? "")) ? "Chroma" : "Jupiter"}, ${t.taxaDe(feeLabelFor("solana").swap)}`}
+              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.curvaDaChromaMaiusc : `${swap.quote && "routePlan" in swap.quote && swap.quote.routePlan.length && swap.quote.routePlan.every((r) => /^pump.?fun$/i.test(r.swapInfo.label ?? "")) ? "Chroma" : "Jupiter"}, ${t.taxaDe(naCurvaDaChroma ? "0,3%" : feeLabelFor("solana").swap)}`}
             </span>
           </div>
         </div>
