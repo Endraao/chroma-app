@@ -115,8 +115,12 @@ export function MediaDropzone({ spec, value, onChange, title, subtitle, classNam
   }, [value?.previewUrl]);
 
   const handleFile = useCallback(
-    async (file: File) => {
+    async (recebido: File) => {
       setError(null);
+      // O tipo que vale é o do CONTEÚDO: muita imagem baixada da internet é
+      // WebP com nome .png (ou chega sem tipo nenhum), e era recusada (07/10/2026).
+      const real = await tipoReal(recebido);
+      const file = real && real !== recebido.type ? new File([recebido], recebido.name, { type: real }) : recebido;
 
       if (!spec.accept.includes(file.type)) {
         setError(t.formato(spec.accept.map(prettyType).join(", ")));
@@ -310,4 +314,24 @@ function ImageIcon() {
       <path d="m21 15-5-5L5 21" />
     </svg>
   );
+}
+
+/** Formato pelos primeiros bytes do arquivo (assinatura), não pelo nome. */
+async function tipoReal(file: File): Promise<string | null> {
+  try {
+    const b = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    const txt = (i: number, n: number) => String.fromCharCode(...b.slice(i, i + n));
+    if (b[0] === 0x89 && txt(1, 3) === "PNG") return "image/png";
+    if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+    if (txt(0, 4) === "GIF8") return "image/gif";
+    if (txt(0, 4) === "RIFF" && txt(8, 4) === "WEBP") return "image/webp";
+    if (txt(4, 4) === "ftyp") {
+      const marca = txt(8, 4);
+      if (marca.startsWith("avif") || marca.startsWith("avis")) return "image/avif";
+      return "video/mp4";
+    }
+  } catch {
+    /* sem leitura: fica o tipo que o navegador deu */
+  }
+  return null;
 }

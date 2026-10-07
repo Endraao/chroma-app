@@ -38,7 +38,7 @@ export const MIDIA_DA_MOEDA: EspecDeMidia = {
   rotulo: "Imagem ou vídeo da moeda",
   maxMb: 15,
   maxVideoMb: 30,
-  aceita: ["image/jpeg", "image/png", "image/gif", "video/mp4"],
+  aceita: ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4"],
   minLado: 200,
 };
 
