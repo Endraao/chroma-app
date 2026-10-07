@@ -24,6 +24,32 @@ import BN from "bn.js";
 export const CONFIG_DA_CURVA = process.env.NEXT_PUBLIC_CHROMA_DBC_CONFIG || "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw";
 export const CURVA_CHROMA_DISPONIVEL = CONFIG_DA_CURVA.length > 30;
 
+/**
+ * Configs ANTERIORES da curva. Moeda lançada nelas continua sendo da Chroma
+ * (saque do criador, bônus, resgate da plataforma); lançamento novo usa só a
+ * atual. Trocar a config (ex.: mudar a taxa anti-sniper) = mover a atual pra cá.
+ */
+const CONFIGS_ANTIGAS: string[] = [];
+export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, ...CONFIGS_ANTIGAS])];
+
+type KitDbc = typeof import("@meteora-ag/dynamic-bonding-curve-sdk");
+type ClienteDbc = InstanceType<KitDbc["DynamicBondingCurveClient"]>;
+
+/** A pool da moeda em qualquer config da Chroma (a atual primeiro). */
+async function acharPool(sdk: KitDbc, cliente: ClienteDbc, mint: string) {
+  for (const config of CONFIGS_DA_CURVA) {
+    const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(config));
+    const estado = (await cliente.state.getPool(pool).catch(() => null))?.poolState;
+    if (estado && estado.config.toBase58() === config) return { pool, estado, config };
+  }
+  return null;
+}
+
+/** As pools de todas as configs da Chroma. */
+async function poolsDeTodasAsConfigs(cliente: ClienteDbc) {
+  return (await Promise.all(CONFIGS_DA_CURVA.map((c) => cliente.state.getPoolsByConfig(new PublicKey(c))))).flat();
+}
+
 const SOL = new PublicKey("So11111111111111111111111111111111111111112");
 
 /**
@@ -31,7 +57,8 @@ const SOL = new PublicKey("So11111111111111111111111111111111111111112");
  *
  *  - Começa em 30 SOL de valor de mercado e gradua em 420 SOL (parecido com a
  *    pump.fun), migrando sozinha pra uma pool DAMM v2 da Meteora.
- *  - Taxa anti-robô: 25% no primeiro segundo, caindo até 1% em 2 minutos. A
+ *  - Taxa anti-robô: 25% nos primeiros 40 segundos, depois 1%. (A config
+ *    anterior, BbbaZG…, caía de 25% a 1% em 2 minutos.) A
  *    PRIMEIRA compra — a do criador, na mesma transação do lançamento — paga
  *    a taxa mínima. É o "criador compra primeiro" feito pela própria curva.
  *  - Da taxa de negociação, 20% vão pra Meteora; do resto, metade é do criador
@@ -53,8 +80,10 @@ export async function parametrosDaCurva() {
     },
     fee: {
       baseFeeParams: {
-        baseFeeMode: sdk.BaseFeeMode.FeeSchedulerExponential,
-        feeSchedulerParam: { startingFeeBps: 2500, endingFeeBps: 100, numberOfPeriod: 120, totalDuration: 120 },
+        // 25% fixos nos primeiros 40 s, depois 1% (pedido do dono, 07/10/2026:
+        // "sniper só entra nos primeiros segundos, depois é trade real").
+        baseFeeMode: sdk.BaseFeeMode.FeeSchedulerLinear,
+        feeSchedulerParam: { startingFeeBps: 2500, endingFeeBps: 100, numberOfPeriod: 1, totalDuration: 40 },
       },
       dynamicFeeEnabled: false,
       collectFeeMode: sdk.CollectFeeMode.QuoteToken,
@@ -146,12 +175,6 @@ export async function transacaoDeLancamentoNaCurva(params: {
   return tx;
 }
 
-/** Endereço da pool de uma moeda lançada na curva da Chroma. */
-export async function poolDaMoeda(mint: string): Promise<string> {
-  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
-  return sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA)).toBase58();
-}
-
 /**
  * A prova de que a moeda nasceu na curva da Chroma: a pool derivada de
  * (SOL, moeda, NOSSA config) existe na rede. Devolve quem criou.
@@ -160,11 +183,9 @@ export async function lerPoolDaCurva(conexao: Connection, mint: string): Promise
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
-  const lido = await cliente.state.getPool(pool).catch(() => null);
-  const estado = lido?.poolState;
-  if (!estado || estado.config.toBase58() !== CONFIG_DA_CURVA) return null;
-  return { criador: estado.creator.toBase58(), pool: pool.toBase58() };
+  const achado = await acharPool(sdk, cliente, mint);
+  if (!achado) return null;
+  return { criador: achado.estado.creator.toBase58(), pool: achado.pool.toBase58() };
 }
 
 /**
@@ -182,11 +203,10 @@ export async function estadoNaCurvaDaChroma(
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
-  const lido = await cliente.state.getPool(pool).catch(() => null);
-  const estado = lido?.poolState;
-  if (!estado || estado.config.toBase58() !== CONFIG_DA_CURVA) return null;
-  const config = await cliente.state.getPoolConfig(new PublicKey(CONFIG_DA_CURVA));
+  const achado = await acharPool(sdk, cliente, mint);
+  if (!achado) return null;
+  const { estado } = achado;
+  const config = await cliente.state.getPoolConfig(new PublicKey(achado.config));
   if (!config) return null;
   const limite = Number(config.migrationQuoteThreshold.toString());
   const reserva = Number(estado.quoteReserve.toString());
@@ -211,7 +231,7 @@ export async function estadoNaCurvaDaChroma(
 export async function transacoesDeResgate(conexao: Connection, carteira: PublicKey) {
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pools = await cliente.state.getPoolsFeesByConfig(new PublicKey(CONFIG_DA_CURVA));
+  const pools = (await Promise.all(CONFIGS_DA_CURVA.map((c) => cliente.state.getPoolsFeesByConfig(new PublicKey(c))))).flat();
   const max = new BN("18446744073709551615");
   const { blockhash } = await conexao.getLatestBlockhash("confirmed");
   const txs: Transaction[] = [];
@@ -362,7 +382,9 @@ export async function ganhoDaChromaNaMoeda(conexao: Connection, mint: string): P
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
+  const achado = await acharPool(sdk, cliente, mint);
+  if (!achado) return null;
+  const { pool } = achado;
   const [b, m] = await Promise.all([cliente.state.getPoolFeeBreakdown(pool).catch(() => null), poolNaMeteora(conexao, mint)]);
   if (!b) return null;
   const lamports = Number(b.partner.totalQuoteFee.toString()) + (m ? metadeDaTaxaNaMeteora(m.estado) : 0);
@@ -373,7 +395,7 @@ export async function ganhoDaChromaNaMoeda(conexao: Connection, mint: string): P
 export async function ganhosDeTodasAsMoedas(conexao: Connection) {
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pools = await cliente.state.getPoolsByConfig(new PublicKey(CONFIG_DA_CURVA));
+  const pools = await poolsDeTodasAsConfigs(cliente);
   return Promise.all(
     pools.map(async (p) => {
       const mint = p.account.poolState.baseMint.toBase58();
@@ -401,13 +423,11 @@ export async function ganhosDoCriador(
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
-  const [lido, b] = await Promise.all([
-    cliente.state.getPool(pool).catch(() => null),
-    cliente.state.getPoolFeeBreakdown(pool).catch(() => null),
-  ]);
-  const estado = lido?.poolState;
-  if (!estado || !b || estado.config.toBase58() !== CONFIG_DA_CURVA) return null;
+  const achado = await acharPool(sdk, cliente, mint);
+  if (!achado) return null;
+  const { pool, estado } = achado;
+  const b = await cliente.state.getPoolFeeBreakdown(pool).catch(() => null);
+  if (!b) return null;
   const m = await posicoesNaMeteora(conexao, mint, estado.creator);
   const naMeteoraAReceber = m ? m.posicoes.reduce((s, p) => s + p.aReceber, 0) : 0;
   const naMeteoraTotal = m ? metadeDaTaxaNaMeteora(m.estado) : 0;
@@ -427,7 +447,9 @@ export async function ganhosDoCriador(
 export async function transacoesDeSaqueDoCriador(conexao: Connection, criador: PublicKey, mint: string): Promise<Transaction[]> {
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pool = sdk.deriveDbcPoolAddress(SOL, new PublicKey(mint), new PublicKey(CONFIG_DA_CURVA));
+  const achado = await acharPool(sdk, cliente, mint);
+  if (!achado) return [];
+  const { pool } = achado;
   const max = new BN("18446744073709551615");
   const b = await cliente.state.getPoolFeeBreakdown(pool).catch(() => null);
   const naCurva =
@@ -454,7 +476,7 @@ export async function transacoesDeSaqueDoCriador(conexao: Connection, criador: P
 export async function transacoesDeResgateNaMeteora(conexao: Connection, carteira: PublicKey) {
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
-  const pools = await cliente.state.getPoolsByConfig(new PublicKey(CONFIG_DA_CURVA));
+  const pools = await poolsDeTodasAsConfigs(cliente);
   let lamports = 0;
   const grupos: TransactionInstruction[][] = [];
   for (const p of pools) {

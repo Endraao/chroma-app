@@ -191,7 +191,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
                 : null}
       </p>
       {dados.totalSol > 0 && (
-        <div className="mt-2 rounded-lg border border-bull/20 bg-bull/[0.05] px-3 py-2.5">
+        <div className="mt-3 border-t border-white/[0.06] pt-3">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[12.5px] font-bold text-zinc-300">{t.totalGanho}</span>
             <span className="tnum text-[17px] font-black text-bull">{dados.totalSol.toFixed(4)} SOL</span>
