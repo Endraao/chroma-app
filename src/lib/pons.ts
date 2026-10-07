@@ -107,6 +107,17 @@ interface FixosDaPons {
  * vez por hora. `null` guardado só quando a fábrica diz que não é da Pons —
  * erro de rede sobe e não fica em cache.
  */
+/** A moeda nasceu na Pons (inclusive já graduada e com par fora do ETH)? Não muda: 1 dia de cache. */
+export async function nasceuNaPons(moeda: string): Promise<boolean> {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(moeda)) return false;
+  return cached(`pons-nasceu:${moeda.toLowerCase()}`, 86_400_000, async () => {
+    const l = await ler(() =>
+      cliente.readContract({ address: FABRICA_DA_PONS, abi: ABI_FABRICA, functionName: "getLaunchedToken", args: [moeda as Address] }),
+    );
+    return !!l.exists;
+  }).catch(() => false);
+}
+
 async function fixosDaPons(moeda: string): Promise<FixosDaPons | null> {
   return cached(`pons-fixos:${moeda.toLowerCase()}`, 3_600_000, async () => {
     const l = await ler(() =>

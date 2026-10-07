@@ -11,15 +11,9 @@ export function formatPrice(value: number, maxSig = 4): string {
   if (value >= 1) return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
   const exp = Math.floor(Math.log10(value));
   const zeros = Math.abs(exp) - 1;
-  if (zeros >= 4) {
-    const digits = value.toFixed(zeros + maxSig).slice(2 + zeros);
-    const sub = String(zeros)
-      .split("")
-      .map((d) => "₀₁₂₃₄₅₆₇₈₉"[Number(d)])
-      .join("");
-    return `0.0${sub}${digits}`;
-  }
-  return value.toFixed(Math.min(8, zeros + maxSig));
+  // Zeros escritos por extenso ($0.000003563), como nos outros sites — o
+  // "0.0₅3563" com número miúdo não agradou o dono (07/10/2026).
+  return value.toFixed(Math.min(20, zeros + maxSig));
 }
 
 export function formatUsd(value: number): string {

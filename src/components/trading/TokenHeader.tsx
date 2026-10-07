@@ -251,32 +251,37 @@ function pctDaCurva(p: number): string {
   return p < 1 ? p.toFixed(1) : p.toFixed(0);
 }
 
-/** Nome bonito de cada DEX/plataforma (o resto vai com a 1ª letra maiúscula). */
-const NOMES_DE_PLATAFORMA: Record<string, string> = {
-  meteoradbc: "Meteora",
-  meteora: "Meteora",
-  raydium: "Raydium",
-  launchlab: "LaunchLab",
-  orca: "Orca",
-  pons: "Pons",
-  pumpfun: "pump.fun",
-  pumpswap: "PumpSwap",
-  uniswap: "Uniswap",
+/** Plataformas de origem com ícone oficial (public/plataformas). */
+const PLATAFORMAS: Record<string, { nome: string; icone: string }> = {
+  chroma: { nome: "Chroma", icone: "/logo.png" },
+  pumpfun: { nome: "pump.fun", icone: "/plataformas/pumpfun.png" },
+  pons: { nome: "Pons", icone: "/plataformas/pons.png" },
+  stonkfun: { nome: "StonkFun", icone: "/plataformas/stonkfun.png" },
+  bonk: { nome: "Bonk.fun", icone: "/plataformas/bonk.png" },
+  bags: { nome: "Bags", icone: "/plataformas/bags.png" },
+  believe: { nome: "Believe", icone: "/plataformas/believe.png" },
+  metadao: { nome: "MetaDAO", icone: "/plataformas/metadao.png" },
+  meteora: { nome: "Meteora", icone: "/plataformas/meteora.png" },
+  launchlab: { nome: "LaunchLab", icone: "/plataformas/launchlab.png" },
 };
 
 /**
- * Ícones da REDE e da PLATAFORMA de origem ao lado do nome (pedido do dono,
- * 07/10/2026, igual à fomo). Moeda da Chroma leva o nosso logo. A pump.fun
- * também aparece — o dono liberou só este ícone (07/10/2026).
+ * Ícones da REDE e da PLATAFORMA ONDE A MOEDA NASCEU (pedido do dono,
+ * 07/10/2026, igual à fomo) — não a DEX onde ela negocia hoje: a PONS mostra
+ * a Pons, não a Uniswap; a STONK mostra a StonkFun, não a Meteora.
  */
 function SelosDeOrigem({ token }: { token: TokenSummary }) {
   const dex = (token.dexId ?? "").toLowerCase();
-  const daChroma = dex === "chroma-curve" || !!token.criadorNaChroma;
-  const plataforma = daChroma
-    ? { nome: "Chroma", icone: "/logo.png" }
-    : !dex
-      ? null
-      : { nome: NOMES_DE_PLATAFORMA[dex] ?? dex.charAt(0).toUpperCase() + dex.slice(1), icone: `https://dd.dexscreener.com/ds-data/dexes/${dex}.png` };
+  const chave =
+    token.plataforma ??
+    (dex === "chroma-curve" || token.criadorNaChroma
+      ? "chroma"
+      : dex.includes("pump")
+        ? "pumpfun"
+        : dex === "pons"
+          ? "pons"
+          : undefined);
+  const plataforma = chave ? PLATAFORMAS[chave] : undefined;
   return (
     <span className="flex items-center gap-1">
       <img src={`/chains/${token.chain}.png`} alt={token.chain} title={token.chain === "solana" ? "Solana" : "Robinhood Chain"} className="size-[18px] rounded-full" />

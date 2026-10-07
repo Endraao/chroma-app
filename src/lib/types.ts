@@ -44,6 +44,8 @@ export interface TokenSummary {
    * `null` = token que já nasceu listado, não passou por curva na Chroma.
    */
   bondingProgress: number | null;
+  /** Plataforma onde a moeda NASCEU (chroma, pumpfun, pons, stonkfun…), pro selo da página. */
+  plataforma?: string;
   creator: string;
   /** Par de maior liquidez — é dele que saem as velas do gráfico. */
   pairAddress?: string;

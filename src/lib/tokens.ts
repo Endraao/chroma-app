@@ -10,9 +10,12 @@ import { FORA_DA_VITRINE, moedasDaChroma } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
 import { lerMoedaDaCurvaEvm, resumoDaMoedaEvm } from "./curva-evm";
-import { lerMoedaDaPons, resumoDaMoedaPons } from "./pons";
+import { lerMoedaDaPons, nasceuNaPons, resumoDaMoedaPons } from "./pons";
 import { melhoresGraduadasDaPons, moedasDaCurvaSolana, moedasRecentesDaPons } from "./feeds-externos";
 import { buscarMoedaDaChroma } from "./db";
+import { CONFIGS_DA_CURVA } from "./meteora-dbc";
+
+const CONFIGS_DA_CURVA_CHROMA = new Set(CONFIGS_DA_CURVA);
 import type { ChainId, TokenSummary } from "./types";
 
 /**
@@ -526,6 +529,7 @@ export const getToken = cache(async function getToken(address: string): Promise<
       telegram: r.token.telegram ?? l.telegram,
       recompensasParaDetentores: registro.recompensas === "detentores",
       criadorNaChroma: registro.criador,
+      plataforma: "chroma",
     },
   };
 });
@@ -546,7 +550,7 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
         descricao: registro?.descricao,
         criadaEm: registro?.criadaEm,
       });
-      return { token, isDemo: false };
+      return { token: { ...token, plataforma: registro ? "chroma" : "pons" }, isDemo: false };
     }
     const daCurva = await lerMoedaDaCurvaEvm(address).catch(() => null);
     if (daCurva && !daCurva.curva.migrada) {
@@ -590,6 +594,7 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
               website: real.website ?? meta.website,
               twitter: real.twitter ?? meta.twitter,
               telegram: real.telegram ?? meta.telegram,
+              plataforma: plataformaDoJupiter(meta.launchpad, meta.partnerConfig) ?? plataformaPeloEndereco(address),
             },
             isDemo: false,
           };
@@ -598,7 +603,9 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
         /* metadados são enfeite: a página abre sem eles */
       }
     }
-    return { token: real, isDemo: false };
+    // Robinhood: moeda que nasceu na Pons e já graduou (a DEX diz Uniswap).
+    if (real.chain === "robinhood" && (await nasceuNaPons(address))) return { token: { ...real, plataforma: "pons" }, isDemo: false };
+    return { token: { ...real, plataforma: real.plataforma ?? plataformaPeloEndereco(address) }, isDemo: false };
   }
 
   const fallback = FALLBACK.find((t) => t.address.toLowerCase() === address.toLowerCase());
@@ -628,4 +635,29 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
     },
     isDemo: true,
   };
+}
+
+/**
+ * Plataforma de origem segundo a Jupiter (`launchpad`). Na curva da Meteora a
+ * config diz de quem é: a da Chroma vira "chroma"; as outras, "meteora".
+ */
+function plataformaDoJupiter(launchpad?: string, partnerConfig?: string): string | undefined {
+  const l = (launchpad ?? "").toLowerCase();
+  if (!l) return undefined;
+  if (l === "met-dbc") return partnerConfig && CONFIGS_DA_CURVA_CHROMA.has(partnerConfig) ? "chroma" : "meteora";
+  if (l.includes("pump")) return "pumpfun";
+  if (l.includes("bonk")) return "bonk";
+  if (l.includes("stonk")) return "stonkfun";
+  if (l.includes("bags")) return "bags";
+  if (l.includes("believe")) return "believe";
+  if (l.includes("metadao")) return "metadao";
+  if (l.includes("launchlab") || l.includes("raydium")) return "launchlab";
+  return l;
+}
+
+/** Sem a Jupiter: o final do endereço entrega algumas launchpads da Solana. */
+function plataformaPeloEndereco(address: string): string | undefined {
+  if (address.endsWith("pump")) return "pumpfun";
+  if (address.endsWith("bonk")) return "bonk";
+  return undefined;
 }

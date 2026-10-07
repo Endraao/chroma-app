@@ -108,6 +108,10 @@ export interface JupiterTokenMeta {
   tokenProgram: string;
   dev?: string;
   holderCount?: number;
+  /** Onde a moeda nasceu: "pump.fun", "met-dbc", "stonkfun", "letsbonk.fun"… */
+  launchpad?: string;
+  /** Na curva da Meteora (met-dbc): a config — diz QUAL launchpad (a da Chroma, por ex.). */
+  partnerConfig?: string;
   usdPrice?: number;
   mcap?: number;
   liquidity?: number;
