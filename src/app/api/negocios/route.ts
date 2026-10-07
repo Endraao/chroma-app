@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { fetchTrades, type NegocioDoPool } from "@/lib/market";
+import { fetchToken, fetchTrades, type NegocioDoPool } from "@/lib/market";
+import { negociosPelaRede } from "@/lib/negocios-pela-rede";
 import { lerMoedaDaCurvaEvm, negociosDaCurvaComoPool } from "@/lib/curva-evm";
 import { negociosDaCurvaDaChroma, negociosDaCurvaSolana } from "@/lib/negocios-curva-solana";
 import { cached } from "@/lib/cache";
@@ -16,7 +17,10 @@ async function negociosNaCurvaDaSolana(address: string) {
       import("@solana/web3.js"),
       import("@/lib/pumpfun"),
     ]);
-    const estado = await estadoDaCurvaPump(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), new PublicKey(address));
+    // Guardado 30 s (inclusive o "não está na curva"): era refeito a cada leitura.
+    const estado = await cached(`curva-pump:${address}`, 30_000, () =>
+      estadoDaCurvaPump(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), new PublicKey(address)),
+    );
     if (!estado || estado.completa) return null;
     const sol = (await precosNativos().catch(() => null))?.solana ?? 0;
     return await negociosDaCurvaSolana(address, sol);
@@ -50,6 +54,23 @@ async function negociosNaCurvaDaChroma(address: string) {
   }
 }
 
+async function negociosRecentesDaRede(address: string) {
+  try {
+    const token = await fetchToken(address);
+    if (!token?.pairAddress || token.chain !== "solana") return null;
+    const sol = (await precosNativos().catch(() => null))?.solana ?? 0;
+    return await negociosPelaRede(address, token.pairAddress, token.priceUsd, sol);
+  } catch {
+    return null;
+  }
+}
+
+/** Os da rede primeiro (mais frescos); os da fonte de mercado completam, sem repetir. */
+function juntar(daRede: NegocioDoPool[], doMercado: NegocioDoPool[]): NegocioDoPool[] {
+  const vistos = new Set(daRede.map((n) => n.txHash));
+  return [...daRede, ...doMercado.filter((n) => !vistos.has(n.txHash))];
+}
+
 export async function GET(request: Request) {
   const address = new URL(request.url).searchParams.get("address");
   if (!address) return NextResponse.json({ error: "parâmetro 'address' é obrigatório" }, { status: 400 });
@@ -60,11 +81,16 @@ export async function GET(request: Request) {
     const daCurva = address.startsWith("0x") && !daPons ? await lerMoedaDaCurvaEvm(address).catch(() => null) : null;
     // Solana na curva de lançamento: direto da rede, em segundos (a fonte
     // de mercado leva ~1 min). Sem leitura, cai na fonte de sempre.
+    // Endereço terminado em "pump" nasceu na pump.fun: nem tenta a curva da Chroma.
     const daCurvaSolana = address.startsWith("0x")
       ? null
-      : ((await negociosNaCurvaDaChroma(address)) ?? (await negociosNaCurvaDaSolana(address)));
+      : ((address.endsWith("pump") ? null : await negociosNaCurvaDaChroma(address)) ?? (await negociosNaCurvaDaSolana(address)));
+    // Fora de curva, na Solana: os negócios recentes direto da rede (segundos de
+    // atraso, não um minuto) somados aos mais antigos da fonte de mercado.
+    const daRede = !address.startsWith("0x") && !daCurvaSolana ? await negociosRecentesDaRede(address) : null;
     negocios =
       daCurvaSolana ??
+      (daRede ? juntar(daRede, await fetchTrades(address).catch(() => [])) : null) ??
       (daPons ? await negociosDaPonsComoPool(daPons) : null) ??
       (daCurva && !daCurva.curva.migrada
         ? await negociosDaCurvaComoPool(address)

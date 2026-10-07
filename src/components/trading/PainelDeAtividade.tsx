@@ -22,7 +22,8 @@ interface Negocio {
   txHash: string;
 }
 
-const RECARREGA_MS = 10_000;
+// 3 s: os negócios vêm direto da rede agora (07/10/2026) — a lista acompanha o mercado.
+const RECARREGA_MS = 3_000;
 
 const TEXTOS = traducoes({
   en: { transacoes: "Transactions", traders: "Traders", aoVivo: "live", carregando: "Loading…", nenhum: "No trades yet. The first one could be yours.", quando: "Time", lado: "Side", trader: "Trader", preco: "Price", compra: "Buy", venda: "Sell" },
