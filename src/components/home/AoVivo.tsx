@@ -19,6 +19,8 @@ export interface DadoVivo {
   change24h: number;
   m5: number;
   volume24hUsd: number;
+  /** o par de maior liquidez (usado pelo feed de negócios) */
+  pairAddress?: string;
 }
 
 const Contexto = createContext<Map<string, DadoVivo>>(new Map());
@@ -27,6 +29,7 @@ const POR_PEDIDO = 30;
 
 interface ParDex {
   chainId: string;
+  pairAddress?: string;
   baseToken: { address: string };
   priceUsd?: string;
   marketCap?: number;
@@ -89,6 +92,7 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
             change24h: Number(p.priceChange?.h24) || 0,
             m5: Number(p.priceChange?.m5) || 0,
             volume24hUsd: Number(p.volume?.h24) || 0,
+            pairAddress: p.pairAddress,
           });
         }
         return novo;
@@ -159,4 +163,9 @@ export function NumeroVivo({ valor, formatar, className = "" }: { valor: number;
       {formatar(mostrado)}
     </span>
   );
+}
+
+/** Todos os dados ao vivo (o feed de negócios usa os pares). */
+export function useDadosVivos(): Map<string, DadoVivo> {
+  return useContext(Contexto);
 }

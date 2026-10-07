@@ -1149,3 +1149,5 @@ body::after {
 .faixa-correndo { animation: faixa-correr 60s linear infinite; }
 .faixa-correndo:hover { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .faixa-correndo, .card-pisca-sobe, .card-pisca-desce { animation: none; } }
+@keyframes negocio-entra { from { opacity: 0; transform: translateY(-6px); background: rgba(0,209,143,0.12); } to { opacity: 1; transform: none; background: transparent; } }
+.negocio-entra { animation: negocio-entra 0.6s ease-out; }

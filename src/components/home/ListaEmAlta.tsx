@@ -30,7 +30,7 @@ export function ListaEmAlta({ tokens }: { tokens: TokenSummary[] }) {
           {t.aoVivo}
         </span>
       </div>
-      <div className="max-h-[calc(100vh-170px)] overflow-y-auto [scrollbar-width:thin]">
+      <div className="max-h-[38vh] overflow-y-auto [scrollbar-width:thin]">
         {tokens.slice(0, 30).map((x) => (
           <Linha key={`${x.chain}:${x.address}`} token={x} />
         ))}

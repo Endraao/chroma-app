@@ -9,6 +9,7 @@ import { PainelDaChroma } from "@/components/home/PainelDaChroma";
 import { SubindoAgora } from "@/components/home/SubindoAgora";
 import { AoVivoProvider } from "@/components/home/AoVivo";
 import { ListaEmAlta } from "@/components/home/ListaEmAlta";
+import { FeedAoVivo } from "@/components/home/FeedAoVivo";
 import { pontuacaoEmAlta } from "@/lib/tokens";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
@@ -268,8 +269,9 @@ export default async function HomePage({
             </div>
             <div className="lg:grid lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-5">
               <aside className="hidden lg:block">
-                <div className="sticky top-20">
+                <div className="sticky top-20 space-y-4">
                   <ListaEmAlta tokens={emAlta} />
+                  <FeedAoVivo tokens={emAlta} />
                 </div>
               </aside>
               <Grade tokens={tokens} destaque={sort === "chroma"} />
