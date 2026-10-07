@@ -19,6 +19,7 @@ import type { TokenSummary } from "@/lib/types";
 const API_DA_CURVA_SOLANA = "https://frontend-api-v3.pump.fun";
 /** Tokens à venda na curva quando ela nasce (793,1 mi, 6 casas). */
 const A_VENDA_INICIAL = 793_100_000_000_000;
+const MCAP_INICIAL_SOL = (30 / 1_073_000_000) * 1_000_000_000;
 
 interface MoedaDaCurvaSolana {
   mint: string;
@@ -46,6 +47,17 @@ function daCurvaSolana(m: MoedaDaCurvaSolana, precoDoSol: number): TokenSummary 
   const preco = m.usd_market_cap / fornecimento;
   const naCurva = !m.complete;
   const vendidos = A_VENDA_INICIAL - (m.real_token_reserves ?? A_VENDA_INICIAL);
+  /*
+   * Variação DESDE O LANÇAMENTO (antes: 0 fixo, e a vitrine inteira mostrava
+   * "0,00%" — 06/10/2026). Toda moeda nasce na curva com o mesmo valor de
+   * mercado: 30 SOL virtuais / 1,073 bi tokens virtuais × 1 bi = ~27,96 SOL.
+   * Só pra moeda com menos de 24h, que é quando "desde o lançamento" e
+   * "24h" são a mesma coisa.
+   */
+  const nasceu = m.created_timestamp ?? 0;
+  const inicialUsd = MCAP_INICIAL_SOL * precoDoSol;
+  const recente = nasceu > 0 && Date.now() - nasceu < 24 * 3600_000;
+  const variacao = recente && inicialUsd > 0 ? (m.usd_market_cap / inicialUsd - 1) * 100 : 0;
   return {
     address: m.mint,
     chain: "solana",
@@ -56,7 +68,7 @@ function daCurvaSolana(m: MoedaDaCurvaSolana, precoDoSol: number): TokenSummary 
     website: m.website || undefined,
     twitter: m.twitter || undefined,
     priceUsd: preco,
-    change24h: 0,
+    change24h: variacao,
     marketCapUsd: m.usd_market_cap,
     liquidityUsd: ((m.real_sol_reserves ?? 0) / 1e9) * precoDoSol,
     volume24hUsd: 0,
