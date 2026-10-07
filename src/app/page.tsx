@@ -178,7 +178,7 @@ export default async function HomePage({
 
   const { isDemo } = principal;
   // A coluna "Em alta" só com moeda séria (critério da fomo): ver ehMoedaSeria.
-  const emAlta = principal.tokens.filter(ehMoedaSeria).sort((a, b) => pontuacaoEmAlta(b) - pontuacaoEmAlta(a)).slice(0, 30);
+  const emAlta = principal.tokens.filter(ehMoedaSeria).sort((a, b) => pontuacaoEmAlta(b) - pontuacaoEmAlta(a)).slice(0, 40);
   const todasAsMoedas = sort === "chroma" ? daChromaNaRede : principal.tokens;
   // Busca do cabeçalho: nome, símbolo ou começo do endereço.
   const tokens = busca

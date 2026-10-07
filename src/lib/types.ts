@@ -3,6 +3,12 @@ export type ChainId = "solana" | "robinhood";
 export type ChainKind = "solana" | "evm";
 
 export interface TokenSummary {
+  /**
+   * Valor de mercado no NASCIMENTO (moeda da pump.fun com menos de 24 h).
+   * Com ele a variação mostrada é "desde o lançamento", como na fomo — e o
+   * número ao vivo recalcula a partir dele (ver AoVivo.tsx).
+   */
+  mcapInicialUsd?: number;
   address: string;
   chain: ChainId;
   name: string;

@@ -116,11 +116,12 @@ export function useTokenVivo(token: TokenSummary): TokenSummary {
   if (!vivo) return token;
   // Dado absurdo da fonte (moeda recém-criada com par esquisito): ignora.
   if (vivo.marketCapUsd > token.marketCapUsd * 50 && token.marketCapUsd > 0) return token;
+  const desdeOLancamento = token.mcapInicialUsd ? (vivo.marketCapUsd / token.mcapInicialUsd - 1) * 100 : null;
   return {
     ...token,
     priceUsd: vivo.priceUsd,
     marketCapUsd: vivo.marketCapUsd,
-    change24h: vivo.change24h || token.change24h,
+    change24h: desdeOLancamento ?? (vivo.change24h || token.change24h),
     volume24hUsd: vivo.volume24hUsd || token.volume24hUsd,
     priceChanges: { ...(token.priceChanges ?? {}), m5: vivo.m5, h24: vivo.change24h || token.change24h },
   };

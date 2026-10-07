@@ -33,7 +33,7 @@ export function formatUsd(value: number): string {
 
 export function formatPct(value: number): string {
   const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
+  return `${sign}${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
 export function shortenAddress(address: string, chars = 4): string {

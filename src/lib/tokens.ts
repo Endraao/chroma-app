@@ -283,7 +283,41 @@ async function montarUniverso(): Promise<TokenSummary[]> {
    * As fontes de mercado carregam estimativa velha de quantos tokens existem,
    * e moeda que queimou parte do fornecimento aparecia maior do que é.
    */
-  return corrigirCapitalizacao([...porChave.values()]);
+  const corrigidas = await corrigirCapitalizacao([...porChave.values()]);
+  const sol = (await import("@/lib/precos-nativos").then((m) => m.precosNativos()).catch(() => null))?.solana ?? 0;
+  return comVariacaoDesdeOLancamento(semCopias(corrigidas, new Set(daCasa.map((t) => t.address.toLowerCase()))), sol);
+}
+
+/**
+ * Cópias com o mesmo nome (06/10/2026: a "AUTON" da vitrine era uma cópia de
+ * $68 mil; a de verdade vale $3 mi). Por rede e símbolo, fica só a de maior
+ * valor de mercado. As lançadas na Chroma nunca saem.
+ */
+function semCopias(lista: TokenSummary[], daChroma: Set<string>): TokenSummary[] {
+  const maior = new Map<string, TokenSummary>();
+  for (const t of lista) {
+    if (daChroma.has(t.address.toLowerCase())) continue;
+    const k = `${t.chain}:${t.symbol.trim().toLowerCase()}`;
+    const atual = maior.get(k);
+    if (!atual || t.marketCapUsd > atual.marketCapUsd) maior.set(k, t);
+  }
+  return lista.filter((t) => daChroma.has(t.address.toLowerCase()) || maior.get(`${t.chain}:${t.symbol.trim().toLowerCase()}`) === t);
+}
+
+/**
+ * Moeda da pump.fun com menos de 24 h: variação DESDE O LANÇAMENTO, igual à
+ * fomo (+80.000% numa moeda que nasceu com ~$3 mil e vale $3 mi). Toda moeda
+ * nasce na curva com ~27,96 SOL de valor de mercado.
+ */
+const MCAP_INICIAL_PUMP_SOL = (30 / 1_073_000_000) * 1_000_000_000;
+function comVariacaoDesdeOLancamento(lista: TokenSummary[], sol: number): TokenSummary[] {
+  if (sol <= 0) return lista;
+  const inicial = MCAP_INICIAL_PUMP_SOL * sol;
+  return lista.map((t) => {
+    const recente = t.createdAt > 0 && Date.now() - t.createdAt < 24 * 3600_000;
+    if (t.chain !== "solana" || !t.address.endsWith("pump") || !recente || t.marketCapUsd <= 0) return t;
+    return { ...t, mcapInicialUsd: inicial, change24h: (t.marketCapUsd / inicial - 1) * 100 };
+  });
 }
 
 /**
