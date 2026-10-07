@@ -32,7 +32,11 @@ export function ListaEmAlta({ tokens }: { tokens: TokenSummary[] }) {
       const el = caixa.current;
       const linha = el?.firstElementChild as HTMLElement | null;
       if (!el || !linha?.offsetHeight) return;
-      const livre = window.innerHeight - el.getBoundingClientRect().top - 24;
+      // Mede pela posição FIXA (a coluna gruda a 80px do topo), não por onde a
+      // página está agora — medir rolado/carregando deixava só 3 moedas.
+      const coluna = el.closest(".sticky") ?? el.parentElement!;
+      const dentro = el.getBoundingClientRect().top - coluna.getBoundingClientRect().top;
+      const livre = window.innerHeight - 80 - dentro - 24;
       const cabem = Math.max(3, Math.floor(livre / linha.offsetHeight));
       setAltura(cabem * linha.offsetHeight);
     };
