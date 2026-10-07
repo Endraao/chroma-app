@@ -120,7 +120,9 @@ export function TokenHeader({
               // de quem opera por trás.
               token.dexId === "pumpfun" ? (
                 <Badge tone="chroma">{t.curva}</Badge>
-              ) : (
+              ) : plataformaDeOrigem(token) ? null : (
+                // Com o ícone da plataforma de origem, o nome da DEX ("UNISWAP",
+                // "METEORA") só confundia (07/10/2026).
                 <Badge tone="neutral">{token.dexId?.includes("pump") ? t.listado : (token.dexId ?? t.listado)}</Badge>
               )
             )}
@@ -261,6 +263,7 @@ const PLATAFORMAS: Record<string, { nome: string; icone: string }> = {
   bags: { nome: "Bags", icone: "/plataformas/bags.png" },
   believe: { nome: "Believe", icone: "/plataformas/believe.png" },
   metadao: { nome: "MetaDAO", icone: "/plataformas/metadao.png" },
+  ember: { nome: "Ember", icone: "/plataformas/ember.png" },
   meteora: { nome: "Meteora", icone: "/plataformas/meteora.png" },
   launchlab: { nome: "LaunchLab", icone: "/plataformas/launchlab.png" },
 };
@@ -270,7 +273,7 @@ const PLATAFORMAS: Record<string, { nome: string; icone: string }> = {
  * 07/10/2026, igual à fomo) — não a DEX onde ela negocia hoje: a PONS mostra
  * a Pons, não a Uniswap; a STONK mostra a StonkFun, não a Meteora.
  */
-function SelosDeOrigem({ token }: { token: TokenSummary }) {
+function plataformaDeOrigem(token: TokenSummary) {
   const dex = (token.dexId ?? "").toLowerCase();
   const chave =
     token.plataforma ??
@@ -281,7 +284,11 @@ function SelosDeOrigem({ token }: { token: TokenSummary }) {
         : dex === "pons"
           ? "pons"
           : undefined);
-  const plataforma = chave ? PLATAFORMAS[chave] : undefined;
+  return chave ? PLATAFORMAS[chave] : undefined;
+}
+
+function SelosDeOrigem({ token }: { token: TokenSummary }) {
+  const plataforma = plataformaDeOrigem(token);
   return (
     <span className="flex items-center gap-1">
       <img src={`/chains/${token.chain}.png`} alt={token.chain} title={token.chain === "solana" ? "Solana" : "Robinhood Chain"} className="size-[18px] rounded-full" />
