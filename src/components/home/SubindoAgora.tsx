@@ -33,7 +33,7 @@ export function SubindoAgora({ tokens }: { tokens: TokenSummary[] }) {
   const subindo = tokens
     .map((x) => ({ x, alta: altaAgora(x) }))
     // Acima de 50.000% é dado quebrado da fonte, não alta de verdade.
-    .filter((v) => v.alta >= 5 && v.alta <= 50_000 && v.x.marketCapUsd > 0)
+    .filter((v) => v.alta >= 5 && v.alta <= 5_000_000 && v.x.marketCapUsd > 0)
     .sort((a, b) => b.alta - a.alta)
     .slice(0, 16);
   if (subindo.length < 3) return null;

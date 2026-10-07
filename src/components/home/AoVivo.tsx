@@ -115,7 +115,7 @@ export function useTokenVivo(token: TokenSummary): TokenSummary {
   const vivo = useContext(Contexto).get(token.address.toLowerCase());
   if (!vivo) return token;
   // Dado absurdo da fonte (moeda recém-criada com par esquisito): ignora.
-  if (vivo.marketCapUsd > token.marketCapUsd * 50 && token.marketCapUsd > 0) return token;
+  if (token.marketCapUsd > 0 && (vivo.marketCapUsd > token.marketCapUsd * 50 || vivo.marketCapUsd < token.marketCapUsd / 20)) return token;
   const desdeOLancamento = token.mcapInicialUsd ? (vivo.marketCapUsd / token.mcapInicialUsd - 1) * 100 : null;
   return {
     ...token,

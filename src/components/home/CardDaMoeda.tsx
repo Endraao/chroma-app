@@ -19,7 +19,7 @@ const TEXTOS = traducoes({
 /** Até quando a moeda leva o selo de nova. */
 const NOVA_POR_MS = 15 * 60_000;
 /** Acima disso é dado quebrado da fonte, não alta de verdade. */
-const ALTA_MAXIMA = 50_000;
+const ALTA_MAXIMA = 5_000_000;
 
 /**
  * Card da vitrine, numa CAIXA própria (pedido do dono, 06/10/2026: "as

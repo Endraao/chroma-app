@@ -42,7 +42,7 @@ export function ListaEmAlta({ tokens }: { tokens: TokenSummary[] }) {
 function Linha({ token: base }: { token: TokenSummary }) {
   const token = useTokenVivo(base);
   const pct = token.change24h;
-  const temPct = Number.isFinite(pct) && pct !== 0 && Math.abs(pct) <= 50_000;
+  const temPct = Number.isFinite(pct) && pct !== 0 && Math.abs(pct) <= 5_000_000;
   return (
     <Link
       href={`/token/${token.address}`}
