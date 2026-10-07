@@ -39,7 +39,8 @@ export function Sparkline({
   const xy = points.map((value, i) => ({
     x: (i / (points.length - 1)) * width,
     // Margem de 4px em cima e embaixo pra linha não encostar na borda.
-    y: height - 4 - ((value - min) / span) * (height - 8),
+    // Preço parado: linha no meio, não colada no chão.
+    y: max === min ? height / 2 : height - 4 - ((value - min) / span) * (height - 8),
   }));
 
   const linha = curvaSuave(xy);
@@ -94,13 +95,14 @@ function curvaSuave(p: { x: number; y: number }[]): string {
 }
 
 function buildPoints(changes?: { m5?: number; h1?: number; h6?: number; h24?: number }): number[] | null {
-  if (!changes) return null;
+  if (!changes) return [1, 1];
   const agora = 1;
   const anterior = (pct?: number) =>
     pct === undefined || pct === null ? null : agora / (1 + pct / 100);
   const serie = [anterior(changes.h24), anterior(changes.h6), anterior(changes.h1), anterior(changes.m5), agora];
   const validos = serie.filter((v): v is number => v !== null && Number.isFinite(v) && v > 0);
-  // Com menos de três pontos o traço não diz nada; melhor não desenhar.
-  if (validos.length < 3) return null;
+  // Sem variação conhecida (moeda sem negócio ainda): linha reta — é a
+  // verdade, o preço não mexeu. Antes o card ficava sem gráfico nenhum.
+  if (validos.length < 2) return [agora, agora];
   return validos;
 }

@@ -98,9 +98,29 @@ const moedasDaChromaComCache = unstable_cache(moedasSemZero, ["moedas-da-chroma-
  */
 async function moedasSemZero(): Promise<TokenSummary[]> {
   const lista = await moedasDaChromaSemCache();
-  if (lista.some((t) => !(t.marketCapUsd > 0))) throw new Error("cotação incompleta");
-  return lista;
+  const { gravarNoCacheDoBanco, lerDoCacheDoBanco } = await import("@/lib/db");
+  if (lista.every((t) => t.marketCapUsd > 0)) {
+    // Guarda a última lista boa (no máximo 1x por minuto) pro remendo abaixo.
+    if (Date.now() - ultimaGravacao > 60_000) {
+      ultimaGravacao = Date.now();
+      await gravarNoCacheDoBanco(CHAVE_ULTIMA_BOA, lista).catch(() => {});
+    }
+    return lista;
+  }
+  /*
+   * Leitura da curva falhou pra alguma (RPC grátis recusa rajada): em vez de
+   * "$0" na vitrine (a MIAU apareceu assim em 07/10/2026), vale o último
+   * número bom daquela moeda.
+   */
+  const boa = await lerDoCacheDoBanco<TokenSummary[]>(CHAVE_ULTIMA_BOA).catch(() => null);
+  const porEndereco = new Map((boa ?? []).map((t) => [t.address.toLowerCase(), t]));
+  const remendada = lista.map((t) => (t.marketCapUsd > 0 ? t : (porEndereco.get(t.address.toLowerCase()) ?? t)));
+  if (remendada.some((t) => !(t.marketCapUsd > 0))) throw new Error("cotação incompleta");
+  return remendada;
 }
+
+const CHAVE_ULTIMA_BOA = "moedas-da-chroma-ultima-boa";
+let ultimaGravacao = 0;
 
 export async function moedasDaChroma(): Promise<TokenSummary[]> {
   try {
