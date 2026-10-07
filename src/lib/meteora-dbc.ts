@@ -205,7 +205,7 @@ export async function lerPoolDaCurva(conexao: Connection, mint: string): Promise
 export async function estadoNaCurvaDaChroma(
   conexao: Connection,
   mint: string,
-): Promise<{ precoSol: number; solReal: number; progresso: number; completa: boolean; criador: string } | null> {
+): Promise<{ precoSol: number; solReal: number; progresso: number; completa: boolean; criador: string; pool: string } | null> {
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
@@ -222,6 +222,7 @@ export async function estadoNaCurvaDaChroma(
     progresso: limite > 0 ? Math.min(100, (reserva / limite) * 100) : 0,
     completa: Number(estado.isMigrated) !== 0 || (limite > 0 && reserva >= limite),
     criador: estado.creator.toBase58(),
+    pool: achado.pool.toBase58(),
   };
 }
 

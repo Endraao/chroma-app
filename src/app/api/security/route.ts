@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PublicKey } from "@solana/web3.js";
 
 import { GOPLUS_CHAIN_ID, robinhoodChain } from "@/lib/web3";
 import type { ChainId, RiskLevel, SecurityCheck, SecurityReport } from "@/lib/types";
@@ -421,6 +422,30 @@ function sumTop(holders: any, n: number): number {
 /* Solana                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Cofres de CURVA e de POOL não são "detentores": é a liquidez da própria moeda.
+ * Moeda recém-lançada tem ~100% no cofre da curva, e o painel acusava "uma
+ * carteira tem 100%" em toda moeda nova da Chroma (07/10/2026).
+ */
+const DONOS_DE_COFRE = new Set([
+  "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM", // curva da Meteora (DBC) — a Curva da Chroma
+  "HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC", // pool DAMM v2 da Meteora (depois de graduar)
+]);
+
+function semCofres(holders: unknown, mint: string): any[] {
+  if (!Array.isArray(holders)) return [];
+  let curvaPump = "";
+  try {
+    curvaPump = PublicKey.findProgramAddressSync(
+      [Buffer.from("bonding-curve"), new PublicKey(mint).toBuffer()],
+      new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"),
+    )[0].toBase58();
+  } catch {
+    /* endereço inválido: sem curva da pump */
+  }
+  return holders.filter((h: any) => !DONOS_DE_COFRE.has(h?.account) && h?.account !== curvaPump);
+}
+
 async function fetchSolana(address: string): Promise<SecurityReport | null> {
   const res = await fetch(`${GOPLUS_SOLANA}?contract_addresses=${address}`, { next: { revalidate } });
   if (!res.ok) return null;
@@ -429,7 +454,8 @@ async function fetchSolana(address: string): Promise<SecurityReport | null> {
   const d = json?.result?.[address];
   if (!d) return null;
 
-  const maiorDetentorPct = Number(d.holders?.[0]?.percent ?? 0) * 100;
+  const holders = semCofres(d.holders, address);
+  const maiorDetentorPct = Number(holders[0]?.percent ?? 0) * 100;
 
   /*
    * TOKEN DE LISTA CONHECIDA NÃO LEVA ALERTA POR SER O QUE É.
@@ -567,7 +593,7 @@ async function fetchSolana(address: string): Promise<SecurityReport | null> {
     score: scoreFrom(checks),
     checks,
     holderConcentration: {
-      top10Pct: sumTop(d.holders, 10),
+      top10Pct: sumTop(holders, 10),
       creatorPct: maiorDetentorPct,
     },
     warnings: avisosDosChecks(checks),

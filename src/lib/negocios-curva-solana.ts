@@ -79,3 +79,46 @@ export async function negociosDaCurvaSolana(mint: string, precoDoSol: number): P
     return negocios;
   }).catch(() => null);
 }
+
+/** Dona dos cofres de toda pool da curva da Meteora (DBC): é por ela que passam tokens e SOL. */
+const AUTORIDADE_DA_DBC = "FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM";
+const WSOL = "So11111111111111111111111111111111111111112";
+
+/**
+ * Negócios de uma moeda na CURVA DA CHROMA, direto da rede (07/10/2026: a
+ * fonte de mercado levava minutos pra mostrar o primeiro negócio de uma moeda
+ * recém-lançada). Mesma fonte da pump.fun acima: as transações da pool, já
+ * decodificadas pela Helius. Compra = o token sai do cofre da pool; venda = entra.
+ */
+export async function negociosDaCurvaDaChroma(mint: string, pool: string, precoDoSol: number): Promise<NegocioDoPool[] | null> {
+  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  const chave = rpc ? new URL(rpc).searchParams.get("api-key") : null;
+  if (!chave || precoDoSol <= 0) return null;
+
+  return cached(`negocios-curva-chroma:${mint}`, 3_000, async () => {
+    const r = await fetch(`https://api.helius.xyz/v0/addresses/${pool}/transactions?api-key=${chave}&limit=50`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!r.ok) throw new Error(`helius ${r.status}`);
+    const lista = (await r.json()) as TxDaHelius[];
+
+    const negocios: NegocioDoPool[] = [];
+    for (const tx of lista) {
+      if (tx.transactionError) continue;
+      const transf = tx.tokenTransfers ?? [];
+      const doToken = transf.filter((t) => t.mint === mint && (t.fromUserAccount === AUTORIDADE_DA_DBC || t.toUserAccount === AUTORIDADE_DA_DBC));
+      if (!doToken.length) continue; // saque de taxa, criação de conta etc.
+      const compra = doToken[0].fromUserAccount === AUTORIDADE_DA_DBC;
+      const carteira = compra ? doToken[0].toUserAccount : doToken[0].fromUserAccount;
+      if (!carteira) continue;
+      const tokens = doToken.reduce((s, t) => s + t.tokenAmount, 0);
+      const sol = transf
+        .filter((t) => t.mint === WSOL && (compra ? t.toUserAccount === AUTORIDADE_DA_DBC : t.fromUserAccount === AUTORIDADE_DA_DBC))
+        .reduce((s, t) => s + t.tokenAmount, 0);
+      if (tokens <= 0 || sol <= 0) continue;
+      negocios.push({ carteira, lado: compra ? "compra" : "venda", tokens, usd: sol * precoDoSol, em: tx.timestamp * 1000, txHash: tx.signature });
+    }
+    return negocios;
+  }).catch(() => null);
+}
