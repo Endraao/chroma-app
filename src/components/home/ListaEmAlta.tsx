@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 
-import { NumeroVivo, useTokenVivo } from "@/components/home/AoVivo";
+import { NumeroVivo, useHistoricoVivo, useTokenVivo } from "@/components/home/AoVivo";
+import { Sparkline } from "@/components/ui/Sparkline";
 import { ImagemDaMoeda } from "@/components/home/CardDaMoeda";
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
@@ -41,6 +42,7 @@ export function ListaEmAlta({ tokens }: { tokens: TokenSummary[] }) {
 
 function Linha({ token: base }: { token: TokenSummary }) {
   const token = useTokenVivo(base);
+  const vivos = useHistoricoVivo(base);
   const pct = token.change24h;
   const temPct = Number.isFinite(pct) && pct !== 0 && Math.abs(pct) <= 5_000_000;
   return (
@@ -54,6 +56,9 @@ function Linha({ token: base }: { token: TokenSummary }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13.5px] font-bold text-zinc-100">{token.symbol.toUpperCase()}</p>
         <NumeroVivo valor={token.priceUsd} formatar={(n) => `$${formatPrice(n)}`} className="tnum block truncate text-[11.5px] text-zinc-500" />
+      </div>
+      <div className="w-12 shrink-0">
+        <Sparkline changes={base.priceChanges} vivos={vivos} up={pct >= 0} altura={22} />
       </div>
       <div className="shrink-0 text-right">
         <p className="tnum text-[13.5px] font-black text-zinc-50">

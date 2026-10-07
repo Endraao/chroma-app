@@ -538,6 +538,46 @@ export function useLiveChartData({
   }, [tempoReal, candles.length, aplicarPreco]);
 
   /* --- 2b. Reserva: pesquisa, quando a pool não é assinável --------- */
+
+  /*
+   * Preço a cada 1 s direto da DexScreener, do navegador (pedido do dono,
+   * 06/10/2026: "o gráfico não se mexe a cada segundo que nem na fomo"). Grátis
+   * e sem passar pelo servidor. Enquanto ela responde, a pesquisa de 3 s abaixo
+   * só serve de âncora — duas fontes desenhando juntas fariam a vela tremer.
+   */
+  const dexOkRef = useRef(false);
+  useEffect(() => {
+    if (!address || !candles.length || tempoReal) return;
+    dexOkRef.current = false;
+    const rede = chain === "robinhood" ? "robinhood" : "solana";
+    let cancelado = false;
+    const tick = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const r = await fetch(`https://api.dexscreener.com/tokens/v1/${rede}/${address}`, { cache: "no-store" });
+        if (!r.ok) return;
+        const pares = (await r.json()) as { priceUsd?: string; liquidity?: { usd?: number } }[];
+        if (cancelado || !Array.isArray(pares) || !pares.length) return;
+        const melhor = pares.reduce((a, b) => ((b.liquidity?.usd ?? 0) > (a.liquidity?.usd ?? 0) ? b : a));
+        const preco = Number(melhor.priceUsd);
+        if (!(preco > 0)) return;
+        // Par esquisito, longe do preço que o servidor confirmou: ignora.
+        const ref = referenciaRef.current;
+        if (ref > 0 && (preco / ref > 1.5 || preco / ref < 1 / 1.5)) return;
+        dexOkRef.current = true;
+        aplicarPreco(preco);
+      } catch {
+        /* rede oscilou: o próximo tick tenta de novo */
+      }
+    };
+    void tick();
+    const timer = window.setInterval(tick, 1_000);
+    return () => {
+      cancelado = true;
+      window.clearInterval(timer);
+    };
+  }, [address, chain, candles.length, tempoReal, aplicarPreco]);
+
   useEffect(() => {
     // Com o WebSocket de pé, pesquisar seria pedir de novo o que já chega sozinho.
     if (!address || !candles.length || tempoReal) return;
@@ -565,7 +605,7 @@ export function useLiveChartData({
           ultimoEmSol = emNativo;
           if (primeiro) return; // a vela já está no preço das velas carregadas
         }
-        aplicarPreco(priceUsd);
+        if (!dexOkRef.current) aplicarPreco(priceUsd);
       } catch {
         /* rede oscilou: o próximo tick tenta de novo */
       }

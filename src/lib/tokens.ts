@@ -30,7 +30,13 @@ export type SortKey = "hot" | "new" | "volume" | "marketCap" | "gainers";
  * A fomo só destaca moeda com valor de mercado e volume de verdade.
  */
 export function ehMoedaSeria(t: TokenSummary): boolean {
-  return t.marketCapUsd >= 150_000 && t.volume24hUsd >= 50_000 && t.liquidityUsd >= 15_000;
+  return (
+    t.marketCapUsd >= 150_000 &&
+    t.volume24hUsd >= 50_000 &&
+    t.liquidityUsd >= 15_000 &&
+    // Valor de mercado 400× a liquidez é par fantasma (ex.: UDR "$671M" com $60K no pool).
+    t.marketCapUsd <= t.liquidityUsd * 400
+  );
 }
 
 /**
@@ -293,7 +299,11 @@ async function montarUniverso(): Promise<TokenSummary[]> {
  * $68 mil; a de verdade vale $3 mi). Por rede e símbolo, fica só a de maior
  * valor de mercado. As lançadas na Chroma nunca saem.
  */
-function semCopias(lista: TokenSummary[], daChroma: Set<string>): TokenSummary[] {
+function semCopias(todas: TokenSummary[], daChroma: Set<string>): TokenSummary[] {
+  // Par fantasma: valor de mercado 400× a liquidez não é negociável (ex.: UDR "$671M").
+  const lista = todas.filter(
+    (t) => daChroma.has(t.address.toLowerCase()) || !(t.liquidityUsd > 0 && t.marketCapUsd > t.liquidityUsd * 400),
+  );
   const maior = new Map<string, TokenSummary>();
   for (const t of lista) {
     if (daChroma.has(t.address.toLowerCase())) continue;

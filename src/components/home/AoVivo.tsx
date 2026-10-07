@@ -21,10 +21,16 @@ export interface DadoVivo {
   volume24hUsd: number;
   /** o par de maior liquidez (usado pelo feed de negócios) */
   pairAddress?: string;
+  liquidityUsd: number;
+  /** últimos preços vistos nesta visita (mini-gráfico ao vivo) */
+  historico: number[];
 }
 
 const Contexto = createContext<Map<string, DadoVivo>>(new Map());
-const INTERVALO_MS = 2_000;
+const INTERVALO_MS = 1_000;
+const HISTORICO_MAX = 40;
+/** Valor de mercado acima disso × liquidez é dado quebrado (par fantasma). */
+export const MC_POR_LIQUIDEZ_MAX = 400;
 const POR_PEDIDO = 30;
 
 interface ParDex {
@@ -66,8 +72,9 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
       }
       const pedidos: Promise<ParDex[]>[] = [];
       for (const [rede, ends] of porRede) {
+        // O primeiro lote (as "Em alta", que vêm primeiro) a cada 2 s; os demais revezam no meio.
         const lotes = Math.max(1, Math.ceil(ends.length / POR_PEDIDO));
-        const i = vez % lotes;
+        const i = lotes === 1 || vez % 2 === 0 ? 0 : 1 + (Math.floor(vez / 2) % (lotes - 1));
         pedidos.push(buscar(rede, ends.slice(i * POR_PEDIDO, (i + 1) * POR_PEDIDO), controle.signal).catch(() => []));
       }
       vez++;
@@ -86,7 +93,13 @@ export function AoVivoProvider({ tokens, children }: { tokens: TokenSummary[]; c
           const preco = Number(p.priceUsd) || 0;
           const mc = Number(p.marketCap ?? p.fdv) || 0;
           if (!preco || !mc) continue;
+          const liq = Number(p.liquidity?.usd) || 0;
+          if (liq > 0 && mc > liq * MC_POR_LIQUIDEZ_MAX) continue;
+          const hist = antes.get(k)?.historico ?? [];
+          const historico = hist[hist.length - 1] === preco ? hist : [...hist, preco].slice(-HISTORICO_MAX);
           novo.set(k, {
+            liquidityUsd: liq,
+            historico,
             priceUsd: preco,
             marketCapUsd: mc,
             change24h: Number(p.priceChange?.h24) || 0,
@@ -169,4 +182,15 @@ export function NumeroVivo({ valor, formatar, className = "" }: { valor: number;
 /** Todos os dados ao vivo (o feed de negócios usa os pares). */
 export function useDadosVivos(): Map<string, DadoVivo> {
   return useContext(Contexto);
+}
+
+/**
+ * Os preços vistos ao vivo, em proporção ao preço do servidor — pro
+ * mini-gráfico continuar andando a cada novo preço.
+ */
+export function useHistoricoVivo(token: TokenSummary): number[] {
+  const vivo = useContext(Contexto).get(token.address.toLowerCase());
+  if (!vivo || !(token.priceUsd > 0)) return [];
+  if (token.marketCapUsd > 0 && (vivo.marketCapUsd > token.marketCapUsd * 50 || vivo.marketCapUsd < token.marketCapUsd / 20)) return [];
+  return vivo.historico.map((p) => p / token.priceUsd);
 }

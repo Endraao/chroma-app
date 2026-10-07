@@ -16,17 +16,23 @@ export function Sparkline({
   changes,
   up,
   className,
+  vivos = [],
+  altura = 28,
 }: {
   changes?: { m5?: number; h1?: number; h6?: number; h24?: number };
   up: boolean;
   className?: string;
+  /** preços ao vivo em proporção ao de agora (1 = preço do servidor) */
+  vivos?: number[];
+  altura?: number;
 }) {
   const id = useId().replace(/:/g, "");
-  const points = buildPoints(changes);
+  const base = buildPoints(changes) ?? (vivos.length >= 2 ? [1] : null);
+  const points = base ? [...base, ...vivos.filter((v) => Number.isFinite(v) && v > 0)] : null;
   if (!points) return null;
 
   const width = 100;
-  const height = 28;
+  const height = altura;
   const min = Math.min(...points);
   const max = Math.max(...points);
   const span = max - min || 1;

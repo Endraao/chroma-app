@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import { NumeroVivo, useTokenVivo } from "@/components/home/AoVivo";
+import { NumeroVivo, useHistoricoVivo, useTokenVivo } from "@/components/home/AoVivo";
+import { Sparkline } from "@/components/ui/Sparkline";
 import { useTextos } from "@/components/IdiomaProvider";
 import { chainIcon } from "@/lib/chain-icons";
 import { traducoes } from "@/lib/idiomas";
@@ -30,6 +31,7 @@ const ALTA_MAXIMA = 5_000_000;
 export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSummary; destaque?: boolean }) {
   const t = useTextos(TEXTOS);
   const token = useTokenVivo(base);
+  const vivos = useHistoricoVivo(base);
   const naCurva = token.bondingProgress !== null;
   const [agora] = useState(() => Date.now());
   const nova = agora - token.createdAt < NOVA_POR_MS;
@@ -90,6 +92,12 @@ export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSum
           valor={token.marketCapUsd}
           formatar={formatUsd}
           className="tnum mt-1 block text-[20px] font-black leading-tight tracking-tight text-zinc-50"
+        />
+        <Sparkline
+          changes={base.priceChanges}
+          vivos={vivos}
+          up={pct >= 0}
+          className="mt-1.5"
         />
         <div className="tnum mt-1.5 flex items-center gap-2 border-t border-white/[0.06] pt-1.5 text-[11px] text-zinc-500">
           {token.volume24hUsd > 0 && (
