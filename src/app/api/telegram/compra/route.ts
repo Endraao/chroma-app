@@ -111,7 +111,15 @@ export async function POST(request: Request) {
 /** GET ?configurar=SEGREDO → liga o webhook e os comandos do bot (uma vez, depois de pôr as variáveis). */
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams;
-  if (!TOKEN || !SEGREDO || q.get("configurar") !== SEGREDO) return NextResponse.json({ ok: false }, { status: 401 });
+  // Diz O QUE falta (nunca o valor), pra configuração não virar adivinhação.
+  const faltando = [
+    !TOKEN && "TELEGRAM_COMPRA_TOKEN",
+    !SEGREDO && "TELEGRAM_COMPRA_SEGREDO",
+    !BOT && "TELEGRAM_COMPRA_BOT",
+    !APP && "TELEGRAM_COMPRA_APP",
+  ].filter(Boolean);
+  if (faltando.length) return NextResponse.json({ ok: false, motivo: `faltando na Vercel: ${faltando.join(", ")}` }, { status: 401 });
+  if (q.get("configurar") !== SEGREDO) return NextResponse.json({ ok: false, motivo: "a senha do link não confere com TELEGRAM_COMPRA_SEGREDO" }, { status: 401 });
   const webhook = await tg("setWebhook", {
     url: `${SITE}/api/telegram/compra`,
     secret_token: SEGREDO,
