@@ -3,6 +3,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { parseEther } from "viem";
+import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from "wagmi";
 
 import { NumeroVivo, AoVivoProvider, useTokenVivo } from "@/components/home/AoVivo";
 import { ImagemDaMoeda } from "@/components/home/CardDaMoeda";
@@ -12,23 +14,26 @@ import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
 import { cn, formatPct, formatPrice, formatUsd } from "@/lib/utils";
-import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
+import { feeLabelFor } from "@/lib/fees";
+import { PLATFORM_FEE_WALLET_EVM, PLATFORM_FEE_WALLET_SOL, robinhoodChain } from "@/lib/web3";
 
 const X_DA_CHROMA = "https://x.com/ChromaLaunch";
 const TAXA_DO_LINK_SOL = 0.005;
+const TAXA_DO_LINK_ETH = "0.0002";
 
 const TEXTOS = traducoes({
   en: {
     abrir: "Open on Chroma", mc: "MC",
     abaNegociar: "Trade", abaLink: "My link",
     pool: "Pool",
-    comoFunciona: "Chroma charges 0.95% per trade — 0.30% of it goes to whoever shared the post. On coins launched on the Chroma Curve, the 1% pool fee splits 40% creator · 40% Chroma · 20% Meteora.",
-    emSol: "All fees and payouts in SOL, on-chain, in the same transaction.",
+    comoFunciona: (taxa: string, curva: boolean) =>
+      `Chroma charges ${taxa} per trade — 0.30% of it goes to whoever shared the post.${curva ? " On coins launched on the Chroma Curve, the 1% pool fee splits 40% creator · 40% Chroma · 20% Meteora." : ""}`,
+    emSol: (m: string) => `All fees and payouts in ${m}, on-chain, in the same transaction.`,
     linkTitulo: "Share with your own link",
-    linkTexto: "Get your own link to this buy box. Everyone who trades through it pays you 0.30% of the trade — in SOL, instantly, on-chain.",
+    linkTexto: (m: string) => `Get your own link to this buy box. Everyone who trades through it pays you 0.30% of the trade — in ${m}, instantly, on-chain.`,
     passo1: "Connect your wallet", passo1b: "where your earnings will land",
     passo2: "Follow @ChromaLaunch on X", passo2b: "stay on top of new features",
-    passo3: "Register your link", passo3b: (s: number) => `one-time registration fee: ${s} SOL`,
+    passo3: "Register your link", passo3b: (s: string) => `one-time registration fee: ${s}`,
     passo4: "Share it on X", passo4b: "your post becomes a buy box too",
     seguir: "Follow ↗", registrar: "Register", registrando: "Approve in your wallet…", compartilhar: "Post on X ↗",
     pronto: "Your link is ready:",
@@ -38,13 +43,14 @@ const TEXTOS = traducoes({
     abrir: "Abrir na Chroma", mc: "MC",
     abaNegociar: "Negociar", abaLink: "Meu link",
     pool: "Pool",
-    comoFunciona: "A Chroma cobra 0,95% por negócio — 0,30% disso vai pra quem compartilhou o post. Nas moedas lançadas na Curva da Chroma, a taxa de 1% da pool é dividida: 40% criador · 40% Chroma · 20% Meteora.",
-    emSol: "Todas as taxas e pagamentos em SOL, na blockchain, na mesma transação.",
+    comoFunciona: (taxa: string, curva: boolean) =>
+      `A Chroma cobra ${taxa} por negócio — 0,30% disso vai pra quem compartilhou o post.${curva ? " Nas moedas lançadas na Curva da Chroma, a taxa de 1% da pool é dividida: 40% criador · 40% Chroma · 20% Meteora." : ""}`,
+    emSol: (m: string) => `Todas as taxas e pagamentos em ${m}, na blockchain, na mesma transação.`,
     linkTitulo: "Compartilhe com o seu link",
-    linkTexto: "Gere o seu próprio link desta janela de compra. Todo mundo que negociar por ele te paga 0,30% do negócio — em SOL, na hora, na blockchain.",
+    linkTexto: (m: string) => `Gere o seu próprio link desta janela de compra. Todo mundo que negociar por ele te paga 0,30% do negócio — em ${m}, na hora, na blockchain.`,
     passo1: "Conecte sua carteira", passo1b: "onde os seus ganhos vão cair",
     passo2: "Siga a @ChromaLaunch no X", passo2b: "fique por dentro das novidades",
-    passo3: "Registre o seu link", passo3b: (s: number) => `taxa única de registro: ${s} SOL`,
+    passo3: "Registre o seu link", passo3b: (s: string) => `taxa única de registro: ${s}`,
     passo4: "Compartilhe no X", passo4b: "o seu post também vira janela de compra",
     seguir: "Seguir ↗", registrar: "Registrar", registrando: "Aprove na sua carteira…", compartilhar: "Postar no X ↗",
     pronto: "Seu link está pronto:",
@@ -54,13 +60,14 @@ const TEXTOS = traducoes({
     abrir: "在 Chroma 打开", mc: "市值",
     abaNegociar: "交易", abaLink: "我的链接",
     pool: "池子",
-    comoFunciona: "Chroma 每笔交易收取 0.95% —— 其中 0.30% 归分享该帖子的人。在 Chroma 曲线上发行的代币，1% 池子手续费分配为：40% 创建者 · 40% Chroma · 20% Meteora。",
-    emSol: "所有手续费和收益均以 SOL 链上同笔交易支付。",
+    comoFunciona: (taxa: string, curva: boolean) =>
+      `Chroma 每笔交易收取 ${taxa} —— 其中 0.30% 归分享该帖子的人。${curva ? "在 Chroma 曲线上发行的代币，1% 池子手续费分配为：40% 创建者 · 40% Chroma · 20% Meteora。" : ""}`,
+    emSol: (m: string) => `所有手续费和收益均以 ${m} 链上同笔交易支付。`,
     linkTitulo: "用你自己的链接分享",
-    linkTexto: "生成你自己的购买窗口链接。通过它交易的每个人都会付给你 0.30% —— SOL，即时，链上。",
+    linkTexto: (m: string) => `生成你自己的购买窗口链接。通过它交易的每个人都会付给你 0.30% —— ${m}，即时，链上。`,
     passo1: "连接钱包", passo1b: "收益将打入这里",
     passo2: "在 X 上关注 @ChromaLaunch", passo2b: "第一时间了解新功能",
-    passo3: "注册你的链接", passo3b: (s: number) => `一次性注册费：${s} SOL`,
+    passo3: "注册你的链接", passo3b: (s: string) => `一次性注册费：${s}`,
     passo4: "分享到 X", passo4b: "你的帖子也会变成购买窗口",
     seguir: "关注 ↗", registrar: "注册", registrando: "请在钱包中确认…", compartilhar: "发到 X ↗",
     pronto: "你的链接已就绪：",
@@ -171,8 +178,8 @@ function Conteudo({ base }: { base: TokenSummary }) {
             <p>
               <span className="font-bold text-zinc-300">{t.pool}:</span> {origemDaPool(token)}
             </p>
-            <p>{t.comoFunciona}</p>
-            <p className="font-semibold text-marca">{t.emSol}</p>
+            <p>{t.comoFunciona(feeLabelFor(token.chain).swap, token.chain === "solana")}</p>
+            <p className="font-semibold text-marca">{t.emSol(token.chain === "robinhood" ? "ETH" : "SOL")}</p>
           </div>
         </>
       ) : (
@@ -189,7 +196,15 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const [segue, setSegue] = useState(false);
   const [pago, setPago] = useState(false);
   const [estado, setEstado] = useState("");
-  const carteira = publicKey?.toBase58() ?? "";
+  // Na Robinhood Chain tudo é em ETH e a comissão cai numa carteira EVM.
+  const ehEvm = token.chain === "robinhood";
+  const { address: carteiraEvm } = useAccount();
+  const redeAtual = useChainId();
+  const { switchChainAsync } = useSwitchChain();
+  const { sendTransactionAsync } = useSendTransaction();
+  const clienteEvm = usePublicClient({ chainId: robinhoodChain.id });
+  const carteira = (ehEvm ? carteiraEvm : publicKey?.toBase58()) ?? "";
+  const taxaDoLink = ehEvm ? `${TAXA_DO_LINK_ETH} ETH` : `${TAXA_DO_LINK_SOL} SOL`;
 
   useEffect(() => {
     if (!carteira) return;
@@ -199,7 +214,36 @@ function MeuLink({ token }: { token: TokenSummary }) {
       .catch(() => {});
   }, [carteira]);
 
+  async function confirmarNoSite(tx: string) {
+    const r = await fetch("/api/link-no-post", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ carteira, tx }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j?.erro ?? "erro");
+    setPago(true);
+    setEstado("");
+  }
+
   async function registrar() {
+    if (ehEvm) {
+      if (!carteiraEvm || !PLATFORM_FEE_WALLET_EVM || !clienteEvm) return;
+      try {
+        setEstado(t.registrando);
+        if (redeAtual !== robinhoodChain.id) await switchChainAsync({ chainId: robinhoodChain.id });
+        const hash = await sendTransactionAsync({
+          to: PLATFORM_FEE_WALLET_EVM as `0x${string}`,
+          value: parseEther(TAXA_DO_LINK_ETH),
+          chainId: robinhoodChain.id,
+        });
+        await clienteEvm.waitForTransactionReceipt({ hash });
+        await confirmarNoSite(hash);
+      } catch (e) {
+        setEstado(e instanceof Error ? e.message.slice(0, 160) : String(e));
+      }
+      return;
+    }
     if (!publicKey || !sendTransaction || !PLATFORM_FEE_WALLET_SOL) return;
     try {
       setEstado(t.registrando);
@@ -213,15 +257,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
       const assinatura = await sendTransaction(tx, connection);
       const bloco = await connection.getLatestBlockhash();
       await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
-      const r = await fetch("/api/link-no-post", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ carteira, tx: assinatura }),
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j?.erro ?? "erro");
-      setPago(true);
-      setEstado("");
+      await confirmarNoSite(assinatura);
     } catch (e) {
       setEstado(e instanceof Error ? e.message : String(e));
     }
@@ -245,10 +281,10 @@ function MeuLink({ token }: { token: TokenSummary }) {
   return (
     <div className="rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-2.5">
       <p className="text-[14px] font-black text-zinc-50">{t.linkTitulo}</p>
-      <p className="mb-1.5 text-[12px] leading-relaxed text-zinc-400">{t.linkTexto}</p>
+      <p className="mb-1.5 text-[12px] leading-relaxed text-zinc-400">{t.linkTexto(ehEvm ? "ETH" : "SOL")}</p>
       <Passo n={1} feito={Boolean(carteira)} titulo={t.passo1} sub={t.passo1b} />
       {!carteira && (
-        <RequireChainWallet chain="solana" compacto>
+        <RequireChainWallet chain={ehEvm ? "robinhood" : "solana"} compacto>
           <span />
         </RequireChainWallet>
       )}
@@ -257,7 +293,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
           {t.seguir}
         </a>
       </Passo>
-      <Passo n={3} feito={pago} titulo={t.passo3} sub={t.passo3b(TAXA_DO_LINK_SOL)}>
+      <Passo n={3} feito={pago} titulo={t.passo3} sub={t.passo3b(taxaDoLink)}>
         {!pago && carteira && (
           <button type="button" onClick={registrar} className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black">
             {t.registrar}

@@ -991,6 +991,9 @@ function EvmSwap({
   const swap = pons ? swapPons : liberado ? swapExterno : swapDaCurva;
 
   const ehCompra = side === "buy";
+  // Taxa da Chroma neste negócio (pra mostrar no post): Pons, Uniswap ou a curva da Chroma.
+  const taxaEvmBps = pons ? swapPons.taxaBps : liberado ? swapFeeBps("robinhood") : 120;
+  const baseEmEth = ehCompra ? Number(valorNativo) || 0 : Number(swap.saida) || 0;
   const podeOperar = pons || liberado ? true : ehCompra ? podeComprar : podeVender;
 
   /*
@@ -1209,12 +1212,25 @@ function EvmSwap({
         </div>
 
         {compacto ? (
-          <p className="tnum px-1 text-[12px] text-zinc-400">
-            {t.voceRecebe}:{" "}
-            <span className="font-bold text-zinc-200">
-              {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
-            </span>
-          </p>
+          <div className="tnum space-y-0.5 px-1 text-[11.5px] text-zinc-400">
+            <p className="text-[12px]">
+              {t.voceRecebe}:{" "}
+              <span className="font-bold text-zinc-200">
+                {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
+              </span>
+            </p>
+            {/* Transparência: a taxa DESTE negócio, em ETH, ao vivo (mesma regra do SolanaSwap). */}
+            <p className="flex justify-between">
+              <span>{t.taxaChroma(`${(taxaEvmBps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`)}</span>
+              <span>{baseEmEth > 0 ? `${(baseEmEth * taxaEvmBps / 10_000).toFixed(7)} ${meta.nativeSymbol}` : "—"}</span>
+            </p>
+            {affiliate && (
+              <p className="flex justify-between text-zinc-500">
+                <span>{t.praQuemPostou}</span>
+                <span>{baseEmEth > 0 ? `${(baseEmEth * AFFILIATE_FEE_BPS / 10_000).toFixed(7)} ${meta.nativeSymbol}` : "—"}</span>
+              </p>
+            )}
+          </div>
         ) : (
         <>
         <div>
