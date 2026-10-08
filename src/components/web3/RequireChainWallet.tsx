@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { SignInModal } from "@/components/web3/SignInModal";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useWalletOptions } from "@/hooks/useWalletOptions";
-import { shortenAddress } from "@/lib/utils";
+import { cn, shortenAddress } from "@/lib/utils";
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, robinhoodChain } from "@/lib/web3";
 import type { ChainId } from "@/lib/types";
@@ -168,24 +168,36 @@ export function RequireChainWallet({
           ];
       return (
         <div className="space-y-1.5">
-          <p className="text-[11px] text-zinc-400">{t.celularSemCarteira}</p>
-          <div className="grid grid-cols-3 gap-1.5">
-            {carteiras.map(([nome, link], i) => (
+          {/* No post do X cada linha conta (o X corta o que passa da altura): sem o texto, demais carteiras numa fileira só. */}
+          {!compacto && <p className="text-[11px] text-zinc-400">{t.celularSemCarteira}</p>}
+          <a
+            href={carteiras[0][1]}
+            target="_blank"
+            rel="noreferrer"
+            className="block rounded-lg bg-marca py-2.5 text-center text-[14px] font-black text-black"
+          >
+            {t.abrirNa(carteiras[0][0])}
+          </a>
+          <div className="flex gap-1.5">
+            {carteiras.slice(1).map(([nome, link]) => (
               <a
                 key={nome}
                 href={link}
                 target="_blank"
                 rel="noreferrer"
-                className={
-                  i === 0
-                    ? "col-span-3 rounded-lg bg-marca py-2.5 text-center text-[14px] font-black text-black"
-                    : "rounded-lg border border-ink-600 bg-ink-800 py-2 text-center text-[12px] font-bold text-zinc-100"
-                }
+                className={cn(
+                  "flex-1 rounded-lg border border-ink-600 bg-ink-800 text-center font-bold text-zinc-100",
+                  compacto ? "py-1.5 text-[11px]" : "py-2 text-[12px]",
+                )}
               >
-                {i === 0 ? t.abrirNa(nome) : nome}
+                {nome}
               </a>
             ))}
-            <button type="button" onClick={abrir} className="rounded-lg border border-ink-600 py-2 text-[12px] font-bold text-zinc-400">
+            <button
+              type="button"
+              onClick={abrir}
+              className={cn("flex-1 rounded-lg border border-ink-600 font-bold text-zinc-400", compacto ? "py-1.5 text-[11px]" : "py-2 text-[12px]")}
+            >
               {t.outra}
             </button>
           </div>
