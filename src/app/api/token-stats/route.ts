@@ -42,6 +42,11 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     address,
+    // Nome, símbolo, imagem e rede: o gerador de link (/divulgar) mostra a moeda.
+    name: token.name,
+    symbol: token.symbol,
+    imageUrl: token.imageUrl ?? null,
+    chain: token.chain,
     priceUsd: token.priceUsd,
     change24h: token.change24h,
     marketCapUsd: token.marketCapUsd,

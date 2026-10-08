@@ -75,7 +75,7 @@ export default async function Ranking({ searchParams }: { searchParams: Promise<
             {t.periodos[k]}
           </Link>
         ))}
-        <Link href="/affiliate" className="ml-auto text-[13px] font-bold text-marca hover:underline">
+        <Link href="/divulgar" className="ml-auto text-[13px] font-bold text-marca hover:underline">
           {t.cta}
         </Link>
       </div>

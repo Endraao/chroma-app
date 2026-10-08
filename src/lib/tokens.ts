@@ -311,11 +311,11 @@ function semCopias(todas: TokenSummary[], daChroma: Set<string>): TokenSummary[]
   const maior = new Map<string, TokenSummary>();
   for (const t of lista) {
     if (daChroma.has(t.address.toLowerCase())) continue;
-    const k = `${t.chain}:${t.symbol.trim().toLowerCase()}`;
+    const k = `${t.chain}:${(t.symbol ?? "").trim().toLowerCase()}`;
     const atual = maior.get(k);
     if (!atual || t.marketCapUsd > atual.marketCapUsd) maior.set(k, t);
   }
-  return lista.filter((t) => daChroma.has(t.address.toLowerCase()) || maior.get(`${t.chain}:${t.symbol.trim().toLowerCase()}`) === t);
+  return lista.filter((t) => daChroma.has(t.address.toLowerCase()) || maior.get(`${t.chain}:${(t.symbol ?? "").trim().toLowerCase()}`) === t);
 }
 
 /**
