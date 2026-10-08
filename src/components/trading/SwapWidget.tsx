@@ -222,18 +222,21 @@ function SolanaSwap({
   const [slippage, setSlippage] = useState(compacto ? 10 : SLIPPAGE_PADRAO);
 
   /*
-   * DENTRO DO IFRAME DO X a Phantom marca o pedido de assinatura como "dApp
-   * maliciosa" (assinar dentro de janela embutida é a técnica do clickjacking).
-   * Então ali o botão abre uma janelinha da Chroma por cima — fora do iframe —
-   * com o valor e o lado já preenchidos, e a pessoa confirma nela.
+   * Assinar numa janelinha à parte em vez de dentro do post do X.
+   *
+   * Desligado (07/10/2026): o dono quer a compra DENTRO do post — é a narrativa.
+   * O alerta "dApp maliciosa" da Phantom no primeiro teste veio da simulação
+   * que falhou por slippage (3%), não do iframe; com 10% assina ali mesmo. Se
+   * a Phantom voltar a bloquear dentro do post, é ligar isto de novo.
    */
+  const ASSINAR_EM_JANELA = false;
   const [embutido, setEmbutido] = useState(false);
   useEffect(() => {
     if (!compacto) return;
     try {
-      setEmbutido(window.self !== window.top);
+      setEmbutido(ASSINAR_EM_JANELA && window.self !== window.top);
     } catch {
-      setEmbutido(true);
+      setEmbutido(ASSINAR_EM_JANELA);
     }
     const q = new URLSearchParams(window.location.search);
     const valor = q.get("valor");
