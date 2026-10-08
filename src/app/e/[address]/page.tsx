@@ -48,7 +48,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     other: {
       "twitter:player": player,
       "twitter:player:width": "480",
-      "twitter:player:height": "560",
+      "twitter:player:height": "480",
     },
   };
 }

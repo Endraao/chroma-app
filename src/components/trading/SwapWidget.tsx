@@ -164,6 +164,8 @@ export function SwapWidget({
   pool = null,
   priceUsd,
   naCurvaDaChroma = false,
+  compacto = false,
+  linkFora,
 }: {
   symbol: string;
   chain: ChainId;
@@ -174,11 +176,15 @@ export function SwapWidget({
   priceUsd: number;
   /** moeda da Curva da Chroma: taxa do site reduzida (ver fees.ts) */
   naCurvaDaChroma?: boolean;
+  /** Versão curta pra janela dentro do post do X: só valor, atalhos e o botão. */
+  compacto?: boolean;
+  /** Onde comprar se a carteira não aparecer dentro do post. */
+  linkFora?: string;
 }) {
   const meta = CHAINS[chain];
 
   return meta.kind === "solana" ? (
-    <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} naCurvaDaChroma={naCurvaDaChroma} />
+    <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} naCurvaDaChroma={naCurvaDaChroma} compacto={compacto} linkFora={linkFora} />
   ) : (
     <EvmSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} pool={pool} />
   );
@@ -195,6 +201,8 @@ function SolanaSwap({
   pool = null,
   priceUsd,
   naCurvaDaChroma = false,
+  compacto = false,
+  linkFora,
 }: {
   symbol: string;
   chain: ChainId;
@@ -203,6 +211,8 @@ function SolanaSwap({
   pool?: string | null;
   priceUsd: number;
   naCurvaDaChroma?: boolean;
+  compacto?: boolean;
+  linkFora?: string;
 }) {
   const t = useTextos(TEXTOS);
   const [side, setSide] = useState<TradeSide>("buy");
@@ -336,7 +346,7 @@ function SolanaSwap({
     <Card className="overflow-hidden">
       <AbasDeLado side={side} onChange={trocarLado} />
       {/* Mesmo formato do painel da Robinhood: as duas redes com a mesma cara. */}
-      <div className="space-y-3 px-4 pb-4 pt-1">
+      <div className={cn("px-4 pt-1", compacto ? "space-y-2 pb-3" : "space-y-3 pb-4")}>
         <div className="flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
           <span>{t.voceBaga}</span>
           {swap.balance !== null && (
@@ -353,7 +363,7 @@ function SolanaSwap({
           )}
         </div>
 
-        <label className="flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 py-3 focus-within:border-marca/50">
+        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-2" : "py-3")}>
           <input
             inputMode="decimal"
             value={digitado}
@@ -393,6 +403,17 @@ function SolanaSwap({
               ))}
         </div>
 
+        {compacto ? (
+          <p className="tnum px-1 text-[12px] text-zinc-400">
+            {t.voceRecebe}:{" "}
+            <span className="font-bold text-zinc-200">
+              {swap.quote && Number(swap.outAmount) > 0
+                ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
+                : "—"}
+            </span>
+          </p>
+        ) : (
+        <>
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.voceRecebe}</p>
           <div className="tnum px-1 py-1 text-xl font-bold text-zinc-200">
@@ -435,11 +456,14 @@ function SolanaSwap({
           </div>
         </div>
 
+        </>
+        )}
+
         {swap.motivoTravado && (
           <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">{swap.motivoTravado}</p>
         )}
 
-        <RequireChainWallet chain="solana">
+        <RequireChainWallet chain="solana" compacto={compacto} linkFora={linkFora} rotuloFora={`${comprando ? t.comprar : t.vender} ${symbol} ↗`}>
           <Button
             variant={comprando ? "buy" : "sell"}
             size="lg"

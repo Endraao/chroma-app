@@ -73,9 +73,17 @@ const TEXTOS = traducoes({
 export function RequireChainWallet({
   chain,
   children,
+  compacto = false,
+  linkFora,
+  rotuloFora,
 }: {
   chain: ChainId;
   children: React.ReactNode;
+  /** Só o botão, sem a caixa de explicação (janela dentro do post do X). */
+  compacto?: boolean;
+  /** Sem carteira visível aqui (iframe): o botão leva pra este endereço, em outra aba. */
+  linkFora?: string;
+  rotuloFora?: string;
 }) {
   const t = useTextos(TEXTOS);
   const [modalAberto, setModalAberto] = useState(false);
@@ -108,6 +116,27 @@ export function RequireChainWallet({
   const abrir = () => (direta ? direta.onSelect() : setModalAberto(true));
 
   if (conectada && !redeErrada) return <>{children}</>;
+
+  if (compacto) {
+    // Dentro do post do X nem sempre a extensão da carteira aparece: aí o
+    // botão abre a moeda na Chroma (com a indicação de quem postou).
+    if (!detectadas.length && linkFora)
+      return (
+        <a href={linkFora} target="_blank" rel="noreferrer" className="block">
+          <Button variant="chroma" size="lg" className="w-full">
+            {rotuloFora ?? t.conectarCarteira(meta.label)}
+          </Button>
+        </a>
+      );
+    return (
+      <>
+        <Button variant="chroma" size="lg" className="w-full" onClick={abrir}>
+          {vinculada ? t.liberar : t.conectarCarteira(meta.label)}
+        </Button>
+        <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
+      </>
+    );
+  }
 
   return (
     <>

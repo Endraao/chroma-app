@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 import { NumeroVivo, AoVivoProvider, useTokenVivo } from "@/components/home/AoVivo";
 import { ImagemDaMoeda } from "@/components/home/CardDaMoeda";
@@ -29,8 +29,12 @@ function Conteudo({ base }: { base: TokenSummary }) {
   const t = useTextos(TEXTOS);
   const token = useTokenVivo(base);
   const pct = token.change24h;
+  // A indicação de quem postou segue junto se a compra tiver de abrir fora do X.
+  const [ref, setRef] = useState("");
+  useEffect(() => setRef(new URLSearchParams(window.location.search).get("ref") ?? ""), []);
+  const linkFora = `/token/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
   return (
-    <main className="mx-auto flex min-h-screen max-w-[480px] flex-col gap-2.5 bg-ink-950 p-3">
+    <main className="mx-auto flex max-w-[480px] flex-col gap-2 bg-ink-950 p-2.5">
       <div className="flex items-center gap-3">
         <div className="size-11 shrink-0 overflow-hidden rounded-full bg-ink-800">
           <ImagemDaMoeda token={token} px={88} />
@@ -48,7 +52,7 @@ function Conteudo({ base }: { base: TokenSummary }) {
           </p>
         </div>
         <a
-          href={`/token/${token.address}`}
+          href={linkFora}
           target="_blank"
           rel="noreferrer"
           className="shrink-0 rounded-lg border border-marca/40 px-2.5 py-1.5 text-[12px] font-bold text-marca hover:bg-marca/10"
@@ -65,15 +69,10 @@ function Conteudo({ base }: { base: TokenSummary }) {
           pool={token.pairAddress ?? null}
           priceUsd={token.priceUsd}
           naCurvaDaChroma={token.dexId === "chroma-curve"}
+          compacto
+          linkFora={linkFora}
         />
       </Suspense>
-
-      <p className="text-center text-[11px] text-zinc-500">
-        {t.rodape}{" "}
-        <a href="/" target="_blank" rel="noreferrer" className="font-bold text-marca">
-          chromalaunch.fun
-        </a>
-      </p>
     </main>
   );
 }
