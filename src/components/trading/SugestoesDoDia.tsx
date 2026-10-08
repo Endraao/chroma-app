@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
+import { comLinkDoCelular } from "@/lib/link-do-post";
 import { formatUsd } from "@/lib/utils";
 
 /**
