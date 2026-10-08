@@ -336,7 +336,14 @@ export async function fetchToken(address: string): Promise<TokenSummary | null> 
       const data = await getJson<{ pairs: DexPair[] | null }>(
         `${DEXSCREENER}/latest/dex/tokens/${address}`,
       );
-      const pares = data.pairs ?? [];
+      /*
+       * Só os pares em que ESTA moeda é a principal (base). A DexScreener
+       * devolve também pares em que ela é a cotação (ex.: JupUSD/BORDR); o de
+       * maior liquidez era esse, e a página — e o bot do Telegram — mostravam
+       * nome, preço e MC da JupUSD no lugar da BORDR (08/10/2026).
+       */
+      const alvo = address.toLowerCase();
+      const pares = (data.pairs ?? []).filter((p) => p.baseToken?.address?.toLowerCase() === alvo);
       const pair = bestPair(pares);
       if (!pair) throw new Error("token sem par listado");
 
