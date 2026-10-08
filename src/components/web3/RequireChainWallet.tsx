@@ -34,7 +34,7 @@ import type { ChainId } from "@/lib/types";
 const TEXTOS = traducoes({
   en: {
     abrirNa: (c: string) => `Buy in ${c} ↗`,
-    celularSemCarteira: "On your phone? Your wallet app opens this coin with the amount already set.",
+    celularSemCarteira: "On your phone? Pick your wallet — it opens this coin with the amount already set.",
     outra: "Other",
     outraRede: "Your wallet is on another network",
     moedaDa: (rede: string) => `This coin is on ${rede}`,
@@ -49,7 +49,7 @@ const TEXTOS = traducoes({
   },
   pt: {
     abrirNa: (c: string) => `Comprar na ${c} ↗`,
-    celularSemCarteira: "No celular? O app da sua carteira abre esta moeda com o valor já preenchido.",
+    celularSemCarteira: "No celular? Escolha sua carteira — ela abre esta moeda com o valor já preenchido.",
     outra: "Outra",
     outraRede: "Sua carteira está em outra rede",
     moedaDa: (rede: string) => `Esta moeda é da ${rede}`,
@@ -64,7 +64,7 @@ const TEXTOS = traducoes({
   },
   zh: {
     abrirNa: (c: string) => `在 ${c} 中购买 ↗`,
-    celularSemCarteira: "在手机上？钱包 App 会打开此代币，金额已填好。",
+    celularSemCarteira: "在手机上？选择你的钱包 —— 它会打开此代币，金额已填好。",
     outra: "其他",
     outraRede: "你的钱包在其他网络上",
     moedaDa: (rede: string) => `该代币属于 ${rede}`,
@@ -131,10 +131,10 @@ export function RequireChainWallet({
     // Celular SEM carteira embutida no navegador (app do X, Safari, Chrome).
     // A lista de "detectadas" não serve aqui: no Android ela traz o Mobile
     // Wallet Adapter, que não funciona dentro do app do X.
-    const w = window as unknown as { phantom?: unknown; solana?: unknown; solflare?: unknown; backpack?: unknown };
-    const injetada = Boolean(w.phantom || w.solana || w.solflare || w.backpack);
+    const w = window as unknown as { phantom?: unknown; solana?: unknown; solflare?: unknown; backpack?: unknown; ethereum?: unknown };
+    const injetada = ehSolana ? Boolean(w.phantom || w.solana || w.solflare || w.backpack) : Boolean(w.ethereum);
     setCelular(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !injetada);
-  }, []);
+  }, [ehSolana]);
 
   if (conectada && !redeErrada) return <>{children}</>;
 
@@ -146,25 +146,45 @@ export function RequireChainWallet({
      */
     if (celular && alvoNaCarteira) {
       const origem = new URL(alvoNaCarteira).origin;
-      const phantom = `https://phantom.app/ul/browse/${encodeURIComponent(alvoNaCarteira)}?ref=${encodeURIComponent(origem)}`;
-      const solflare = `https://solflare.com/ul/v1/browse/${encodeURIComponent(alvoNaCarteira)}?ref=${encodeURIComponent(origem)}`;
+      const u = encodeURIComponent(alvoNaCarteira);
+      const r = encodeURIComponent(origem);
+      const semProtocolo = alvoNaCarteira.replace(/^https?:\/\//, "");
+      // Cada carteira abre o próprio navegador já nesta página (valor, lado e indicação juntos).
+      const carteiras = ehSolana
+        ? [
+            ["Phantom", `https://phantom.app/ul/browse/${u}?ref=${r}`],
+            ["Solflare", `https://solflare.com/ul/v1/browse/${u}?ref=${r}`],
+            ["Backpack", `https://backpack.app/ul/v1/browse/${u}?ref=${r}`],
+            ["MetaMask", `https://metamask.app.link/dapp/${semProtocolo}`],
+            ["Trust", `https://link.trustwallet.com/open_url?coin_id=501&url=${u}`],
+          ]
+        : [
+            ["MetaMask", `https://metamask.app.link/dapp/${semProtocolo}`],
+            ["Coinbase", `https://go.cb-w.com/dapp?cb_url=${u}`],
+            ["Trust", `https://link.trustwallet.com/open_url?coin_id=60&url=${u}`],
+          ];
       return (
         <div className="space-y-1.5">
-          <a href={phantom} target="_blank" rel="noreferrer" className="block">
-            <Button variant="chroma" size="lg" className="w-full">
-              {t.abrirNa("Phantom")}
-            </Button>
-          </a>
-          <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-500">
-            <span>{t.celularSemCarteira}</span>
-            <span className="flex shrink-0 gap-2 font-bold">
-              <a href={solflare} target="_blank" rel="noreferrer" className="text-marca">
-                Solflare ↗
+          <p className="text-[11px] text-zinc-400">{t.celularSemCarteira}</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {carteiras.map(([nome, link], i) => (
+              <a
+                key={nome}
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+                className={
+                  i === 0
+                    ? "col-span-3 rounded-lg bg-marca py-2.5 text-center text-[14px] font-black text-black"
+                    : "rounded-lg border border-ink-600 bg-ink-800 py-2 text-center text-[12px] font-bold text-zinc-100"
+                }
+              >
+                {i === 0 ? t.abrirNa(nome) : nome}
               </a>
-              <button type="button" onClick={abrir} className="text-zinc-400 underline">
-                {t.outra}
-              </button>
-            </span>
+            ))}
+            <button type="button" onClick={abrir} className="rounded-lg border border-ink-600 py-2 text-[12px] font-bold text-zinc-400">
+              {t.outra}
+            </button>
           </div>
           <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
         </div>

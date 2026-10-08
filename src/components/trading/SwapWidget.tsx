@@ -186,7 +186,7 @@ export function SwapWidget({
   return meta.kind === "solana" ? (
     <SolanaSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} priceUsd={priceUsd} naCurvaDaChroma={naCurvaDaChroma} compacto={compacto} linkFora={linkFora} />
   ) : (
-    <EvmSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} pool={pool} />
+    <EvmSwap symbol={symbol} chain={chain} tokenAddress={tokenAddress} pool={pool} compacto={compacto} linkFora={linkFora} />
   );
 }
 
@@ -828,18 +828,23 @@ function EvmSwap({
   chain,
   tokenAddress,
   pool,
+  compacto = false,
+  linkFora,
 }: {
   symbol: string;
   chain: ChainId;
   tokenAddress: string;
   pool: string | null;
+  /** Versão curta pra janela dentro do post do X (ver o SolanaSwap). */
+  compacto?: boolean;
+  linkFora?: string;
 }) {
   const t = useTextos(TEXTOS);
   const meta = CHAINS[chain];
   const { curva, podeComprar, podeVender, carregando } = useCurvaEvm(tokenAddress);
   // Moeda na curva da Pons (lançada pela Chroma ou não): negocia pelo ChromaPons.
   const { pons, carregando: carregandoPons } = useCurvaPons(tokenAddress);
-  const { affiliate } = useAffiliateTracking(chain);
+  const { affiliate, affiliateRef: refDoDivulgador } = useAffiliateTracking(chain);
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId: robinhoodChain.id });
   const [saldoEth, setSaldoEth] = useState<number | null>(null);
@@ -847,7 +852,25 @@ function EvmSwap({
 
   const [side, setSide] = useState<TradeSide>("buy");
   const [digitado, setDigitado] = useState("");
-  const [slippageBps, setSlippageBps] = useState(300);
+  // No post do X, 10% (moeda nova anda rápido entre cotar e assinar).
+  const [slippageBps, setSlippageBps] = useState(compacto ? 1000 : 300);
+  // No post do X: valor e lado vindos do link (quando o app da carteira reabre a página).
+  useEffect(() => {
+    if (!compacto) return;
+    const q = new URLSearchParams(window.location.search);
+    const v = q.get("valor");
+    if (v && /^[0-9.]+$/.test(v)) setDigitado(v);
+    if (q.get("lado") === "sell") setSide("sell");
+  }, [compacto]);
+  const [alvoNaCarteira, setAlvoNaCarteira] = useState<string>();
+  useEffect(() => {
+    if (!compacto) return;
+    const q = new URLSearchParams(window.location.search);
+    if (!q.get("ref") && refDoDivulgador) q.set("ref", refDoDivulgador);
+    if (digitado) q.set("valor", digitado);
+    q.set("lado", side);
+    setAlvoNaCarteira(`${window.location.origin}${window.location.pathname}?${q.toString()}`);
+  }, [compacto, digitado, side, refDoDivulgador]);
   // Atalhos da compra em dólar: convertidos pelo preço do ETH.
   const precoDoEth = usePrecoNativo("robinhood") ?? 0;
   // Compra em DÓLAR, como na Solana. Sem cotação do ETH, pede ETH.
@@ -1073,7 +1096,7 @@ function EvmSwap({
           setDigitado(""); // dólar e tokens não são a mesma unidade
         }} disabled={swap.ocupado} />
 
-      <div className="space-y-3 px-4 pb-4 pt-1">
+      <div className={cn("px-4 pt-1", compacto ? "space-y-2 pb-3" : "space-y-3 pb-4")}>
         {/*
           Formato da referência do dono (página de moeda da PEAR, 28/09/2026):
           "você paga" com saldo, valores rápidos, "você recebe" estimado,
@@ -1096,7 +1119,7 @@ function EvmSwap({
           )}
         </div>
 
-        <label className="flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 py-3 focus-within:border-marca/50">
+        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-2" : "py-3")}>
           <input
             inputMode="decimal"
             value={digitado}
@@ -1126,6 +1149,15 @@ function EvmSwap({
           ))}
         </div>
 
+        {compacto ? (
+          <p className="tnum px-1 text-[12px] text-zinc-400">
+            {t.voceRecebe}:{" "}
+            <span className="font-bold text-zinc-200">
+              {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
+            </span>
+          </p>
+        ) : (
+        <>
         <div>
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             {t.voceRecebe}
@@ -1175,6 +1207,8 @@ function EvmSwap({
             </span>
           </div>
         </div>
+        </>
+        )}
 
         {curva?.concluida && !curva.migrada && (
           <div className="space-y-2 rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2.5 text-[11px] leading-snug text-warn">
@@ -1196,7 +1230,7 @@ function EvmSwap({
           </div>
         )}
 
-        <RequireChainWallet chain={chain}>
+        <RequireChainWallet chain={chain} compacto={compacto} linkFora={linkFora} rotuloFora={`${ehCompra ? t.comprar : t.vender} ${symbol} ↗`} alvoNaCarteira={alvoNaCarteira}>
           <Button
             variant={ehCompra ? "buy" : "sell"}
             size="lg"
