@@ -56,6 +56,6 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function LinkDoPost({ params, searchParams }: Props) {
   const { address } = await params;
   const { ref } = await searchParams;
-  const destino = `/token/${address}${ref && REF.test(ref) ? `?ref=${encodeURIComponent(ref)}` : ""}`;
-  return <IrParaAMoeda destino={destino} />;
+  const sufixo = ref && REF.test(ref) ? `?ref=${encodeURIComponent(ref)}` : "";
+  return <IrParaAMoeda destino={`/token/${address}${sufixo}`} destinoNoCelular={`/p/${address}${sufixo}`} />;
 }
