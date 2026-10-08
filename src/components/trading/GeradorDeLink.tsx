@@ -7,6 +7,7 @@ import { useAccount } from "wagmi";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
+import { SugestoesDoDia } from "@/components/trading/SugestoesDoDia";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { traducoes } from "@/lib/idiomas";
 import type { ChainId } from "@/lib/types";
@@ -232,6 +233,8 @@ export function GeradorDeLink() {
           </div>
         </section>
       )}
+
+      <SugestoesDoDia origem={origem} refId={account?.nickname ?? publicKey?.toBase58() ?? null} />
 
       <div className="flex flex-wrap gap-4">
         <Link href="/ranking" className="text-[13px] font-bold text-marca hover:underline">

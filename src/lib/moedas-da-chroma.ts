@@ -73,6 +73,8 @@ export const FORA_DA_VITRINE = new Set(
   [
     "0x5b78097b8a5de294f93780abdff4ce7ac790ef63",
     "59BgjdS8cxgUi7N4JV6PDQMtYRdmzmnUjUKCugqdsrGi", // InterLink (teste do dono, 07/10/2026)
+    "CPE53sbuMb4SzDXUod7Pi2RgUx4UCjawd4zauXy4zZTq", // XP (teste do dono, 08/10/2026)
+    "9LZqY6zCVR1XqE8rzYEz1TFaVrzAouUdTJvExCaTMesW", // G0681 (teste do dono, 08/10/2026)
     "FVLHq3xxqTca6tfv1fJDk5qtkq4U7xz1fakxFU6AyHV5", // AutoBahn (teste do dono, 07/10/2026)
     "Fn4QycXx5JN5uocWtzMxkBJFrVtNrEJu49WF8KWYKhjc",
     "Gvf5RiyNiUwKYaAgiruJotBp89PdLGwyHzYGx2TKmBVe",
