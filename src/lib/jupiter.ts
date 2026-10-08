@@ -46,13 +46,22 @@ export async function getQuote(params: QuoteParams): Promise<JupiterQuote> {
   // Rotas com token intermediário exótico têm muito mais chance de falhar.
   url.searchParams.set("restrictIntermediateTokens", "true");
 
-  const res = await fetch(url, { headers: { accept: "application/json" }, cache: "no-store" });
-  const body = await res.text();
-
-  if (!res.ok) {
-    throw new Error(`Jupiter /quote ${res.status}: ${body.slice(0, 200)}`);
+  // A Jupiter às vezes cai por segundos (503/502/429 com página HTML): tenta de
+  // novo sozinho antes de mostrar erro pra pessoa.
+  let status = 0;
+  let body = "";
+  for (const espera of [0, 500, 1500]) {
+    if (espera) await new Promise((r) => setTimeout(r, espera));
+    const res = await fetch(url, { headers: { accept: "application/json" }, cache: "no-store" });
+    status = res.status;
+    body = await res.text();
+    if (res.ok) return JSON.parse(body) as JupiterQuote;
+    if (status !== 429 && status < 500) break;
   }
-  return JSON.parse(body) as JupiterQuote;
+  if (status === 429 || status >= 500) {
+    throw new Error("Jupiter (the price router) is busy right now. Try again in a few seconds.");
+  }
+  throw new Error(`Jupiter /quote ${status}: ${body.trimStart().startsWith("<") ? "" : body.slice(0, 200)}`);
 }
 
 export interface SwapBuildResult {
