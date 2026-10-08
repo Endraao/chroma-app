@@ -217,7 +217,35 @@ function SolanaSwap({
   const t = useTextos(TEXTOS);
   const [side, setSide] = useState<TradeSide>("buy");
   const [digitado, setDigitado] = useState("");
-  const [slippage, setSlippage] = useState(SLIPPAGE_PADRAO);
+  // No post do X: 10% — moeda nova anda mais que 3% entre cotar e assinar,
+  // e a Phantom recusava a compra por slippage (07/10/2026).
+  const [slippage, setSlippage] = useState(compacto ? 10 : SLIPPAGE_PADRAO);
+
+  /*
+   * DENTRO DO IFRAME DO X a Phantom marca o pedido de assinatura como "dApp
+   * maliciosa" (assinar dentro de janela embutida é a técnica do clickjacking).
+   * Então ali o botão abre uma janelinha da Chroma por cima — fora do iframe —
+   * com o valor e o lado já preenchidos, e a pessoa confirma nela.
+   */
+  const [embutido, setEmbutido] = useState(false);
+  useEffect(() => {
+    if (!compacto) return;
+    try {
+      setEmbutido(window.self !== window.top);
+    } catch {
+      setEmbutido(true);
+    }
+    const q = new URLSearchParams(window.location.search);
+    const valor = q.get("valor");
+    if (valor && /^[0-9.]+$/.test(valor)) setDigitado(valor);
+    if (q.get("lado") === "sell") setSide("sell");
+  }, [compacto]);
+  const abrirJanelaDeCompra = () => {
+    const q = new URLSearchParams(window.location.search);
+    q.set("valor", digitado);
+    q.set("lado", side);
+    window.open(`${window.location.pathname}?${q.toString()}`, "chroma-negociar", "width=460,height=620");
+  };
 
   const { affiliate, affiliateRef } = useAffiliateTracking(chain);
   const { connected, publicKey } = useWallet();
@@ -463,6 +491,11 @@ function SolanaSwap({
           <p className="rounded-lg border border-warn/25 bg-warn/[0.06] px-3 py-2 text-[11px] leading-snug text-warn">{swap.motivoTravado}</p>
         )}
 
+        {embutido ? (
+          <Button variant={comprando ? "buy" : "sell"} size="lg" className="w-full" disabled={semValor} onClick={abrirJanelaDeCompra}>
+            {semValor ? t.informeValor : `${comprando ? t.comprar : t.vender} ${symbol} ↗`}
+          </Button>
+        ) : (
         <RequireChainWallet chain="solana" compacto={compacto} linkFora={linkFora} rotuloFora={`${comprando ? t.comprar : t.vender} ${symbol} ↗`}>
           <Button
             variant={comprando ? "buy" : "sell"}
@@ -482,6 +515,7 @@ function SolanaSwap({
                     : `${comprando ? t.comprar : t.vender} ${symbol}`}
           </Button>
         </RequireChainWallet>
+        )}
 
         {swap.error && (
           <p className="text-[11px] leading-relaxed text-bear">
