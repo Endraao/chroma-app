@@ -420,9 +420,9 @@ function SolanaSwap({
 
   return (
     <Card className="overflow-hidden">
-      <AbasDeLado side={side} onChange={trocarLado} />
+      <AbasDeLado side={side} onChange={trocarLado} compacto={compacto} />
       {/* Mesmo formato do painel da Robinhood: as duas redes com a mesma cara. */}
-      <div className={cn("px-4 pt-1", compacto ? "space-y-2 pb-3" : "space-y-3 pb-4")}>
+      <div className={cn("px-4 pt-1", compacto ? "flex flex-col gap-2 pb-3" : "space-y-3 pb-4")}>
         <div className="flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
           <span>{compacto && !comprando ? t.quantoVender : t.voceBaga}</span>
           {swap.balance !== null && (
@@ -480,7 +480,7 @@ function SolanaSwap({
         </div>
 
         {compacto ? (
-          <div className="tnum space-y-0.5 px-1 text-[11.5px] text-zinc-400">
+          <div className="tnum order-last space-y-0.5 px-1 text-[11.5px] text-zinc-400">
             <p className="text-[12px]">
               {t.voceRecebe}:{" "}
               <span className="font-bold text-zinc-200">
@@ -684,10 +684,12 @@ function AbasDeLado({
   side,
   onChange,
   disabled,
+  compacto,
 }: {
   side: TradeSide;
   onChange: (s: TradeSide) => void;
   disabled?: boolean;
+  compacto?: boolean;
 }) {
   const t = useTextos(TEXTOS);
   return (
@@ -700,7 +702,7 @@ function AbasDeLado({
             disabled={disabled}
             onClick={() => onChange(s)}
             className={cn(
-              "rounded-lg py-2.5 text-[14px] font-bold transition-colors disabled:opacity-40",
+              "rounded-lg text-[14px] font-bold transition-colors disabled:opacity-40", compacto ? "py-1.5" : "py-2.5",
               ativo
                 ? s === "buy"
                   ? "bg-bull text-ink-950"
@@ -1156,9 +1158,9 @@ function EvmSwap({
           if (s === side) return;
           setSide(s);
           setDigitado(""); // dólar e tokens não são a mesma unidade
-        }} disabled={swap.ocupado} />
+        }} disabled={swap.ocupado} compacto={compacto} />
 
-      <div className={cn("px-4 pt-1", compacto ? "space-y-2 pb-3" : "space-y-3 pb-4")}>
+      <div className={cn("px-4 pt-1", compacto ? "flex flex-col gap-2 pb-3" : "space-y-3 pb-4")}>
         {/*
           Formato da referência do dono (página de moeda da PEAR, 28/09/2026):
           "você paga" com saldo, valores rápidos, "você recebe" estimado,
@@ -1212,7 +1214,7 @@ function EvmSwap({
         </div>
 
         {compacto ? (
-          <div className="tnum space-y-0.5 px-1 text-[11.5px] text-zinc-400">
+          <div className="tnum order-last space-y-0.5 px-1 text-[11.5px] text-zinc-400">
             <p className="text-[12px]">
               {t.voceRecebe}:{" "}
               <span className="font-bold text-zinc-200">

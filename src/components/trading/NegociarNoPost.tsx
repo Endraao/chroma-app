@@ -114,9 +114,9 @@ function Conteudo({ base }: { base: TokenSummary }) {
   const linkFora = `/token/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
 
   return (
-    <main className="mx-auto flex max-w-[480px] flex-col gap-2 bg-ink-950 p-2.5">
+    <main className="mx-auto flex max-w-[480px] flex-col gap-1.5 bg-ink-950 p-2">
       <div className="flex items-center gap-3">
-        <div className="size-11 shrink-0 overflow-hidden rounded-full bg-ink-800">
+        <div className="size-10 shrink-0 overflow-hidden rounded-full bg-ink-800">
           <ImagemDaMoeda token={token} px={88} />
         </div>
         <div className="min-w-0 flex-1">
@@ -153,7 +153,7 @@ function Conteudo({ base }: { base: TokenSummary }) {
             key={a}
             type="button"
             onClick={() => setAba(a)}
-            className={cn("rounded-md py-1.5", aba === a ? "bg-marca text-black" : "text-zinc-400 hover:text-zinc-100")}
+            className={cn("rounded-md py-1", aba === a ? "bg-marca text-black" : "text-zinc-400 hover:text-zinc-100")}
           >
             {a === "negociar" ? t.abaNegociar : t.abaLink}
           </button>
