@@ -107,7 +107,7 @@ const DESTINOS_DE_DADOS = [
  * do post (/p/…, o "player card" do X, 07/10/2026). Toda transação ainda pede
  * aprovação na carteira, que abre a janela dela por cima de tudo.
  */
-const PODEM_EMBUTIR = ["https://x.com", "https://*.x.com", "https://twitter.com", "https://*.twitter.com"];
+const PODEM_EMBUTIR = ["https://x.com", "https://*.x.com", "https://twitter.com", "https://*.twitter.com", "https://web.telegram.org"];
 
 function politicaDeConteudo({ desenvolvimento, embutivel = false }) {
   const regras = [
