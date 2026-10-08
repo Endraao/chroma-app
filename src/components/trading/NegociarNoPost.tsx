@@ -12,7 +12,6 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { SwapWidget } from "@/components/trading/SwapWidget";
 import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { traducoes } from "@/lib/idiomas";
-import { comLinkDoCelular } from "@/lib/link-do-post";
 import type { TokenSummary } from "@/lib/types";
 import { cn, formatPct, formatPrice, formatUsd } from "@/lib/utils";
 import { feeLabelFor } from "@/lib/fees";
@@ -290,7 +289,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
   }
 
   const link = `https://chromalaunch.fun/e/${token.address}?ref=${carteira}`;
-  const postar = `https://x.com/intent/post?text=${encodeURIComponent(comLinkDoCelular(t.tweet(token.symbol), link))}&url=${encodeURIComponent(link)}`;
+  const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
   const Passo = ({ n, feito, titulo, sub, children }: { n: number; feito: boolean; titulo: string; sub: string; children?: React.ReactNode }) => (
     <div className="flex items-center gap-3 border-t border-white/[0.06] py-1.5">
       <span className={cn("grid size-6 shrink-0 place-items-center rounded-md text-[12px] font-black", feito ? "bg-marca text-black" : "border border-white/15 text-zinc-400")}>

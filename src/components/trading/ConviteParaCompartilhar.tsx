@@ -7,7 +7,6 @@ import { useAccount } from "wagmi";
 import { useTextos } from "@/components/IdiomaProvider";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { traducoes } from "@/lib/idiomas";
-import { comLinkDoCelular } from "@/lib/link-do-post";
 import type { TokenSummary } from "@/lib/types";
 
 /**
@@ -62,7 +61,7 @@ export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
   const ref = account.account?.nickname ?? (token.chain === "solana" ? publicKey?.toBase58() : carteiraEvm) ?? null;
   // /e/…: no X o post vira uma janela de compra (player card); fora do X, abre a moeda.
   const link = `${origem}/e/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
-  const postar = `https://x.com/intent/post?text=${encodeURIComponent(comLinkDoCelular(t.tweet(token.symbol), link))}&url=${encodeURIComponent(link)}`;
+  const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
 
   async function copiar() {
     try {

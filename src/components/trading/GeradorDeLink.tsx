@@ -10,7 +10,6 @@ import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
 import { SugestoesDoDia } from "@/components/trading/SugestoesDoDia";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { traducoes } from "@/lib/idiomas";
-import { comLinkDoCelular } from "@/lib/link-do-post";
 import type { ChainId } from "@/lib/types";
 import { cn, formatUsd } from "@/lib/utils";
 
@@ -157,7 +156,7 @@ export function GeradorDeLink() {
   }
 
   const postar = moeda
-    ? `https://x.com/intent/post?text=${encodeURIComponent(comLinkDoCelular(t.tweet(moeda.symbol), link))}&url=${encodeURIComponent(link)}`
+    ? `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(moeda.symbol))}&url=${encodeURIComponent(link)}`
     : "";
 
   return (
