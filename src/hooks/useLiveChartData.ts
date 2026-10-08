@@ -556,8 +556,10 @@ export function useLiveChartData({
       try {
         const r = await fetch(`https://api.dexscreener.com/tokens/v1/${rede}/${address}`, { cache: "no-store" });
         if (!r.ok) return;
-        const pares = (await r.json()) as { priceUsd?: string; liquidity?: { usd?: number } }[];
-        if (cancelado || !Array.isArray(pares) || !pares.length) return;
+        const todos = (await r.json()) as { priceUsd?: string; liquidity?: { usd?: number } }[];
+        // Sem liquidez = par morto, preço congelado: fora.
+        const pares = Array.isArray(todos) ? todos.filter((p) => (p.liquidity?.usd ?? 0) > 0) : [];
+        if (cancelado || !pares.length) return;
         const melhor = pares.reduce((a, b) => ((b.liquidity?.usd ?? 0) > (a.liquidity?.usd ?? 0) ? b : a));
         const preco = Number(melhor.priceUsd);
         if (!(preco > 0)) return;

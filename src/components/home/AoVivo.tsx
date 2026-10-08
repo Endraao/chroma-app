@@ -97,6 +97,9 @@ export function AoVivoProvider({
       // Por moeda, o par com mais liquidez.
       const melhor = new Map<string, ParDex>();
       for (const p of pares) {
+        // Par sem liquidez é par morto (ex.: a curva antiga de uma moeda que já
+        // se formou): preço congelado, MC 13x abaixo do real (BORDR, 08/10/2026).
+        if (!((p.liquidity?.usd ?? 0) > 0)) continue;
         const k = p.baseToken.address.toLowerCase();
         const atual = melhor.get(k);
         if (!atual || (p.liquidity?.usd ?? 0) > (atual.liquidity?.usd ?? 0)) melhor.set(k, p);
@@ -173,7 +176,7 @@ export function useTokenVivo(token: TokenSummary): TokenSummary {
   const vivo = useContext(Contexto).get(token.address.toLowerCase());
   if (!vivo) return token;
   // Dado absurdo da fonte (moeda recém-criada com par esquisito): ignora.
-  if (token.marketCapUsd > 0 && (vivo.marketCapUsd > token.marketCapUsd * 50 || vivo.marketCapUsd < token.marketCapUsd / 20)) return token;
+  if (token.marketCapUsd > 0 && (vivo.marketCapUsd > token.marketCapUsd * 5 || vivo.marketCapUsd < token.marketCapUsd / 5)) return token;
   const desdeOLancamento = token.mcapInicialUsd ? (vivo.marketCapUsd / token.mcapInicialUsd - 1) * 100 : null;
   return {
     ...token,
@@ -236,7 +239,7 @@ export function useDadosVivos(): Map<string, DadoVivo> {
 export function useHistoricoVivo(token: TokenSummary): number[] {
   const vivo = useContext(Contexto).get(token.address.toLowerCase());
   if (!vivo || !(token.priceUsd > 0)) return [];
-  if (token.marketCapUsd > 0 && (vivo.marketCapUsd > token.marketCapUsd * 50 || vivo.marketCapUsd < token.marketCapUsd / 20)) return [];
+  if (token.marketCapUsd > 0 && (vivo.marketCapUsd > token.marketCapUsd * 5 || vivo.marketCapUsd < token.marketCapUsd / 5)) return [];
   return vivo.historico.map((p) => p / token.priceUsd);
 }
 
