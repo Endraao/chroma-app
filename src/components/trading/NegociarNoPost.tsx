@@ -188,7 +188,13 @@ function Conteudo({ base }: { base: TokenSummary }) {
             className="truncate rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-1.5 text-left text-[11px] leading-snug text-zinc-400"
           >
             <span className="font-bold text-zinc-300">{t.pool}:</span> {origemDaPool(token)} ·{" "}
-            <span className="font-semibold text-marca">{token.chain === "robinhood" ? "ETH" : "SOL"}</span> ⓘ
+            <span className="font-semibold text-marca">{token.chain === "robinhood" ? "ETH" : "SOL"}</span>{" "}
+            {/* Ícone desenhado: o caractere ⓘ sai deformado em alguns navegadores. */}
+            <svg viewBox="0 0 16 16" aria-hidden className="inline size-3.5 -translate-y-px align-middle text-zinc-400">
+              <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <rect x="7.25" y="7" width="1.5" height="4.5" rx="0.75" fill="currentColor" />
+              <circle cx="8" cy="4.9" r="0.95" fill="currentColor" />
+            </svg>
           </button>
           {explicando && (
             <div
