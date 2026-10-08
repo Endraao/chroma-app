@@ -384,7 +384,8 @@ export async function fetchPrice(address: string): Promise<number | null> {
         `${DEXSCREENER}/latest/dex/tokens/${address}`,
         3,
       );
-      const pair = bestPair(data.pairs ?? []);
+      // Só pares em que esta moeda é a base (ver fetchToken: o par JupUSD/BORDR dava o preço da JupUSD).
+      const pair = bestPair((data.pairs ?? []).filter((p) => p.baseToken?.address?.toLowerCase() === address.toLowerCase()));
       if (!pair) throw new Error("sem par");
       return Number(pair.priceUsd);
     });
