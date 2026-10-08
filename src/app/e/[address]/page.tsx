@@ -26,11 +26,10 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const player = `${SITE}/p/${address}${sufixo}`;
   const titulo = `$${token.symbol} — buy right in this post on Chroma`;
   const descricao = `Trade ${token.name} without leaving X. Creators keep 40% of every trade fee on Chroma.`;
-  const imagem = token.imageUrl?.startsWith("http")
-    ? token.imageUrl
-    : token.imageUrl?.startsWith("/")
-      ? `${SITE}${token.imageUrl}`
-      : `${SITE}/logo.png`;
+  // Capa quadrada e grande, do formato da janela (igual ao XPeriment, que abre
+  // no Android e no iPhone). O logo da moeda (pequeno, formato qualquer) fazia
+  // o X mostrar o cartão pequeno que só abre o site.
+  const imagem = `${SITE}/api/logo/${address}/card`;
   return {
     title: titulo,
     description: descricao,
@@ -48,7 +47,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     other: {
       "twitter:player": player,
       "twitter:player:width": "480",
-      "twitter:player:height": "600",
+      "twitter:player:height": "480",
     },
   };
 }
