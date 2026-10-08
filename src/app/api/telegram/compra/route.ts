@@ -59,10 +59,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
   const update = (await request.json().catch(() => null)) as {
-    message?: { message_id: number; text?: string; caption?: string; chat: { id: number; type: string }; from?: { id: number; is_bot?: boolean } };
+    message?: { message_id: number; text?: string; caption?: string; chat: { id: number; type: string }; from?: { id: number; is_bot?: boolean }; sender_chat?: { id: number } };
   } | null;
   const msg = update?.message;
-  if (!msg || msg.from?.is_bot) return NextResponse.json({ ok: true });
+  // Admin anônimo e canal postam "como bot" (GroupAnonymousBot) mas COM sender_chat:
+  // esses valem. Bot de verdade (sem sender_chat) fica de fora — evita bot respondendo bot.
+  if (!msg || (msg.from?.is_bot && !msg.sender_chat)) return NextResponse.json({ ok: true });
   const texto = (msg.text ?? msg.caption ?? "").trim();
   const privado = msg.chat.type === "private";
 
@@ -108,9 +110,13 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
-/** GET ?configurar=SEGREDO → liga o webhook e os comandos do bot (uma vez, depois de pôr as variáveis). */
+/** GET ?configurar=SEGREDO → liga o webhook e os comandos do bot. ?info=SEGREDO → estado do webhook. */
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams;
+  if (SEGREDO && q.get("info") === SEGREDO) {
+    const info = await tg("getWebhookInfo", {});
+    return NextResponse.json(info);
+  }
   // Diz O QUE falta (nunca o valor), pra configuração não virar adivinhação.
   const faltando = [
     !TOKEN && "TELEGRAM_COMPRA_TOKEN",
