@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { naCdn } from "@/lib/cdn";
 
 import { fetchCandles, CANDLE_INTERVALS, intervalSeconds } from "@/lib/market";
 import { lerMoedaDaCurvaEvm, velasDaCurvaEvm } from "@/lib/curva-evm";
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
     if (daPons) {
       const velas = await velasDaPons(daPons, intervalSeconds(interval));
       if (!velas.length) return NextResponse.json({ error: "sem velas para este par" }, { status: 404 });
-      return NextResponse.json(velas);
+      return NextResponse.json(velas, { headers: naCdn(20) });
     }
     const daCurva = await lerMoedaDaCurvaEvm(address).catch(() => null);
     if (daCurva && !daCurva.curva.migrada) {
@@ -38,14 +39,14 @@ export async function GET(request: Request) {
       if (!velas.length) {
         return NextResponse.json({ error: "sem velas para este par" }, { status: 404 });
       }
-      return NextResponse.json(velas);
+      return NextResponse.json(velas, { headers: naCdn(20) });
     }
 
     const candles = await fetchCandles(address, interval);
     if (!candles.length) {
       return NextResponse.json({ error: "sem velas para este par" }, { status: 404 });
     }
-    return NextResponse.json(candles);
+    return NextResponse.json(candles, { headers: naCdn(20) });
   } catch (error) {
     console.warn("[api/candles]", error);
     return NextResponse.json(

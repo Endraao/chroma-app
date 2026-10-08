@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { naCdn } from "@/lib/cdn";
 import { getToken } from "@/lib/tokens";
 
 /**
@@ -54,5 +55,5 @@ export async function GET(request: Request) {
     volume24hUsd: token.volume24hUsd,
     holders: token.holders,
     at: Date.now(),
-  });
+  }, { headers: naCdn(8) });
 }

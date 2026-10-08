@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { naCdn } from "@/lib/cdn";
 
 import { fetchPrice } from "@/lib/market";
 import { lerMoedaDaCurvaEvm, precoEmEth } from "@/lib/curva-evm";
@@ -104,7 +105,7 @@ export async function GET(request: Request) {
     const tv0 = Number(tokenVirtual + vendidos);
     const precoInicialNativo = tv0 > 0 ? (Number(ethVirtual) * Number(tokenVirtual)) / (tv0 * tv0) : undefined;
     if (priceUsd > 0) {
-      return NextResponse.json({ address, priceUsd, priceNativo: precoEmEth(daCurva.curva), precoInicialNativo, at: Date.now() });
+      return NextResponse.json({ address, priceUsd, priceNativo: precoEmEth(daCurva.curva), precoInicialNativo, at: Date.now() }, { headers: naCdn(3) });
     }
   }
 
@@ -113,5 +114,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Preço indisponível no momento." }, { status: 502 });
   }
 
-  return NextResponse.json({ address, priceUsd: price, at: Date.now() });
+  return NextResponse.json({ address, priceUsd: price, at: Date.now() }, { headers: naCdn(3) });
 }

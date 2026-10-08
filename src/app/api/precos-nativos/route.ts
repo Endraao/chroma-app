@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { naCdn } from "@/lib/cdn";
 
 import { precosNativos } from "@/lib/precos-nativos";
 
@@ -10,5 +11,5 @@ import { precosNativos } from "@/lib/precos-nativos";
  * "sem preço agora" — a tela esconde o dólar em vez de mostrar um valor errado.
  */
 export async function GET() {
-  return NextResponse.json(await precosNativos());
+  return NextResponse.json(await precosNativos(), { headers: naCdn(30) });
 }

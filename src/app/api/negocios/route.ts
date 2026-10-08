@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { naCdn } from "@/lib/cdn";
 
 import { fetchToken, fetchTrades, type NegocioDoPool } from "@/lib/market";
 import { negociosPelaRede } from "@/lib/negocios-pela-rede";
@@ -101,5 +102,5 @@ export async function GET(request: Request) {
   }
 
   const lista = [...negocios].sort((a, b) => b.em - a.em).slice(0, 100);
-  return NextResponse.json({ negocios: lista, total: negocios.length, at: Date.now() });
+  return NextResponse.json({ negocios: lista, total: negocios.length, at: Date.now() }, { headers: naCdn(2) });
 }

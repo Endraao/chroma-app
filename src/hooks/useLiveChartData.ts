@@ -21,7 +21,7 @@ const INTERVAL_SECONDS: Record<Interval, number> = {
 };
 
 /** De quanto em quanto tempo o preço é repescado. O cache do servidor é de 3s. */
-const PRICE_POLL_MS = 3_000;
+const PRICE_POLL_MS = 5_000;
 
 /**
  * De quanto em quanto tempo o preço do servidor é relido como âncora.

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { naCdn } from "@/lib/cdn";
 
 import { fetchToken } from "@/lib/market";
 import { agregarTraders } from "@/lib/traders";
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
       marketCapUsd: daCurva.marketCapUsd,
       negocios: await negociosDaCurvaComoPool(address),
     });
-    return NextResponse.json({ ...quadro, at: Date.now() });
+    return NextResponse.json({ ...quadro, at: Date.now() }, { headers: naCdn(20) });
   }
 
   const token = await fetchToken(address);
@@ -44,5 +45,5 @@ export async function GET(request: Request) {
     marketCapUsd: token.marketCapUsd,
   });
 
-  return NextResponse.json({ ...quadro, at: Date.now() });
+  return NextResponse.json({ ...quadro, at: Date.now() }, { headers: naCdn(20) });
 }
