@@ -166,6 +166,29 @@ async function avisarPorEmail(assunto: string, corpoHtml: string, responderPara?
   }
 }
 
+/**
+ * Aviso no TELEGRAM do dono (07/10/2026: denúncias e mensagens ficavam só no
+ * banco — a Resend nunca foi configurada). Usa o mesmo bot dos pedidos de
+ * bônus (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_DONO), que já está ligado.
+ * Nunca lança, pelo mesmo motivo do e-mail.
+ */
+async function avisarNoTelegram(texto: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chat = process.env.TELEGRAM_CHAT_DONO;
+  if (!token || !chat) return false;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chat, text: texto.slice(0, 3900), disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(6000),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Gravação                                                            */
 /* ------------------------------------------------------------------ */
@@ -187,6 +210,17 @@ export async function registrarDenuncia(d: DenunciaRecebida, origem: string): Pr
     `INSERT INTO denuncias (token, rede, simbolo, motivo, detalhe, carteira, ip_hash, criada_em)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [d.token, d.rede, d.simbolo, d.motivo, d.detalhe, d.carteira, origem, Date.now()],
+  );
+
+  await avisarNoTelegram(
+    [
+      `🚩 Denúncia: ${d.simbolo ?? d.token}`,
+      `Motivo: ${d.motivo}`,
+      d.detalhe ? `Detalhe: ${d.detalhe}` : "",
+      `Moeda: https://chromalaunch.fun/token/${d.token}`,
+      `Denunciante: ${d.carteira ?? "anônimo"}`,
+    ].filter(Boolean).join("
+"),
   );
 
   const linha = (r: string, v: string) =>
@@ -226,7 +260,14 @@ export async function registrarMensagem(m: MensagemRecebida, origem: string): Pr
     [m.nome, m.email, m.carteira, m.assunto, m.texto, origem, Date.now()],
   )) as { id: string }[];
 
-  const enviou = await avisarPorEmail(
+  const noTelegram = await avisarNoTelegram(
+    [`✉️ Mensagem no site: ${m.assunto}`, `De: ${m.nome} <${m.email}>`, m.carteira ? `Carteira: ${m.carteira}` : "", "", m.texto]
+      .filter((x) => x !== null)
+      .join("
+"),
+  );
+
+  const porEmail = await avisarPorEmail(
     `[Chroma] ${umaLinha(m.assunto, 60)} — ${umaLinha(m.nome, 40)}`,
     `<div style="font-family:system-ui,sans-serif;font-size:14px;color:#18181b">
        <h2 style="margin:0 0 12px">${escapar(umaLinha(m.assunto, 120))}</h2>
@@ -244,6 +285,7 @@ export async function registrarMensagem(m: MensagemRecebida, origem: string): Pr
    * de "o aviso nunca chegou". São problemas diferentes com soluções
    * diferentes, e sem esta coluna os dois parecem iguais.
    */
+  const enviou = porEmail || noTelegram;
   if (enviou && linhas[0]) {
     await sql.query(`UPDATE mensagens SET enviada = TRUE WHERE id = $1`, [linhas[0].id]);
   }
