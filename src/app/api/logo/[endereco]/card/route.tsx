@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 
+import { CACHE_DA_CAPA, logoEmDataUri } from "@/lib/capa-do-post";
 import { getToken } from "@/lib/tokens";
 
 /**
@@ -12,21 +13,6 @@ import { getToken } from "@/lib/tokens";
  * pequeno que só abre o site.
  */
 export const revalidate = 3600;
-
-const SITE = "https://chromalaunch.fun";
-
-/** Logo da moeda como data URI (só PNG/JPEG: o gerador de imagem não lê WebP). */
-async function logoEmDataUri(endereco: string): Promise<string | null> {
-  try {
-    const r = await fetch(`${SITE}/api/logo/${endereco}`, { signal: AbortSignal.timeout(6000) });
-    const tipo = r.headers.get("content-type") ?? "";
-    if (!r.ok || !/image\/(png|jpe?g)/.test(tipo)) return null;
-    const b = Buffer.from(await r.arrayBuffer());
-    return `data:${tipo};base64,${b.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(_req: Request, { params }: { params: Promise<{ endereco: string }> }) {
   const { endereco } = await params;
@@ -77,7 +63,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ enderec
       width: 1200,
       height: 1200,
       // O robô do X desiste se a imagem demora: fica guardada no CDN da Vercel.
-      headers: { "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800" },
+      headers: CACHE_DA_CAPA,
     },
   );
 }
