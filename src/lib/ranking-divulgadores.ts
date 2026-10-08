@@ -109,3 +109,20 @@ export function rankingDeDivulgadores(dias: number | null): Promise<Divulgador[]
       .slice(0, 100);
   });
 }
+
+/**
+ * Os números de UM divulgador (apelido sem "@" ou carteira) pro card de
+ * "quanto eu ganhei": a semana, com a posição no ranking, e o total.
+ */
+export async function ganhosDoDivulgador(id: string) {
+  const casa = (d: Divulgador) => d.carteira === id || d.nome.toLowerCase() === `@${id.toLowerCase()}`;
+  const [semana, sempre] = await Promise.all([rankingDeDivulgadores(7), rankingDeDivulgadores(null)]);
+  const i = semana.findIndex(casa);
+  const total = sempre.find(casa) ?? null;
+  return {
+    nome: total?.nome ?? semana[i]?.nome ?? (id.length > 20 ? `${id.slice(0, 4)}…${id.slice(-4)}` : `@${id}`),
+    semana: i >= 0 ? semana[i] : null,
+    posicao: i >= 0 ? i + 1 : null,
+    total,
+  };
+}

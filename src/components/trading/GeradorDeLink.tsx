@@ -36,6 +36,7 @@ const TEXTOS = traducoes({
     semRef: "Connect your wallet to get paid for the trades your post brings.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
     ranking: "See the top promoters →",
+    meuCard: "My earnings card →",
     mc: "MC",
   },
   pt: {
@@ -53,6 +54,7 @@ const TEXTOS = traducoes({
     semRef: "Conecte sua carteira pra receber pelos negócios que o seu post trouxer.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
     ranking: "Ver o ranking de divulgadores →",
+    meuCard: "Meu card de ganhos →",
     mc: "MC",
   },
   zh: {
@@ -70,6 +72,7 @@ const TEXTOS = traducoes({
     semRef: "连接钱包，帖子带来的交易才能给你分成。",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
     ranking: "查看推广者排行榜 →",
+    meuCard: "我的收益卡片 →",
     mc: "市值",
   },
 });
@@ -223,9 +226,16 @@ export function GeradorDeLink() {
         </section>
       )}
 
-      <Link href="/ranking" className="inline-block text-[13px] font-bold text-marca hover:underline">
-        {t.ranking}
-      </Link>
+      <div className="flex flex-wrap gap-4">
+        <Link href="/ranking" className="text-[13px] font-bold text-marca hover:underline">
+          {t.ranking}
+        </Link>
+        {ref && (
+          <Link href={`/ganhos/${encodeURIComponent(ref)}`} className="text-[13px] font-bold text-marca hover:underline">
+            {t.meuCard}
+          </Link>
+        )}
+      </div>
     </main>
   );
 }

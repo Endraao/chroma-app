@@ -104,6 +104,12 @@ export default async function Ranking({ searchParams }: { searchParams: Promise<
                   >
                     {d.nome}
                   </a>
+                  <Link
+                    href={`/ganhos/${encodeURIComponent(d.nome.startsWith("@") ? d.nome.slice(1) : d.carteira)}`}
+                    className="ml-2 rounded border border-marca/30 px-1.5 py-0.5 text-[10.5px] font-bold text-marca hover:bg-marca/10"
+                  >
+                    card ↗
+                  </Link>
                 </td>
                 <td className="tnum px-4 py-3 text-right text-zinc-300">{d.negocios}</td>
                 <td className="tnum px-4 py-3 text-right text-zinc-300">{d.moedas}</td>
