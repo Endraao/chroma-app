@@ -19,7 +19,7 @@ import { PLATFORM_FEE_WALLET_EVM, PLATFORM_FEE_WALLET_SOL, robinhoodChain } from
 
 const X_DA_CHROMA = "https://x.com/ChromaLaunch";
 const BOTAO_DO_TOPO =
-  "flex h-7 w-[148px] items-center justify-center gap-1.5 rounded-lg bg-ink-900 text-[12px] font-bold text-zinc-200 hover:bg-ink-800";
+  "flex h-6 w-[148px] items-center justify-center gap-1.5 rounded-lg bg-ink-900 text-[12px] font-bold text-zinc-200 hover:bg-ink-800";
 const TAXA_DO_LINK_SOL = 0.005;
 const TAXA_DO_LINK_ETH = "0.0002";
 
@@ -32,7 +32,7 @@ const TEXTOS = traducoes({
       `Chroma charges ${taxa} per trade — 0.30% of it goes to whoever shared the post.${curva ? " On coins launched on the Chroma Curve, the 1% pool fee splits 40% creator · 40% Chroma · 20% Meteora." : ""}`,
     emSol: (m: string) => `All fees and payouts in ${m}, on-chain, in the same transaction.`,
     linkTitulo: "Share with your own link",
-    linkTexto: (m: string) => `Get your own link to this buy box. Everyone who trades through it pays you 0.30% of the trade — in ${m}, instantly, on-chain.`,
+    linkTexto: (m: string) => `Everyone who trades through your link pays you 0.30% of the trade — in ${m}, on-chain, instantly.`,
     passo1: "Connect your wallet", passo1b: "where your earnings will land",
     passo2: "Follow @ChromaLaunch on X", passo2b: "stay on top of new features",
     passo3: "Register your link", passo3b: (s: string) => `one-time registration fee: ${s}`,
@@ -49,7 +49,7 @@ const TEXTOS = traducoes({
       `A Chroma cobra ${taxa} por negócio — 0,30% disso vai pra quem compartilhou o post.${curva ? " Nas moedas lançadas na Curva da Chroma, a taxa de 1% da pool é dividida: 40% criador · 40% Chroma · 20% Meteora." : ""}`,
     emSol: (m: string) => `Todas as taxas e pagamentos em ${m}, na blockchain, na mesma transação.`,
     linkTitulo: "Compartilhe com o seu link",
-    linkTexto: (m: string) => `Gere o seu próprio link desta janela de compra. Todo mundo que negociar por ele te paga 0,30% do negócio — em ${m}, na hora, na blockchain.`,
+    linkTexto: (m: string) => `Quem negociar pelo seu link te paga 0,30% do negócio — em ${m}, na blockchain, na hora.`,
     passo1: "Conecte sua carteira", passo1b: "onde os seus ganhos vão cair",
     passo2: "Siga a @ChromaLaunch no X", passo2b: "fique por dentro das novidades",
     passo3: "Registre o seu link", passo3b: (s: string) => `taxa única de registro: ${s}`,
@@ -66,7 +66,7 @@ const TEXTOS = traducoes({
       `Chroma 每笔交易收取 ${taxa} —— 其中 0.30% 归分享该帖子的人。${curva ? "在 Chroma 曲线上发行的代币，1% 池子手续费分配为：40% 创建者 · 40% Chroma · 20% Meteora。" : ""}`,
     emSol: (m: string) => `所有手续费和收益均以 ${m} 链上同笔交易支付。`,
     linkTitulo: "用你自己的链接分享",
-    linkTexto: (m: string) => `生成你自己的购买窗口链接。通过它交易的每个人都会付给你 0.30% —— ${m}，即时，链上。`,
+    linkTexto: (m: string) => `通过你的链接交易的每个人都会付给你 0.30% —— ${m}，链上，即时。`,
     passo1: "连接钱包", passo1b: "收益将打入这里",
     passo2: "在 X 上关注 @ChromaLaunch", passo2b: "第一时间了解新功能",
     passo3: "注册你的链接", passo3b: (s: string) => `一次性注册费：${s}`,
@@ -116,7 +116,7 @@ function Conteudo({ base }: { base: TokenSummary }) {
   const linkFora = `/token/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
 
   return (
-    <main className="mx-auto flex max-w-[480px] flex-col gap-1.5 bg-ink-950 p-2">
+    <main className="mx-auto flex max-w-[480px] flex-col gap-1 bg-ink-950 p-2">
       <div className="flex items-center gap-3">
         <div className="size-10 shrink-0 overflow-hidden rounded-full bg-ink-800">
           <ImagemDaMoeda token={token} px={88} />
@@ -148,13 +148,17 @@ function Conteudo({ base }: { base: TokenSummary }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-1 rounded-lg bg-ink-900 p-1 text-[12.5px] font-black">
+      {/* Abas em texto sublinhado: não competem com os botões de Buy/Sell logo abaixo. */}
+      <div className="grid grid-cols-2 border-b border-white/[0.08] text-[12.5px] font-bold">
         {(["negociar", "link"] as const).map((a) => (
           <button
             key={a}
             type="button"
             onClick={() => setAba(a)}
-            className={cn("rounded-md py-1", aba === a ? "bg-marca text-black" : "text-zinc-400 hover:text-zinc-100")}
+            className={cn(
+              "-mb-px border-b-2 pb-1",
+              aba === a ? "border-zinc-100 text-zinc-50" : "border-transparent text-zinc-500 hover:text-zinc-200",
+            )}
           >
             {a === "negociar" ? t.abaNegociar : t.abaLink}
           </button>
@@ -269,7 +273,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const link = `https://chromalaunch.fun/e/${token.address}?ref=${carteira}`;
   const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
   const Passo = ({ n, feito, titulo, sub, children }: { n: number; feito: boolean; titulo: string; sub: string; children?: React.ReactNode }) => (
-    <div className="flex items-center gap-3 border-t border-white/[0.06] py-2.5">
+    <div className="flex items-center gap-3 border-t border-white/[0.06] py-1.5">
       <span className={cn("grid size-6 shrink-0 place-items-center rounded-md text-[12px] font-black", feito ? "bg-marca text-black" : "border border-white/15 text-zinc-400")}>
         {feito ? "✓" : n}
       </span>
@@ -282,9 +286,9 @@ function MeuLink({ token }: { token: TokenSummary }) {
   );
 
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-2.5">
+    <div className="rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-2">
       <p className="text-[14px] font-black text-zinc-50">{t.linkTitulo}</p>
-      <p className="mb-1.5 text-[12px] leading-relaxed text-zinc-400">{t.linkTexto(ehEvm ? "ETH" : "SOL")}</p>
+      <p className="mb-1 text-[11.5px] leading-snug text-zinc-400">{t.linkTexto(ehEvm ? "ETH" : "SOL")}</p>
       <Passo n={1} feito={Boolean(carteira)} titulo={t.passo1} sub={t.passo1b} />
       {!carteira && (
         <RequireChainWallet chain={ehEvm ? "robinhood" : "solana"} compacto>

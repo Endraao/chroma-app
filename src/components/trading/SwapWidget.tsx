@@ -439,13 +439,13 @@ function SolanaSwap({
           )}
         </div>
 
-        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-2" : "py-3")}>
+        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-1.5" : "py-3")}>
           <input
             inputMode="decimal"
             value={digitado}
             onChange={(e) => setDigitado(saneia(e.target.value))}
             placeholder="0.0"
-            className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
+            className={cn("tnum min-w-0 flex-1 bg-transparent font-bold text-zinc-100 outline-none placeholder:text-zinc-700", compacto ? "text-xl" : "text-2xl")}
           />
           {/* No post do X o "≈ SOL" vai dentro da caixa: uma linha a menos. */}
           {compacto && emDolar && digitadoNum > 0 && (
@@ -1178,13 +1178,13 @@ function EvmSwap({
           )}
         </div>
 
-        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-2" : "py-3")}>
+        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-1.5" : "py-3")}>
           <input
             inputMode="decimal"
             value={digitado}
             onChange={(e) => setDigitado(saneia(e.target.value))}
             placeholder="0.0"
-            className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
+            className={cn("tnum min-w-0 flex-1 bg-transparent font-bold text-zinc-100 outline-none placeholder:text-zinc-700", compacto ? "text-xl" : "text-2xl")}
           />
           {compacto && compraEmDolar && Number(digitado) > 0 && (
             <span className="tnum shrink-0 text-[11px] text-zinc-500">≈ <Preco valor={Number(valorNativo)} casas={6} /> {meta.nativeSymbol} ·</span>
