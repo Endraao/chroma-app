@@ -28,6 +28,8 @@ function melhores(tokens: TokenSummary[], quantas: number) {
       change24h: t.change24h,
       marketCapUsd: t.marketCapUsd,
       chain: t.chain,
+      // O X da moeda — muitas vezes já é o link da COMUNIDADE (x.com/i/communities/…).
+      twitter: t.twitter ?? null,
     }));
 }
 

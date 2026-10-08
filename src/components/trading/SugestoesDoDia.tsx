@@ -18,7 +18,8 @@ const TEXTOS = traducoes({
     sub: "Pick one, copy the post, paste it in that coin's X community. 3–5 a day is plenty — post like a person, not a bot.",
     copiar: "Copy post",
     copiado: "Copied!",
-    comunidade: "Find its community ↗",
+    comunidade: "Open community ↗",
+    buscar: "Search on X ↗",
     postar: "Post ↗",
   },
   pt: {
@@ -26,7 +27,8 @@ const TEXTOS = traducoes({
     sub: "Escolha uma, copie o post e cole na comunidade da moeda no X. 3 a 5 por dia é o suficiente — poste como gente, não como robô.",
     copiar: "Copiar post",
     copiado: "Copiado!",
-    comunidade: "Achar a comunidade ↗",
+    comunidade: "Abrir comunidade ↗",
+    buscar: "Buscar no X ↗",
     postar: "Postar ↗",
   },
   zh: {
@@ -34,12 +36,13 @@ const TEXTOS = traducoes({
     sub: "选一个，复制帖子，粘贴到该代币的 X 社区。每天 3–5 条就够了 —— 像真人一样发帖，别像机器人。",
     copiar: "复制帖子",
     copiado: "已复制！",
-    comunidade: "查找社区 ↗",
+    comunidade: "打开社区 ↗",
+    buscar: "在 X 上搜索 ↗",
     postar: "发帖 ↗",
   },
 });
 
-interface Moeda { address: string; symbol: string; name: string; imageUrl: string | null; change24h: number; marketCapUsd: number; chain?: string }
+interface Moeda { address: string; symbol: string; name: string; imageUrl: string | null; change24h: number; marketCapUsd: number; chain?: string; twitter?: string | null }
 
 /** Textos em inglês (o público das comunidades), um por moeda, variando por dia. */
 function textoDoPost(m: Moeda, i: number): string {
@@ -110,12 +113,12 @@ export function SugestoesDoDia({ origem, refId }: { origem: string; refId: strin
                 {copiado === m.address ? t.copiado : t.copiar}
               </button>
               <a
-                href={`https://x.com/search?q=${encodeURIComponent(`$${m.symbol} community`)}&src=typed_query`}
+                href={m.twitter?.includes("/communities/") ? m.twitter : `https://x.com/search?q=${encodeURIComponent(`$${m.symbol}`)}&src=typed_query&f=live`}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-lg border border-marca/40 px-3 py-2 text-[12.5px] font-bold text-marca hover:bg-marca/10"
               >
-                {t.comunidade}
+                {m.twitter?.includes("/communities/") ? t.comunidade : t.buscar}
               </a>
             </div>
           </div>
