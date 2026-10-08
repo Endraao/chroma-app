@@ -73,6 +73,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ enderec
         <div style={{ fontSize: 34, color: "#9aa4b2", marginTop: 60, letterSpacing: 4 }}>{`CHROMA · ${rede}`}</div>
       </div>
     ),
-    { width: 1200, height: 1200 },
+    {
+      width: 1200,
+      height: 1200,
+      // O robô do X desiste se a imagem demora: fica guardada no CDN da Vercel.
+      headers: { "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800" },
+    },
   );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 
 import { IrParaAMoeda } from "@/components/trading/IrParaAMoeda";
 import { getToken } from "@/lib/tokens";
@@ -30,6 +31,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   // no Android e no iPhone). O logo da moeda (pequeno, formato qualquer) fazia
   // o X mostrar o cartão pequeno que só abre o site.
   const imagem = `${SITE}/api/logo/${address}/card`;
+  // Gera a capa JÁ, enquanto o X ainda lê esta página: quando ele pedir a
+  // imagem (logo em seguida), ela está pronta no CDN em vez de levar ~4s.
+  after(() => fetch(imagem, { signal: AbortSignal.timeout(15_000) }).catch(() => {}));
   return {
     title: titulo,
     description: descricao,
