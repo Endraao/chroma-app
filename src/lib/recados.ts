@@ -219,8 +219,7 @@ export async function registrarDenuncia(d: DenunciaRecebida, origem: string): Pr
       d.detalhe ? `Detalhe: ${d.detalhe}` : "",
       `Moeda: https://chromalaunch.fun/token/${d.token}`,
       `Denunciante: ${d.carteira ?? "anônimo"}`,
-    ].filter(Boolean).join("
-"),
+    ].filter(Boolean).join(String.fromCharCode(10)),
   );
 
   const linha = (r: string, v: string) =>
@@ -263,8 +262,7 @@ export async function registrarMensagem(m: MensagemRecebida, origem: string): Pr
   const noTelegram = await avisarNoTelegram(
     [`✉️ Mensagem no site: ${m.assunto}`, `De: ${m.nome} <${m.email}>`, m.carteira ? `Carteira: ${m.carteira}` : "", "", m.texto]
       .filter((x) => x !== null)
-      .join("
-"),
+      .join(String.fromCharCode(10)),
   );
 
   const porEmail = await avisarPorEmail(
