@@ -20,6 +20,15 @@ const nextConfig = {
       { source: "/:path((?!p/).*)", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento }) },
       // /p/…: a negociação dentro do post do X (player card) — só o X pode embutir.
       { source: "/p/:path*", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento, embutivel: true }) },
+      /*
+       * /token/…: é a página que o botão "Open on Chroma" (e o "abrir na
+       * Chroma") abre DE DENTRO do post do X. O X põe a janela do post em
+       * sandbox, e o Chrome recusa abrir, numa aba que nasceu de sandbox, uma
+       * página com Cross-Origin-Opener-Policy — dava ERR_BLOCKED_BY_RESPONSE
+       * (08/10/2026). Aqui a regra volta ao padrão do navegador; o resto do
+       * site continua isolado. Vem por último pra sobrescrever a de cima.
+       */
+      { source: "/token/:path*", headers: [{ key: "Cross-Origin-Opener-Policy", value: "unsafe-none" }] },
     ];
   },
   // Ver scripts/build.mjs: separa os artefatos de dev e de produção.
