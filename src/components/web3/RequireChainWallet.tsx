@@ -86,6 +86,7 @@ export function RequireChainWallet({
   linkFora,
   rotuloFora,
   alvoNaCarteira,
+  rotuloConectar,
 }: {
   chain: ChainId;
   children: React.ReactNode;
@@ -96,6 +97,8 @@ export function RequireChainWallet({
   rotuloFora?: string;
   /** No celular sem carteira: página que o app da carteira abre (com valor e indicação). */
   alvoNaCarteira?: string;
+  /** Texto do botão de conectar no post (ex.: "Connect wallet to trade $BORDR"). */
+  rotuloConectar?: string;
 }) {
   const t = useTextos(TEXTOS);
   const [modalAberto, setModalAberto] = useState(false);
@@ -202,8 +205,8 @@ export function RequireChainWallet({
       );
     return (
       <>
-        <Button variant="chroma" size="lg" className="w-full" onClick={abrir}>
-          {vinculada ? t.liberar : t.conectarCarteira(meta.label)}
+        <Button variant="chroma" size="lg" className="w-full uppercase tracking-wide" onClick={abrir}>
+          {rotuloConectar ?? (vinculada ? t.liberar : t.conectarCarteira(meta.label))}
         </Button>
         <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
       </>

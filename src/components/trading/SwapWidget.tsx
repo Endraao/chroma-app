@@ -4,7 +4,7 @@ import { Preco } from "@/components/ui/Preco";
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
 import { explicarErroDaCarteira } from "@/lib/erros-da-carteira";
-import { feeLabelFor } from "@/lib/fees";
+import { AFFILIATE_FEE_BPS, feeLabelFor, swapFeeBps } from "@/lib/fees";
 import { anotarOperacao, avisarNegocio } from "@/lib/posicoes-locais";
 
 import { useEffect, useRef, useState } from "react";
@@ -62,6 +62,8 @@ import type { ChainId, TradeSide } from "@/lib/types";
 
 /** Valores em dólar, do jeito que se pensa em tamanho de ordem. */
 const ATALHOS_EM_DOLAR = [10, 100, 500, 1000];
+// Dentro do post do X: valores menores (quem compra pelo post testa com pouco).
+const ATALHOS_NO_POST = [5, 10, 100, 200];
 /** Porcentagens do saldo — de SOL na compra, do token na venda. */
 const ATALHOS_EM_PORCENTAGEM = [25, 50, 75, 100];
 
@@ -98,6 +100,13 @@ const TEXTOS = traducoes({
     naoNegocia: "This coin only trades on the platform where it was created",
     naoNegociaTexto: (rede: string) => `Its pool on ${rede} does not accept outside routers (or it is still on its launchpad's curve), so it cannot be bought or sold through Chroma. Coins created on Chroma and coins with open Uniswap pools trade here normally.`,
     verificando: "Checking whether this coin can be traded here…",
+    quantoVender: "How much do you want to sell?",
+    taxaChroma: (p: string) => `Chroma fee · ${p}`,
+    praQuemPostou: "↳ to whoever shared this post · 0.30%",
+    taxaDaPool: "Pool fee",
+    poolCurva: "1% · 40% creator · 40% Chroma · 20% Meteora",
+    poolOutra: "set by the pool",
+    conectarPraNegociar: (s: string) => `Connect wallet to trade ${s}`,
     verExplorer: "View on explorer ↗", voceBaga: "You pay", saldoDois: "Balance:", voceRecebe: "You receive (estimated)",
     slippage: "Slippage", taxa12: "1.2% fee", taxaDe: (p: string) => `${p} fee`,
     curvaEncheu: "The curve is full. The liquidity still has to be moved to Uniswap — anyone can do it, it only costs the network fee. After that the coin trades anywhere.",
@@ -123,6 +132,13 @@ const TEXTOS = traducoes({
     naoNegocia: "Esta moeda só negocia na plataforma onde foi criada",
     naoNegociaTexto: (rede: string) => `A pool dela na ${rede} não aceita roteadores de fora (ou ela ainda está na curva da plataforma de origem), então não dá pra comprar nem vender pela Chroma. Moedas criadas na Chroma e moedas com pool aberta na Uniswap negociam aqui normalmente.`,
     verificando: "Verificando se esta moeda pode ser negociada aqui…",
+    quantoVender: "Quanto você quer vender?",
+    taxaChroma: (p: string) => `Taxa da Chroma · ${p}`,
+    praQuemPostou: "↳ pra quem compartilhou este post · 0,30%",
+    taxaDaPool: "Taxa da pool",
+    poolCurva: "1% · 40% criador · 40% Chroma · 20% Meteora",
+    poolOutra: "definida pela pool",
+    conectarPraNegociar: (s: string) => `Conectar carteira pra negociar ${s}`,
     verExplorer: "Ver no explorer ↗", voceBaga: "Você paga", saldoDois: "Saldo:", voceRecebe: "Você recebe (estimado)",
     slippage: "Slippage", taxa12: "taxa 1.2%", taxaDe: (p: string) => `taxa ${p}`,
     curvaEncheu: "A curva encheu. Falta levar a liquidez pra Uniswap — qualquer pessoa pode fazer isso, custa só a taxa de rede. Depois disso a moeda negocia em qualquer lugar.",
@@ -148,6 +164,13 @@ const TEXTOS = traducoes({
     naoNegocia: "该代币只能在其创建平台上交易",
     naoNegociaTexto: (rede: string) => `它在 ${rede} 上的池子不接受外部路由（或仍处于其发行平台的曲线阶段），因此无法通过 Chroma 买卖。在 Chroma 创建的代币以及拥有开放 Uniswap 池子的代币可在这里正常交易。`,
     verificando: "正在检查该代币能否在这里交易…",
+    quantoVender: "你想卖出多少？",
+    taxaChroma: (p: string) => `Chroma 手续费 · ${p}`,
+    praQuemPostou: "↳ 给分享此帖子的人 · 0.30%",
+    taxaDaPool: "池子手续费",
+    poolCurva: "1% · 40% 创建者 · 40% Chroma · 20% Meteora",
+    poolOutra: "由池子决定",
+    conectarPraNegociar: (s: string) => `连接钱包交易 ${s}`,
     verExplorer: "在浏览器中查看 ↗", voceBaga: "你支付", saldoDois: "余额：", voceRecebe: "你将获得（预估）",
     slippage: "滑点", taxa12: "手续费 1.2%", taxaDe: (p: string) => `手续费 ${p}`,
     curvaEncheu: "曲线已满，还需把流动性迁移到 Uniswap —— 任何人都可以操作，只需支付网络手续费。之后代币可以在任何地方交易。",
@@ -277,6 +300,16 @@ function SolanaSwap({
   // Compra em DÓLAR (pedido do dono: "coloco 5, quero 5 dólares"). Sem a
   // cotação do SOL volta a pedir SOL — nunca inventa câmbio.
   const emDolar = comprando && Boolean(precoDoSol && precoDoSol > 0);
+  /*
+   * No post do X já vem $10 — mas SÓ quando o campo está em DÓLAR. Sem a
+   * cotação do SOL o campo fica em SOL, e "10" ali seria 10 SOL (08/10/2026).
+   */
+  const [preenchido, setPreenchido] = useState(false);
+  useEffect(() => {
+    if (!compacto || preenchido || !emDolar) return;
+    setPreenchido(true);
+    setDigitado((d) => d || "10");
+  }, [compacto, preenchido, emDolar]);
   const digitadoNum = Number(digitado) || 0;
 
   /*
@@ -302,6 +335,8 @@ function SolanaSwap({
   });
 
   const [recibo, setRecibo] = useState<Recibo | null>(null);
+  // SOL do negócio: o que entra (compra) ou o que sai estimado (venda) — base da taxa mostrada.
+  const baseEmSol = comprando ? Number(amount) || 0 : Number(swap.outAmount ?? 0) || 0;
 
   // Anota a operação pro painel "Sua posição" (preço médio em SOL) e mostra o recibo.
   useEffect(() => {
@@ -389,7 +424,7 @@ function SolanaSwap({
       {/* Mesmo formato do painel da Robinhood: as duas redes com a mesma cara. */}
       <div className={cn("px-4 pt-1", compacto ? "space-y-2 pb-3" : "space-y-3 pb-4")}>
         <div className="flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          <span>{t.voceBaga}</span>
+          <span>{compacto && !comprando ? t.quantoVender : t.voceBaga}</span>
           {swap.balance !== null && (
             <button
               type="button"
@@ -422,7 +457,7 @@ function SolanaSwap({
 
         <div className="grid grid-cols-4 gap-2">
           {comprando
-            ? ATALHOS_EM_DOLAR.map((v) => (
+            ? (compacto ? ATALHOS_NO_POST : ATALHOS_EM_DOLAR).map((v) => (
                 <Atalho
                   key={v}
                   rotulo={`$${v}`}
@@ -435,7 +470,7 @@ function SolanaSwap({
             : ATALHOS_EM_PORCENTAGEM.map((v) => (
                 <Atalho
                   key={v}
-                  rotulo={v === 100 ? t.maxMaiusc : `${v}%`}
+                  rotulo={v === 100 && !compacto ? t.maxMaiusc : `${v}%`}
                   tom="sell"
                   ligado={atalhoPctLigado}
                   onClick={() => atalhoEmPorcentagem(v)}
@@ -445,14 +480,31 @@ function SolanaSwap({
         </div>
 
         {compacto ? (
-          <p className="tnum px-1 text-[12px] text-zinc-400">
-            {t.voceRecebe}:{" "}
-            <span className="font-bold text-zinc-200">
-              {swap.quote && Number(swap.outAmount) > 0
-                ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
-                : "—"}
-            </span>
-          </p>
+          <div className="tnum space-y-0.5 px-1 text-[11.5px] text-zinc-400">
+            <p className="text-[12px]">
+              {t.voceRecebe}:{" "}
+              <span className="font-bold text-zinc-200">
+                {swap.quote && Number(swap.outAmount) > 0
+                  ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
+                  : "—"}
+              </span>
+            </p>
+            {/* Transparência (pedido do dono): quanto de taxa ESTE negócio paga, ao vivo. */}
+            <p className="flex justify-between">
+              <span>{t.taxaChroma(naCurvaDaChroma ? "0.30%" : feeLabelFor("solana").swap)}</span>
+              <span>{baseEmSol > 0 ? `${(baseEmSol * (naCurvaDaChroma ? AFFILIATE_FEE_BPS : swapFeeBps("solana")) / 10_000).toFixed(6)} SOL` : "—"}</span>
+            </p>
+            {affiliate && (
+              <p className="flex justify-between text-zinc-500">
+                <span>{t.praQuemPostou}</span>
+                <span>{baseEmSol > 0 ? `${(baseEmSol * AFFILIATE_FEE_BPS / 10_000).toFixed(6)} SOL` : "—"}</span>
+              </p>
+            )}
+            <p className="flex justify-between">
+              <span>{t.taxaDaPool}</span>
+              <span>{naCurvaDaChroma ? t.poolCurva : t.poolOutra}</span>
+            </p>
+          </div>
         ) : (
         <>
         <div>
@@ -509,7 +561,7 @@ function SolanaSwap({
             {semValor ? t.informeValor : `${comprando ? t.comprar : t.vender} ${symbol} ↗`}
           </Button>
         ) : (
-        <RequireChainWallet chain="solana" compacto={compacto} linkFora={linkFora} rotuloFora={`${comprando ? t.comprar : t.vender} ${symbol} ↗`} alvoNaCarteira={alvoNaCarteira}>
+        <RequireChainWallet chain="solana" compacto={compacto} linkFora={linkFora} rotuloFora={`${comprando ? t.comprar : t.vender} ${symbol} ↗`} alvoNaCarteira={alvoNaCarteira} rotuloConectar={t.conectarPraNegociar(symbol)}>
           <Button
             variant={comprando ? "buy" : "sell"}
             size="lg"
@@ -875,6 +927,13 @@ function EvmSwap({
   const precoDoEth = usePrecoNativo("robinhood") ?? 0;
   // Compra em DÓLAR, como na Solana. Sem cotação do ETH, pede ETH.
   const compraEmDolar = side === "buy" && precoDoEth > 0;
+  // $10 já preenchido no post — só com o campo em dólar (ver o SolanaSwap).
+  const [preenchidoEvm, setPreenchidoEvm] = useState(false);
+  useEffect(() => {
+    if (!compacto || preenchidoEvm || !compraEmDolar) return;
+    setPreenchidoEvm(true);
+    setDigitado((d) => d || "10");
+  }, [compacto, preenchidoEvm, compraEmDolar]);
   const valorNativo =
     compraEmDolar && Number(digitado) > 0 ? cortar(Number(digitado) / precoDoEth, 12) : digitado;
 
@@ -1103,7 +1162,7 @@ function EvmSwap({
           slippage, mínimo garantido e rota — tudo visível antes de assinar.
         */}
         <div className="flex items-baseline justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          <span>{t.voceBaga}</span>
+          <span>{compacto && !ehCompra ? t.quantoVender : t.voceBaga}</span>
           {address && (
             <button
               type="button"
@@ -1138,7 +1197,7 @@ function EvmSwap({
         )}
 
         <div className="grid grid-cols-4 gap-2">
-          {(ehCompra ? ATALHOS_EM_DOLAR : ATALHOS_EM_PORCENTAGEM).map((v) => (
+          {(ehCompra ? (compacto ? ATALHOS_NO_POST : ATALHOS_EM_DOLAR) : ATALHOS_EM_PORCENTAGEM).map((v) => (
             <Atalho
               key={v}
               rotulo={ehCompra ? `$${v}` : v === 100 ? t.maxMaiusc : `${v}%`}
@@ -1230,7 +1289,7 @@ function EvmSwap({
           </div>
         )}
 
-        <RequireChainWallet chain={chain} compacto={compacto} linkFora={linkFora} rotuloFora={`${ehCompra ? t.comprar : t.vender} ${symbol} ↗`} alvoNaCarteira={alvoNaCarteira}>
+        <RequireChainWallet chain={chain} compacto={compacto} linkFora={linkFora} rotuloFora={`${ehCompra ? t.comprar : t.vender} ${symbol} ↗`} alvoNaCarteira={alvoNaCarteira} rotuloConectar={t.conectarPraNegociar(symbol)}>
           <Button
             variant={ehCompra ? "buy" : "sell"}
             size="lg"
