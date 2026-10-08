@@ -110,13 +110,14 @@ function Conteudo({ base }: { base: TokenSummary }) {
   const token = useTokenVivo(base);
   const pct = token.change24h;
   const [aba, setAba] = useState<"negociar" | "link">("negociar");
+  const [explicando, setExplicando] = useState(false);
   // A indicação de quem postou segue junto se a compra tiver de abrir fora do X.
   const [ref, setRef] = useState("");
   useEffect(() => setRef(new URLSearchParams(window.location.search).get("ref") ?? ""), []);
   const linkFora = `/token/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
 
   return (
-    <main className="mx-auto flex max-w-[480px] flex-col gap-1 bg-ink-950 p-2">
+    <main className="relative mx-auto flex max-w-[480px] flex-col gap-1 bg-ink-950 p-2">
       <div className="flex items-center gap-3">
         <div className="size-10 shrink-0 overflow-hidden rounded-full bg-ink-800">
           <ImagemDaMoeda token={token} px={88} />
@@ -180,14 +181,25 @@ function Conteudo({ base }: { base: TokenSummary }) {
             />
           </Suspense>
           {/* Uma linha só (o post do X corta o que passar da altura); a explicação abre no ⓘ. */}
-          <details className="rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-1.5 text-[11px] leading-snug text-zinc-400">
-            <summary className="cursor-pointer list-none truncate">
-              <span className="font-bold text-zinc-300">{t.pool}:</span> {origemDaPool(token)} ·{" "}
-              <span className="font-semibold text-marca">{token.chain === "robinhood" ? "ETH" : "SOL"}</span> ⓘ
-            </summary>
-            <p className="mt-1">{t.comoFunciona(feeLabelFor(token.chain).swap, token.chain === "solana")}</p>
-            <p className="mt-1 font-semibold text-marca">{t.emSol(token.chain === "robinhood" ? "ETH" : "SOL")}</p>
-          </details>
+          {/* A explicação abre POR CIMA (o post não cresce; abrir pra baixo cortava). */}
+          <button
+            type="button"
+            onClick={() => setExplicando((v) => !v)}
+            className="truncate rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-1.5 text-left text-[11px] leading-snug text-zinc-400"
+          >
+            <span className="font-bold text-zinc-300">{t.pool}:</span> {origemDaPool(token)} ·{" "}
+            <span className="font-semibold text-marca">{token.chain === "robinhood" ? "ETH" : "SOL"}</span> ⓘ
+          </button>
+          {explicando && (
+            <div
+              onClick={() => setExplicando(false)}
+              className="absolute inset-x-2 top-[92px] z-20 cursor-pointer space-y-1 rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-[11.5px] leading-snug text-zinc-300 shadow-2xl"
+            >
+              <p>{t.comoFunciona(feeLabelFor(token.chain).swap, token.chain === "solana")}</p>
+              <p className="font-semibold text-marca">{t.emSol(token.chain === "robinhood" ? "ETH" : "SOL")}</p>
+              <p className="text-right text-[10.5px] text-zinc-500">✕</p>
+            </div>
+          )}
         </>
       ) : (
         <MeuLink token={token} />
