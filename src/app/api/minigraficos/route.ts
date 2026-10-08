@@ -45,15 +45,26 @@ async function fechamentosEvm(endereco: string): Promise<number[]> {
 const MAX = 200;
 // (vale pra cada rede separadamente)
 
+async function velas(mint: string, intervalo: "15_MINUTE" | "1_MINUTE", quantas: number): Promise<number[]> {
+  const r = await fetch(
+    `https://datapi.jup.ag/v2/charts/${mint}?interval=${intervalo}&to=${Date.now()}&candles=${quantas}&type=price`,
+    { headers: { accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(6_000) },
+  );
+  if (!r.ok) return [];
+  const j = (await r.json()) as { candles?: { close: number }[] };
+  return (j.candles ?? []).map((c) => Number(c.close)).filter((v) => Number.isFinite(v) && v > 0);
+}
+
+/**
+ * 24 h em velas de 15 min; moeda NOVA (poucas horas = 3–4 velas, a linha saía
+ * lisa — 07/10/2026) vai de velas de 1 min, as últimas 2 h.
+ */
 async function fechamentos(mint: string): Promise<number[]> {
-  return cached(`minigrafico:${mint}`, 180_000, async () => {
-    const r = await fetch(
-      `https://datapi.jup.ag/v2/charts/${mint}?interval=15_MINUTE&to=${Date.now()}&candles=96&type=price`,
-      { headers: { accept: "application/json" }, cache: "no-store", signal: AbortSignal.timeout(6_000) },
-    );
-    if (!r.ok) return [];
-    const j = (await r.json()) as { candles?: { close: number }[] };
-    return (j.candles ?? []).map((c) => Number(c.close)).filter((v) => Number.isFinite(v) && v > 0);
+  return cached(`minigrafico:${mint}`, 120_000, async () => {
+    const de15 = await velas(mint, "15_MINUTE", 96);
+    if (de15.length >= 24) return de15;
+    const de1 = await velas(mint, "1_MINUTE", 120).catch(() => []);
+    return de1.length > de15.length ? de1 : de15;
   }).catch(() => []);
 }
 
