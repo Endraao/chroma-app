@@ -85,7 +85,7 @@ export function SugestoesDoDia({ origem, refId }: { origem: string; refId: strin
       </div>
       {lista.map((m, i) => {
         const link = `${origem}/e/${m.address}${refId ? `?ref=${encodeURIComponent(refId)}` : ""}`;
-        const post = `${textoDoPost(m, i)}\n\n${link}`;
+        const post = `${comLinkDoCelular(textoDoPost(m, i), link)}\n\n${link}`;
         return (
           <div key={m.address} className="flex flex-wrap items-center gap-3 border-t border-white/[0.05] pt-3">
             <img src={m.imageUrl || `/api/logo/${m.address}`} alt="" className="size-9 rounded-full bg-ink-800 object-cover" />
