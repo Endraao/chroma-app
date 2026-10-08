@@ -5,7 +5,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 
 import { SOL_MINT, type JupiterQuote } from "@/lib/jupiter";
-import { executeSolanaSwap } from "@/lib/solana-swap";
+import { COTACAO_VENCIDA, executeSolanaSwap } from "@/lib/solana-swap";
 import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import { computeFeesRaw } from "@/lib/fees";
 import { formatUnits, parseUnits } from "@/lib/utils";
@@ -255,17 +255,47 @@ export function useSolanaSwap({
     setSignature(null);
 
     try {
-      const result = await executeSolanaSwap({
-        connection,
-        publicKey,
-        signTransaction,
-        quote,
-        grossRaw,
-        inputMint,
-        affiliate,
-        naCurvaDaChroma,
-        onStep: setStep,
-      });
+      /*
+       * Até 3 tentativas: se a simulação acusar que o preço andou além do
+       * slippage, recota na hora e monta de novo — a carteira só abre com uma
+       * transação que passa (ver conferirAntesDeAssinar).
+       */
+      let cotacao = quote;
+      let result: Awaited<ReturnType<typeof executeSolanaSwap>> | null = null;
+      for (let tentativa = 0; tentativa < 3 && !result; tentativa++) {
+        try {
+          result = await executeSolanaSwap({
+            connection,
+            publicKey,
+            signTransaction,
+            quote: cotacao,
+            grossRaw,
+            inputMint,
+            affiliate,
+            naCurvaDaChroma,
+            onStep: setStep,
+          });
+        } catch (e) {
+          if (!(e instanceof Error) || e.message !== COTACAO_VENCIDA || tentativa === 2) {
+            throw e instanceof Error && e.message === COTACAO_VENCIDA
+              ? new Error("O preço mudou rápido demais. Tente de novo ou aumente o slippage.")
+              : e;
+          }
+          setStep("O preço mudou — atualizando a cotação…");
+          const params = new URLSearchParams({
+            inputMint,
+            outputMint,
+            amount: valorDaRota.toString(),
+            slippageBps: String(slippageBps),
+          });
+          const res = await fetch(`/api/swap?${params}`, { cache: "no-store" });
+          const nova = await res.json();
+          if (!res.ok) throw new Error(nova?.error ?? "sem rota disponível");
+          cotacao = nova as JupiterQuote;
+          setQuote(cotacao);
+        }
+      }
+      if (!result) throw new Error("falha ao montar a ordem");
 
       setSignature(result.signature);
       setPhase("done");
@@ -331,7 +361,7 @@ export function useSolanaSwap({
             : message,
       );
     }
-  }, [quote, publicKey, signTransaction, connection, grossRaw, inputMint, affiliate, affiliateRef, tokenMint, tokenSymbol]);
+  }, [quote, publicKey, signTransaction, connection, grossRaw, inputMint, outputMint, valorDaRota, slippageBps, naCurvaDaChroma, affiliate, affiliateRef, tokenMint, tokenSymbol]);
 
   return {
     /** null = não foi possível ler o mint (endereço não-Solana, ou RPC recusou) */

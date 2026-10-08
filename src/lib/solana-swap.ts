@@ -371,6 +371,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
     });
     const txCurva = new VersionedTransaction(msgCurva.compileToV0Message());
 
+    await conferirAntesDeAssinar(connection, txCurva);
     onStep?.("Aguardando sua assinatura…");
     const assinadaCurva = await signTransaction(txCurva);
     onStep?.("Enviando pra rede…");
@@ -482,6 +483,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
 
   const rebuilt = new VersionedTransaction(message.compileToV0Message(lookups));
 
+  await conferirAntesDeAssinar(connection, rebuilt);
   onStep?.("Aguardando sua assinatura…");
   const signed = await signTransaction(rebuilt);
 
@@ -494,6 +496,27 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
     affiliatePaidRaw: split.affiliateFee,
     volumeLamports: baseDaTaxa,
   };
+}
+
+/** Sinal pra quem chama: o preço andou, cote de novo e tente outra vez. */
+export const COTACAO_VENCIDA = "COTACAO_VENCIDA";
+
+/**
+ * SIMULA ANTES DE ABRIR A CARTEIRA (07/10/2026).
+ *
+ * Moeda disparando estoura o slippage entre cotar e assinar. A Phantom
+ * simula, a simulação falha e ela mostra "esta dApp pode ser maliciosa" — no
+ * post do X, então, a compra parecia golpe. Simulando aqui primeiro, uma
+ * transação que falharia nunca chega à carteira: o hook recota e tenta de novo.
+ */
+async function conferirAntesDeAssinar(connection: Connection, tx: VersionedTransaction): Promise<void> {
+  const sim = await connection.simulateTransaction(tx, { sigVerify: false, commitment: "processed" }).catch(() => null);
+  if (!sim) return; // RPC oscilou: segue, a carteira simula de qualquer jeito
+  if (!sim.value.err) return;
+  const logs = (sim.value.logs ?? []).join(" ");
+  // Saldo insuficiente não melhora recotando: deixa a mensagem da rede subir.
+  if (/insufficient (lamports|funds)/i.test(logs)) throw new Error("saldo insuficiente para esta ordem (taxa de rede incluída)");
+  throw new Error(COTACAO_VENCIDA);
 }
 
 /** Link de afiliado pode vir com lixo na URL: não deixa isso derrubar o swap. */
