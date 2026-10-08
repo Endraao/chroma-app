@@ -20,6 +20,7 @@ const TEXTOS = traducoes({
     copiado: "Copied!",
     comunidade: "Open community ↗",
     buscar: "Search on X ↗",
+    confira: "No official community linked — if you find one, check that its CA matches before posting.",
     postar: "Post ↗",
   },
   pt: {
@@ -29,6 +30,7 @@ const TEXTOS = traducoes({
     copiado: "Copiado!",
     comunidade: "Abrir comunidade ↗",
     buscar: "Buscar no X ↗",
+    confira: "Sem comunidade oficial cadastrada — se achar uma, confira se o CA dela é o mesmo antes de postar.",
     postar: "Postar ↗",
   },
   zh: {
@@ -38,6 +40,7 @@ const TEXTOS = traducoes({
     copiado: "已复制！",
     comunidade: "打开社区 ↗",
     buscar: "在 X 上搜索 ↗",
+    confira: "没有登记官方社区 —— 如果找到社区，发帖前请确认其 CA 与此一致。",
     postar: "发帖 ↗",
   },
 });
@@ -121,6 +124,11 @@ export function SugestoesDoDia({ origem, refId }: { origem: string; refId: strin
                 {m.twitter?.includes("/communities/") ? t.comunidade : t.buscar}
               </a>
             </div>
+            {!m.twitter?.includes("/communities/") && (
+              <p className="w-full text-[11px] text-warn">
+                {t.confira} <span className="font-mono text-zinc-400">CA {m.address.slice(0, 6)}…{m.address.slice(-6)}</span>
+              </p>
+            )}
           </div>
         );
       })}

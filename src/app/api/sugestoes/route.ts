@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getTokenMeta } from "@/lib/jupiter";
 import { ehMoedaSeria, listTokens, pontuacaoEmAlta } from "@/lib/tokens";
 import type { TokenSummary } from "@/lib/types";
 
@@ -35,5 +36,18 @@ function melhores(tokens: TokenSummary[], quantas: number) {
 
 export async function GET() {
   const [sol, rh] = await Promise.all([listTokens("hot", "solana"), listTokens("hot", "robinhood")]);
-  return NextResponse.json([...melhores(sol.tokens, 12), ...melhores(rh.tokens, 4)]);
+  const lista = [...melhores(sol.tokens, 12), ...melhores(rh.tokens, 4)];
+  /*
+   * O X DA PRÓPRIA MOEDA, pela Jupiter (a vitrine não traz). É o que garante a
+   * comunidade CERTA: buscar "$LOBBY" no X levou à comunidade de OUTRA moeda
+   * com o mesmo nome (08/10/2026) — postar CA errado ali parece golpe.
+   */
+  const comX = await Promise.all(
+    lista.map(async (m) => {
+      if (m.twitter || m.chain !== "solana") return m;
+      const meta = await getTokenMeta(m.address).catch(() => null);
+      return { ...m, twitter: meta?.twitter ?? null };
+    }),
+  );
+  return NextResponse.json(comX);
 }
