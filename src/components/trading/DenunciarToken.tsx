@@ -192,7 +192,7 @@ export function DenunciarToken({ token }: { token: TokenSummary }) {
         <div className="panel absolute right-0 z-40 mt-2 w-[300px] p-3 text-left">
           {estado === "pronto" ? (
             <div className="py-3 text-center">
-              <div className="mx-auto mb-2 grid size-9 place-items-center rounded-full bg-bull/12 text-bull">
+              <div className="mx-auto mb-2 grid size-9 place-items-center rounded-full bg-marca/12 text-marca">
                 <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="3">
                   <path d="m5 13 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

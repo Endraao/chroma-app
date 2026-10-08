@@ -283,7 +283,7 @@ export default async function DocsPage() {
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.roadmap}</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <Coluna titulo={t.agora} itens={t.itensAgora} cor="text-bull" />
+          <Coluna titulo={t.agora} itens={t.itensAgora} cor="text-marca" />
           <Coluna titulo={t.proximo} itens={t.itensProximo} cor="text-marca" />
           <Coluna titulo={t.explorando} itens={t.itensExplorando} cor="text-zinc-400" />
         </div>
@@ -349,7 +349,7 @@ function Endereco({
           {endereco}
         </a>
         {extra && (
-          <a href={extra.href} target="_blank" rel="noopener noreferrer" className="text-[12px] text-bull hover:underline">
+          <a href={extra.href} target="_blank" rel="noopener noreferrer" className="text-[12px] text-marca hover:underline">
             ✓ {extra.texto}
           </a>
         )}

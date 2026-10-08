@@ -493,7 +493,7 @@ function NicknameStep({ account }: { account: ReturnType<typeof useChromaAccount
             className="w-full bg-transparent text-lg font-semibold text-zinc-100 outline-none placeholder:text-zinc-700"
           />
           {checking && <span className="shrink-0 text-[11px] text-zinc-600">…</span>}
-          {!checking && status?.available && <span className="shrink-0 text-bull">✓</span>}
+          {!checking && status?.available && <span className="shrink-0 text-marca">✓</span>}
           <button
             onClick={() => setNickname(suggestNickname())}
             title={t.sortearOutro}

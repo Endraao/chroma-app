@@ -29,8 +29,8 @@ export interface WalletOption {
 }
 
 const BADGE: Record<WalletState, { text: string; className: string } | null> = {
-  recent: { text: "recente" as const, className: "bg-bull/10 text-bull ring-bull/25" },
-  detected: { text: "detectada" as const, className: "bg-bull/10 text-bull ring-bull/25" },
+  recent: { text: "recente" as const, className: "bg-marca/10 text-marca ring-marca/25" },
+  detected: { text: "detectada" as const, className: "bg-marca/10 text-marca ring-marca/25" },
   "not-installed": { text: "instalar" as const, className: "bg-white/5 text-zinc-500 ring-white/10" },
 };
 

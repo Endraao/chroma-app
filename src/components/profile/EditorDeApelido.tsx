@@ -100,7 +100,7 @@ export function EditorDeApelido({
             className="w-full bg-transparent text-lg font-semibold text-zinc-100 outline-none"
           />
           {checking && <span className="shrink-0 text-[11px] text-zinc-600">…</span>}
-          {!checking && status?.available && <span className="shrink-0 text-bull">✓</span>}
+          {!checking && status?.available && <span className="shrink-0 text-marca">✓</span>}
           <button
             onClick={() => setNickname(suggestNickname())}
             className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-white/5 hover:text-marca"

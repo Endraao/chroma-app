@@ -140,8 +140,8 @@ export function FormularioDeContato() {
 
   if (pronto) {
     return (
-      <div className="mt-8 rounded-xl border border-bull/25 bg-bull/[0.06] px-5 py-8 text-center">
-        <div className="mx-auto mb-3 grid size-11 place-items-center rounded-full bg-bull/15 text-bull">
+      <div className="mt-8 rounded-xl border border-marca/25 bg-marca/[0.06] px-5 py-8 text-center">
+        <div className="mx-auto mb-3 grid size-11 place-items-center rounded-full bg-marca/15 text-marca">
           <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="3">
             <path d="m5 13 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
