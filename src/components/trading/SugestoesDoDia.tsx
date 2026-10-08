@@ -39,7 +39,7 @@ const TEXTOS = traducoes({
   },
 });
 
-interface Moeda { address: string; symbol: string; name: string; imageUrl: string | null; change24h: number; marketCapUsd: number }
+interface Moeda { address: string; symbol: string; name: string; imageUrl: string | null; change24h: number; marketCapUsd: number; chain?: string }
 
 /** Textos em inglês (o público das comunidades), um por moeda, variando por dia. */
 function textoDoPost(m: Moeda, i: number): string {
@@ -87,7 +87,7 @@ export function SugestoesDoDia({ origem, refId }: { origem: string; refId: strin
                 {m.name} <span className="text-[12px] text-sky-300/90">${m.symbol}</span>
               </p>
               <p className="tnum text-[11.5px] text-zinc-500">
-                {formatUsd(m.marketCapUsd)} MC
+                {m.chain === "robinhood" ? "Robinhood · " : "Solana · "}{formatUsd(m.marketCapUsd)} MC
                 {Number.isFinite(m.change24h) && m.change24h !== 0 && (
                   <span className={m.change24h >= 0 ? "text-bull" : "text-bear"}> · {m.change24h >= 0 ? "+" : ""}{Math.round(m.change24h).toLocaleString()}%</span>
                 )}
