@@ -126,3 +126,6 @@ export async function ganhosDoDivulgador(id: string) {
     total,
   };
 }
+
+/** Conferência de UMA transação de indicação (usada também pelas campanhas). */
+export const conferirTransacaoDeIndicacao = conferir;

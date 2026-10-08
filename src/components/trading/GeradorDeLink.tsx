@@ -37,6 +37,7 @@ const TEXTOS = traducoes({
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
     ranking: "See the top promoters →",
     meuCard: "My earnings card →",
+    campanhas: "Campaigns with extra bonus →",
     mc: "MC",
   },
   pt: {
@@ -55,6 +56,7 @@ const TEXTOS = traducoes({
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
     ranking: "Ver o ranking de divulgadores →",
     meuCard: "Meu card de ganhos →",
+    campanhas: "Campanhas com bônus extra →",
     mc: "MC",
   },
   zh: {
@@ -73,6 +75,7 @@ const TEXTOS = traducoes({
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
     ranking: "查看推广者排行榜 →",
     meuCard: "我的收益卡片 →",
+    campanhas: "有额外奖励的活动 →",
     mc: "市值",
   },
 });
@@ -111,7 +114,11 @@ export function GeradorDeLink() {
   const { address: carteiraEvm } = useAccount();
   const { account } = useChromaAccount();
 
-  useEffect(() => setOrigem(window.location.origin), []);
+  useEffect(() => {
+    setOrigem(window.location.origin);
+    const m = new URLSearchParams(window.location.search).get("moeda");
+    if (m) setTexto(m);
+  }, []);
 
   useEffect(() => {
     setMoeda(null);
@@ -229,6 +236,9 @@ export function GeradorDeLink() {
       <div className="flex flex-wrap gap-4">
         <Link href="/ranking" className="text-[13px] font-bold text-marca hover:underline">
           {t.ranking}
+        </Link>
+        <Link href="/campanhas" className="text-[13px] font-bold text-marca hover:underline">
+          {t.campanhas}
         </Link>
         {ref && (
           <Link href={`/ganhos/${encodeURIComponent(ref)}`} className="text-[13px] font-bold text-marca hover:underline">

@@ -36,7 +36,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: 2 }}>CHROMA</div>
-          <div style={{ display: "flex", fontSize: 24, color: "#22d3ee", fontWeight: 700 }}>✓ verified on Solana</div>
+          <div style={{ display: "flex", fontSize: 24, color: "#22d3ee", fontWeight: 700 }}>VERIFIED ON SOLANA</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
