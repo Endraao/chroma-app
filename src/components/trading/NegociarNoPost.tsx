@@ -18,6 +18,8 @@ import { feeLabelFor } from "@/lib/fees";
 import { PLATFORM_FEE_WALLET_EVM, PLATFORM_FEE_WALLET_SOL, robinhoodChain } from "@/lib/web3";
 
 const X_DA_CHROMA = "https://x.com/ChromaLaunch";
+const BOTAO_DO_TOPO =
+  "flex h-7 w-[148px] items-center justify-center gap-1.5 rounded-lg bg-ink-900 text-[12px] font-bold text-zinc-200 hover:bg-ink-800";
 const TAXA_DO_LINK_SOL = 0.005;
 const TAXA_DO_LINK_ETH = "0.0002";
 
@@ -131,18 +133,17 @@ function Conteudo({ base }: { base: TokenSummary }) {
             )}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <a
-            href={linkFora}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border border-marca/40 px-2.5 py-1.5 text-[12px] font-bold text-marca hover:bg-marca/10"
-          >
+        {/* Os dois botões com o mesmo formato (pedido do dono): logo + texto, sem contorno. */}
+        <div className="flex shrink-0 flex-col gap-1">
+          <a href={linkFora} target="_blank" rel="noreferrer" className={BOTAO_DO_TOPO}>
             <img src="/logo.png" alt="" className="size-4 rounded-full" />
             {t.abrir} ↗
           </a>
-          <a href={X_DA_CHROMA} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[11.5px] font-bold text-zinc-400 hover:text-zinc-100">
-            <span className="text-[13px]">𝕏</span> @ChromaLaunch
+          <a href={X_DA_CHROMA} target="_blank" rel="noreferrer" className={BOTAO_DO_TOPO}>
+            <svg viewBox="0 0 24 24" aria-hidden className="size-3.5 fill-current">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            @ChromaLaunch
           </a>
         </div>
       </div>
