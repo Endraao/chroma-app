@@ -316,29 +316,43 @@ export function usePoolTicker({
          * diante o ticker só corrige quando alguém negocia de verdade.
          */
 
-        for (const cofre of cofres) {
-          const id = conexao.onAccountChange(
-            new PublicKey(cofre.conta),
-            (info, contexto) => {
-              /*
-               * O saldo de uma conta de token são 8 bytes little-endian no
-               * offset 64 do layout SPL. Ler os bytes direto evita pedir
-               * `jsonParsed` a cada notificação — e é o caminho quente: numa
-               * moeda movimentada isto roda várias vezes por segundo.
-               */
+        /*
+         * LEITURA A CADA 1 s, sem WebSocket (07/10/2026).
+         *
+         * Era uma assinatura por WebSocket. O plano do RPC Fast aceita UMA
+         * assinatura ao mesmo tempo pro site inteiro — as dos visitantes eram
+         * recusadas em silêncio e o gráfico ficava parado achando que estava
+         * ao vivo. Agora: os dois cofres numa leitura só, a cada segundo; a
+         * variação vira o mesmo "negócio" que a assinatura entregava.
+         */
+        const chaves = cofres.map((c) => new PublicKey(c.conta));
+        let lendo = false;
+        let falhas = 0;
+        const ler = async () => {
+          if (lendo || cancelado || document.visibilityState !== "visible") return;
+          lendo = true;
+          try {
+            const r = await conexao.getMultipleAccountsInfoAndContext(chaves, "processed");
+            if (cancelado) return;
+            falhas = 0;
+            r.value.forEach((info, i) => {
+              const cofre = cofres[i];
               const anterior = reservasRef.current.get(cofre.conta);
-              if (!anterior || info.data.length < 72) return;
-
+              if (!info || !anterior || info.data.length < 72) return;
               const nova = Number(saldoDoCofre(info.data)) / 10 ** cofre.casas;
               const variacao = nova - anterior.quantidade;
-
               reservasRef.current.set(cofre.conta, { mint: anterior.mint, quantidade: nova });
-              acumular(anterior.mint === tokenMint, variacao, contexto.slot);
-            },
-            "processed",
-          );
-          inscricoes.push(id);
-        }
+              acumular(anterior.mint === tokenMint, variacao, r.context.slot);
+            });
+          } catch {
+            // Três falhas seguidas: devolve pro modo de pesquisa do gráfico.
+            if (++falhas >= 3 && !cancelado) setEstado("indisponivel");
+          } finally {
+            lendo = false;
+          }
+        };
+        const relogio = window.setInterval(() => void ler(), 1_000);
+        inscricoes.push(relogio);
 
         if (!cancelado) setEstado("ao-vivo");
       } catch (erro) {
@@ -353,9 +367,7 @@ export function usePoolTicker({
       /* A janela pendente fica pra trás: ela publicaria o preço da pool velha
          em cima do gráfico da moeda nova. */
       if (janela !== null) window.clearTimeout(janela);
-      for (const id of inscricoes) {
-        void conexao.removeAccountChangeListener(id).catch(() => {});
-      }
+      for (const id of inscricoes) window.clearInterval(id);
       reservas.clear();
     };
   }, [pool, tokenMint, ligado]);
