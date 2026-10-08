@@ -1,56 +1,69 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAccount } from "wagmi";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
-import { feeLabel } from "@/lib/fees";
 import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
 
+/**
+ * "POSTE E GANHE" — logo abaixo do comprar/vender (08/10/2026: "deveria ficar
+ * bem mais visível"). O link do post vira uma janela de compra no X (ver
+ * /e/[address]) e quem comprar por ele paga 0,30% a quem postou, na hora.
+ *
+ * Sem cadastro: o apelido da conta, se houver; senão a carteira conectada da
+ * rede da moeda. Sem nenhum dos dois, o post sai mesmo assim (sem ganho) e um
+ * aviso pede pra conectar.
+ */
 const TEXTOS = traducoes({
   en: {
-    titulo: "Share and earn with every trade",
-    texto: (p: string, s: string) =>
-      `Send $${s} to your friends, group or community. Every time someone who came through your link buys or sells — here or on any coin afterwards — you get ${p} of the amount traded, straight to your wallet, in the same transaction. No sign-up, no withdrawal, forever.`,
-    copiar: "Copy my link", copiado: "Link copied!", postar: "Post on X", entrar: "Sign in to get your link",
-    tweet: (s: string) => `${s} — buy it right here in this post 👇`,
+    titulo: "Post it on X. Earn 0.30% of every buy.",
+    texto: "Your post becomes a buy box right on X. Everyone who trades through it pays you instantly, on-chain — on this coin and any other they trade later.",
+    postar: "Post on X & earn",
+    copiar: "Copy my link",
+    copiado: "Copied!",
+    conectar: "Connect your wallet to get paid for the trades your post brings.",
+    tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   pt: {
-    titulo: "Compartilhe e ganhe em cada operação",
-    texto: (p: string, s: string) =>
-      `Mande a $${s} pros seus amigos, grupo ou comunidade. Toda vez que alguém que entrou pelo seu link comprar ou vender — nesta moeda ou em qualquer outra depois — você recebe ${p} do valor negociado, direto na sua carteira, na mesma transação. Sem cadastro, sem saque, pra sempre.`,
-    copiar: "Copiar meu link", copiado: "Link copiado!", postar: "Postar no X", entrar: "Entre para gerar o seu link",
-    tweet: (s: string) => `${s} — compre aqui mesmo, dentro do post 👇`,
+    titulo: "Poste no X. Ganhe 0,30% de cada compra.",
+    texto: "Seu post vira uma janela de compra direto no X. Todo mundo que negociar por ele te paga na hora, na blockchain — nesta moeda e em qualquer outra que negociar depois.",
+    postar: "Postar no X e ganhar",
+    copiar: "Copiar meu link",
+    copiado: "Copiado!",
+    conectar: "Conecte sua carteira pra receber pelos negócios que o seu post trouxer.",
+    tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   zh: {
-    titulo: "分享，每笔交易都有收益",
-    texto: (p: string, s: string) =>
-      `把 $${s} 分享给你的朋友、群组或社区。每当通过你的链接进来的人买入或卖出 —— 无论是这个代币还是之后的任何代币 —— 你都能获得交易金额的 ${p}，在同一笔交易中直接打入你的钱包。无需注册、无需提现、永久有效。`,
-    copiar: "复制我的链接", copiado: "链接已复制！", postar: "发到 X", entrar: "登录以获取你的链接",
-    tweet: (s: string) => `${s} — 直接在这条帖子里买 👇`,
+    titulo: "发到 X，每笔买入赚 0.30%。",
+    texto: "你的帖子会在 X 上直接变成购买窗口。通过它交易的每个人都会即时在链上付给你 —— 这个代币以及他们之后交易的任何代币。",
+    postar: "发到 X 赚钱",
+    copiar: "复制我的链接",
+    copiado: "已复制！",
+    conectar: "连接钱包，帖子带来的交易才能给你分成。",
+    tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
 });
 
-/**
- * O convite pra divulgar, logo abaixo do botão de compra.
- *
- * O botão "Compartilhar" do cabeçalho é pequeno e não diz o que a pessoa
- * ganha — quase ninguém clicava. Aqui o ganho vem escrito, com o link pronto.
- */
 export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
   const t = useTextos(TEXTOS);
   const account = useChromaAccount();
-  const [origem, setOrigem] = useState("");
+  const { publicKey } = useWallet();
+  const { address: carteiraEvm } = useAccount();
+  const [origem, setOrigem] = useState("https://chromalaunch.fun");
   const [copiado, setCopiado] = useState(false);
 
   useEffect(() => setOrigem(window.location.origin), []);
 
+  const ref = account.account?.nickname ?? (token.chain === "solana" ? publicKey?.toBase58() : carteiraEvm) ?? null;
   // /e/…: no X o post vira uma janela de compra (player card); fora do X, abre a moeda.
-  const link = account.referralId ? `${origem}/e/${token.address}?ref=${account.referralId}` : "";
+  const link = `${origem}/e/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
+  const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
 
   async function copiar() {
-    if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
       setCopiado(true);
@@ -61,33 +74,25 @@ export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-marca/30 bg-gradient-to-br from-marca/[0.12] via-marca/[0.04] to-transparent p-4">
-      <div className="flex items-center gap-2">
-        <span className="grid size-7 place-items-center rounded-full bg-marca/20 text-[15px]">💸</span>
-        <p className="text-[14px] font-black tracking-tight text-zinc-50">{t.titulo}</p>
-      </div>
-      <p className="mt-2 text-[12px] leading-relaxed text-zinc-300">{t.texto(feeLabel.affiliate, token.symbol)}</p>
-
-      {account.isSignedIn && link ? (
-        <div className="mt-3 flex gap-2">
-          <button
-            onClick={copiar}
-            className="flex-1 rounded-lg bg-marca px-3 py-2 text-[13px] font-bold text-black transition-opacity hover:opacity-90"
-          >
-            {copiado ? t.copiado : t.copiar}
-          </button>
-          <a
-            href={`https://x.com/intent/tweet?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg border border-marca/40 px-3 py-2 text-[13px] font-bold text-marca transition-colors hover:bg-marca/10"
-          >
-            {t.postar}
-          </a>
-        </div>
-      ) : (
-        <p className="mt-3 text-[12px] font-semibold text-marca">{t.entrar}</p>
-      )}
+    <div className="relative overflow-hidden rounded-2xl border border-marca/50 bg-gradient-to-br from-marca/[0.18] via-marca/[0.06] to-transparent p-4 shadow-[0_0_28px_-6px_rgba(34,211,238,0.45)]">
+      <p className="text-[17px] font-black leading-tight tracking-tight text-zinc-50">💸 {t.titulo}</p>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-zinc-300">{t.texto}</p>
+      <a
+        href={postar}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-marca text-[15px] font-black text-black transition-opacity hover:opacity-90"
+      >
+        <span className="text-[17px]">𝕏</span> {t.postar}
+      </a>
+      <button
+        type="button"
+        onClick={copiar}
+        className="mt-2 w-full rounded-lg py-1.5 text-[12.5px] font-bold text-marca hover:bg-marca/10"
+      >
+        {copiado ? t.copiado : t.copiar}
+      </button>
+      {!ref && <p className="mt-1 text-center text-[11.5px] text-zinc-400">{t.conectar}</p>}
     </div>
   );
 }

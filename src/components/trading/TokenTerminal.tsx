@@ -249,6 +249,9 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             O componente não desenha nada pra quem não tem a moeda, então não
             ocupa espaço de quem está chegando agora.
           */}
+          {/* Logo abaixo do comprar/vender: é o que espalha a Chroma (08/10/2026). */}
+          <ConviteParaCompartilhar token={token} />
+
           <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} precoUsd={price} />
 
           {/* Bônus do criador: só aparece em moeda da Curva da Chroma (Solana). */}
@@ -278,7 +281,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
           {/* Ordem da Fomo Family: comprar, alerta, sobre — e o convite por último. */}
           <PainelSobre token={token} />
 
-          <ConviteParaCompartilhar token={token} />
         </div>
 
         {/* Negociações: embaixo do gráfico no computador; no celular, por último. */}
