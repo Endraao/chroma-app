@@ -595,6 +595,11 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
               twitter: real.twitter ?? meta.twitter,
               telegram: real.telegram ?? meta.telegram,
               plataforma: plataformaDoJupiter(meta.launchpad, meta.partnerConfig) ?? plataformaPeloEndereco(address),
+              // Os números que a fomo mostra são os da Jupiter (07/10/2026: top 10
+              // 59,9% aqui contra 14% lá — o nosso contava o cofre da pool).
+              top10Pct: Number.isFinite(meta.audit?.topHoldersPercentage) ? meta.audit?.topHoldersPercentage : real.top10Pct,
+              liquidityUsd: meta.liquidity && meta.liquidity > 0 ? meta.liquidity : real.liquidityUsd,
+              ...(await desdeOLancamento(real, meta)),
             },
             isDemo: false,
           };
@@ -660,4 +665,23 @@ function plataformaPeloEndereco(address: string): string | undefined {
   if (address.endsWith("pump")) return "pumpfun";
   if (address.endsWith("bonk")) return "bonk";
   return undefined;
+}
+
+/**
+ * Moeda da pump.fun com menos de 24 h: a variação é DESDE O LANÇAMENTO, como
+ * na fomo (+16.734% na ETAC, contra +630% que a DexScreener dá). Toda moeda
+ * nasce na curva com ~27,96 SOL de valor de mercado.
+ */
+async function desdeOLancamento(
+  t: TokenSummary,
+  meta: { launchpad?: string; firstPool?: { createdAt?: string } },
+): Promise<Partial<TokenSummary>> {
+  const daPump = (meta.launchpad ?? "").includes("pump") || t.address.endsWith("pump");
+  const nasceu = Date.parse(meta.firstPool?.createdAt ?? "") || t.createdAt;
+  if (!daPump || !nasceu || Date.now() - nasceu > 24 * 3600_000 || !(t.marketCapUsd > 0)) return {};
+  const { precosNativos } = await import("./precos-nativos");
+  const sol = (await precosNativos().catch(() => null))?.solana ?? 0;
+  if (!(sol > 0)) return {};
+  const inicial = ((30 / 1_073_000_000) * 1_000_000_000) * sol;
+  return { mcapInicialUsd: inicial, change24h: (t.marketCapUsd / inicial - 1) * 100 };
 }

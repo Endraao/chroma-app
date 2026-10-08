@@ -108,6 +108,10 @@ export interface JupiterTokenMeta {
   tokenProgram: string;
   dev?: string;
   holderCount?: number;
+  /** Auditoria da Jupiter: % do top 10 já sem cofres de pool (bate com a fomo). */
+  audit?: { topHoldersPercentage?: number };
+  /** Primeira pool da moeda — a hora do lançamento. */
+  firstPool?: { createdAt?: string };
   /** Onde a moeda nasceu: "pump.fun", "met-dbc", "stonkfun", "letsbonk.fun"… */
   launchpad?: string;
   /** Na curva da Meteora (met-dbc): a config — diz QUAL launchpad (a da Chroma, por ex.). */
