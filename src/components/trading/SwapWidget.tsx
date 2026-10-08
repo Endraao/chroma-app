@@ -447,9 +447,13 @@ function SolanaSwap({
             placeholder="0.0"
             className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
           />
+          {/* No post do X o "≈ SOL" vai dentro da caixa: uma linha a menos. */}
+          {compacto && emDolar && digitadoNum > 0 && (
+            <span className="tnum shrink-0 text-[11px] text-zinc-500">≈ <Preco valor={Number(amount)} casas={4} /> SOL ·</span>
+          )}
           <span className="shrink-0 text-[13px] font-bold text-zinc-400">{comprando ? (emDolar ? "USD" : "SOL") : symbol}</span>
         </label>
-        {emDolar && digitadoNum > 0 && (
+        {!compacto && emDolar && digitadoNum > 0 && (
           <p className="tnum -mt-1.5 px-1 text-[11px] text-zinc-500">
             ≈ <Preco valor={Number(amount)} casas={4} /> SOL
           </p>
@@ -480,30 +484,21 @@ function SolanaSwap({
         </div>
 
         {compacto ? (
-          <div className="tnum order-last space-y-0.5 px-1 text-[11.5px] text-zinc-400">
-            <p className="text-[12px]">
+          // No post do X o espaço é contado em linhas: recebe + taxa ao vivo numa só.
+          <div className="tnum order-last flex flex-wrap justify-between gap-x-2 px-1 text-[11.5px] text-zinc-400">
+            <span>
               {t.voceRecebe}:{" "}
               <span className="font-bold text-zinc-200">
                 {swap.quote && Number(swap.outAmount) > 0
                   ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
                   : "—"}
               </span>
-            </p>
+            </span>
             {/* Transparência (pedido do dono): quanto de taxa ESTE negócio paga, ao vivo. */}
-            <p className="flex justify-between">
-              <span>{t.taxaChroma(naCurvaDaChroma ? "0.30%" : feeLabelFor("solana").swap)}</span>
-              <span>{baseEmSol > 0 ? `${(baseEmSol * (naCurvaDaChroma ? AFFILIATE_FEE_BPS : swapFeeBps("solana")) / 10_000).toFixed(6)} SOL` : "—"}</span>
-            </p>
-            {affiliate && (
-              <p className="flex justify-between text-zinc-500">
-                <span>{t.praQuemPostou}</span>
-                <span>{baseEmSol > 0 ? `${(baseEmSol * AFFILIATE_FEE_BPS / 10_000).toFixed(6)} SOL` : "—"}</span>
-              </p>
-            )}
-            <p className="flex justify-between">
-              <span>{t.taxaDaPool}</span>
-              <span>{naCurvaDaChroma ? t.poolCurva : t.poolOutra}</span>
-            </p>
+            <span>
+              {t.taxaChroma(naCurvaDaChroma ? "0.30%" : feeLabelFor("solana").swap)}:{" "}
+              {baseEmSol > 0 ? `${(baseEmSol * (naCurvaDaChroma ? AFFILIATE_FEE_BPS : swapFeeBps("solana")) / 10_000).toFixed(6)} SOL` : "—"}
+            </span>
           </div>
         ) : (
         <>
@@ -1191,11 +1186,14 @@ function EvmSwap({
             placeholder="0.0"
             className="tnum min-w-0 flex-1 bg-transparent text-2xl font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
           />
+          {compacto && compraEmDolar && Number(digitado) > 0 && (
+            <span className="tnum shrink-0 text-[11px] text-zinc-500">≈ <Preco valor={Number(valorNativo)} casas={6} /> {meta.nativeSymbol} ·</span>
+          )}
           <span className="shrink-0 text-[13px] font-bold text-zinc-400">
             {ehCompra ? (compraEmDolar ? "USD" : meta.nativeSymbol) : symbol}
           </span>
         </label>
-        {compraEmDolar && Number(digitado) > 0 && (
+        {!compacto && compraEmDolar && Number(digitado) > 0 && (
           <p className="tnum -mt-1.5 px-1 text-[11px] text-zinc-500">
             ≈ <Preco valor={Number(valorNativo)} casas={6} /> {meta.nativeSymbol}
           </p>
@@ -1214,24 +1212,18 @@ function EvmSwap({
         </div>
 
         {compacto ? (
-          <div className="tnum order-last space-y-0.5 px-1 text-[11.5px] text-zinc-400">
-            <p className="text-[12px]">
+          <div className="tnum order-last flex flex-wrap justify-between gap-x-2 px-1 text-[11.5px] text-zinc-400">
+            <span>
               {t.voceRecebe}:{" "}
               <span className="font-bold text-zinc-200">
                 {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
               </span>
-            </p>
+            </span>
             {/* Transparência: a taxa DESTE negócio, em ETH, ao vivo (mesma regra do SolanaSwap). */}
-            <p className="flex justify-between">
-              <span>{t.taxaChroma(`${(taxaEvmBps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`)}</span>
-              <span>{baseEmEth > 0 ? `${(baseEmEth * taxaEvmBps / 10_000).toFixed(7)} ${meta.nativeSymbol}` : "—"}</span>
-            </p>
-            {affiliate && (
-              <p className="flex justify-between text-zinc-500">
-                <span>{t.praQuemPostou}</span>
-                <span>{baseEmEth > 0 ? `${(baseEmEth * AFFILIATE_FEE_BPS / 10_000).toFixed(7)} ${meta.nativeSymbol}` : "—"}</span>
-              </p>
-            )}
+            <span>
+              {t.taxaChroma(`${(taxaEvmBps / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`)}:{" "}
+              {baseEmEth > 0 ? `${(baseEmEth * taxaEvmBps / 10_000).toFixed(7)} ${meta.nativeSymbol}` : "—"}
+            </span>
           </div>
         ) : (
         <>

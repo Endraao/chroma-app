@@ -174,13 +174,15 @@ function Conteudo({ base }: { base: TokenSummary }) {
               linkFora={linkFora}
             />
           </Suspense>
-          <div className="space-y-1 rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-2 text-[11px] leading-snug text-zinc-400">
-            <p>
-              <span className="font-bold text-zinc-300">{t.pool}:</span> {origemDaPool(token)}
-            </p>
-            <p>{t.comoFunciona(feeLabelFor(token.chain).swap, token.chain === "solana")}</p>
-            <p className="font-semibold text-marca">{t.emSol(token.chain === "robinhood" ? "ETH" : "SOL")}</p>
-          </div>
+          {/* Uma linha só (o post do X corta o que passar da altura); a explicação abre no ⓘ. */}
+          <details className="rounded-lg border border-white/[0.06] bg-ink-900/60 px-3 py-1.5 text-[11px] leading-snug text-zinc-400">
+            <summary className="cursor-pointer list-none truncate">
+              <span className="font-bold text-zinc-300">{t.pool}:</span> {origemDaPool(token)} ·{" "}
+              <span className="font-semibold text-marca">{token.chain === "robinhood" ? "ETH" : "SOL"}</span> ⓘ
+            </summary>
+            <p className="mt-1">{t.comoFunciona(feeLabelFor(token.chain).swap, token.chain === "solana")}</p>
+            <p className="mt-1 font-semibold text-marca">{t.emSol(token.chain === "robinhood" ? "ETH" : "SOL")}</p>
+          </details>
         </>
       ) : (
         <MeuLink token={token} />
