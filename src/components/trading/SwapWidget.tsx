@@ -251,6 +251,16 @@ function SolanaSwap({
   };
 
   const { affiliate, affiliateRef } = useAffiliateTracking(chain);
+  // No celular, o app da carteira abre esta mesma página com valor, lado e indicação.
+  const [alvoNaCarteira, setAlvoNaCarteira] = useState<string>();
+  useEffect(() => {
+    if (!compacto) return;
+    const q = new URLSearchParams(window.location.search);
+    if (!q.get("ref") && affiliateRef) q.set("ref", affiliateRef);
+    if (digitado) q.set("valor", digitado);
+    q.set("lado", side);
+    setAlvoNaCarteira(`${window.location.origin}${window.location.pathname}?${q.toString()}`);
+  }, [compacto, digitado, side, affiliateRef]);
   const { connected, publicKey } = useWallet();
   const precoDoSol = usePrecoDoSol();
   const idiomaSol = useIdioma();
@@ -499,7 +509,7 @@ function SolanaSwap({
             {semValor ? t.informeValor : `${comprando ? t.comprar : t.vender} ${symbol} ↗`}
           </Button>
         ) : (
-        <RequireChainWallet chain="solana" compacto={compacto} linkFora={linkFora} rotuloFora={`${comprando ? t.comprar : t.vender} ${symbol} ↗`}>
+        <RequireChainWallet chain="solana" compacto={compacto} linkFora={linkFora} rotuloFora={`${comprando ? t.comprar : t.vender} ${symbol} ↗`} alvoNaCarteira={alvoNaCarteira}>
           <Button
             variant={comprando ? "buy" : "sell"}
             size="lg"

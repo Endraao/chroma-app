@@ -3,7 +3,7 @@
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount, useChainId, useSwitchChain } from "wagmi";
 
@@ -33,6 +33,9 @@ import type { ChainId } from "@/lib/types";
  */
 const TEXTOS = traducoes({
   en: {
+    abrirNa: (c: string) => `Buy in ${c} ↗`,
+    celularSemCarteira: "On your phone? Your wallet app opens this coin with the amount already set.",
+    outra: "Other",
     outraRede: "Your wallet is on another network",
     moedaDa: (rede: string) => `This coin is on ${rede}`,
     precisaEstar: (rede: React.ReactNode) => <>To trade this coin your wallet must be on {rede}. Switch networks in your wallet to continue.</>,
@@ -45,6 +48,9 @@ const TEXTOS = traducoes({
     liberar: "Open wallet to sign",
   },
   pt: {
+    abrirNa: (c: string) => `Comprar na ${c} ↗`,
+    celularSemCarteira: "No celular? O app da sua carteira abre esta moeda com o valor já preenchido.",
+    outra: "Outra",
     outraRede: "Sua carteira está em outra rede",
     moedaDa: (rede: string) => `Esta moeda é da ${rede}`,
     precisaEstar: (rede: React.ReactNode) => <>Para negociar esta moeda, a sua carteira precisa estar na {rede}. Troque de rede na carteira para continuar.</>,
@@ -57,6 +63,9 @@ const TEXTOS = traducoes({
     liberar: "Abrir carteira para assinar",
   },
   zh: {
+    abrirNa: (c: string) => `在 ${c} 中购买 ↗`,
+    celularSemCarteira: "在手机上？钱包 App 会打开此代币，金额已填好。",
+    outra: "其他",
     outraRede: "你的钱包在其他网络上",
     moedaDa: (rede: string) => `该代币属于 ${rede}`,
     precisaEstar: (rede: React.ReactNode) => <>交易该代币需要钱包切换到 {rede}。请在钱包中切换网络后继续。</>,
@@ -76,6 +85,7 @@ export function RequireChainWallet({
   compacto = false,
   linkFora,
   rotuloFora,
+  alvoNaCarteira,
 }: {
   chain: ChainId;
   children: React.ReactNode;
@@ -84,6 +94,8 @@ export function RequireChainWallet({
   /** Sem carteira visível aqui (iframe): o botão leva pra este endereço, em outra aba. */
   linkFora?: string;
   rotuloFora?: string;
+  /** No celular sem carteira: página que o app da carteira abre (com valor e indicação). */
+  alvoNaCarteira?: string;
 }) {
   const t = useTextos(TEXTOS);
   const [modalAberto, setModalAberto] = useState(false);
@@ -114,10 +126,50 @@ export function RequireChainWallet({
   const direta =
     detectadas.length === 1 ? detectadas[0] : detectadas.find((o) => o.state === "recent");
   const abrir = () => (direta ? direta.onSelect() : setModalAberto(true));
+  const [celular, setCelular] = useState(false);
+  useEffect(() => {
+    // Celular SEM carteira embutida no navegador (app do X, Safari, Chrome).
+    // A lista de "detectadas" não serve aqui: no Android ela traz o Mobile
+    // Wallet Adapter, que não funciona dentro do app do X.
+    const w = window as unknown as { phantom?: unknown; solana?: unknown; solflare?: unknown; backpack?: unknown };
+    const injetada = Boolean(w.phantom || w.solana || w.solflare || w.backpack);
+    setCelular(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !injetada);
+  }, []);
 
   if (conectada && !redeErrada) return <>{children}</>;
 
   if (compacto) {
+    /*
+     * CELULAR (07/10/2026): no app do X não existe extensão de carteira. O
+     * botão abre a moeda DENTRO do app da Phantom/Solflare — no navegador
+     * deles a carteira existe — já com o valor, o lado e quem indicou.
+     */
+    if (celular && alvoNaCarteira) {
+      const origem = new URL(alvoNaCarteira).origin;
+      const phantom = `https://phantom.app/ul/browse/${encodeURIComponent(alvoNaCarteira)}?ref=${encodeURIComponent(origem)}`;
+      const solflare = `https://solflare.com/ul/v1/browse/${encodeURIComponent(alvoNaCarteira)}?ref=${encodeURIComponent(origem)}`;
+      return (
+        <div className="space-y-1.5">
+          <a href={phantom} target="_blank" rel="noreferrer" className="block">
+            <Button variant="chroma" size="lg" className="w-full">
+              {t.abrirNa("Phantom")}
+            </Button>
+          </a>
+          <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-500">
+            <span>{t.celularSemCarteira}</span>
+            <span className="flex shrink-0 gap-2 font-bold">
+              <a href={solflare} target="_blank" rel="noreferrer" className="text-marca">
+                Solflare ↗
+              </a>
+              <button type="button" onClick={abrir} className="text-zinc-400 underline">
+                {t.outra}
+              </button>
+            </span>
+          </div>
+          <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
+        </div>
+      );
+    }
     // Dentro do post do X nem sempre a extensão da carteira aparece: aí o
     // botão abre a moeda na Chroma (com a indicação de quem postou).
     if (!detectadas.length && linkFora)
