@@ -15,16 +15,11 @@ import { useCallback, useEffect, useState } from "react";
  */
 export function useLinkDoX() {
   const [modo, setModo] = useState<"pc" | "android" | "carteira">("pc");
-  const [naMetaMask, setNaMetaMask] = useState(false);
   useEffect(() => {
     const ua = navigator.userAgent;
     const w = window as unknown as { ethereum?: unknown; phantom?: unknown; solana?: unknown; trustwallet?: unknown };
     const celular = /Android|iPhone|iPad|iPod/i.test(ua);
     if (celular && (w.ethereum || w.phantom || w.solana || w.trustwallet)) setModo("carteira");
-    // Só a MetaMask bloqueia de vez abrir o X (a Trust e a Phantom também se
-    // dizem "isMetaMask" pra compatibilidade, então elas são excluídas).
-    const e = w.ethereum as { isMetaMask?: boolean; isTrust?: boolean; isTrustWallet?: boolean; isPhantom?: boolean } | undefined;
-    setNaMetaMask(Boolean(celular && e?.isMetaMask && !e.isTrust && !e.isTrustWallet && !e.isPhantom && !w.phantom && !w.trustwallet));
     else if (/Android/i.test(ua)) setModo("android");
   }, []);
 
@@ -36,7 +31,5 @@ export function useLinkDoX() {
     [modo],
   );
 
-  /** Dentro da MetaMask o X não abre de jeito nenhum (o site do X manda pro
-   *  app e a MetaMask bloqueia → Play Store). Nas outras carteiras, tenta. */
-  return { href, alvo: modo === "pc" ? "_blank" : undefined, naCarteira: naMetaMask };
+  return { href, alvo: modo === "pc" ? "_blank" : undefined };
 }

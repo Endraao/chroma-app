@@ -39,7 +39,7 @@ const TEXTOS = traducoes({
     passo3: "Register your link", passo3b: (s: string) => `one-time registration fee: ${s}`,
     passo4: "Share it on X", passo4b: "your post becomes a buy box too",
     seguir: "Follow ↗", registrar: "Register", registrando: "Approve in your wallet…", compartilhar: "Post on X ↗", cancelado: "Cancelled in your wallet.", semSaldo: (m: string) => `Not enough ${m} in this wallet for the fee.`, naoDeu: "It didn't go through. Try again.",
-    pronto: "Your link is ready:", copiar: "Copy", copiado: "Copied!", sigaAntes: "Click Follow first", sigaPeloApp: "Follow @ChromaLaunch in the X app later (X does not open inside MetaMask).", copiarPost: "Copy post", postCopiado: "Post copied! Open the X app and paste it.",
+    pronto: "Your link is ready:", copiar: "Copy", copiado: "Copied!", sigaAntes: "Click Follow first",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   pt: {
@@ -56,7 +56,7 @@ const TEXTOS = traducoes({
     passo3: "Registre o seu link", passo3b: (s: string) => `taxa única de registro: ${s}`,
     passo4: "Compartilhe no X", passo4b: "o seu post também vira janela de compra",
     seguir: "Seguir ↗", registrar: "Registrar", registrando: "Aprove na sua carteira…", compartilhar: "Postar no X ↗", cancelado: "Cancelado na carteira.", semSaldo: (m: string) => `Saldo de ${m} insuficiente nesta carteira pra taxa.`, naoDeu: "Não deu certo. Tente de novo.",
-    pronto: "Seu link está pronto:", copiar: "Copiar", copiado: "Copiado!", sigaAntes: "Clique em Seguir antes", sigaPeloApp: "Siga @ChromaLaunch pelo app do X depois (o X não abre dentro da MetaMask).", copiarPost: "Copiar post", postCopiado: "Post copiado! Abra o app do X e cole.",
+    pronto: "Seu link está pronto:", copiar: "Copiar", copiado: "Copiado!", sigaAntes: "Clique em Seguir antes",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   zh: {
@@ -73,7 +73,7 @@ const TEXTOS = traducoes({
     passo3: "注册你的链接", passo3b: (s: string) => `一次性注册费：${s}`,
     passo4: "分享到 X", passo4b: "你的帖子也会变成购买窗口",
     seguir: "关注 ↗", registrar: "注册", registrando: "请在钱包中确认…", compartilhar: "发到 X ↗", cancelado: "已在钱包中取消。", semSaldo: (m: string) => `钱包中的 ${m} 不足以支付费用。`, naoDeu: "未成功，请重试。",
-    pronto: "你的链接已就绪：", copiar: "复制", copiado: "已复制！", sigaAntes: "请先点击关注", sigaPeloApp: "稍后请在 X App 中关注 @ChromaLaunch（MetaMask 内无法打开 X）。", copiarPost: "复制帖子", postCopiado: "帖子已复制！打开 X App 粘贴即可。",
+    pronto: "你的链接已就绪：", copiar: "复制", copiado: "已复制！", sigaAntes: "请先点击关注",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
 });
@@ -260,7 +260,6 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const [apelido, setApelido] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [postou, setPostou] = useState(false);
-  const [avisoX, setAvisoX] = useState("");
 
   useEffect(() => {
     if (!carteira) return;
@@ -378,14 +377,15 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const link = `https://chromalaunch.fun/e3/${token.address}?ref=${encodeURIComponent(ref)}`;
   const curto = (s: string) => (s.length > 14 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s);
   const linkNaTela = `chromalaunch.fun/e3/${curto(token.address)}?ref=${curto(ref)}`;
-  const copiar = (texto = link, avisar = () => {
+  const copiar = () => {
+    const avisar = () => {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 1500);
-    }) => {
+    };
     // Dentro do post o X não libera navigator.clipboard (iframe sem
     // "clipboard-write"): o jeito antigo, com um campo escondido, funciona.
     const campo = document.createElement("textarea");
-    campo.value = texto;
+    campo.value = link;
     campo.setAttribute("readonly", "");
     campo.style.cssText = "position:fixed;top:0;left:0;opacity:0";
     document.body.appendChild(campo);
@@ -396,7 +396,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
     } catch {}
     campo.remove();
     if (ok) return avisar();
-    navigator.clipboard?.writeText(texto).then(avisar).catch(() => {});
+    navigator.clipboard?.writeText(link).then(avisar).catch(() => {});
   };
   const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
   const Passo = ({ n, feito, titulo, sub, children }: { n: number; feito: boolean; titulo: string; sub: string; children?: React.ReactNode }) => (
@@ -423,16 +423,9 @@ function MeuLink({ token }: { token: TokenSummary }) {
         </RequireChainWallet>
       )}
       <Passo n={2} feito={segue} titulo={t.passo2} sub={t.passo2b}>
-        {linkX.naCarteira ? (
-          // Dentro da carteira o X não abre (09/10/2026): marca e pede pra seguir pelo app.
-          <button type="button" onClick={() => { clicouSeguir(); setAvisoX(t.sigaPeloApp); }} className="rounded-md border border-marca/40 px-2.5 py-1 text-[11.5px] font-bold text-marca">
-            {t.seguir}
-          </button>
-        ) : (
-          <a href={linkX.href(X_DA_CHROMA)} target={linkX.alvo} rel="noreferrer" onClick={clicouSeguir} className="rounded-md border border-marca/40 px-2.5 py-1 text-[11.5px] font-bold text-marca">
-            {t.seguir}
-          </a>
-        )}
+        <a href={linkX.href(X_DA_CHROMA)} target={linkX.alvo} rel="noreferrer" onClick={clicouSeguir} className="rounded-md border border-marca/40 px-2.5 py-1 text-[11.5px] font-bold text-marca">
+          {t.seguir}
+        </a>
       </Passo>
       <Passo n={3} feito={pago} titulo={t.passo3} sub={t.passo3b(taxaDoLink)}>
         {!pago && carteira && (
@@ -449,20 +442,9 @@ function MeuLink({ token }: { token: TokenSummary }) {
       </Passo>
       <Passo n={4} feito={postou} titulo={t.passo4} sub={t.passo4b}>
         {pago && carteira && (
-          linkX.naCarteira ? (
-            // Dentro da carteira o X não abre: copia o post (texto + link) pra colar no X.
-            <button
-              type="button"
-              onClick={() => copiar(`${t.tweet(token.symbol)} ${link}`, () => { setPostou(true); setAvisoX(t.postCopiado); })}
-              className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black"
-            >
-              {t.copiarPost}
-            </button>
-          ) : (
           <a href={linkX.href(postar)} target={linkX.alvo} rel="noreferrer" onClick={() => setPostou(true)} className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black">
             {t.compartilhar}
           </a>
-          )
         )}
       </Passo>
       {pago && carteira && (
@@ -471,12 +453,11 @@ function MeuLink({ token }: { token: TokenSummary }) {
           <span className="min-w-0 flex-1 truncate font-mono text-marca" title={link}>
             {linkNaTela}
           </span>
-          <button type="button" onClick={() => copiar()} className="shrink-0 rounded-md border border-marca/40 px-2 py-0.5 text-[11px] font-bold text-marca">
+          <button type="button" onClick={copiar} className="shrink-0 rounded-md border border-marca/40 px-2 py-0.5 text-[11px] font-bold text-marca">
             {copiado ? t.copiado : t.copiar}
           </button>
         </div>
       )}
-      {avisoX && <p className="mt-1 text-[11.5px] text-zinc-300">{avisoX}</p>}
       {estado && <p className="mt-1 text-[11.5px] text-zinc-300">{estado}</p>}
     </div>
   );
