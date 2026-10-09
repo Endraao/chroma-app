@@ -97,18 +97,14 @@ export function useWalletOptions() {
             // Já selecionada (mas desconectada): select() não faria nada —
             // o botão parecia morto. Pede a conexão direto.
             if (selecionada?.adapter.name === w.adapter.name) {
-              void conectarSolana().catch(avisarErroDaCarteira);
+              // Um pedido por vez: dois ao mesmo tempo, a carteira cancela um e
+              // responde "User rejected the request" (Phantom, 09/10/2026).
+              if (!w.adapter.connecting) void conectarSolana().catch(avisarErroDaCarteira);
               return;
             }
+            // Escolhida pela pessoa: o WalletProvider já pede a conexão
+            // explícita sozinho (adapter.connect) — não pedir de novo aqui.
             select(w.adapter.name);
-            /*
-             * Conexão EXPLÍCITA logo em seguida (09/10/2026). Só com select(), o
-             * autoConnect pede a conexão no modo "silencioso" — e a MetaMask do
-             * celular não responde a ele: "Transport request timed out", e a
-             * carteira volta pra "nenhuma". O pedido explícito mostra a
-             * aprovação na carteira. Se ela já estiver conectando, não duplica.
-             */
-            void w.adapter.connect().catch(avisarErroDaCarteira);
           },
         })),
     [wallets, select, selecionada, conectarSolana, recent, remember],
