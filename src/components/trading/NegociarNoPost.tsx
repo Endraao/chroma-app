@@ -328,6 +328,14 @@ function MeuLink({ token }: { token: TokenSummary }) {
           lamports: Math.round(TAXA_DO_LINK_SOL * LAMPORTS_PER_SOL),
         }),
       );
+      // Simula antes de abrir a carteira: transação que falharia faz a Phantom
+      // mostrar "esta dapp pode ser maliciosa" (09/10/2026).
+      const simulacao = await connection.simulateTransaction(tx);
+      if (simulacao.value.err) {
+        console.error("[registrar link] simulação", simulacao.value.err, simulacao.value.logs);
+        setEstado(/insufficient/i.test(JSON.stringify(simulacao.value)) ? t.semSaldo("SOL") : t.naoDeu);
+        return;
+      }
       const assinatura = await sendTransaction(tx, connection);
       try {
         await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");

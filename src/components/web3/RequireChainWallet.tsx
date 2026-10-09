@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { SignInModal } from "@/components/web3/SignInModal";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { useWalletOptions } from "@/hooks/useWalletOptions";
+import { findCatalogWallet } from "@/lib/wallet-catalog";
 import { cn, shortenAddress } from "@/lib/utils";
 import { chainIcon } from "@/lib/chain-icons";
 import { CHAINS, robinhoodChain } from "@/lib/web3";
@@ -90,6 +91,14 @@ const TEXTOS = traducoes({
     liberar: "打开钱包签名",
   },
 });
+
+/** Ícone de cada carteira (catálogo do site), à esquerda do nome (pedido do dono, 09/10/2026). */
+const ICONE_DA_CARTEIRA: Record<string, string | undefined> = {
+  Phantom: findCatalogWallet("Phantom")?.icon,
+  MetaMask: findCatalogWallet("MetaMask")?.icon,
+  Trust: findCatalogWallet("Trust Wallet")?.icon ?? findCatalogWallet("Trust")?.icon,
+  Coinbase: findCatalogWallet("Coinbase Wallet")?.icon,
+};
 
 /** O app de cada carteira no Android (pra abrir o link direto nele). */
 const PACOTE_ANDROID: Record<string, string> = {
@@ -302,8 +311,9 @@ export function RequireChainWallet({
                 // Mesma aba, de propósito (09/10/2026): com target=_blank o navegador
                 // do X no Android não entrega o link pro app da carteira — dava
                 // "nenhum aplicativo pode executar esta ação". Na mesma aba, abre.
-                className="rounded-lg border border-ink-600 bg-ink-800 py-2 text-center text-[12px] font-bold text-zinc-100"
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-ink-600 bg-ink-800 py-2 text-[12px] font-bold text-zinc-100"
               >
+                {ICONE_DA_CARTEIRA[nome] && <img src={ICONE_DA_CARTEIRA[nome]} alt="" width={16} height={16} className="size-4 rounded" />}
                 {nome}
               </a>
             ))}
