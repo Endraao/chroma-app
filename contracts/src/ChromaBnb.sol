@@ -15,8 +15,8 @@ import {ICLPoolManager, IVault, ModifyLiquidityParams, PoolKey, Saldo, SwapParam
  * - Sem liquidez em BNB: toda a emissão entra numa faixa só, ACIMA do preço
  *   inicial. Cada compra coloca BNB na pool e sobe o preço — uma curva dentro
  *   da própria DEX.
- * - Taxa anti-sniper: 50% no primeiro segundo, caindo em linha reta até 1% em
- *   5 minutos (compra E venda). Depois, 1% pra sempre.
+ * - Taxa anti-sniper (TAXA_INICIAL, fixa no deploy) no primeiro segundo, caindo
+ *   em linha reta até 1% em JANELA segundos (compra E venda). Depois, 1% pra sempre.
  * - TODA a taxa (a anti-sniper e a normal) é do CRIADOR. A Chroma não fica com
  *   nada; a PancakeSwap cobra a parte dela (0,03%) por fora.
  * - A compra inicial do criador entra NA MESMA transação do lançamento, antes
@@ -53,9 +53,13 @@ contract ChromaBnb {
     int24 public constant ESPACAMENTO = 60;
 
     /** Taxas em "pips": 1_000_000 = 100%. */
-    uint24 public constant TAXA_INICIAL = 500_000; // 50%
     uint24 public constant TAXA_NORMAL = 10_000; // 1%
-    uint256 public constant JANELA = 5 minutes;
+
+    /** Taxa anti-sniper no lançamento (pips) e em quanto tempo ela cai até 1%.
+     *  Fixas no deploy: o 1º lançador saiu com 50% / 5 min; o de teste de
+     *  09/10/2026, 25% / 30 s. */
+    uint24 public immutable TAXA_INICIAL;
+    uint256 public immutable JANELA;
 
     uint24 private constant TAXA_DINAMICA = 0x800000;
     uint24 private constant SOBRESCREVER_TAXA = 0x400000;
@@ -86,10 +90,15 @@ contract ChromaBnb {
         Coletar
     }
 
-    constructor(address cofre, address gerente, uint256 fdvInicialWei) {
+    error TaxaInvalida();
+
+    constructor(address cofre, address gerente, uint256 fdvInicialWei, uint24 taxaInicial, uint256 janela) {
+        if (taxaInicial < TAXA_NORMAL || taxaInicial >= 1_000_000 || janela == 0) revert TaxaInvalida();
         COFRE = IVault(cofre);
         GERENTE = ICLPoolManager(gerente);
         FDV_INICIAL = fdvInicialWei;
+        TAXA_INICIAL = taxaInicial;
+        JANELA = janela;
     }
 
     /* ------------------------------------------------------------------ */

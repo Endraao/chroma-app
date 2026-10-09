@@ -37,6 +37,9 @@ interface Lancada {
   simbolo: string;
   em: number;
   imagem?: string;
+  /** Lançador e negociação desta moeda (cada lançador tem os seus). */
+  lancador?: string;
+  troca?: string;
 }
 
 function provedor(): EIP1193Provider | null {
@@ -84,7 +87,19 @@ export function LancarBnb({
   const [compra, setCompra] = useState("0.01");
   const [lancadas, setLancadas] = useState<Lancada[]>([]);
 
-  useEffect(() => setLancadas(lerGuardadas()), []);
+  // Moedas antigas (antes de existir mais de um lançador) ficam com o de agora.
+  useEffect(() => {
+    const lista = lerGuardadas().map((l) =>
+      l.lancador ? l : { ...l, lancador: lancadorSalvo ?? undefined, troca: trocaSalva ?? undefined },
+    );
+    try {
+      localStorage.setItem(GUARDADAS, JSON.stringify(lista));
+    } catch {}
+    setLancadas(lista);
+  }, [lancadorSalvo, trocaSalva]);
+  // Teste de 09/10/2026: lançador novo com outra taxa anti-sniper.
+  const [taxaTeste, setTaxaTeste] = useState("25");
+  const [janelaTeste, setJanelaTeste] = useState("30");
 
   // Valor em dólar da compra inicial (pedido do dono, 09/10/2026).
   const [precoBnb, setPrecoBnb] = useState<number | null>(null);
@@ -159,7 +174,13 @@ export function LancarBnb({
       const hash = await carteira.deployContract({
         abi: ABI,
         bytecode: artefato.bytecode as Hex,
-        args: [COFRE, GERENTE, FDV_INICIAL],
+        args: [
+          COFRE,
+          GERENTE,
+          FDV_INICIAL,
+          Math.round(Math.min(Math.max(Number(taxaTeste) || 50, 1), 99) * 10_000),
+          BigInt(Math.max(Math.round(Number(janelaTeste) || 300), 1)),
+        ],
         account: endereco,
       });
       setEstado("Publicando… (alguns segundos)");
@@ -168,10 +189,12 @@ export function LancarBnb({
       const r = await fetch("/api/bnb/lancador", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chave, endereco: recibo.contractAddress }),
+        // Já havia lançador: este SUBSTITUI (as moedas antigas guardam o delas).
+        body: JSON.stringify({ chave, endereco: recibo.contractAddress, substituir: Boolean(lancador) }),
       });
       const j = await r.json();
       setLancador((j?.endereco ?? recibo.contractAddress) as `0x${string}`);
+      setTrocaEnd(null);
       setEstado("Lançador publicado! Já dá pra lançar moedas.");
     });
 
@@ -217,7 +240,15 @@ export function LancarBnb({
         args: { moeda: string };
       }[];
       if (!ev) throw new Error("Lançado, mas não achei a moeda no recibo. Veja no BscScan: " + hash);
-      const nova = { moeda: ev.args.moeda, nome: nome.trim(), simbolo: simbolo.trim().toUpperCase(), em: Date.now(), imagem: imagemUrl };
+      const nova: Lancada = {
+        moeda: ev.args.moeda,
+        nome: nome.trim(),
+        simbolo: simbolo.trim().toUpperCase(),
+        em: Date.now(),
+        imagem: imagemUrl,
+        lancador,
+        troca: trocaEnd ?? undefined,
+      };
       const lista = [nova, ...lerGuardadas()];
       try {
         localStorage.setItem(GUARDADAS, JSON.stringify(lista));
@@ -230,7 +261,7 @@ export function LancarBnb({
       setXLink("");
       setTelegram("");
       setSaldo(await leitura.getBalance({ address: endereco }));
-      setEstado(`Lançada! $${nova.simbolo}: os primeiros 5 minutos têm a taxa anti-sniper (50% caindo até 1%).`);
+      setEstado(`Lançada! $${nova.simbolo}: no começo vale a taxa anti-sniper do lançador, caindo até 1%.`);
     });
 
   /*
@@ -243,7 +274,7 @@ export function LancarBnb({
     let vivo = true;
     const ler = () =>
       lancadas.forEach((l) =>
-        fetch(`/api/bnb/taxas?moeda=${l.moeda}`)
+        fetch(`/api/bnb/taxas?moeda=${l.moeda}&lancador=${l.lancador ?? ""}&troca=${trocaDe(l) ?? ""}`)
           .then((r) => (r.ok ? r.json() : null))
           .then((j) => j && vivo && setTaxas((t) => ({ ...t, [l.moeda.toLowerCase()]: j })))
           .catch(() => {}),
@@ -261,36 +292,39 @@ export function LancarBnb({
    * "Coletar em BNB" coleta e vende na hora as moedas recebidas (pela
    * negociação), pra quem cria receber tudo em BNB.
    */
-  const coletar = (moeda: string, emBnb = false) =>
+  const coletar = (l: Lancada, emBnb = false) =>
     rodar(async () => {
-      if (!lancador) return;
+      const moeda = l.moeda;
+      const doLancador = (l.lancador ?? lancador) as `0x${string}` | null;
+      const trocaDaMoeda = trocaDe(l);
+      if (!doLancador) return;
       const { carteira, leitura, endereco } = await clientes();
       const antes = emBnb
         ? await leitura.readContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "balanceOf", args: [endereco] })
         : 0n;
       setEstado("Aprove a coleta das taxas na carteira…");
       const hash = await carteira.writeContract({
-        address: lancador,
+        address: doLancador,
         abi: ABI,
         functionName: "coletar",
         args: [moeda],
         account: endereco,
       });
       await leitura.waitForTransactionReceipt({ hash });
-      if (emBnb && trocaEnd) {
+      if (emBnb && trocaDaMoeda) {
         const depois = await leitura.readContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "balanceOf", args: [endereco] });
         const recebidas = depois - antes;
         if (recebidas > 0n) {
-          const permitido = await leitura.readContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "allowance", args: [endereco, trocaEnd] });
+          const permitido = await leitura.readContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "allowance", args: [endereco, trocaDaMoeda] });
           if (permitido < recebidas) {
             setEstado("Aprove a moeda na carteira (só na primeira vez)…");
-            const h = await carteira.writeContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "approve", args: [trocaEnd, maxUint256], account: endereco });
+            const h = await carteira.writeContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "approve", args: [trocaDaMoeda, maxUint256], account: endereco });
             await leitura.waitForTransactionReceipt({ hash: h });
           }
-          const { result: cotado } = await leitura.simulateContract({ address: trocaEnd, abi: artefatoTroca.abi as Abi, functionName: "cotar", args: [moeda, false, recebidas], account: endereco });
+          const { result: cotado } = await leitura.simulateContract({ address: trocaDaMoeda, abi: artefatoTroca.abi as Abi, functionName: "cotar", args: [moeda, false, recebidas], account: endereco });
           setEstado("Aprove a venda das moedas recebidas…");
           const h2 = await carteira.writeContract({
-            address: trocaEnd,
+            address: trocaDaMoeda,
             abi: artefatoTroca.abi as Abi,
             functionName: "vender",
             args: [moeda, recebidas, ((cotado as bigint) * 95n) / 100n],
@@ -304,6 +338,12 @@ export function LancarBnb({
       setEstado(emBnb ? "Taxas coletadas e convertidas em BNB." : "Taxas enviadas pra carteira de quem criou a moeda.");
     });
 
+  /** A negociação da moeda: a gravada nela, ou a de agora se a moeda é do lançador atual. */
+  function trocaDe(l: Lancada): `0x${string}` | null {
+    if (l.troca) return l.troca as `0x${string}`;
+    return l.lancador && lancador && l.lancador.toLowerCase() === lancador.toLowerCase() ? trocaEnd : null;
+  }
+
   const okLancar = Boolean(lancador && nome.trim() && simbolo.trim() && !ocupado);
   const campo =
     "mt-1 w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-[14px] text-zinc-100 outline-none focus:border-marca/60";
@@ -315,8 +355,7 @@ export function LancarBnb({
       <div>
         <h1 className="text-2xl font-black text-zinc-50">Lançar na BNB</h1>
         <p className="mt-1 text-[13px] text-zinc-400">
-          A moeda nasce direto numa pool da PancakeSwap (bots e GMGN veem no primeiro segundo). Taxa anti-sniper de 50%
-          caindo até 1% em 5 minutos; depois 1% pra sempre. Toda a taxa é de quem cria.
+          A moeda nasce direto numa pool da PancakeSwap (bots e GMGN veem no primeiro segundo). Taxa anti-sniper alta no lançamento, caindo até 1% (configurada no lançador); depois 1% pra sempre. Toda a taxa é de quem cria.
         </p>
       </div>
 
@@ -400,6 +439,26 @@ export function LancarBnb({
           <p className="text-[11px] text-zinc-500">
             Lançador: <span className="font-mono">{lancador}</span>
           </p>
+          <details className="rounded-lg border border-white/[0.06] p-2.5 text-[12px] text-zinc-400">
+            <summary className="cursor-pointer font-bold text-zinc-300">Trocar a taxa anti-sniper (lançador novo)</summary>
+            <p className="mt-1.5">
+              A taxa fica gravada no lançador. Pra mudar, publica-se outro (centavos de BNB). As moedas já lançadas continuam
+              no lançador delas.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label>
+                Taxa inicial (%)
+                <input value={taxaTeste} onChange={(e) => setTaxaTeste(e.target.value)} inputMode="decimal" className={campo} />
+              </label>
+              <label>
+                Cai até 1% em (segundos)
+                <input value={janelaTeste} onChange={(e) => setJanelaTeste(e.target.value)} inputMode="numeric" className={campo} />
+              </label>
+            </div>
+            <button type="button" onClick={publicar} disabled={ocupado} className={`${botao} mt-2 w-full`}>
+              Publicar lançador novo ({taxaTeste}% → 1% em {janelaTeste}s)
+            </button>
+          </details>
         </section>
       )}
 
@@ -437,7 +496,7 @@ export function LancarBnb({
                   PancakeSwap
                 </a>
                 {/* Sempre em BNB (pedido do dono): as moedas da taxa são vendidas na hora. */}
-                <button type="button" onClick={() => coletar(l.moeda, Boolean(trocaEnd))} disabled={ocupado} className="font-bold text-marca">
+                <button type="button" onClick={() => coletar(l, Boolean(trocaDe(l)))} disabled={ocupado} className="font-bold text-marca">
                   Coletar taxas
                   {taxas[l.moeda.toLowerCase()]?.usd != null && (
                     <span className="font-normal text-zinc-300"> (≈ US$ {taxas[l.moeda.toLowerCase()].usd!.toFixed(2)})</span>
@@ -452,11 +511,11 @@ export function LancarBnb({
                 </button>
               </p>
               {negociando === l.moeda &&
-                (trocaEnd ? (
+                (trocaDe(l) ? (
                   <NegociarBnb
                     moeda={l.moeda as `0x${string}`}
                     simbolo={l.simbolo}
-                    troca={trocaEnd}
+                    troca={trocaDe(l)!}
                     clientes={clientes}
                     precoBnb={precoBnb}
                   />

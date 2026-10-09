@@ -18,27 +18,33 @@ const LEITOR = "0x000000000000000000000000000000000000c0DE" as const;
 const cliente = createPublicClient({ chain: bsc, transport: http("https://bsc-rpc.publicnode.com") });
 
 export async function GET(request: Request) {
-  const moeda = new URL(request.url).searchParams.get("moeda") ?? "";
+  const q = new URL(request.url).searchParams;
+  const moeda = q.get("moeda") ?? "";
+  // Cada moeda é do lançador (e da negociação) dela; sem os parâmetros, os atuais.
+  const lancadorDaMoeda = q.get("lancador") ?? "";
+  const trocaDaMoeda = q.get("troca") ?? "";
   if (!EVM.test(moeda)) return NextResponse.json({ erro: "moeda inválida" }, { status: 400 });
   try {
     const [lancador, trocaEnd] = await Promise.all([
       lerDoCacheDoBanco<{ endereco: `0x${string}` }>("lancador-bnb"),
       lerDoCacheDoBanco<{ endereco: `0x${string}` }>("troca-bnb"),
     ]);
-    if (!lancador) return NextResponse.json({ erro: "sem lançador" }, { status: 404 });
+    const lancadorEnd = (EVM.test(lancadorDaMoeda) ? lancadorDaMoeda : lancador?.endereco) as `0x${string}` | undefined;
+    const trocaUsada = (EVM.test(trocaDaMoeda) ? trocaDaMoeda : trocaEnd?.endereco) as `0x${string}` | undefined;
+    if (!lancadorEnd) return NextResponse.json({ erro: "sem lançador" }, { status: 404 });
 
     const r = await cliente.call({
       to: LEITOR,
-      data: encodeFunctionData({ abi: leitor.abi as Abi, functionName: "ler", args: [lancador.endereco, moeda] }),
+      data: encodeFunctionData({ abi: leitor.abi as Abi, functionName: "ler", args: [lancadorEnd, moeda] }),
       stateOverride: [{ address: LEITOR, code: leitor.deployedBytecode as `0x${string}` }],
     });
     const [bnb, tokens] = decodeFunctionResult({ abi: leitor.abi as Abi, functionName: "ler", data: r.data! }) as [bigint, bigint];
 
     let tokensEmBnb = 0n;
-    if (tokens > 0n && trocaEnd) {
+    if (tokens > 0n && trocaUsada) {
       const c = await cliente
         .call({
-          to: trocaEnd.endereco,
+          to: trocaUsada,
           data: encodeFunctionData({ abi: troca.abi as Abi, functionName: "cotar", args: [moeda, false, tokens] }),
         })
         .catch(() => null);

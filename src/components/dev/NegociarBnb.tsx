@@ -297,7 +297,7 @@ export function NegociarBnb({
         </p>
         <p className="flex justify-between">
           <span>Taxa da pool</span>
-          <span>1% (até 50% nos 5 primeiros minutos)</span>
+          <span>1% (mais alta logo após o lançamento)</span>
         </p>
       </div>
       <button

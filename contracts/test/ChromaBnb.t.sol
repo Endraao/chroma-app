@@ -69,7 +69,7 @@ contract ChromaBnbTest is Test {
 
     function setUp() public {
         vm.createSelectFork("bsc");
-        lancador = new ChromaBnb(COFRE, GERENTE, 4 ether);
+        lancador = new ChromaBnb(COFRE, GERENTE, 4 ether, 500_000, 5 minutes);
         bot = new Negociante(lancador);
         vm.deal(criador, 10 ether);
         vm.deal(address(bot), 100 ether);
@@ -168,5 +168,22 @@ contract ChromaBnbTest is Test {
         uint256 primeira = bot.comprar{value: 1 ether}(moeda);
         uint256 segunda = bot.comprar{value: 1 ether}(moeda);
         assertLt(segunda, primeira);
+    }
+
+    function test_lancador_de_teste_25_por_cento_em_30_segundos() public {
+        ChromaBnb rapido = new ChromaBnb(COFRE, GERENTE, 4.35 ether, 250_000, 30);
+        vm.prank(criador);
+        address moeda = rapido.lancar("Teste", "TST", "");
+        uint256 inicio = block.timestamp;
+        assertEq(rapido.taxaAgora(moeda, address(bot)), 250_000);
+        vm.warp(inicio + 15);
+        assertEq(rapido.taxaAgora(moeda, address(bot)), 130_000);
+        vm.warp(inicio + 30);
+        assertEq(rapido.taxaAgora(moeda, address(bot)), 10_000);
+    }
+
+    function test_taxa_invalida_no_deploy_falha() public {
+        vm.expectRevert(ChromaBnb.TaxaInvalida.selector);
+        new ChromaBnb(COFRE, GERENTE, 4.35 ether, 5_000, 30);
     }
 }

@@ -20,7 +20,7 @@ contract ChromaBnbTrocaTest is Test {
 
     function setUp() public {
         vm.createSelectFork("bsc");
-        lancador = new ChromaBnb(COFRE, GERENTE, 4.35 ether);
+        lancador = new ChromaBnb(COFRE, GERENTE, 4.35 ether, 500_000, 5 minutes);
         troca = new ChromaBnbTroca(address(lancador));
         vm.deal(criador, 10 ether);
         vm.deal(pessoa, 10 ether);
