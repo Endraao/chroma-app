@@ -38,7 +38,7 @@ const TEXTOS = traducoes({
     passo2: "Follow @ChromaLaunch on X", passo2b: "stay on top of new features",
     passo3: "Register your link", passo3b: (s: string) => `one-time registration fee: ${s}`,
     passo4: "Share it on X", passo4b: "your post becomes a buy box too",
-    seguir: "Follow ↗", registrar: "Register", registrando: "Approve in your wallet…", compartilhar: "Post on X ↗", cancelado: "Cancelled in your wallet.", semSaldo: (m: string) => `Not enough ${m} in this wallet for the fee.`, naoDeu: "It didn't go through. Try again.",
+    seguir: "Follow ↗", registrar: "Register", registrando: "Approve in your wallet…", confirmando: "Confirming the payment on-chain…", compartilhar: "Post on X ↗", cancelado: "Cancelled in your wallet.", semSaldo: (m: string) => `Not enough ${m} in this wallet for the fee.`, naoDeu: "It didn't go through. Try again.",
     pronto: "Your link is ready:", copiar: "Copy", copiado: "Copied!", sigaAntes: "Click Follow first", feito: "Done", copiarPost: "Copy post", postCopiado: "Post copied! Open the X app and paste it.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
@@ -55,7 +55,7 @@ const TEXTOS = traducoes({
     passo2: "Siga a @ChromaLaunch no X", passo2b: "fique por dentro das novidades",
     passo3: "Registre o seu link", passo3b: (s: string) => `taxa única de registro: ${s}`,
     passo4: "Compartilhe no X", passo4b: "o seu post também vira janela de compra",
-    seguir: "Seguir ↗", registrar: "Registrar", registrando: "Aprove na sua carteira…", compartilhar: "Postar no X ↗", cancelado: "Cancelado na carteira.", semSaldo: (m: string) => `Saldo de ${m} insuficiente nesta carteira pra taxa.`, naoDeu: "Não deu certo. Tente de novo.",
+    seguir: "Seguir ↗", registrar: "Registrar", registrando: "Aprove na sua carteira…", confirmando: "Confirmando o pagamento na rede…", compartilhar: "Postar no X ↗", cancelado: "Cancelado na carteira.", semSaldo: (m: string) => `Saldo de ${m} insuficiente nesta carteira pra taxa.`, naoDeu: "Não deu certo. Tente de novo.",
     pronto: "Seu link está pronto:", copiar: "Copiar", copiado: "Copiado!", sigaAntes: "Clique em Seguir antes", feito: "Feito", copiarPost: "Copiar post", postCopiado: "Post copiado! Abra o app do X e cole.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
@@ -72,7 +72,7 @@ const TEXTOS = traducoes({
     passo2: "在 X 上关注 @ChromaLaunch", passo2b: "第一时间了解新功能",
     passo3: "注册你的链接", passo3b: (s: string) => `一次性注册费：${s}`,
     passo4: "分享到 X", passo4b: "你的帖子也会变成购买窗口",
-    seguir: "关注 ↗", registrar: "注册", registrando: "请在钱包中确认…", compartilhar: "发到 X ↗", cancelado: "已在钱包中取消。", semSaldo: (m: string) => `钱包中的 ${m} 不足以支付费用。`, naoDeu: "未成功，请重试。",
+    seguir: "关注 ↗", registrar: "注册", registrando: "请在钱包中确认…", confirmando: "正在链上确认付款…", compartilhar: "发到 X ↗", cancelado: "已在钱包中取消。", semSaldo: (m: string) => `钱包中的 ${m} 不足以支付费用。`, naoDeu: "未成功，请重试。",
     pronto: "你的链接已就绪：", copiar: "复制", copiado: "已复制！", sigaAntes: "请先点击关注", feito: "已完成", copiarPost: "复制帖子", postCopiado: "帖子已复制！打开 X App 粘贴即可。",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
@@ -315,6 +315,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
           value: parseEther(TAXA_DO_LINK_ETH),
           chainId: robinhoodChain.id,
         });
+        setEstado(t.confirmando);
         await clienteEvm.waitForTransactionReceipt({ hash });
         await confirmarNoSite(hash);
       } catch (e) {
@@ -351,6 +352,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
         return;
       }
       const assinatura = await sendTransaction(tx, connection);
+      setEstado(t.confirmando);
       try {
         await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
       } catch (e) {
