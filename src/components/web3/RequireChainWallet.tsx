@@ -125,7 +125,7 @@ export function RequireChainWallet({
   const t = useTextos(TEXTOS);
   const [modalAberto, setModalAberto] = useState(false);
 
-  const { connected: solanaConectada, connecting: solanaConectando, wallet: solanaEscolhida, publicKey: solanaChave } = useWallet();
+  const { connected: solanaConectada } = useWallet();
   // Rede REAL da carteira: o useChainId() fica preso na Robinhood (única da config).
   const { isConnected: evmConectada, chainId: chainIdAtual } = useAccount();
   const { switchChain, isPending: trocando } = useSwitchChain();
@@ -233,15 +233,9 @@ export function RequireChainWallet({
     window.addEventListener("chroma-erro-carteira", ouvir);
     return () => window.removeEventListener("chroma-erro-carteira", ouvir);
   }, []);
-  // Diagnóstico no celular (09/10/2026): sem console dentro do app da carteira.
-  const diagnostico =
-    android || /iPhone|iPad|iPod/i.test(typeof navigator === "undefined" ? "" : navigator.userAgent)
-      ? `[${solanaEscolhida?.adapter.name ?? "nenhuma"} · ${solanaEscolhida?.readyState ?? "-"} · ${solanaConectando ? "conectando" : solanaConectada ? "conectada" : "desconectada"} · ${solanaChave ? "com chave" : "sem chave"} · ${reais.map((o) => o.name).join("/") || "sem carteiras"}]`
-      : "";
   const avisoDeErro = (
     <>
       {erroCarteira && <p className="mt-1.5 text-[11px] leading-snug text-bear">{erroCarteira}</p>}
-      {ehSolana && diagnostico && <p className="mt-1 text-[10px] text-zinc-600">{diagnostico}</p>}
     </>
   );
   const pediuTroca = useRef(false);
