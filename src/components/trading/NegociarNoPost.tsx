@@ -112,6 +112,10 @@ function Conteudo({ base }: { base: TokenSummary }) {
   const token = useTokenVivo(base);
   const pct = token.change24h;
   const [aba, setAba] = useState<"negociar" | "link">("negociar");
+  // Aberta pelo botão de carteira da aba "My link" (no celular): volta nela.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("aba") === "link") setAba("link");
+  }, []);
   const [explicando, setExplicando] = useState(false);
   // A indicação de quem postou segue junto se a compra tiver de abrir fora do X.
   const [ref, setRef] = useState("");
@@ -242,6 +246,15 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const clienteEvm = usePublicClient({ chainId: robinhoodChain.id });
   const carteira = (ehEvm ? carteiraEvm : publicKey?.toBase58()) ?? "";
   const taxaDoLink = ehEvm ? `${TAXA_DO_LINK_ETH} ETH` : `${TAXA_DO_LINK_SOL} SOL`;
+  // No celular sem carteira (navegador do X): os botões Phantom/MetaMask/Trust
+  // abrem esta página no app da carteira, já na aba "My link". Sem isso caía
+  // no Mobile Wallet Adapter ("Allow connections…"), que não funciona no X.
+  const [alvoNaCarteira, setAlvoNaCarteira] = useState<string>();
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    q.set("aba", "link");
+    setAlvoNaCarteira(`${window.location.origin}${window.location.pathname}?${q.toString()}`);
+  }, []);
   // Apelido da conta Chroma desta carteira: deixa o link curto (?ref=apelido em
   // vez do endereço). O ?ref= aceita os dois e resolve pra carteira da rede.
   const [apelido, setApelido] = useState("");
@@ -405,7 +418,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
       <p className="mb-1 text-[11.5px] leading-snug text-zinc-400">{t.linkTexto(ehEvm ? "ETH" : "SOL")}</p>
       <Passo n={1} feito={Boolean(carteira)} titulo={t.passo1} sub={t.passo1b} />
       {!carteira && (
-        <RequireChainWallet chain={ehEvm ? "robinhood" : "solana"} compacto>
+        <RequireChainWallet chain={ehEvm ? "robinhood" : "solana"} compacto alvoNaCarteira={alvoNaCarteira}>
           <span />
         </RequireChainWallet>
       )}

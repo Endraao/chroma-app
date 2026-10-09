@@ -240,7 +240,8 @@ export function RequireChainWallet({
   useEffect(() => {
     if (conectada || pediuConexao.current || !direta) return;
     const celularDeVerdade = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    const veioDoBotaoDaCarteira = new URLSearchParams(window.location.search).has("lado");
+    const q = new URLSearchParams(window.location.search);
+    const veioDoBotaoDaCarteira = q.has("lado") || q.get("aba") === "link";
     if (!celularDeVerdade || !veioDoBotaoDaCarteira || !reais.length) return;
     pediuConexao.current = true;
     const d = direta;
