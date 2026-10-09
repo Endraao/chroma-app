@@ -243,6 +243,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
   // vez do endereço). O ?ref= aceita os dois e resolve pra carteira da rede.
   const [apelido, setApelido] = useState("");
   const [copiado, setCopiado] = useState(false);
+  const [postou, setPostou] = useState(false);
 
   useEffect(() => {
     if (!carteira) return;
@@ -341,13 +342,25 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const curto = (s: string) => (s.length > 14 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s);
   const linkNaTela = `chromalaunch.fun/e3/${curto(token.address)}?ref=${curto(ref)}`;
   const copiar = () => {
-    navigator.clipboard
-      ?.writeText(link)
-      .then(() => {
-        setCopiado(true);
-        setTimeout(() => setCopiado(false), 1500);
-      })
-      .catch(() => {});
+    const avisar = () => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1500);
+    };
+    // Dentro do post o X não libera navigator.clipboard (iframe sem
+    // "clipboard-write"): o jeito antigo, com um campo escondido, funciona.
+    const campo = document.createElement("textarea");
+    campo.value = link;
+    campo.setAttribute("readonly", "");
+    campo.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(campo);
+    campo.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {}
+    campo.remove();
+    if (ok) return avisar();
+    navigator.clipboard?.writeText(link).then(avisar).catch(() => {});
   };
   const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
   const Passo = ({ n, feito, titulo, sub, children }: { n: number; feito: boolean; titulo: string; sub: string; children?: React.ReactNode }) => (
@@ -391,9 +404,9 @@ function MeuLink({ token }: { token: TokenSummary }) {
           </button>
         )}
       </Passo>
-      <Passo n={4} feito={false} titulo={t.passo4} sub={t.passo4b}>
+      <Passo n={4} feito={postou} titulo={t.passo4} sub={t.passo4b}>
         {pago && carteira && (
-          <a href={postar} target="_blank" rel="noreferrer" className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black">
+          <a href={postar} target="_blank" rel="noreferrer" onClick={() => setPostou(true)} className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black">
             {t.compartilhar}
           </a>
         )}
