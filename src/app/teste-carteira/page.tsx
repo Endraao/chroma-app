@@ -28,6 +28,9 @@ const GRUPOS: [string, [string, string][]][] = [
       ["M2 · intent", intent(`dapp/${SEM}`, "metamask", "io.metamask")],
       ["M3 · link.metamask.io", `https://link.metamask.io/dapp/${SEM}`],
       ["M4 · metamask.app.link (o de hoje)", `https://metamask.app.link/dapp/${SEM}`],
+      ["M5 · igual ao post (valor e lado)", `https://metamask.app.link/dapp/${SEM_POST}`],
+      ["M6 · intent igual ao post", intent(`dapp/${SEM_POST}`, "metamask", "io.metamask")],
+      ["M7 · link.metamask.io igual ao post", `https://link.metamask.io/dapp/${SEM_POST}`],
     ],
   ],
   [
