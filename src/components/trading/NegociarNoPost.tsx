@@ -281,7 +281,10 @@ function MeuLink({ token }: { token: TokenSummary }) {
     if (!publicKey || !sendTransaction || !PLATFORM_FEE_WALLET_SOL) return;
     try {
       setEstado(t.registrando);
-      const tx = new Transaction().add(
+      // O bloco vai NA transação e é o mesmo que a confirmação espera (antes era
+      // pego depois do envio e a espera estourava: "block height exceeded").
+      const bloco = await connection.getLatestBlockhash("confirmed");
+      const tx = new Transaction({ feePayer: publicKey, ...bloco }).add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
           toPubkey: new PublicKey(PLATFORM_FEE_WALLET_SOL),
@@ -289,8 +292,13 @@ function MeuLink({ token }: { token: TokenSummary }) {
         }),
       );
       const assinatura = await sendTransaction(tx, connection);
-      const bloco = await connection.getLatestBlockhash();
-      await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+      try {
+        await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+      } catch (e) {
+        // A espera pode desistir com o pagamento já feito (09/10/2026): confere na rede.
+        const { value } = await connection.getSignatureStatus(assinatura, { searchTransactionHistory: true });
+        if (!value || value.err || !value.confirmationStatus) throw e;
+      }
       await confirmarNoSite(assinatura);
     } catch (e) {
       setEstado(erroAmigavel(e));

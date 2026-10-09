@@ -23,6 +23,9 @@ const chave = (c: string) => `link-pago:${EVM.test(c) ? c.toLowerCase() : c}`;
 export async function GET(request: Request) {
   const carteira = new URL(request.url).searchParams.get("carteira") ?? "";
   if (!SOLANA.test(carteira) && !EVM.test(carteira)) return NextResponse.json({ pago: false });
+  // A carteira da própria Chroma não paga a si mesma (o pagamento sairia e
+  // voltaria pra ela, e a conferência nunca fecharia).
+  if (carteira === PLATAFORMA_SOL || carteira.toLowerCase() === PLATAFORMA_EVM) return NextResponse.json({ pago: true });
   const r = await lerDoCacheDoBanco<{ tx: string }>(chave(carteira)).catch(() => null);
   return NextResponse.json({ pago: Boolean(r) });
 }
