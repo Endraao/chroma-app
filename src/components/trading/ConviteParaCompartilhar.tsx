@@ -59,8 +59,8 @@ export function ConviteParaCompartilhar({ token, compacto = false }: { token: To
   useEffect(() => setOrigem(window.location.origin), []);
 
   const ref = account.account?.nickname ?? (token.chain === "solana" ? publicKey?.toBase58() : carteiraEvm) ?? null;
-  // /e/…: no X o post vira uma janela de compra (player card); fora do X, abre a moeda.
-  const link = `${origem}/e/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
+  // /e3/…: no X o post vira uma janela de compra (player card); no celular, abre a compra.
+  const link = `${origem}/e3/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
   const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
 
   async function copiar() {

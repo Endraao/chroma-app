@@ -3,7 +3,7 @@ import { after } from "next/server";
 import { getToken } from "@/lib/tokens";
 
 /**
- * TESTE DO CELULAR (09/10/2026) — o link do post copiado linha por linha do
+ * O LINK DO POST NO X (09/10/2026, funciona no PC E no Android) — copiado do
  * XPeriment (xperiment.app/e/house). No app do X no Android o post deles NÃO
  * vira cartão: aparece o link azul, que abre a compra no navegador do X. O
  * nosso vira cartão com play que não responde. A página deles é "pelada"

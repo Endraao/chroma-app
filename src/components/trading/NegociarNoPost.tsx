@@ -296,7 +296,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
     }
   }
 
-  const link = `https://chromalaunch.fun/e/${token.address}?ref=${carteira}`;
+  const link = `https://chromalaunch.fun/e3/${token.address}?ref=${carteira}`;
   const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
   const Passo = ({ n, feito, titulo, sub, children }: { n: number; feito: boolean; titulo: string; sub: string; children?: React.ReactNode }) => (
     <div className="flex items-center gap-3 border-t border-white/[0.06] py-1.5">

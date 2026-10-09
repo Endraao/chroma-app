@@ -83,7 +83,7 @@ export function SugestoesDoDia({ origem, refId }: { origem: string; refId: strin
         <p className="text-[12.5px] text-zinc-400">{t.sub}</p>
       </div>
       {lista.map((m, i) => {
-        const link = `${origem}/e/${m.address}${refId ? `?ref=${encodeURIComponent(refId)}` : ""}`;
+        const link = `${origem}/e3/${m.address}${refId ? `?ref=${encodeURIComponent(refId)}` : ""}`;
         const post = `${textoDoPost(m, i)}\n\n${link}`;
         return (
           <div key={m.address} className="flex flex-wrap items-center gap-3 border-t border-white/[0.05] pt-3">

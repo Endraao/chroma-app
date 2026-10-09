@@ -143,7 +143,7 @@ export function GeradorDeLink() {
   const chain: ChainId = endereco?.startsWith("0x") ? "robinhood" : "solana";
   // Apelido da conta vale nas duas redes; sem conta, a carteira da rede da moeda.
   const ref = account?.nickname ?? (chain === "solana" ? publicKey?.toBase58() : carteiraEvm) ?? null;
-  const link = endereco ? `${origem}/e/${endereco}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}` : "";
+  const link = endereco ? `${origem}/e3/${endereco}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}` : "";
 
   async function copiar() {
     try {
