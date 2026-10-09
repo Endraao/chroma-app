@@ -270,7 +270,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
       .catch(() => {});
     fetch(`/api/account?wallet=${carteira}`)
       .then((r) => r.json())
-      .then((c) => setApelido(c?.nickname && c?.carteiras?.[token.chain] === carteira ? c.nickname : ""))
+      .then((c) => setApelido(c?.nickname && String(c?.carteiras?.[token.chain] ?? "").toLowerCase() === carteira.toLowerCase() ? c.nickname : ""))
       .catch(() => {});
   }, [carteira, token.chain]);
 
