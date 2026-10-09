@@ -46,7 +46,7 @@ export default function PublicarPons() {
       const recibo = await esperarRecibo(publicClient, hash);
       if (recibo.status !== "success" || !recibo.contractAddress) throw new Error("a rede recusou a publicação");
       setEndereco(recibo.contractAddress);
-      setEstado("Pronto! Mande este endereço para o Claude.");
+      setEstado("Pronto! Copie este endereço.");
     } catch (e) {
       setEstado(e instanceof Error ? e.message.split("\n")[0] : String(e));
     }

@@ -37,7 +37,7 @@ export default function CriarCurvaChroma() {
       setEstado("Confirmando…");
       await connection.confirmTransaction(assinatura, "confirmed");
       setEndereco(config.publicKey.toBase58());
-      setEstado("Pronto! Mande este endereço para o Claude.");
+      setEstado("Pronto! Copie este endereço.");
     } catch (e) {
       setEstado(e instanceof Error ? e.message : String(e));
     }

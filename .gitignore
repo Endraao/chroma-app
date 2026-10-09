@@ -40,3 +40,8 @@ keypairs/
 # projeto — apagar só depois de confirmar que a importação ficou certa.
 /.data-backup-antes-do-sqlite/
 backups/
+
+# Arquivos locais de ferramentas (não vão pro GitHub)
+CLAUDE.md
+AGENTS.md
+.claude/

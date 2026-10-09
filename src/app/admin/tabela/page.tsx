@@ -40,7 +40,7 @@ export default function CriarTabela() {
       setEstado("Confirmando…");
       await connection.confirmTransaction(assinatura, "confirmed");
       setEndereco(tabela.toBase58());
-      setEstado("Pronto! Mande este endereço para o Claude.");
+      setEstado("Pronto! Copie este endereço.");
     } catch (e) {
       setEstado(e instanceof Error ? e.message : String(e));
     }
