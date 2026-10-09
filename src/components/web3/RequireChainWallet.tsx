@@ -88,6 +88,16 @@ const TEXTOS = traducoes({
   },
 });
 
+/** O app de cada carteira no Android (pra abrir o link direto nele). */
+const PACOTE_ANDROID: Record<string, string> = {
+  Phantom: "app.phantom",
+  Solflare: "com.solflare.mobile",
+  Backpack: "app.backpack.mobile",
+  MetaMask: "io.metamask",
+  Trust: "com.wallet.crypto.trustapp",
+  Coinbase: "org.toshi",
+};
+
 export function RequireChainWallet({
   chain,
   children,
@@ -139,6 +149,7 @@ export function RequireChainWallet({
     detectadas.length === 1 ? detectadas[0] : detectadas.find((o) => o.state === "recent");
   const abrir = () => (direta ? direta.onSelect() : setModalAberto(true));
   const [celular, setCelular] = useState(false);
+  const [android, setAndroid] = useState(false);
   const [listaAberta, setListaAberta] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
   const copiarLink = (link: string) => {
@@ -164,6 +175,7 @@ export function RequireChainWallet({
     const w = window as unknown as { phantom?: unknown; solana?: unknown; solflare?: unknown; backpack?: unknown; ethereum?: unknown };
     const injetada = ehSolana ? Boolean(w.phantom || w.solana || w.solflare || w.backpack) : Boolean(w.ethereum);
     setCelular(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !injetada);
+    setAndroid(/Android/i.test(navigator.userAgent));
   }, [ehSolana]);
 
   if (conectada && !redeErrada) return <>{children}</>;
@@ -180,7 +192,7 @@ export function RequireChainWallet({
       const r = encodeURIComponent(origem);
       const semProtocolo = alvoNaCarteira.replace(/^https?:\/\//, "");
       // Cada carteira abre o próprio navegador já nesta página (valor, lado e indicação juntos).
-      const carteiras = ehSolana
+      const lista: [string, string][] = ehSolana
         ? [
             ["Phantom", `https://phantom.app/ul/browse/${u}?ref=${r}`],
             ["Solflare", `https://solflare.com/ul/v1/browse/${u}?ref=${r}`],
@@ -193,6 +205,20 @@ export function RequireChainWallet({
             ["Coinbase", `https://go.cb-w.com/dapp?cb_url=${u}`],
             ["Trust", `https://link.trustwallet.com/open_url?coin_id=60&url=${u}`],
           ];
+      /*
+       * ANDROID (09/10/2026): o navegador do X abre o link https da carteira
+       * POR DENTRO em vez de passar pro app ("nenhum aplicativo pode executar
+       * esta ação"). O intent:// com o pacote manda o MESMO link direto pro app
+       * da carteira; sem o app instalado, o Android cai no link https normal
+       * (página de baixar). Testado com a MetaMask no app do X.
+       */
+      const carteiras = android
+        ? lista.map(([nome, link]): [string, string] =>
+            PACOTE_ANDROID[nome]
+              ? [nome, `intent://${link.replace("https://", "")}#Intent;scheme=https;package=${PACOTE_ANDROID[nome]};S.browser_fallback_url=${encodeURIComponent(link)};end`]
+              : [nome, link],
+          )
+        : lista;
       return (
         <div className="space-y-1.5">
           {/* No post do X cada linha conta (o X corta o que passa da altura): sem o texto, demais carteiras numa fileira só. */}
