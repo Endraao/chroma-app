@@ -114,7 +114,15 @@ function Conteudo({ base }: { base: TokenSummary }) {
   // A indicação de quem postou segue junto se a compra tiver de abrir fora do X.
   const [ref, setRef] = useState("");
   useEffect(() => setRef(new URLSearchParams(window.location.search).get("ref") ?? ""), []);
-  const linkFora = `/token/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
+  // A carteira conectada aqui segue junto: a aba da Chroma conecta sozinha e
+  // mostra o saldo (ver ConectarPeloLink) — sem isso pedia conexão de novo.
+  const { wallet: carteiraSol, connected: solConectada } = useWallet();
+  const { connector: conectorEvm, isConnected: evmConectada } = useAccount();
+  const paramsFora = new URLSearchParams();
+  if (ref) paramsFora.set("ref", ref);
+  if (solConectada && carteiraSol) paramsFora.set("carteira", carteiraSol.adapter.name);
+  if (evmConectada && conectorEvm) paramsFora.set("carteira-evm", conectorEvm.id);
+  const linkFora = `/token/${token.address}${paramsFora.size ? `?${paramsFora}` : ""}`;
 
   return (
     <main className="relative mx-auto flex max-w-[480px] flex-col gap-1 bg-ink-950 p-2">
