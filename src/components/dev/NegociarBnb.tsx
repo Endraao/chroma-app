@@ -15,6 +15,74 @@ const ABI = artefato.abi as Abi;
 const ATALHOS_BNB = ["0.01", "0.05", "0.1", "0.5"];
 const SLIPPAGES = [100, 500, 1000];
 
+interface Negocio {
+  compra: boolean;
+  quando: number;
+  quem: string;
+  tokens: number;
+  bnb: number;
+  usd: number;
+  tx: string;
+}
+
+/**
+ * Últimos negócios da moeda (pedido do dono, 09/10/2026), pela GeckoTerminal
+ * — que já indexa as pools Infinity da PancakeSwap. Atualiza a cada 15 s.
+ */
+function useNegocios(moeda: string) {
+  const [lista, setLista] = useState<Negocio[] | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    let pool: string | null = null;
+    const base = "https://api.geckoterminal.com/api/v2/networks/bsc";
+    const carregar = async () => {
+      try {
+        if (!pool) {
+          const r = await fetch(`${base}/tokens/${moeda}/pools`, { headers: { accept: "application/json" } });
+          pool = (await r.json())?.data?.[0]?.attributes?.address ?? null;
+          if (!pool) return vivo && setLista([]);
+        }
+        const r = await fetch(`${base}/pools/${pool}/trades`, { headers: { accept: "application/json" } });
+        const dados = ((await r.json())?.data ?? []) as { attributes: Record<string, string> }[];
+        if (!vivo) return;
+        setLista(
+          dados.slice(0, 30).map(({ attributes: a }) => {
+            const compra = a.kind === "buy";
+            return {
+              compra,
+              quando: Date.parse(a.block_timestamp),
+              quem: a.tx_from_address,
+              tokens: Number(compra ? a.to_token_amount : a.from_token_amount),
+              bnb: Number(compra ? a.from_token_amount : a.to_token_amount),
+              usd: Number(a.volume_in_usd),
+              tx: a.tx_hash,
+            };
+          }),
+        );
+      } catch {
+        /* GeckoTerminal fora ou limite: tenta de novo no próximo ciclo */
+      }
+    };
+    void carregar();
+    const id = setInterval(carregar, 15_000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, [moeda]);
+  return lista;
+}
+
+function haQuanto(ms: number) {
+  const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}min`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+
+const compacto = (n: number) => n.toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 2 });
+
 type Clientes = () => Promise<{ carteira: WalletClient; leitura: PublicClient; endereco: `0x${string}` }>;
 
 export function NegociarBnb({
@@ -39,6 +107,7 @@ export function NegociarBnb({
   const [estado, setEstado] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const pedido = useRef(0);
+  const negocios = useNegocios(moeda);
 
   const quantia = (() => {
     try {
@@ -240,6 +309,43 @@ export function NegociarBnb({
         {ocupado ? "Aguarde…" : lado === "compra" ? `Comprar ${simbolo}` : `Vender ${simbolo}`}
       </button>
       {estado && <p className="text-[12.5px] leading-relaxed text-zinc-200">{estado}</p>}
+
+      <div className="border-t border-white/[0.06] pt-2">
+        <p className="mb-1.5 text-[12px] font-bold text-zinc-300">Negócios</p>
+        {negocios === null ? (
+          <p className="text-[11.5px] text-zinc-500">Carregando…</p>
+        ) : negocios.length === 0 ? (
+          <p className="text-[11.5px] text-zinc-500">Nenhum negócio ainda (a lista pode levar ~1 min pra aparecer).</p>
+        ) : (
+          <div className="max-h-64 space-y-0.5 overflow-y-auto">
+            <div className="grid grid-cols-[44px_1fr_1fr_1fr_44px] gap-1 text-[10.5px] text-zinc-600">
+              <span>Tipo</span>
+              <span>{simbolo}</span>
+              <span>BNB</span>
+              <span>Carteira</span>
+              <span className="text-right">Quando</span>
+            </div>
+            {negocios.map((n) => (
+              <a
+                key={n.tx + n.quando}
+                href={`https://bscscan.com/tx/${n.tx}`}
+                target="_blank"
+                rel="noreferrer"
+                title={`US$ ${n.usd.toFixed(2)}`}
+                className="grid grid-cols-[44px_1fr_1fr_1fr_44px] gap-1 rounded px-0.5 py-0.5 font-mono text-[11px] hover:bg-white/[0.04]"
+              >
+                <span className={n.compra ? "font-bold text-bull" : "font-bold text-bear"}>{n.compra ? "Buy" : "Sell"}</span>
+                <span className="text-zinc-200">{compacto(n.tokens)}</span>
+                <span className="text-zinc-200">{n.bnb.toFixed(4)}</span>
+                <span className="text-zinc-500">
+                  {n.quem.slice(0, 6)}…{n.quem.slice(-4)}
+                </span>
+                <span className="text-right text-zinc-500">{haQuanto(n.quando)}</span>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
