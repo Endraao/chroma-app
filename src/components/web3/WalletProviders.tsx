@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import type { Adapter } from "@solana/wallet-adapter-base";
@@ -27,11 +27,23 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
    */
   const wallets = useMemo<Adapter[]>(() => [], []);
 
+  /*
+   * Reconexão silenciosa ao abrir a página — MENOS na MetaMask do celular
+   * (09/10/2026): lá ela não responde ao modo silencioso ("Transport request
+   * timed out") e a carteira volta pra "nenhuma". Nesse caso quem conecta é o
+   * pedido explícito (useWalletOptions / RequireChainWallet), que a MetaMask
+   * aceita — e, se o site já foi autorizado, nem pergunta de novo.
+   */
+  const autoConectar = useCallback(
+    async (adapter: Adapter) => !(adapter.name === "MetaMask" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)),
+    [],
+  );
+
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ConnectionProvider endpoint={SOLANA_RPC} config={{ commitment: "confirmed", wsEndpoint: SOLANA_WS }}>
-          <WalletProvider wallets={wallets} autoConnect onError={avisarErroDaCarteira}>
+          <WalletProvider wallets={wallets} autoConnect={autoConectar} onError={avisarErroDaCarteira}>
             <WalletModalProvider>
               <ConectarPeloLink />
               {children}
