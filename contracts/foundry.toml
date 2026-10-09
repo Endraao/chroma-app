@@ -39,6 +39,7 @@ deny = "never"
 
 [rpc_endpoints]
 robinhood = "https://rpc.mainnet.chain.robinhood.com"
+bsc = "https://bsc-dataseed.bnbchain.org"
 
 [fmt]
 line_length = 100
