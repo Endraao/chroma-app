@@ -289,6 +289,11 @@ function MeuLink({ token }: { token: TokenSummary }) {
     if (ehEvm) {
       if (!carteiraEvm || !PLATFORM_FEE_WALLET_EVM || !clienteEvm) return;
       try {
+        const saldo = await clienteEvm.getBalance({ address: carteiraEvm });
+        if (saldo < parseEther(TAXA_DO_LINK_ETH) + parseEther("0.00002")) {
+          setEstado(t.semSaldo("ETH"));
+          return;
+        }
         setEstado(t.registrando);
         if (redeAtual !== robinhoodChain.id) await switchChainAsync({ chainId: robinhoodChain.id });
         const hash = await sendTransactionAsync({
@@ -305,6 +310,13 @@ function MeuLink({ token }: { token: TokenSummary }) {
     }
     if (!publicKey || !sendTransaction || !PLATFORM_FEE_WALLET_SOL) return;
     try {
+      // Sem saldo, cada carteira recusa com uma mensagem diferente (a Trust,
+      // genérica): confere antes e diz o motivo certo. +0,001 SOL de rede.
+      const saldo = await connection.getBalance(publicKey, "confirmed");
+      if (saldo < Math.round((TAXA_DO_LINK_SOL + 0.001) * LAMPORTS_PER_SOL)) {
+        setEstado(t.semSaldo("SOL"));
+        return;
+      }
       setEstado(t.registrando);
       // O bloco vai NA transação e é o mesmo que a confirmação espera (antes era
       // pego depois do envio e a espera estourava: "block height exceeded").
