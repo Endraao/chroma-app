@@ -3,7 +3,7 @@
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount, useSwitchChain } from "wagmi";
 
@@ -189,6 +189,30 @@ export function RequireChainWallet({
     setAndroid(/Android/i.test(navigator.userAgent));
     setNaMetaMask(Boolean((w.ethereum as { isMetaMask?: boolean } | undefined)?.isMetaMask));
   }, [ehSolana]);
+
+  /*
+   * AUTOMÁTICO (pedido do dono, 09/10/2026): a rede certa vem sozinha.
+   * - Robinhood com a carteira em outra rede: pede a troca uma vez, sem a
+   *   pessoa ter que achar o ícone de rede na carteira.
+   * - Celular, página aberta pelo botão de carteira do post (o link leva
+   *   "lado="): já pede pra conectar a carteira desta rede dentro do app dela.
+   * Só PEDE — quem troca/conecta é sempre a carteira, com a aprovação da pessoa.
+   */
+  const pediuTroca = useRef(false);
+  useEffect(() => {
+    if (!redeErrada || pediuTroca.current) return;
+    pediuTroca.current = true;
+    switchChain({ chainId: robinhoodChain.id });
+  }, [redeErrada, switchChain]);
+  const pediuConexao = useRef(false);
+  useEffect(() => {
+    if (conectada || pediuConexao.current || !direta) return;
+    const celularDeVerdade = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const veioDoBotaoDaCarteira = new URLSearchParams(window.location.search).has("lado");
+    if (!celularDeVerdade || !veioDoBotaoDaCarteira || !reais.length) return;
+    pediuConexao.current = true;
+    direta.onSelect();
+  }, [conectada, direta, reais.length]);
 
   if (conectada && !redeErrada) return <>{children}</>;
 
