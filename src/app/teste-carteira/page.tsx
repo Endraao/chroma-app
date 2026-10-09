@@ -18,7 +18,18 @@ const FUGA = encodeURIComponent(ALVO);
 const intent = (caminho: string, esquema: string, pacote: string) =>
   `intent://${caminho}#Intent;scheme=${esquema};package=${pacote};S.browser_fallback_url=${FUGA};end`;
 
+// Moeda da Robinhood Chain pra testar no celular ($CHROMA, já existe na rede).
+const ROBINHOOD = "https://chromalaunch.fun/p/0x475ab8dd5b1a13a5d18b0b70a1599e3501b0941c?ref=radiantcipher";
+const ROBINHOOD_SEM = ROBINHOOD.replace("https://", "");
+
 const GRUPOS: [string, [string, string][]][] = [
+  [
+    "ROBINHOOD — $CHROMA (abrir a moeda e testar)",
+    [
+      ["R1 · abrir a moeda aqui (lista de carteiras)", ROBINHOOD],
+      ["R2 · abrir direto na MetaMask", intent(`dapp/${ROBINHOOD_SEM}`, "metamask", "io.metamask")],
+    ],
+  ],
   [
     "X (abrir o perfil da Chroma) — teste DENTRO do app da MetaMask",
     [
