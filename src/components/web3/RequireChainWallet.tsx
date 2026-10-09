@@ -212,10 +212,21 @@ export function RequireChainWallet({
   useEffect(() => {
     const ouvir = (e: Event) => {
       const msg = String((e as CustomEvent).detail ?? "");
-      if (/timed? ?out|timeout/i.test(msg) && novasTentativas.current < 2) {
-        novasTentativas.current += 1;
-        setTimeout(() => diretaAtual.current?.onSelect(), 1500 * novasTentativas.current);
-        return;
+      if (/timed? ?out|timeout/i.test(msg)) {
+        if (novasTentativas.current < 2) {
+          novasTentativas.current += 1;
+          setTimeout(() => diretaAtual.current?.onSelect(), 2500 * novasTentativas.current);
+          return;
+        }
+        // Ainda expirando: a MetaMask do celular prende a ligação na aba
+        // anterior. Recarregar a página uma vez costuma refazer a ligação.
+        try {
+          if (!sessionStorage.getItem("chroma-recarregou-carteira")) {
+            sessionStorage.setItem("chroma-recarregou-carteira", "1");
+            window.location.reload();
+            return;
+          }
+        } catch {}
       }
       setErroCarteira(msg.slice(0, 180));
     };
