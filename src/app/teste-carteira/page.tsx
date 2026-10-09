@@ -20,6 +20,16 @@ const intent = (caminho: string, esquema: string, pacote: string) =>
 
 const GRUPOS: [string, [string, string][]][] = [
   [
+    "X (abrir o perfil da Chroma) — teste DENTRO do app da MetaMask",
+    [
+      ["X1 · intent (o de hoje)", `intent://x.com/ChromaLaunch#Intent;scheme=https;package=com.twitter.android;S.browser_fallback_url=${encodeURIComponent("https://x.com/ChromaLaunch")};end`],
+      ["X2 · x.com mesma aba", "https://x.com/ChromaLaunch"],
+      ["X3 · mobile.x.com", "https://mobile.x.com/ChromaLaunch"],
+      ["X4 · twitter:// (app)", "twitter://user?screen_name=ChromaLaunch"],
+      ["X5 · twitter.com", "https://twitter.com/ChromaLaunch"],
+    ],
+  ],
+  [
     "Abrir no Chrome (sair do navegador do X)",
     [["C1 · intent Chrome", `intent://${SEM}#Intent;scheme=https;package=com.android.chrome;end`]],
   ],
