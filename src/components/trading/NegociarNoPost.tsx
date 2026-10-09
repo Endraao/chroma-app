@@ -295,7 +295,6 @@ function MeuLink({ token }: { token: TokenSummary }) {
     });
     const j = await r.json();
     if (!r.ok) throw new Error(j?.erro ?? "erro");
-    if (typeof j?.apelido === "string" && j.apelido) setApelido(j.apelido);
     setPago(true);
     setEstado("");
   }

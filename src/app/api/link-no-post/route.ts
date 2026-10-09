@@ -4,8 +4,6 @@ import { createPublicClient, http, parseEther } from "viem";
 
 import { gravarNoCacheDoBanco, lerDoCacheDoBanco } from "@/lib/db";
 import { robinhoodChain } from "@/lib/web3";
-import { claimNickname, findByWallet } from "@/lib/accounts";
-import { suggestNickname } from "@/lib/nickname-suggestions";
 
 /**
  * "MEU LINK" DENTRO DO POST DO X (pedido do dono, 08/10/2026): quem quer gerar
@@ -61,24 +59,6 @@ async function conferirNaRobinhood(carteira: string, tx: string): Promise<boolea
   );
 }
 
-/**
- * Link curto pra carteira nova (09/10/2026): quem registra o link sem nunca
- * ter entrado na Chroma não tem apelido, e o link sairia com o endereço
- * inteiro (?ref=7xKX…, 44 letras). Aqui ganha uma conta com apelido
- * automático (ex.: swiftfalcon42) — o ?ref= aceita apelido e resolve pra
- * carteira da rede. Quem já tem conta continua com o apelido dela.
- */
-async function apelidoDaCarteira(carteira: string): Promise<string | null> {
-  const conta = await findByWallet(carteira);
-  if (conta) return conta.nickname;
-  const kind = EVM.test(carteira) ? "evm" : "solana";
-  for (let i = 0; i < 5; i++) {
-    const r = await claimNickname({ nickname: suggestNickname(), wallet: carteira, kind, indicadoPor: null });
-    if (r.ok) return (await findByWallet(carteira))?.nickname ?? null;
-  }
-  return null;
-}
-
 export async function POST(request: Request) {
   const { carteira, tx } = (await request.json().catch(() => ({}))) as { carteira?: string; tx?: string };
   if (!carteira || !tx || (!SOLANA.test(carteira) && !EVM.test(carteira))) {
@@ -87,5 +67,5 @@ export async function POST(request: Request) {
   const ok = EVM.test(carteira) ? await conferirNaRobinhood(carteira, tx) : await conferirNaSolana(carteira, tx);
   if (!ok) return NextResponse.json({ ok: false, erro: "pagamento não confere" }, { status: 400 });
   await gravarNoCacheDoBanco(chave(carteira), { tx, em: Date.now() });
-  return NextResponse.json({ ok: true, apelido: await apelidoDaCarteira(carteira).catch(() => null) });
+  return NextResponse.json({ ok: true });
 }
