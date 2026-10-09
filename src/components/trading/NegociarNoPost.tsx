@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { parseEther } from "viem";
-import { useAccount, useChainId, usePublicClient, useSendTransaction, useSwitchChain } from "wagmi";
+import { useAccount, usePublicClient, useSendTransaction, useSwitchChain } from "wagmi";
 
 import { NumeroVivo, AoVivoProvider, useTokenVivo } from "@/components/home/AoVivo";
 import { ImagemDaMoeda } from "@/components/home/CardDaMoeda";
@@ -231,8 +231,9 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const [estado, setEstado] = useState("");
   // Na Robinhood Chain tudo é em ETH e a comissão cai numa carteira EVM.
   const ehEvm = token.chain === "robinhood";
-  const { address: carteiraEvm } = useAccount();
-  const redeAtual = useChainId();
+  // A rede REAL da carteira (useAccount): o useChainId() fica preso na Robinhood,
+  // única rede da config, e aí não pedia a troca — "chain 1 does not match 4663".
+  const { address: carteiraEvm, chainId: redeAtual } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const { sendTransactionAsync } = useSendTransaction();
   const clienteEvm = usePublicClient({ chainId: robinhoodChain.id });

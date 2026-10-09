@@ -5,7 +5,7 @@ import { traducoes } from "@/lib/idiomas";
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useAccount, useChainId, useSwitchChain } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 
 import { Button } from "@/components/ui/Button";
 import { SignInModal } from "@/components/web3/SignInModal";
@@ -104,8 +104,8 @@ export function RequireChainWallet({
   const [modalAberto, setModalAberto] = useState(false);
 
   const { connected: solanaConectada } = useWallet();
-  const { isConnected: evmConectada } = useAccount();
-  const chainIdAtual = useChainId();
+  // Rede REAL da carteira: o useChainId() fica preso na Robinhood (única da config).
+  const { isConnected: evmConectada, chainId: chainIdAtual } = useAccount();
   const { switchChain, isPending: trocando } = useSwitchChain();
 
   const meta = CHAINS[chain];
