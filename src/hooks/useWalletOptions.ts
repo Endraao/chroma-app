@@ -7,6 +7,7 @@ import { useConnect } from "wagmi";
 
 import { WALLET_CATALOG, findCatalogWallet } from "@/lib/wallet-catalog";
 import { chainIcon } from "@/lib/chain-icons";
+import { avisarErroDaCarteira } from "@/lib/erro-carteira";
 import type { WalletOption, WalletNetwork } from "@/components/web3/WalletRow";
 
 const RECENT_KEY = "chroma.lastWallet";
@@ -95,7 +96,7 @@ export function useWalletOptions() {
             remember(w.adapter.name);
             // Já selecionada (mas desconectada): select() não faria nada —
             // o botão parecia morto. Pede a conexão direto.
-            if (selecionada?.adapter.name === w.adapter.name) void conectarSolana().catch(() => {});
+            if (selecionada?.adapter.name === w.adapter.name) void conectarSolana().catch(avisarErroDaCarteira);
             else select(w.adapter.name);
           },
         })),

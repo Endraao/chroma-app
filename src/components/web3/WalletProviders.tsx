@@ -8,6 +8,7 @@ import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ConectarPeloLink } from "@/components/web3/ConectarPeloLink";
+import { avisarErroDaCarteira } from "@/lib/erro-carteira";
 import { SOLANA_RPC, SOLANA_WS, wagmiConfig } from "@/lib/web3";
 
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -30,7 +31,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ConnectionProvider endpoint={SOLANA_RPC} config={{ commitment: "confirmed", wsEndpoint: SOLANA_WS }}>
-          <WalletProvider wallets={wallets} autoConnect>
+          <WalletProvider wallets={wallets} autoConnect onError={avisarErroDaCarteira}>
             <WalletModalProvider>
               <ConectarPeloLink />
               {children}

@@ -125,7 +125,7 @@ export function RequireChainWallet({
   const t = useTextos(TEXTOS);
   const [modalAberto, setModalAberto] = useState(false);
 
-  const { connected: solanaConectada } = useWallet();
+  const { connected: solanaConectada, connecting: solanaConectando, wallet: solanaEscolhida, publicKey: solanaChave } = useWallet();
   // Rede REAL da carteira: o useChainId() fica preso na Robinhood (única da config).
   const { isConnected: evmConectada, chainId: chainIdAtual } = useAccount();
   const { switchChain, isPending: trocando } = useSwitchChain();
@@ -198,6 +198,23 @@ export function RequireChainWallet({
    *   "lado="): já pede pra conectar a carteira desta rede dentro do app dela.
    * Só PEDE — quem troca/conecta é sempre a carteira, com a aprovação da pessoa.
    */
+  const [erroCarteira, setErroCarteira] = useState("");
+  useEffect(() => {
+    const ouvir = (e: Event) => setErroCarteira(String((e as CustomEvent).detail ?? "").slice(0, 180));
+    window.addEventListener("chroma-erro-carteira", ouvir);
+    return () => window.removeEventListener("chroma-erro-carteira", ouvir);
+  }, []);
+  // Diagnóstico no celular (09/10/2026): sem console dentro do app da carteira.
+  const diagnostico =
+    android || /iPhone|iPad|iPod/i.test(typeof navigator === "undefined" ? "" : navigator.userAgent)
+      ? `[${solanaEscolhida?.adapter.name ?? "nenhuma"} · ${solanaEscolhida?.readyState ?? "-"} · ${solanaConectando ? "conectando" : solanaConectada ? "conectada" : "desconectada"} · ${solanaChave ? "com chave" : "sem chave"} · ${reais.map((o) => o.name).join("/") || "sem carteiras"}]`
+      : "";
+  const avisoDeErro = (
+    <>
+      {erroCarteira && <p className="mt-1.5 text-[11px] leading-snug text-bear">{erroCarteira}</p>}
+      {ehSolana && diagnostico && <p className="mt-1 text-[10px] text-zinc-600">{diagnostico}</p>}
+    </>
+  );
   const pediuTroca = useRef(false);
   useEffect(() => {
     if (!redeErrada || pediuTroca.current) return;
@@ -297,6 +314,7 @@ export function RequireChainWallet({
           {/* "Outra" no celular (09/10/2026): a lista do site manda pra Play Store
               mesmo com o app instalado. Copiar o link serve pra qualquer carteira. */}
           {linkCopiado && <p className="text-[11px] leading-snug text-zinc-400">{t.coleNaCarteira}</p>}
+          {avisoDeErro}
           <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
         </div>
       );
@@ -316,6 +334,7 @@ export function RequireChainWallet({
         <Button variant="chroma" size="lg" className="w-full uppercase tracking-wide" onClick={abrir}>
           {rotuloConectar ?? (vinculada ? t.liberar : t.conectarCarteira(meta.label))}
         </Button>
+        {avisoDeErro}
         <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
       </>
     );
