@@ -37,6 +37,7 @@ const TEXTOS = traducoes({
     conecteSua: "Connect your wallet",
     celularSemCarteira: "On your phone? Pick your wallet — it opens this coin with the amount already set.",
     outra: "Other",
+    metamaskSemSolana: "MetaMask did not offer its Solana wallet on this page. Open this coin in a Solana wallet:",
     copiado: "Link copied ✓",
     coleNaCarteira: "Open your wallet app, go to its browser and paste the link.",
     outraRede: "Your wallet is on another network",
@@ -55,6 +56,7 @@ const TEXTOS = traducoes({
     conecteSua: "Conecte sua carteira",
     celularSemCarteira: "No celular? Escolha sua carteira — ela abre esta moeda com o valor já preenchido.",
     outra: "Outra",
+    metamaskSemSolana: "A MetaMask não ofereceu a carteira Solana dela nesta página. Abra a moeda numa carteira Solana:",
     copiado: "Link copiado ✓",
     coleNaCarteira: "Abra o app da sua carteira, vá no navegador dela e cole o link.",
     outraRede: "Sua carteira está em outra rede",
@@ -73,6 +75,7 @@ const TEXTOS = traducoes({
     conecteSua: "连接你的钱包",
     celularSemCarteira: "在手机上？选择你的钱包 —— 它会打开此代币，金额已填好。",
     outra: "其他",
+    metamaskSemSolana: "MetaMask 未在此页面提供 Solana 钱包。请在 Solana 钱包中打开此代币：",
     copiado: "已复制链接 ✓",
     coleNaCarteira: "打开你的钱包 App，进入其内置浏览器并粘贴链接。",
     outraRede: "你的钱包在其他网络上",
@@ -145,11 +148,19 @@ export function RequireChainWallet({
    */
   const opcoes = useWalletOptions();
   const detectadas = opcoes[ehSolana ? "solana" : "evm"].detected;
+  /*
+   * Carteiras de verdade nesta página. O "Mobile Wallet Adapter" do Android não
+   * conta: dentro do app do X (ou do navegador de outra carteira) ele não abre.
+   * Dentro do app da MetaMask, a carteira Solana dela chega pelo Wallet
+   * Standard (não por window.solana) — por isso a lista conta, e não só o window.
+   */
+  const reais = detectadas.filter((o) => !/mobile wallet adapter/i.test(o.name));
   const direta =
-    detectadas.length === 1 ? detectadas[0] : detectadas.find((o) => o.state === "recent");
+    reais.length === 1 ? reais[0] : (reais.find((o) => o.state === "recent") ?? (detectadas.length === 1 ? detectadas[0] : undefined));
   const abrir = () => (direta ? direta.onSelect() : setModalAberto(true));
   const [celular, setCelular] = useState(false);
   const [android, setAndroid] = useState(false);
+  const [naMetaMask, setNaMetaMask] = useState(false);
   const [listaAberta, setListaAberta] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
   const copiarLink = (link: string) => {
@@ -176,6 +187,7 @@ export function RequireChainWallet({
     const injetada = ehSolana ? Boolean(w.phantom || w.solana || w.solflare || w.backpack) : Boolean(w.ethereum);
     setCelular(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) && !injetada);
     setAndroid(/Android/i.test(navigator.userAgent));
+    setNaMetaMask(Boolean((w.ethereum as { isMetaMask?: boolean } | undefined)?.isMetaMask));
   }, [ehSolana]);
 
   if (conectada && !redeErrada) return <>{children}</>;
@@ -186,7 +198,7 @@ export function RequireChainWallet({
      * botão abre a moeda DENTRO do app da Phantom/Solflare — no navegador
      * deles a carteira existe — já com o valor, o lado e quem indicou.
      */
-    if (celular && alvoNaCarteira) {
+    if (celular && alvoNaCarteira && !reais.length) {
       const origem = new URL(alvoNaCarteira).origin;
       const u = encodeURIComponent(alvoNaCarteira);
       const r = encodeURIComponent(origem);
@@ -212,17 +224,21 @@ export function RequireChainWallet({
        * da carteira; sem o app instalado, o Android cai no link https normal
        * (página de baixar). Testado com a MetaMask no app do X.
        */
+      // Já dentro do app da MetaMask, sem a carteira Solana dela aqui: mandar
+      // pra MetaMask de novo daria volta em círculo.
+      const semLoop = naMetaMask && ehSolana ? lista.filter(([nome]) => nome !== "MetaMask") : lista;
       const carteiras = android
-        ? lista.map(([nome, link]): [string, string] =>
+        ? semLoop.map(([nome, link]): [string, string] =>
             PACOTE_ANDROID[nome]
               ? [nome, `intent://${link.replace("https://", "")}#Intent;scheme=https;package=${PACOTE_ANDROID[nome]};S.browser_fallback_url=${encodeURIComponent(link)};end`]
               : [nome, link],
           )
-        : lista;
+        : semLoop;
       return (
         <div className="space-y-1.5">
           {/* No post do X cada linha conta (o X corta o que passa da altura): sem o texto, demais carteiras numa fileira só. */}
           {!compacto && <p className="text-[11px] text-zinc-400">{t.celularSemCarteira}</p>}
+          {naMetaMask && ehSolana && <p className="text-[11px] leading-snug text-warn">{t.metamaskSemSolana}</p>}
           {/* Nenhuma carteira preferida (pedido do dono, 09/10/2026): o botão só abre a lista. */}
           <button
             type="button"
