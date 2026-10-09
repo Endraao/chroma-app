@@ -37,6 +37,8 @@ const TEXTOS = traducoes({
     conecteSua: "Connect your wallet",
     celularSemCarteira: "On your phone? Pick your wallet — it opens this coin with the amount already set.",
     outra: "Other",
+    copiado: "Link copied ✓",
+    coleNaCarteira: "Open your wallet app, go to its browser and paste the link.",
     outraRede: "Your wallet is on another network",
     moedaDa: (rede: string) => `This coin is on ${rede}`,
     precisaEstar: (rede: React.ReactNode) => <>To trade this coin your wallet must be on {rede}. Switch networks in your wallet to continue.</>,
@@ -53,6 +55,8 @@ const TEXTOS = traducoes({
     conecteSua: "Conecte sua carteira",
     celularSemCarteira: "No celular? Escolha sua carteira — ela abre esta moeda com o valor já preenchido.",
     outra: "Outra",
+    copiado: "Link copiado ✓",
+    coleNaCarteira: "Abra o app da sua carteira, vá no navegador dela e cole o link.",
     outraRede: "Sua carteira está em outra rede",
     moedaDa: (rede: string) => `Esta moeda é da ${rede}`,
     precisaEstar: (rede: React.ReactNode) => <>Para negociar esta moeda, a sua carteira precisa estar na {rede}. Troque de rede na carteira para continuar.</>,
@@ -69,6 +73,8 @@ const TEXTOS = traducoes({
     conecteSua: "连接你的钱包",
     celularSemCarteira: "在手机上？选择你的钱包 —— 它会打开此代币，金额已填好。",
     outra: "其他",
+    copiado: "已复制链接 ✓",
+    coleNaCarteira: "打开你的钱包 App，进入其内置浏览器并粘贴链接。",
     outraRede: "你的钱包在其他网络上",
     moedaDa: (rede: string) => `该代币属于 ${rede}`,
     precisaEstar: (rede: React.ReactNode) => <>交易该代币需要钱包切换到 {rede}。请在钱包中切换网络后继续。</>,
@@ -134,6 +140,23 @@ export function RequireChainWallet({
   const abrir = () => (direta ? direta.onSelect() : setModalAberto(true));
   const [celular, setCelular] = useState(false);
   const [listaAberta, setListaAberta] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
+  const copiarLink = (link: string) => {
+    // Campo escondido + execCommand: funciona também no navegador do X.
+    const campo = document.createElement("textarea");
+    campo.value = link;
+    campo.setAttribute("readonly", "");
+    campo.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(campo);
+    campo.select();
+    let ok = false;
+    try {
+      ok = document.execCommand("copy");
+    } catch {}
+    campo.remove();
+    if (ok) return setLinkCopiado(true);
+    navigator.clipboard?.writeText(link).then(() => setLinkCopiado(true)).catch(() => {});
+  };
   useEffect(() => {
     // Celular SEM carteira embutida no navegador (app do X, Safari, Chrome).
     // A lista de "detectadas" não serve aqui: no Android ela traz o Mobile
@@ -198,13 +221,16 @@ export function RequireChainWallet({
             ))}
             <button
               type="button"
-              onClick={abrir}
+              onClick={() => copiarLink(alvoNaCarteira)}
               className="rounded-lg border border-ink-600 py-2 text-[12px] font-bold text-zinc-400"
             >
-              {t.outra}
+              {linkCopiado ? t.copiado : t.outra}
             </button>
           </div>
           )}
+          {/* "Outra" no celular (09/10/2026): a lista do site manda pra Play Store
+              mesmo com o app instalado. Copiar o link serve pra qualquer carteira. */}
+          {linkCopiado && <p className="text-[11px] leading-snug text-zinc-400">{t.coleNaCarteira}</p>}
           <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
         </div>
       );
