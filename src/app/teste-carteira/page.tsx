@@ -9,6 +9,8 @@
  */
 const ALVO = "https://chromalaunch.fun/p/3xrw3JKyaSYjzksYc8nrZE1kReQAxoHT3epi3P1mpZVf?ref=chroma";
 const SEM = ALVO.replace(/^https?:\/\//, "");
+// O link que o botão do post monta: a mesma moeda com valor e lado.
+const SEM_POST = `${SEM}&valor=10&lado=buy`;
 const U = encodeURIComponent(ALVO);
 const R = encodeURIComponent("https://chromalaunch.fun");
 const FUGA = encodeURIComponent(ALVO);
