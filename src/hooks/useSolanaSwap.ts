@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 
-import { SOL_MINT, type JupiterQuote } from "@/lib/jupiter";
+import { SOL_MINT, cotar, type JupiterQuote } from "@/lib/jupiter";
 import { COTACAO_VENCIDA, executeSolanaSwap } from "@/lib/solana-swap";
 import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import { computeFeesRaw } from "@/lib/fees";
@@ -189,18 +189,9 @@ export function useSolanaSwap({
 
     const timer = window.setTimeout(async () => {
       try {
-        const params = new URLSearchParams({
-          inputMint,
-          outputMint,
-          amount: valorDaRota.toString(),
-          slippageBps: String(slippageBps),
-        });
-        const res = await fetch(`/api/swap?${params}`, { cache: "no-store" });
-        const data = await res.json();
+        const data = await cotar({ inputMint, outputMint, amount: valorDaRota.toString(), slippageBps });
         if (id !== requestRef.current) return; // chegou uma cotação mais nova
-
-        if (!res.ok) throw new Error(data?.error ?? "sem rota disponível");
-        setQuote(data as JupiterQuote);
+        setQuote(data);
         setPhase("ready");
       } catch (err) {
         if (id !== requestRef.current) return;
@@ -282,16 +273,7 @@ export function useSolanaSwap({
               : e;
           }
           setStep("O preço mudou — atualizando a cotação…");
-          const params = new URLSearchParams({
-            inputMint,
-            outputMint,
-            amount: valorDaRota.toString(),
-            slippageBps: String(slippageBps),
-          });
-          const res = await fetch(`/api/swap?${params}`, { cache: "no-store" });
-          const nova = await res.json();
-          if (!res.ok) throw new Error(nova?.error ?? "sem rota disponível");
-          cotacao = nova as JupiterQuote;
+          cotacao = await cotar({ inputMint, outputMint, amount: valorDaRota.toString(), slippageBps });
           setQuote(cotacao);
         }
       }

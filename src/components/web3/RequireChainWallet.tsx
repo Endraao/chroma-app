@@ -199,8 +199,26 @@ export function RequireChainWallet({
    * Só PEDE — quem troca/conecta é sempre a carteira, com a aprovação da pessoa.
    */
   const [erroCarteira, setErroCarteira] = useState("");
+  /*
+   * "Transport request timed out" (MetaMask no celular, 09/10/2026): ao reabrir
+   * a página, o pedido de conexão sai antes de a carteira Solana da MetaMask
+   * terminar de carregar e expira. Tenta de novo sozinho, com uma espera.
+   */
+  const diretaAtual = useRef(direta);
   useEffect(() => {
-    const ouvir = (e: Event) => setErroCarteira(String((e as CustomEvent).detail ?? "").slice(0, 180));
+    diretaAtual.current = direta;
+  });
+  const novasTentativas = useRef(0);
+  useEffect(() => {
+    const ouvir = (e: Event) => {
+      const msg = String((e as CustomEvent).detail ?? "");
+      if (/timed? ?out|timeout/i.test(msg) && novasTentativas.current < 2) {
+        novasTentativas.current += 1;
+        setTimeout(() => diretaAtual.current?.onSelect(), 1500 * novasTentativas.current);
+        return;
+      }
+      setErroCarteira(msg.slice(0, 180));
+    };
     window.addEventListener("chroma-erro-carteira", ouvir);
     return () => window.removeEventListener("chroma-erro-carteira", ouvir);
   }, []);
@@ -228,7 +246,8 @@ export function RequireChainWallet({
     const veioDoBotaoDaCarteira = new URLSearchParams(window.location.search).has("lado");
     if (!celularDeVerdade || !veioDoBotaoDaCarteira || !reais.length) return;
     pediuConexao.current = true;
-    direta.onSelect();
+    const d = direta;
+    setTimeout(() => d.onSelect(), 1200);
   }, [conectada, direta, reais.length]);
 
   if (conectada && !redeErrada) return <>{children}</>;

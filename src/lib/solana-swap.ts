@@ -11,7 +11,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import { computeFeesRaw } from "./fees";
-import { SOL_MINT, type JupiterQuote } from "./jupiter";
+import { SOL_MINT, montarSwap, type JupiterQuote } from "./jupiter";
 import { PLATFORM_FEE_WALLET_SOL } from "./web3";
 
 /**
@@ -385,13 +385,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
   }
 
   onStep?.("Montando a ordem…");
-  const buildRes = await fetch("/api/swap", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ quote, userPublicKey: publicKey.toBase58() }),
-  });
-  const build = await buildRes.json();
-  if (!buildRes.ok) throw new Error(build?.error ?? "falha ao montar a transação");
+  const build = await montarSwap(quote, publicKey.toBase58());
 
   const raw = Buffer.from(build.swapTransaction as string, "base64");
   const swapTx = VersionedTransaction.deserialize(raw);

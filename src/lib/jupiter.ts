@@ -101,6 +101,45 @@ export async function buildSwapTransaction(
   return JSON.parse(body) as SwapBuildResult;
 }
 
+/*
+ * PELO NAVEGADOR PRIMEIRO (09/10/2026). O plano grátis da Jupiter limita por
+ * IP; passando pelo nosso servidor, TODOS os visitantes saem pelo mesmo IP da
+ * Vercel (dividido ainda com outros sites) e a cota estoura — "the price
+ * router is busy". Do navegador, cada pessoa usa a própria cota. O servidor
+ * (/api/swap) fica de reserva se o pedido direto falhar.
+ */
+export async function cotar(params: QuoteParams): Promise<JupiterQuote> {
+  try {
+    return await getQuote(params);
+  } catch (direto) {
+    const q = new URLSearchParams({
+      inputMint: params.inputMint,
+      outputMint: params.outputMint,
+      amount: params.amount,
+      slippageBps: String(params.slippageBps),
+    });
+    const res = await fetch(`/api/swap?${q}`, { cache: "no-store" });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error ?? (direto instanceof Error ? direto.message : "sem rota disponível"));
+    return data as JupiterQuote;
+  }
+}
+
+export async function montarSwap(quote: JupiterQuote, userPublicKey: string): Promise<SwapBuildResult> {
+  try {
+    return await buildSwapTransaction(quote, userPublicKey);
+  } catch (direto) {
+    const res = await fetch("/api/swap", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ quote, userPublicKey }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error ?? (direto instanceof Error ? direto.message : "falha ao montar a transação"));
+    return data as SwapBuildResult;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Metadados do token                                                  */
 /* ------------------------------------------------------------------ */
