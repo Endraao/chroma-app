@@ -188,8 +188,9 @@ export function RequireChainWallet({
               <a
                 key={nome}
                 href={link}
-                target="_blank"
-                rel="noreferrer"
+                // Mesma aba, de propósito (09/10/2026): com target=_blank o navegador
+                // do X no Android não entrega o link pro app da carteira — dava
+                // "nenhum aplicativo pode executar esta ação". Na mesma aba, abre.
                 className="rounded-lg border border-ink-600 bg-ink-800 py-2 text-center text-[12px] font-bold text-zinc-100"
               >
                 {nome}
