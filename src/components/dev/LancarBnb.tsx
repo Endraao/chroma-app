@@ -5,7 +5,9 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  erc20Abi,
   formatEther,
+  maxUint256,
   parseEther,
   parseEventLogs,
   type Abi,
@@ -231,10 +233,41 @@ export function LancarBnb({
       setEstado(`Lançada! $${nova.simbolo}: os primeiros 5 minutos têm a taxa anti-sniper (50% caindo até 1%).`);
     });
 
-  const coletar = (moeda: string) =>
+  /*
+   * Quanto cada moeda tem pra coletar, em dólar (pedido do dono, 09/10/2026):
+   * /api/bnb/taxas simula o coletar sem mudar nada na rede. Atualiza a cada 30 s.
+   */
+  const [taxas, setTaxas] = useState<Record<string, { usd: number | null; tokens: string; bnb: string }>>({});
+  useEffect(() => {
+    if (!lancadas.length) return;
+    let vivo = true;
+    const ler = () =>
+      lancadas.forEach((l) =>
+        fetch(`/api/bnb/taxas?moeda=${l.moeda}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => j && vivo && setTaxas((t) => ({ ...t, [l.moeda.toLowerCase()]: j })))
+          .catch(() => {}),
+      );
+    ler();
+    const id = setInterval(ler, 30_000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, [lancadas]);
+
+  /*
+   * A taxa da pool sai na moeda que entra: compra → BNB, venda → a moeda.
+   * "Coletar em BNB" coleta e vende na hora as moedas recebidas (pela
+   * negociação), pra quem cria receber tudo em BNB.
+   */
+  const coletar = (moeda: string, emBnb = false) =>
     rodar(async () => {
       if (!lancador) return;
       const { carteira, leitura, endereco } = await clientes();
+      const antes = emBnb
+        ? await leitura.readContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "balanceOf", args: [endereco] })
+        : 0n;
       setEstado("Aprove a coleta das taxas na carteira…");
       const hash = await carteira.writeContract({
         address: lancador,
@@ -244,8 +277,31 @@ export function LancarBnb({
         account: endereco,
       });
       await leitura.waitForTransactionReceipt({ hash });
+      if (emBnb && trocaEnd) {
+        const depois = await leitura.readContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "balanceOf", args: [endereco] });
+        const recebidas = depois - antes;
+        if (recebidas > 0n) {
+          const permitido = await leitura.readContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "allowance", args: [endereco, trocaEnd] });
+          if (permitido < recebidas) {
+            setEstado("Aprove a moeda na carteira (só na primeira vez)…");
+            const h = await carteira.writeContract({ address: moeda as `0x${string}`, abi: erc20Abi, functionName: "approve", args: [trocaEnd, maxUint256], account: endereco });
+            await leitura.waitForTransactionReceipt({ hash: h });
+          }
+          const { result: cotado } = await leitura.simulateContract({ address: trocaEnd, abi: artefatoTroca.abi as Abi, functionName: "cotar", args: [moeda, false, recebidas], account: endereco });
+          setEstado("Aprove a venda das moedas recebidas…");
+          const h2 = await carteira.writeContract({
+            address: trocaEnd,
+            abi: artefatoTroca.abi as Abi,
+            functionName: "vender",
+            args: [moeda, recebidas, ((cotado as bigint) * 95n) / 100n],
+            account: endereco,
+          });
+          await leitura.waitForTransactionReceipt({ hash: h2 });
+        }
+      }
       setSaldo(await leitura.getBalance({ address: endereco }));
-      setEstado("Taxas enviadas pra carteira de quem criou a moeda.");
+      setTaxas((t) => ({ ...t, [moeda.toLowerCase()]: { usd: 0, tokens: "0", bnb: "0" } }));
+      setEstado(emBnb ? "Taxas coletadas e convertidas em BNB." : "Taxas enviadas pra carteira de quem criou a moeda.");
     });
 
   const okLancar = Boolean(lancador && nome.trim() && simbolo.trim() && !ocupado);
@@ -380,8 +436,12 @@ export function LancarBnb({
                 >
                   PancakeSwap
                 </a>
-                <button type="button" onClick={() => coletar(l.moeda)} disabled={ocupado} className="font-bold text-marca">
+                {/* Sempre em BNB (pedido do dono): as moedas da taxa são vendidas na hora. */}
+                <button type="button" onClick={() => coletar(l.moeda, Boolean(trocaEnd))} disabled={ocupado} className="font-bold text-marca">
                   Coletar taxas
+                  {taxas[l.moeda.toLowerCase()]?.usd != null && (
+                    <span className="font-normal text-zinc-300"> (≈ US$ {taxas[l.moeda.toLowerCase()].usd!.toFixed(2)})</span>
+                  )}
                 </button>
                 <button
                   type="button"
