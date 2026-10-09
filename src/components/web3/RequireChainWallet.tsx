@@ -162,23 +162,6 @@ export function RequireChainWallet({
   const [android, setAndroid] = useState(false);
   const [naMetaMask, setNaMetaMask] = useState(false);
   const [listaAberta, setListaAberta] = useState(false);
-  const [linkCopiado, setLinkCopiado] = useState(false);
-  const copiarLink = (link: string) => {
-    // Campo escondido + execCommand: funciona também no navegador do X.
-    const campo = document.createElement("textarea");
-    campo.value = link;
-    campo.setAttribute("readonly", "");
-    campo.style.cssText = "position:fixed;top:0;left:0;opacity:0";
-    document.body.appendChild(campo);
-    campo.select();
-    let ok = false;
-    try {
-      ok = document.execCommand("copy");
-    } catch {}
-    campo.remove();
-    if (ok) return setLinkCopiado(true);
-    navigator.clipboard?.writeText(link).then(() => setLinkCopiado(true)).catch(() => {});
-  };
   useEffect(() => {
     // Celular SEM carteira embutida no navegador (app do X, Safari, Chrome).
     // A lista de "detectadas" não serve aqui: no Android ela traz o Mobile
@@ -272,8 +255,6 @@ export function RequireChainWallet({
       const lista: [string, string][] = ehSolana
         ? [
             ["Phantom", `https://phantom.app/ul/browse/${u}?ref=${r}`],
-            ["Solflare", `https://solflare.com/ul/v1/browse/${u}?ref=${r}`],
-            ["Backpack", `https://backpack.app/ul/v1/browse/${u}?ref=${r}`],
             ["MetaMask", `https://metamask.app.link/dapp/${semProtocolo}`],
             ["Trust", `https://link.trustwallet.com/open_url?coin_id=501&url=${u}`],
           ]
@@ -326,18 +307,10 @@ export function RequireChainWallet({
                 {nome}
               </a>
             ))}
-            <button
-              type="button"
-              onClick={() => copiarLink(alvoNaCarteira)}
-              className="rounded-lg border border-ink-600 py-2 text-[12px] font-bold text-zinc-400"
-            >
-              {linkCopiado ? t.copiado : t.outra}
-            </button>
           </div>
           )}
           {/* "Outra" no celular (09/10/2026): a lista do site manda pra Play Store
               mesmo com o app instalado. Copiar o link serve pra qualquer carteira. */}
-          {linkCopiado && <p className="text-[11px] leading-snug text-zinc-400">{t.coleNaCarteira}</p>}
           {avisoDeErro}
           <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
         </div>
