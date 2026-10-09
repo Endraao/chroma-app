@@ -48,7 +48,7 @@ const TEXTOS = traducoes({
   },
 });
 
-export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
+export function ConviteParaCompartilhar({ token, compacto = false }: { token: TokenSummary; compacto?: boolean }) {
   const t = useTextos(TEXTOS);
   const account = useChromaAccount();
   const { publicKey } = useWallet();
@@ -72,6 +72,28 @@ export function ConviteParaCompartilhar({ token }: { token: TokenSummary }) {
       /* clipboard bloqueado */
     }
   }
+
+  // No cabeçalho (computador): uma faixa só, na altura do nome da moeda — não
+  // empurra pra baixo os alertas e o "Sobre" (pedido do dono, 08/10/2026).
+  if (compacto)
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-marca/50 bg-gradient-to-r from-marca/[0.16] to-marca/[0.04] py-1.5 pl-3 pr-1.5 shadow-[0_0_22px_-8px_rgba(34,211,238,0.5)]">
+        <p className="max-w-[210px] text-[13px] font-black leading-tight text-zinc-50">💸 {t.titulo}</p>
+        <div className="flex flex-col items-stretch gap-0.5">
+          <a
+            href={postar}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-marca px-3.5 text-[13px] font-black text-black transition-opacity hover:opacity-90"
+          >
+            <span className="text-[14px]">𝕏</span> {t.postar}
+          </a>
+          <button type="button" onClick={copiar} className="rounded-md text-[11px] font-bold text-marca hover:bg-marca/10">
+            {copiado ? t.copiado : t.copiar}
+          </button>
+        </div>
+      </div>
+    );
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-marca/50 bg-gradient-to-br from-marca/[0.18] via-marca/[0.06] to-transparent p-4 shadow-[0_0_28px_-6px_rgba(34,211,238,0.45)]">

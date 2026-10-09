@@ -35,7 +35,7 @@ import type { SecurityReport, TokenSummary } from "@/lib/types";
  */
 const ChartPanel = dynamic(
   () => import("@/components/chart/ChartPanel").then((m) => m.ChartPanel),
-  { ssr: false, loading: () => <Skeleton className="h-[520px] rounded-xl" /> },
+  { ssr: false, loading: () => <Skeleton className="h-[530px] rounded-xl" /> },
 );
 
 /**
@@ -250,7 +250,10 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             ocupa espaço de quem está chegando agora.
           */}
           {/* Logo abaixo do comprar/vender: é o que espalha a Chroma (08/10/2026). */}
-          <ConviteParaCompartilhar token={token} />
+          {/* No computador ele mora no cabeçalho (TokenHeader); aqui só no celular. */}
+          <div className="lg:hidden">
+            <ConviteParaCompartilhar token={token} />
+          </div>
 
           <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} precoUsd={price} />
 

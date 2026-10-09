@@ -502,16 +502,16 @@ function SolanaSwap({
           </div>
         ) : (
         <>
-        <div>
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.voceRecebe}</p>
-          <div className="tnum px-1 py-1 text-xl font-bold text-zinc-200">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.voceRecebe}</p>
+          <div className="tnum text-lg font-bold text-zinc-200">
             {swap.quote && Number(swap.outAmount) > 0
               ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
               : "—"}
           </div>
         </div>
 
-        <div className="space-y-1.5 text-[11.5px]">
+        <div className="space-y-1 text-[11.5px]">
           <div className="flex items-center justify-between">
             <span className="text-zinc-500">{t.slippage}</span>
             <div className="flex gap-1">
@@ -1227,16 +1227,16 @@ function EvmSwap({
           </div>
         ) : (
         <>
-        <div>
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             {t.voceRecebe}
           </p>
-          <div className="tnum px-1 py-1 text-xl font-bold text-zinc-200">
+          <div className="tnum text-lg font-bold text-zinc-200">
             {swap.saida ? `${Number(swap.saida).toLocaleString("pt-BR", { maximumFractionDigits: ehCompra ? 0 : 6 })} ${ehCompra ? symbol : meta.nativeSymbol}` : "—"}
           </div>
         </div>
 
-        <div className="space-y-1.5 text-[11.5px]">
+        <div className="space-y-1 text-[11.5px]">
           <div className="flex items-center justify-between">
             <span className="text-zinc-500">{t.slippage}</span>
             <div className="flex gap-1">

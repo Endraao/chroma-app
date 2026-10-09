@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { DenunciarToken } from "@/components/trading/DenunciarToken";
 import { ImagemDaMoedaGrande } from "@/components/trading/ImagemDaMoedaGrande";
+import { ConviteParaCompartilhar } from "@/components/trading/ConviteParaCompartilhar";
 import { CHAINS } from "@/lib/web3";
 import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
 import type { StatsAoVivo } from "@/components/trading/TokenTerminal";
@@ -28,9 +29,9 @@ import type { TokenSummary } from "@/lib/types";
  * fonte, mais o que passou na nossa frente desde que a página abriu.
  */
 const TEXTOS = traducoes({
-  en: { curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders", top10: "Top 10 hold", top10Dica: "Known token: the largest wallets are the project's treasury, locked reserves and exchanges — not a red flag here.", criadoHa: (x: string) => `created ${x} ago` },
-  pt: { curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders", top10: "Top 10 detêm", top10Dica: "Token conhecido: as maiores carteiras são tesouraria do projeto, reservas travadas e corretoras — aqui não é sinal de risco.", criadoHa: (x: string) => `criado ${x} atrás` },
-  zh: { curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人", top10: "前 10 持有", top10Dica: "知名代币：最大的钱包是项目金库、锁定储备和交易所——此处并非风险信号。", criadoHa: (x: string) => `${x}前创建` },
+  en: { preco: "Price", curva: "curve", listado: "listed on DEX", copiado: "copied!", verExplorer: "view on explorer ↗", site: "website", buscarNoX: "search on X", variacao: "24h change", volume: "24h volume", liquidez: "Liquidity", mcap: "Market cap", holders: "Holders", top10: "Top 10 hold", top10Dica: "Known token: the largest wallets are the project's treasury, locked reserves and exchanges — not a red flag here.", criadoHa: (x: string) => `created ${x} ago` },
+  pt: { preco: "Preço", curva: "curva", listado: "listado em DEX", copiado: "copiado!", verExplorer: "ver no explorer ↗", site: "site", buscarNoX: "buscar no X", variacao: "Variação 24h", volume: "Volume 24h", liquidez: "Liquidez", mcap: "Market cap", holders: "Holders", top10: "Top 10 detêm", top10Dica: "Token conhecido: as maiores carteiras são tesouraria do projeto, reservas travadas e corretoras — aqui não é sinal de risco.", criadoHa: (x: string) => `criado ${x} atrás` },
+  zh: { preco: "价格", curva: "曲线", listado: "已上 DEX", copiado: "已复制！", verExplorer: "在浏览器中查看 ↗", site: "官网", buscarNoX: "在 X 上搜索", variacao: "24小时涨跌", volume: "24小时交易量", liquidez: "流动性", mcap: "市值", holders: "持有人", top10: "前 10 持有", top10Dica: "知名代币：最大的钱包是项目金库、锁定储备和交易所——此处并非风险信号。", criadoHa: (x: string) => `${x}前创建` },
 });
 
 export function TokenHeader({
@@ -185,6 +186,11 @@ export function TokenHeader({
 
         {/* No celular os números vão pra última linha, em grade de 3. */}
         <div className="grid w-full grid-cols-3 gap-x-4 gap-y-2 border-t border-white/[0.06] pt-2 lg:ml-4 lg:flex lg:w-auto lg:flex-wrap lg:items-center lg:gap-x-5 lg:gap-y-1 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+        {/* Computador: o preço é o primeiro número (o canto direito virou o "Poste e ganhe"). */}
+        <div className="hidden lg:block">
+          <div className="text-[9.5px] font-semibold uppercase tracking-wider text-zinc-500">{t.preco}</div>
+          <div className="tnum text-[15px] font-black text-zinc-50">$<Preco valor={price} /></div>
+        </div>
         <Numero rotulo={t.mcap} valor={formatUsd(marketCapAoVivo)} />
         <Numero
           rotulo={t.variacao}
@@ -213,13 +219,11 @@ export function TokenHeader({
               </div>
 
         {/* Computador: preço no canto direito, depois dos números. */}
+        {/* Computador: "Poste no X e ganhe" no canto direito, no lugar do preço
+            (pedido do dono, 08/10/2026) — na coluna da compra ele empurrava
+            alertas e o "Sobre" pra fora da tela. */}
         <div className="ml-auto hidden items-center gap-3 lg:flex">
-          <div className="text-right">
-            <div className="tnum text-lg font-black text-zinc-50">$<Preco valor={price} /></div>
-            <div className={cn("tnum text-[12px] font-semibold", up ? "text-bull" : "text-bear")}>
-              {formatPct(variacao)} <span className="text-zinc-600">24h</span>
-            </div>
-          </div>
+          <ConviteParaCompartilhar token={token} compacto />
 
           {/*
             O botão de compartilhar mora AQUI, não só no painel de afiliado:

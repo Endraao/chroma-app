@@ -590,7 +590,7 @@ export function ChartPanel({
         de dados.
       */}
       {semVelas ? (
-        <div className="grid h-[420px] place-items-center px-6 text-center">
+        <div className="grid h-[336px] place-items-center px-6 text-center">
           <div>
             <p className="text-[13px] font-semibold text-zinc-300">
               {status === "vazio" ? tx.semHistorico : tx.carregando}
@@ -602,6 +602,8 @@ export function ChartPanel({
         </div>
       ) : (
       <TradingChart
+        // 20% mais baixo (pedido do dono, 08/10/2026): alertas e "Sobre" sobem pra tela.
+        altura={448}
         comandos={grafico}
         candles={candlesNaEscala}
         escala={escalaEfetiva}
