@@ -71,6 +71,16 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
 
   useEffect(() => setLancadas(lerGuardadas()), []);
 
+  // Valor em dólar da compra inicial (pedido do dono, 09/10/2026).
+  const [precoBnb, setPrecoBnb] = useState<number | null>(null);
+  useEffect(() => {
+    fetch("/api/bnb/preco")
+      .then((r) => r.json())
+      .then((j) => setPrecoBnb(typeof j?.usd === "number" ? j.usd : null))
+      .catch(() => {});
+  }, []);
+  const compraBnb = Number(compra.trim().replace(",", ".")) || 0;
+
   const clientes = useCallback(async () => {
     const p = provedor();
     if (!p) throw new Error("Nenhuma carteira EVM no navegador. Instale a MetaMask.");
@@ -283,17 +293,24 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
           <label className="block text-[12px] font-semibold text-zinc-400">
             Sua compra inicial (BNB) — entra antes de qualquer bot, com taxa de 1%
             <input value={compra} onChange={(e) => setCompra(e.target.value)} inputMode="decimal" className={campo} />
+            {precoBnb && compraBnb > 0 && (
+              <span className="mt-1 block text-[12px] font-normal text-zinc-300">
+                ≈ US$ {(compraBnb * precoBnb).toLocaleString("en-US", { maximumFractionDigits: 2 })}
+              </span>
+            )}
           </label>
           <button type="button" onClick={lancar} disabled={!okLancar} className={`${botao} w-full`}>
-            Lançar moeda
+            {ocupado ? "Lançando…" : "Lançar moeda"}
           </button>
+          {/* O aviso fica colado no botão: lá embaixo ninguém via (09/10/2026). */}
+          {estado && <p className="text-[13px] leading-relaxed text-zinc-200">{estado}</p>}
           <p className="text-[11px] text-zinc-500">
             Lançador: <span className="font-mono">{lancador}</span>
           </p>
         </section>
       )}
 
-      {estado && <p className="text-[13px] leading-relaxed text-zinc-200">{estado}</p>}
+      {!lancador && estado && <p className="text-[13px] leading-relaxed text-zinc-200">{estado}</p>}
 
       {lancadas.length > 0 && (
         <section className="space-y-2 rounded-xl border border-white/[0.06] bg-ink-900/60 p-4">
