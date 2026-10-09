@@ -14,7 +14,9 @@ import {
 } from "viem";
 import { bsc } from "viem/chains";
 
+import { NegociarBnb } from "@/components/dev/NegociarBnb";
 import artefato from "@/lib/chroma-bnb-artefato.json";
+import artefatoTroca from "@/lib/chroma-bnb-troca-artefato.json";
 
 /**
  * Tela da página escondida /l/[chave]: publica o ChromaBnb (uma vez) e lança
@@ -54,7 +56,18 @@ function msgCurta(e: unknown) {
   return m.length > 200 ? m.slice(0, 200) + "…" : m;
 }
 
-export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSalvo: string | null }) {
+export function LancarBnb({
+  chave,
+  lancadorSalvo,
+  trocaSalva,
+}: {
+  chave: string;
+  lancadorSalvo: string | null;
+  trocaSalva: string | null;
+}) {
+  // Contrato de compra e venda (ChromaBnbTroca) — publicado uma vez, como o lançador.
+  const [trocaEnd, setTrocaEnd] = useState<`0x${string}` | null>(trocaSalva as `0x${string}` | null);
+  const [negociando, setNegociando] = useState<string | null>(null);
   const [conta, setConta] = useState<`0x${string}` | null>(null);
   const [saldo, setSaldo] = useState<bigint | null>(null);
   const [lancador, setLancador] = useState<`0x${string}` | null>(lancadorSalvo as `0x${string}` | null);
@@ -112,6 +125,30 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
   };
 
   const conectar = () => rodar(async () => void (await clientes()));
+
+  const publicarTroca = () =>
+    rodar(async () => {
+      if (!lancador) return;
+      const { carteira, leitura, endereco } = await clientes();
+      setEstado("Aprove a publicação da negociação na carteira…");
+      const hash = await carteira.deployContract({
+        abi: artefatoTroca.abi as Abi,
+        bytecode: artefatoTroca.bytecode as Hex,
+        args: [lancador],
+        account: endereco,
+      });
+      setEstado("Publicando… (alguns segundos)");
+      const recibo = await leitura.waitForTransactionReceipt({ hash });
+      if (!recibo.contractAddress) throw new Error("A publicação não devolveu endereço.");
+      const r = await fetch("/api/bnb/lancador", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chave, endereco: recibo.contractAddress, tipo: "troca" }),
+      });
+      const j = await r.json();
+      setTrocaEnd((j?.endereco ?? recibo.contractAddress) as `0x${string}`);
+      setEstado("Negociação publicada! Clique em Negociar na moeda.");
+    });
 
   const publicar = () =>
     rodar(async () => {
@@ -346,7 +383,34 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
                 <button type="button" onClick={() => coletar(l.moeda)} disabled={ocupado} className="font-bold text-marca">
                   Coletar taxas
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setNegociando((m) => (m === l.moeda ? null : l.moeda))}
+                  className="font-bold text-bull"
+                >
+                  {negociando === l.moeda ? "Fechar" : "Negociar"}
+                </button>
               </p>
+              {negociando === l.moeda &&
+                (trocaEnd ? (
+                  <NegociarBnb
+                    moeda={l.moeda as `0x${string}`}
+                    simbolo={l.simbolo}
+                    troca={trocaEnd}
+                    clientes={clientes}
+                    precoBnb={precoBnb}
+                  />
+                ) : (
+                  <div className="mt-2 space-y-1.5 rounded-xl border border-white/[0.08] bg-ink-950 p-3">
+                    <p className="text-[12px] text-zinc-400">
+                      Pra comprar e vender por aqui, publique a negociação uma vez (centavos de BNB).
+                    </p>
+                    <button type="button" onClick={publicarTroca} disabled={ocupado} className={`${botao} w-full`}>
+                      Publicar negociação
+                    </button>
+                    {estado && <p className="text-[12.5px] text-zinc-200">{estado}</p>}
+                  </div>
+                ))}
             </div>
           ))}
         </section>

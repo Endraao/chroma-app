@@ -19,6 +19,9 @@ export default async function PaginaLancarBnb({ params }: { params: Promise<{ ch
   const { chave } = await params;
   const salva = await lerDoCacheDoBanco<{ chave: string }>("pagina-bnb").catch(() => null);
   if (!salva?.chave || salva.chave !== chave) notFound();
-  const lancador = await lerDoCacheDoBanco<{ endereco: string }>("lancador-bnb").catch(() => null);
-  return <LancarBnb chave={chave} lancadorSalvo={lancador?.endereco ?? null} />;
+  const [lancador, troca] = await Promise.all([
+    lerDoCacheDoBanco<{ endereco: string }>("lancador-bnb").catch(() => null),
+    lerDoCacheDoBanco<{ endereco: string }>("troca-bnb").catch(() => null),
+  ]);
+  return <LancarBnb chave={chave} lancadorSalvo={lancador?.endereco ?? null} trocaSalva={troca?.endereco ?? null} />;
 }
