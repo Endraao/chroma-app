@@ -11,6 +11,7 @@ import { ImagemDaMoeda } from "@/components/home/CardDaMoeda";
 import { useTextos } from "@/components/IdiomaProvider";
 import { SwapWidget } from "@/components/trading/SwapWidget";
 import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
+import { useLinkDoX } from "@/hooks/useLinkDoX";
 import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
 import { cn, formatPct, formatPrice, formatUsd } from "@/lib/utils";
@@ -106,6 +107,7 @@ export function NegociarNoPost({ token }: { token: TokenSummary }) {
 }
 
 function Conteudo({ base }: { base: TokenSummary }) {
+  const linkX = useLinkDoX();
   const t = useTextos(TEXTOS);
   const token = useTokenVivo(base);
   const pct = token.change24h;
@@ -148,7 +150,7 @@ function Conteudo({ base }: { base: TokenSummary }) {
             <img src="/logo.png" alt="" className="size-4 rounded-full" />
             {t.abrir} ↗
           </a>
-          <a href={X_DA_CHROMA} target="_blank" rel="noreferrer" className={BOTAO_DO_TOPO}>
+          <a href={linkX.href(X_DA_CHROMA)} target={linkX.alvo} rel="noreferrer" className={BOTAO_DO_TOPO}>
             <svg viewBox="0 0 24 24" aria-hidden className="size-3.5 fill-current">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
@@ -223,6 +225,7 @@ function Conteudo({ base }: { base: TokenSummary }) {
 }
 
 function MeuLink({ token }: { token: TokenSummary }) {
+  const linkX = useLinkDoX();
   const t = useTextos(TEXTOS);
   const { publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
@@ -387,7 +390,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
         </RequireChainWallet>
       )}
       <Passo n={2} feito={segue} titulo={t.passo2} sub={t.passo2b}>
-        <a href={X_DA_CHROMA} target="_blank" rel="noreferrer" onClick={clicouSeguir} className="rounded-md border border-marca/40 px-2.5 py-1 text-[11.5px] font-bold text-marca">
+        <a href={linkX.href(X_DA_CHROMA)} target={linkX.alvo} rel="noreferrer" onClick={clicouSeguir} className="rounded-md border border-marca/40 px-2.5 py-1 text-[11.5px] font-bold text-marca">
           {t.seguir}
         </a>
       </Passo>
@@ -406,7 +409,7 @@ function MeuLink({ token }: { token: TokenSummary }) {
       </Passo>
       <Passo n={4} feito={postou} titulo={t.passo4} sub={t.passo4b}>
         {pago && carteira && (
-          <a href={postar} target="_blank" rel="noreferrer" onClick={() => setPostou(true)} className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black">
+          <a href={linkX.href(postar)} target={linkX.alvo} rel="noreferrer" onClick={() => setPostou(true)} className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black">
             {t.compartilhar}
           </a>
         )}

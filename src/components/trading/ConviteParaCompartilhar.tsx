@@ -7,6 +7,7 @@ import { useAccount } from "wagmi";
 import { useTextos } from "@/components/IdiomaProvider";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { traducoes } from "@/lib/idiomas";
+import { useLinkDoX } from "@/hooks/useLinkDoX";
 import type { TokenSummary } from "@/lib/types";
 
 /**
@@ -61,6 +62,7 @@ export function ConviteParaCompartilhar({ token, compacto = false }: { token: To
   const ref = account.account?.nickname ?? (token.chain === "solana" ? publicKey?.toBase58() : carteiraEvm) ?? null;
   // /e3/…: no X o post vira uma janela de compra (player card); no celular, abre a compra.
   const link = `${origem}/e3/${token.address}${ref ? `?ref=${encodeURIComponent(ref)}` : ""}`;
+  const linkX = useLinkDoX();
   const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
 
   async function copiar() {
@@ -81,8 +83,8 @@ export function ConviteParaCompartilhar({ token, compacto = false }: { token: To
         <p className="max-w-[210px] text-[13px] font-black leading-tight text-zinc-50">💸 {t.titulo}</p>
         <div className="flex flex-col items-stretch gap-0.5">
           <a
-            href={postar}
-            target="_blank"
+            href={linkX.href(postar)}
+            target={linkX.alvo}
             rel="noopener noreferrer"
             className="flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-marca px-3.5 text-[13px] font-black text-black transition-opacity hover:opacity-90"
           >
@@ -100,8 +102,8 @@ export function ConviteParaCompartilhar({ token, compacto = false }: { token: To
       <p className="text-[17px] font-black leading-tight tracking-tight text-zinc-50">💸 {t.titulo}</p>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-zinc-300">{t.texto}</p>
       <a
-        href={postar}
-        target="_blank"
+        href={linkX.href(postar)}
+        target={linkX.alvo}
         rel="noopener noreferrer"
         className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-marca text-[15px] font-black text-black transition-opacity hover:opacity-90"
       >

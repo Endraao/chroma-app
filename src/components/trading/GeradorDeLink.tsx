@@ -11,6 +11,7 @@ import { SugestoesDoDia } from "@/components/trading/SugestoesDoDia";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { traducoes } from "@/lib/idiomas";
 import type { ChainId } from "@/lib/types";
+import { useLinkDoX } from "@/hooks/useLinkDoX";
 import { cn, formatUsd } from "@/lib/utils";
 
 /**
@@ -155,6 +156,7 @@ export function GeradorDeLink() {
     }
   }
 
+  const linkX = useLinkDoX();
   const postar = moeda
     ? `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(moeda.symbol))}&url=${encodeURIComponent(link)}`
     : "";
@@ -223,8 +225,8 @@ export function GeradorDeLink() {
               {copiado ? t.copiado : t.copiar}
             </button>
             <a
-              href={postar}
-              target="_blank"
+              href={linkX.href(postar)}
+              target={linkX.alvo}
               rel="noreferrer"
               className="rounded-xl bg-marca px-4 py-3 text-center text-[14px] font-black text-black hover:opacity-90"
             >
