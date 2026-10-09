@@ -1,5 +1,3 @@
-import { after } from "next/server";
-
 import { getToken } from "@/lib/tokens";
 
 /**
@@ -27,11 +25,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ address:
 
   const titulo = esc(`$${token.symbol} — buy right in this post on Chroma`);
   const descricao = esc(`Trade ${token.name} without leaving X. Creators keep 40% of every trade fee on Chroma.`);
-  const imagem = `${SITE}/api/logo/${address}/card`;
+  // Capa = a imagem da própria moeda (pedido do dono, 09/10/2026), igual ao /e.
+  const imagem = token.imageUrl?.startsWith("http")
+    ? token.imageUrl
+    : token.imageUrl?.startsWith("/")
+      ? `${SITE}${token.imageUrl}`
+      : `${SITE}/logo.png`;
   const player = `${SITE}/p/${address}${sufixo}`;
   const moeda = `${SITE}/token/${address}${sufixo}`;
-  // A capa leva ~3s na primeira vez e o X desiste em ~4s: já deixa pronta no CDN.
-  after(() => fetch(imagem, { signal: AbortSignal.timeout(15_000) }).catch(() => {}));
 
   const html = `<!doctype html>
 <html lang="en">
