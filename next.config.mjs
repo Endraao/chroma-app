@@ -16,10 +16,12 @@ const nextConfig = {
 
   async headers() {
     return [
-      // Tudo, MENOS /p/…: ninguém nos coloca em iframe.
-      { source: "/:path((?!p/).*)", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento }) },
+      // Tudo, MENOS /p/… e /e3/…: ninguém nos coloca em iframe.
+      { source: "/:path((?!p/|e3/).*)", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento }) },
       // /p/…: a negociação dentro do post do X (player card) — só o X pode embutir.
       { source: "/p/:path*", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento, embutivel: true }) },
+      // /e3/…: teste do celular (09/10/2026) — igual ao XPeriment, a página do link também aceita o X.
+      { source: "/e3/:path*", headers: cabecalhosDeSeguranca({ desenvolvimento: emDesenvolvimento, embutivel: true }) },
       /*
        * /token/…: é a página que o botão "Open on Chroma" (e o "abrir na
        * Chroma") abre DE DENTRO do post do X. O X põe a janela do post em
