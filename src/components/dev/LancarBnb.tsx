@@ -32,6 +32,7 @@ interface Lancada {
   nome: string;
   simbolo: string;
   em: number;
+  imagem?: string;
 }
 
 function provedor(): EIP1193Provider | null {
@@ -61,7 +62,10 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
   const [ocupado, setOcupado] = useState(false);
   const [nome, setNome] = useState("");
   const [simbolo, setSimbolo] = useState("");
-  const [imagem, setImagem] = useState("");
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const [site, setSite] = useState("");
+  const [xLink, setXLink] = useState("");
+  const [telegram, setTelegram] = useState("");
   const [compra, setCompra] = useState("0.01");
   const [lancadas, setLancadas] = useState<Lancada[]>([]);
 
@@ -126,12 +130,35 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
     rodar(async () => {
       if (!lancador) return;
       const { carteira, leitura, endereco } = await clientes();
+      /*
+       * Imagem + site + X + Telegram viram o arquivo de dados da moeda (mesmo
+       * padrão dos lançamentos da Solana, via /api/token-media). O endereço
+       * desse arquivo vai no lançamento e fica gravado na rede, no evento.
+       */
+      let uri = "";
+      let imagemUrl: string | undefined;
+      if (arquivo) {
+        setEstado("Enviando a imagem…");
+        const form = new FormData();
+        form.set("coin", arquivo);
+        form.set("name", nome.trim());
+        form.set("symbol", simbolo.trim().toUpperCase());
+        if (site.trim()) form.set("website", site.trim());
+        if (xLink.trim()) form.set("twitter", xLink.trim());
+        if (telegram.trim()) form.set("telegram", telegram.trim());
+        form.set("creator", endereco);
+        const r = await fetch("/api/token-media", { method: "POST", body: form });
+        const j = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(j?.error ?? "Não deu pra enviar a imagem.");
+        uri = j.metadataUrl;
+        imagemUrl = j.imageUrl;
+      }
       setEstado("Aprove o lançamento na carteira…");
       const hash = await carteira.writeContract({
         address: lancador,
         abi: ABI,
         functionName: "lancar",
-        args: [nome.trim(), simbolo.trim().toUpperCase(), imagem.trim()],
+        args: [nome.trim(), simbolo.trim().toUpperCase(), uri],
         value: compra.trim() ? parseEther(compra.trim().replace(",", ".")) : 0n,
         account: endereco,
       });
@@ -141,7 +168,7 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
         args: { moeda: string };
       }[];
       if (!ev) throw new Error("Lançado, mas não achei a moeda no recibo. Veja no BscScan: " + hash);
-      const nova = { moeda: ev.args.moeda, nome: nome.trim(), simbolo: simbolo.trim().toUpperCase(), em: Date.now() };
+      const nova = { moeda: ev.args.moeda, nome: nome.trim(), simbolo: simbolo.trim().toUpperCase(), em: Date.now(), imagem: imagemUrl };
       const lista = [nova, ...lerGuardadas()];
       try {
         localStorage.setItem(GUARDADAS, JSON.stringify(lista));
@@ -149,7 +176,10 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
       setLancadas(lista);
       setNome("");
       setSimbolo("");
-      setImagem("");
+      setArquivo(null);
+      setSite("");
+      setXLink("");
+      setTelegram("");
       setSaldo(await leitura.getBalance({ address: endereco }));
       setEstado(`Lançada! $${nova.simbolo}: os primeiros 5 minutos têm a taxa anti-sniper (50% caindo até 1%).`);
     });
@@ -222,9 +252,34 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
             <input value={simbolo} onChange={(e) => setSimbolo(e.target.value)} maxLength={16} className={campo} />
           </label>
           <label className="block text-[12px] font-semibold text-zinc-400">
-            Link da imagem (opcional)
-            <input value={imagem} onChange={(e) => setImagem(e.target.value)} placeholder="https://…" className={campo} />
+            Imagem da moeda (PNG, JPG, WEBP ou GIF)
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+              className={`${campo} file:mr-3 file:rounded-md file:border-0 file:bg-marca file:px-3 file:py-1 file:font-bold file:text-black`}
+            />
           </label>
+          {arquivo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={URL.createObjectURL(arquivo)} alt="" className="size-16 rounded-lg object-cover" />
+          )}
+          <label className="block text-[12px] font-semibold text-zinc-400">
+            Site (opcional)
+            <input value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://…" className={campo} />
+          </label>
+          <label className="block text-[12px] font-semibold text-zinc-400">
+            X / Twitter (opcional)
+            <input value={xLink} onChange={(e) => setXLink(e.target.value)} placeholder="https://x.com/…" className={campo} />
+          </label>
+          <label className="block text-[12px] font-semibold text-zinc-400">
+            Telegram (opcional)
+            <input value={telegram} onChange={(e) => setTelegram(e.target.value)} placeholder="https://t.me/…" className={campo} />
+          </label>
+          <p className="text-[11px] leading-snug text-zinc-500">
+            A imagem e os links ficam registrados na rede junto com a moeda. GMGN e DexScreener só mostram imagem e links
+            de moedas fora da four.meme com o perfil pago da DexScreener.
+          </p>
           <label className="block text-[12px] font-semibold text-zinc-400">
             Sua compra inicial (BNB) — entra antes de qualquer bot, com taxa de 1%
             <input value={compra} onChange={(e) => setCompra(e.target.value)} inputMode="decimal" className={campo} />
@@ -245,7 +300,11 @@ export function LancarBnb({ chave, lancadorSalvo }: { chave: string; lancadorSal
           <p className="text-[14px] font-bold text-zinc-100">Suas moedas na BNB</p>
           {lancadas.map((l) => (
             <div key={l.moeda} className="space-y-1 border-t border-white/[0.06] pt-2 text-[12px]">
-              <p className="font-bold text-zinc-100">
+              <p className="flex items-center gap-2 font-bold text-zinc-100">
+                {l.imagem && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={l.imagem} alt="" className="size-6 rounded-md object-cover" />
+                )}
                 ${l.simbolo} <span className="font-normal text-zinc-400">{l.nome}</span>
               </p>
               <p className="break-all font-mono text-zinc-400">{l.moeda}</p>
