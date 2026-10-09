@@ -38,7 +38,7 @@ const TEXTOS = traducoes({
     passo3: "Register your link", passo3b: (s: string) => `one-time registration fee: ${s}`,
     passo4: "Share it on X", passo4b: "your post becomes a buy box too",
     seguir: "Follow ↗", registrar: "Register", registrando: "Approve in your wallet…", compartilhar: "Post on X ↗", cancelado: "Cancelled in your wallet.", semSaldo: (m: string) => `Not enough ${m} in this wallet for the fee.`, naoDeu: "It didn't go through. Try again.",
-    pronto: "Your link is ready:",
+    pronto: "Your link is ready:", copiar: "Copy", copiado: "Copied!", sigaAntes: "Click Follow first",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   pt: {
@@ -55,7 +55,7 @@ const TEXTOS = traducoes({
     passo3: "Registre o seu link", passo3b: (s: string) => `taxa única de registro: ${s}`,
     passo4: "Compartilhe no X", passo4b: "o seu post também vira janela de compra",
     seguir: "Seguir ↗", registrar: "Registrar", registrando: "Aprove na sua carteira…", compartilhar: "Postar no X ↗", cancelado: "Cancelado na carteira.", semSaldo: (m: string) => `Saldo de ${m} insuficiente nesta carteira pra taxa.`, naoDeu: "Não deu certo. Tente de novo.",
-    pronto: "Seu link está pronto:",
+    pronto: "Seu link está pronto:", copiar: "Copiar", copiado: "Copiado!", sigaAntes: "Clique em Seguir antes",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   zh: {
@@ -72,7 +72,7 @@ const TEXTOS = traducoes({
     passo3: "注册你的链接", passo3b: (s: string) => `一次性注册费：${s}`,
     passo4: "分享到 X", passo4b: "你的帖子也会变成购买窗口",
     seguir: "关注 ↗", registrar: "注册", registrando: "请在钱包中确认…", compartilhar: "发到 X ↗", cancelado: "已在钱包中取消。", semSaldo: (m: string) => `钱包中的 ${m} 不足以支付费用。`, naoDeu: "未成功，请重试。",
-    pronto: "你的链接已就绪：",
+    pronto: "你的链接已就绪：", copiar: "复制", copiado: "已复制！", sigaAntes: "请先点击关注",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
 });
@@ -239,6 +239,10 @@ function MeuLink({ token }: { token: TokenSummary }) {
   const clienteEvm = usePublicClient({ chainId: robinhoodChain.id });
   const carteira = (ehEvm ? carteiraEvm : publicKey?.toBase58()) ?? "";
   const taxaDoLink = ehEvm ? `${TAXA_DO_LINK_ETH} ETH` : `${TAXA_DO_LINK_SOL} SOL`;
+  // Apelido da conta Chroma desta carteira: deixa o link curto (?ref=apelido em
+  // vez do endereço). O ?ref= aceita os dois e resolve pra carteira da rede.
+  const [apelido, setApelido] = useState("");
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     if (!carteira) return;
@@ -246,7 +250,24 @@ function MeuLink({ token }: { token: TokenSummary }) {
       .then((r) => r.json())
       .then((j) => setPago(Boolean(j?.pago)))
       .catch(() => {});
-  }, [carteira]);
+    fetch(`/api/account?wallet=${carteira}`)
+      .then((r) => r.json())
+      .then((c) => setApelido(c?.nickname && c?.carteiras?.[token.chain] === carteira ? c.nickname : ""))
+      .catch(() => {});
+  }, [carteira, token.chain]);
+
+  // O passo 3 só libera depois do clique em "Seguir" (pedido do dono, 09/10/2026).
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("chroma-clicou-seguir") === "1") setSegue(true);
+    } catch {}
+  }, []);
+  const clicouSeguir = () => {
+    setSegue(true);
+    try {
+      localStorage.setItem("chroma-clicou-seguir", "1");
+    } catch {}
+  };
 
   async function confirmarNoSite(tx: string) {
     const r = await fetch("/api/link-no-post", {
@@ -315,7 +336,19 @@ function MeuLink({ token }: { token: TokenSummary }) {
     return t.naoDeu;
   }
 
-  const link = `https://chromalaunch.fun/e3/${token.address}?ref=${carteira}`;
+  const ref = apelido || carteira;
+  const link = `https://chromalaunch.fun/e3/${token.address}?ref=${encodeURIComponent(ref)}`;
+  const curto = (s: string) => (s.length > 14 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s);
+  const linkNaTela = `chromalaunch.fun/e3/${curto(token.address)}?ref=${curto(ref)}`;
+  const copiar = () => {
+    navigator.clipboard
+      ?.writeText(link)
+      .then(() => {
+        setCopiado(true);
+        setTimeout(() => setCopiado(false), 1500);
+      })
+      .catch(() => {});
+  };
   const postar = `https://x.com/intent/post?text=${encodeURIComponent(t.tweet(token.symbol))}&url=${encodeURIComponent(link)}`;
   const Passo = ({ n, feito, titulo, sub, children }: { n: number; feito: boolean; titulo: string; sub: string; children?: React.ReactNode }) => (
     <div className="flex items-center gap-3 border-t border-white/[0.06] py-1.5">
@@ -341,13 +374,19 @@ function MeuLink({ token }: { token: TokenSummary }) {
         </RequireChainWallet>
       )}
       <Passo n={2} feito={segue} titulo={t.passo2} sub={t.passo2b}>
-        <a href={X_DA_CHROMA} target="_blank" rel="noreferrer" onClick={() => setSegue(true)} className="rounded-md border border-marca/40 px-2.5 py-1 text-[11.5px] font-bold text-marca">
+        <a href={X_DA_CHROMA} target="_blank" rel="noreferrer" onClick={clicouSeguir} className="rounded-md border border-marca/40 px-2.5 py-1 text-[11.5px] font-bold text-marca">
           {t.seguir}
         </a>
       </Passo>
       <Passo n={3} feito={pago} titulo={t.passo3} sub={t.passo3b(taxaDoLink)}>
         {!pago && carteira && (
-          <button type="button" onClick={registrar} className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black">
+          <button
+            type="button"
+            onClick={registrar}
+            disabled={!segue}
+            title={segue ? undefined : t.sigaAntes}
+            className="rounded-md bg-marca px-2.5 py-1 text-[11.5px] font-black text-black disabled:cursor-not-allowed disabled:opacity-35"
+          >
             {t.registrar}
           </button>
         )}
@@ -360,9 +399,15 @@ function MeuLink({ token }: { token: TokenSummary }) {
         )}
       </Passo>
       {pago && carteira && (
-        <p className="mt-1 break-all text-[11px] text-zinc-400">
-          {t.pronto} <span className="font-mono text-marca">{link}</span>
-        </p>
+        <div className="mt-1 flex items-center gap-2 text-[11px] text-zinc-400">
+          <span className="shrink-0">{t.pronto}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-marca" title={link}>
+            {linkNaTela}
+          </span>
+          <button type="button" onClick={copiar} className="shrink-0 rounded-md border border-marca/40 px-2 py-0.5 text-[11px] font-bold text-marca">
+            {copiado ? t.copiado : t.copiar}
+          </button>
+        </div>
       )}
       {estado && <p className="mt-1 text-[11.5px] text-zinc-300">{estado}</p>}
     </div>
