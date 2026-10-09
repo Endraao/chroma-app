@@ -34,6 +34,7 @@ import type { ChainId } from "@/lib/types";
 const TEXTOS = traducoes({
   en: {
     abrirNa: (c: string) => `Buy in ${c} ↗`,
+    conecteSua: "Connect your wallet",
     celularSemCarteira: "On your phone? Pick your wallet — it opens this coin with the amount already set.",
     outra: "Other",
     outraRede: "Your wallet is on another network",
@@ -49,6 +50,7 @@ const TEXTOS = traducoes({
   },
   pt: {
     abrirNa: (c: string) => `Comprar na ${c} ↗`,
+    conecteSua: "Conecte sua carteira",
     celularSemCarteira: "No celular? Escolha sua carteira — ela abre esta moeda com o valor já preenchido.",
     outra: "Outra",
     outraRede: "Sua carteira está em outra rede",
@@ -64,6 +66,7 @@ const TEXTOS = traducoes({
   },
   zh: {
     abrirNa: (c: string) => `在 ${c} 中购买 ↗`,
+    conecteSua: "连接你的钱包",
     celularSemCarteira: "在手机上？选择你的钱包 —— 它会打开此代币，金额已填好。",
     outra: "其他",
     outraRede: "你的钱包在其他网络上",
@@ -130,6 +133,7 @@ export function RequireChainWallet({
     detectadas.length === 1 ? detectadas[0] : detectadas.find((o) => o.state === "recent");
   const abrir = () => (direta ? direta.onSelect() : setModalAberto(true));
   const [celular, setCelular] = useState(false);
+  const [listaAberta, setListaAberta] = useState(false);
   useEffect(() => {
     // Celular SEM carteira embutida no navegador (app do X, Safari, Chrome).
     // A lista de "detectadas" não serve aqui: no Android ela traz o Mobile
@@ -170,25 +174,23 @@ export function RequireChainWallet({
         <div className="space-y-1.5">
           {/* No post do X cada linha conta (o X corta o que passa da altura): sem o texto, demais carteiras numa fileira só. */}
           {!compacto && <p className="text-[11px] text-zinc-400">{t.celularSemCarteira}</p>}
-          <a
-            href={carteiras[0][1]}
-            target="_blank"
-            rel="noreferrer"
-            className="block rounded-lg bg-marca py-2.5 text-center text-[14px] font-black text-black"
+          {/* Nenhuma carteira preferida (pedido do dono, 09/10/2026): o botão só abre a lista. */}
+          <button
+            type="button"
+            onClick={() => setListaAberta((v) => !v)}
+            className="block w-full rounded-lg bg-marca py-2.5 text-center text-[14px] font-black text-black"
           >
-            {t.abrirNa(carteiras[0][0])}
-          </a>
-          <div className="flex gap-1.5">
-            {carteiras.slice(1).map(([nome, link]) => (
+            {t.conecteSua} {listaAberta ? "▴" : "▾"}
+          </button>
+          {listaAberta && (
+          <div className="grid grid-cols-3 gap-1.5">
+            {carteiras.map(([nome, link]) => (
               <a
                 key={nome}
                 href={link}
                 target="_blank"
                 rel="noreferrer"
-                className={cn(
-                  "flex-1 rounded-lg border border-ink-600 bg-ink-800 text-center font-bold text-zinc-100",
-                  compacto ? "py-1.5 text-[11px]" : "py-2 text-[12px]",
-                )}
+                className="rounded-lg border border-ink-600 bg-ink-800 py-2 text-center text-[12px] font-bold text-zinc-100"
               >
                 {nome}
               </a>
@@ -196,11 +198,12 @@ export function RequireChainWallet({
             <button
               type="button"
               onClick={abrir}
-              className={cn("flex-1 rounded-lg border border-ink-600 font-bold text-zinc-400", compacto ? "py-1.5 text-[11px]" : "py-2 text-[12px]")}
+              className="rounded-lg border border-ink-600 py-2 text-[12px] font-bold text-zinc-400"
             >
               {t.outra}
             </button>
           </div>
+          )}
           <SignInModal open={modalAberto} onClose={() => setModalAberto(false)} rede={ehSolana ? "solana" : "evm"} />
         </div>
       );
