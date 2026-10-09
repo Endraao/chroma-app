@@ -39,7 +39,7 @@ const TEXTOS = traducoes({
     passo3: "Register your link", passo3b: (s: string) => `one-time registration fee: ${s}`,
     passo4: "Share it on X", passo4b: "your post becomes a buy box too",
     seguir: "Follow ↗", registrar: "Register", registrando: "Approve in your wallet…", compartilhar: "Post on X ↗", cancelado: "Cancelled in your wallet.", semSaldo: (m: string) => `Not enough ${m} in this wallet for the fee.`, naoDeu: "It didn't go through. Try again.",
-    pronto: "Your link is ready:", copiar: "Copy", copiado: "Copied!", sigaAntes: "Click Follow first", sigaPeloApp: "Follow @ChromaLaunch in the X app later (X does not open inside MetaMask).", copiarPost: "Copy post", postCopiado: "Post copied! Open the X app and paste it.",
+    pronto: "Your link is ready:", copiar: "Copy", copiado: "Copied!", sigaAntes: "Click Follow first", sigaPeloApp: "Follow @ChromaLaunch in the X app later (X does not open inside the wallet).", copiarPost: "Copy post", postCopiado: "Post copied! Open the X app and paste it.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   pt: {
@@ -56,7 +56,7 @@ const TEXTOS = traducoes({
     passo3: "Registre o seu link", passo3b: (s: string) => `taxa única de registro: ${s}`,
     passo4: "Compartilhe no X", passo4b: "o seu post também vira janela de compra",
     seguir: "Seguir ↗", registrar: "Registrar", registrando: "Aprove na sua carteira…", compartilhar: "Postar no X ↗", cancelado: "Cancelado na carteira.", semSaldo: (m: string) => `Saldo de ${m} insuficiente nesta carteira pra taxa.`, naoDeu: "Não deu certo. Tente de novo.",
-    pronto: "Seu link está pronto:", copiar: "Copiar", copiado: "Copiado!", sigaAntes: "Clique em Seguir antes", sigaPeloApp: "Siga @ChromaLaunch pelo app do X depois (o X não abre dentro da MetaMask).", copiarPost: "Copiar post", postCopiado: "Post copiado! Abra o app do X e cole.",
+    pronto: "Seu link está pronto:", copiar: "Copiar", copiado: "Copiado!", sigaAntes: "Clique em Seguir antes", sigaPeloApp: "Siga @ChromaLaunch pelo app do X depois (o X não abre dentro da carteira).", copiarPost: "Copiar post", postCopiado: "Post copiado! Abra o app do X e cole.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
   zh: {
@@ -73,7 +73,7 @@ const TEXTOS = traducoes({
     passo3: "注册你的链接", passo3b: (s: string) => `一次性注册费：${s}`,
     passo4: "分享到 X", passo4b: "你的帖子也会变成购买窗口",
     seguir: "关注 ↗", registrar: "注册", registrando: "请在钱包中确认…", compartilhar: "发到 X ↗", cancelado: "已在钱包中取消。", semSaldo: (m: string) => `钱包中的 ${m} 不足以支付费用。`, naoDeu: "未成功，请重试。",
-    pronto: "你的链接已就绪：", copiar: "复制", copiado: "已复制！", sigaAntes: "请先点击关注", sigaPeloApp: "稍后请在 X App 中关注 @ChromaLaunch（MetaMask 内无法打开 X）。", copiarPost: "复制帖子", postCopiado: "帖子已复制！打开 X App 粘贴即可。",
+    pronto: "你的链接已就绪：", copiar: "复制", copiado: "已复制！", sigaAntes: "请先点击关注", sigaPeloApp: "稍后请在 X App 中关注 @ChromaLaunch（钱包内无法打开 X）。", copiarPost: "复制帖子", postCopiado: "帖子已复制！打开 X App 粘贴即可。",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
   },
 });
