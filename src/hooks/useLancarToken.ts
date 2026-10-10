@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey, type Connection } from "@solana/web3.js";
 
 import { recusarDadosDoToken } from "@/lib/chroma-program";
 import {
@@ -110,6 +110,31 @@ const MENSAGENS = traducoes({
     expirou: "确认耗时过长，网络已拒绝。未产生任何费用——再点一次即可。",
   },
 });
+
+/**
+ * Confirma sem mentir (09/10/2026): a espera por bloco às vezes estoura com a
+ * transação JÁ aprovada — a tela dizia "nada foi cobrado, clique de novo" e
+ * quem clicasse criaria OUTRA moeda. Se a espera estourar, consulta o status
+ * na rede por até ~30 s antes de desistir. Devolve o erro da transação (null
+ * = deu certo).
+ */
+async function confirmarComFolga(
+  connection: Connection,
+  assinatura: string,
+  bloco: { blockhash: string; lastValidBlockHeight: number },
+): Promise<unknown> {
+  try {
+    const r = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+    return r.value.err;
+  } catch (e) {
+    for (let i = 0; i < 20; i++) {
+      const { value } = await connection.getSignatureStatus(assinatura, { searchTransactionHistory: true }).catch(() => ({ value: null }));
+      if (value?.confirmationStatus) return value.err;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    throw e;
+  }
+}
 
 export function useLancarToken() {
   const { connection } = useConnection();
@@ -240,7 +265,7 @@ export function useLancarToken() {
           const assinatura = await connection.sendRawTransaction(assinada.serialize());
           setEtapa("confirmando");
           const bloco = await connection.getLatestBlockhash();
-          const r = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+          const r = { value: { err: await confirmarComFolga(connection, assinatura, bloco) } };
           if (r.value.err) throw new Error(m.recusou);
           mintCriado = mint.publicKey.toBase58();
           await registrar(assinatura);
@@ -268,7 +293,7 @@ export function useLancarToken() {
           const assinatura = await sendTransaction(tx, connection);
           setEtapa("confirmando");
           const bloco = await connection.getLatestBlockhash();
-          const r = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+          const r = { value: { err: await confirmarComFolga(connection, assinatura, bloco) } };
           if (r.value.err) throw new Error(m.recusou);
           mintCriado = mint.publicKey.toBase58();
           if (compraSol > 0) {
@@ -323,7 +348,7 @@ export function useLancarToken() {
             ? await connection.sendRawTransaction(assinadas[0].serialize(), { maxRetries: 5 })
             : await sendTransaction(criacao, connection);
           const bloco = await connection.getLatestBlockhash();
-          const r1 = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+          const r1 = { value: { err: await confirmarComFolga(connection, assinatura, bloco) } };
           if (r1.value.err) throw new Error(m.recusou);
           mintCriado = mint.publicKey.toBase58();
           // A compra inicial saiu junto com a criação: anota pro painel "Sua
@@ -345,7 +370,7 @@ export function useLancarToken() {
           const enviar = async (tx: typeof criacao) => {
             const sig = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 5 });
             const b = await connection.getLatestBlockhash();
-            const r = await connection.confirmTransaction({ signature: sig, ...b }, "confirmed");
+            const r = { value: { err: await confirmarComFolga(connection, sig, b) } };
             if (r.value.err) throw new Error(m.recusou);
             return sig;
           };
@@ -367,7 +392,7 @@ export function useLancarToken() {
               });
               assinaturaTaxa = await sendTransaction(nova, connection);
               const b = await connection.getLatestBlockhash();
-              const r = await connection.confirmTransaction({ signature: assinaturaTaxa, ...b }, "confirmed");
+              const r = { value: { err: await confirmarComFolga(connection, assinaturaTaxa, b) } };
               if (r.value.err) assinaturaTaxa = undefined;
             } catch (e2) {
               console.warn("[lancamento] etapa 2 não concluída:", e2);
@@ -400,7 +425,7 @@ export function useLancarToken() {
 
         setEtapa("confirmando");
         const bloco = await connection.getLatestBlockhash();
-        const resultado = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
+        const resultado = { value: { err: await confirmarComFolga(connection, assinatura, bloco) } };
         if (resultado.value.err) throw new Error(m.recusou);
         mintCriado = mint.publicKey.toBase58();
 
@@ -450,7 +475,7 @@ export function useLancarToken() {
               });
               const assinaturaB = await sendTransaction(txB, connection);
               const blocoB = await connection.getLatestBlockhash();
-              const resB = await connection.confirmTransaction({ signature: assinaturaB, ...blocoB }, "confirmed");
+              const resB = { value: { err: await confirmarComFolga(connection, assinaturaB, blocoB) } };
               if (resB.value.err) throw new Error(m.recusou);
               break;
             } catch (erroB) {
