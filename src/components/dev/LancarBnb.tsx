@@ -7,6 +7,11 @@ import {
   custom,
   erc20Abi,
   formatEther,
+  getContractAddress,
+  keccak256,
+  toBytes,
+  toHex,
+  zeroAddress,
   maxUint256,
   parseEther,
   parseEventLogs,
@@ -19,6 +24,7 @@ import { bsc } from "viem/chains";
 import { NegociarBnb } from "@/components/dev/NegociarBnb";
 import artefato from "@/lib/chroma-bnb-artefato.json";
 import artefatoTroca from "@/lib/chroma-bnb-troca-artefato.json";
+import flapAbi from "@/lib/flap-portal-abi.json";
 
 /**
  * Tela da página escondida /l/[chave]: publica o ChromaBnb (uma vez) e lança
@@ -31,6 +37,29 @@ const GERENTE = "0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b";
 const FDV_INICIAL = parseEther("4.35"); // igual à four.meme (~US$ 3,2 mil em 09/10/2026)
 const GUARDADAS = "chroma-bnb-lancadas";
 
+/* Flap (BNB): Portal e o modelo do Tax Token V3 — docs.flap.sh, conferidos na rede em 09/10/2026. */
+const FLAP_PORTAL = "0xe2cE6ab80874Fa9Fa2aAE65D277Dd6B8e65C9De0";
+const FLAP_IMPL_TAXA_V3 = "0x024f18294970B5c76c0691b87f138A0317156422";
+/** Comissão de integradora da Chroma (carteira EVM da plataforma). */
+const COMISSAO_CHROMA = (process.env.NEXT_PUBLIC_PLATFORM_FEE_WALLET_EVM || zeroAddress) as `0x${string}`;
+
+/**
+ * A Flap exige que o endereço da moeda com taxa termine em 7777 (CREATE2 do
+ * clone do modelo, a partir do Portal). Sorteia sementes até achar — em
+ * pedaços, pra página não travar (leva uns segundos).
+ */
+async function acharSalt7777(): Promise<{ salt: Hex; moeda: `0x${string}` }> {
+  const codigo = `0x3d602d80600a3d3981f3363d3d373d3d3d363d73${FLAP_IMPL_TAXA_V3.slice(2).toLowerCase()}5af43d82803e903d91602b57fd5bf3` as Hex;
+  const hashDoCodigo = keccak256(codigo);
+  let salt = keccak256(toHex(crypto.getRandomValues(new Uint8Array(32))));
+  for (let i = 1; ; i++) {
+    const moeda = getContractAddress({ from: FLAP_PORTAL, salt: toBytes(salt), bytecodeHash: hashDoCodigo, opcode: "CREATE2" });
+    if (moeda.endsWith("7777")) return { salt, moeda };
+    salt = keccak256(salt);
+    if (i % 2000 === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
 interface Lancada {
   moeda: string;
   nome: string;
@@ -40,6 +69,8 @@ interface Lancada {
   /** Lançador e negociação desta moeda (cada lançador tem os seus). */
   lancador?: string;
   troca?: string;
+  /** Lançada pela Flap (tax token): a taxa cai sozinha na carteira, em BNB. */
+  flap?: boolean;
 }
 
 function provedor(): EIP1193Provider | null {
@@ -84,6 +115,7 @@ export function LancarBnb({
   const [site, setSite] = useState("");
   const [xLink, setXLink] = useState("");
   const [telegram, setTelegram] = useState("");
+  const [descricao, setDescricao] = useState("");
   const [compra, setCompra] = useState("0.01");
   const [lancadas, setLancadas] = useState<Lancada[]>([]);
 
@@ -198,70 +230,95 @@ export function LancarBnb({
       setEstado("Lançador publicado! Já dá pra lançar moedas.");
     });
 
+  /*
+   * LANÇAR PELA FLAP (decisão do dono, 09/10/2026): é onde os snipers e bots
+   * da BNB olham. Tax Token V3: 10% na compra e na venda, por 100 anos, tudo
+   * pra carteira de quem cria (em BNB); a Chroma recebe a comissão de
+   * integradora (commissionReceiver). Parâmetros simulados na rede antes.
+   */
   const lancar = () =>
     rodar(async () => {
-      if (!lancador) return;
+      if (!arquivo) throw new Error("Escolha a imagem da moeda.");
       const { carteira, leitura, endereco } = await clientes();
-      /*
-       * Imagem + site + X + Telegram viram o arquivo de dados da moeda (mesmo
-       * padrão dos lançamentos da Solana, via /api/token-media). O endereço
-       * desse arquivo vai no lançamento e fica gravado na rede, no evento.
-       */
-      let uri = "";
-      let imagemUrl: string | undefined;
-      if (arquivo) {
-        setEstado("Enviando a imagem…");
-        const form = new FormData();
-        form.set("coin", arquivo);
-        form.set("name", nome.trim());
-        form.set("symbol", simbolo.trim().toUpperCase());
-        if (site.trim()) form.set("website", site.trim());
-        if (xLink.trim()) form.set("twitter", xLink.trim());
-        if (telegram.trim()) form.set("telegram", telegram.trim());
-        form.set("creator", endereco);
-        const r = await fetch("/api/token-media", { method: "POST", body: form });
-        const j = await r.json().catch(() => null);
-        if (!r.ok) throw new Error(j?.error ?? "Não deu pra enviar a imagem.");
-        uri = j.metadataUrl;
-        imagemUrl = j.imageUrl;
-      }
+      setEstado("Enviando a imagem e os links pro IPFS da Flap…");
+      const form = new FormData();
+      form.set("chave", chave);
+      form.set("imagem", arquivo);
+      if (descricao.trim()) form.set("descricao", descricao.trim());
+      if (site.trim()) form.set("site", site.trim());
+      if (xLink.trim()) form.set("x", xLink.trim());
+      if (telegram.trim()) form.set("telegram", telegram.trim());
+      const r = await fetch("/api/bnb/flap-meta", { method: "POST", body: form });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.cid) throw new Error(j?.erro ?? "Não deu pra enviar a imagem pra Flap.");
+
+      setEstado("Preparando o endereço da moeda (final 7777)… pode levar uns segundos.");
+      const { salt, moeda } = await acharSalt7777();
+
+      const valor = compra.trim() ? parseEther(compra.trim().replace(",", ".")) : 0n;
       setEstado("Aprove o lançamento na carteira…");
       const hash = await carteira.writeContract({
-        address: lancador,
-        abi: ABI,
-        functionName: "lancar",
-        args: [nome.trim(), simbolo.trim().toUpperCase(), uri],
-        value: compra.trim() ? parseEther(compra.trim().replace(",", ".")) : 0n,
+        address: FLAP_PORTAL,
+        abi: flapAbi as Abi,
+        functionName: "newTokenV6",
+        args: [
+          {
+            name: nome.trim(),
+            symbol: simbolo.trim().toUpperCase(),
+            meta: j.cid,
+            dexThresh: 1, // FOUR_FIFTHS (o único aceito hoje)
+            salt,
+            migratorType: 1, // V2_MIGRATOR (obrigatório pra tax token)
+            quoteToken: zeroAddress, // BNB
+            quoteAmt: valor,
+            beneficiary: endereco,
+            permitData: "0x",
+            extensionID: `0x${"00".repeat(32)}`,
+            extensionData: "0x",
+            dexId: 0,
+            lpFeeProfile: 0,
+            buyTaxRate: 1000, // 10%
+            sellTaxRate: 1000, // 10%
+            taxDuration: 100n * 365n * 24n * 3600n, // "pra sempre" (máx. 100 anos)
+            antiFarmerDuration: 3600n,
+            mktBps: 10000, // toda a taxa pra quem cria
+            deflationBps: 0,
+            dividendBps: 0,
+            lpBps: 0,
+            minimumShareBalance: 0n,
+            dividendToken: zeroAddress,
+            commissionReceiver: COMISSAO_CHROMA,
+            tokenVersion: 6, // TOKEN_TAXED_V3
+          },
+        ],
+        value: valor,
         account: endereco,
       });
       setEstado("Lançando… (alguns segundos)");
       const recibo = await leitura.waitForTransactionReceipt({ hash });
-      const [ev] = parseEventLogs({ abi: ABI, logs: recibo.logs, eventName: "Lancou" }) as unknown as {
-        args: { moeda: string };
-      }[];
-      if (!ev) throw new Error("Lançado, mas não achei a moeda no recibo. Veja no BscScan: " + hash);
+      if (recibo.status !== "success") throw new Error("A transação falhou. Veja no BscScan: " + hash);
       const nova: Lancada = {
-        moeda: ev.args.moeda,
+        moeda,
         nome: nome.trim(),
         simbolo: simbolo.trim().toUpperCase(),
         em: Date.now(),
-        imagem: imagemUrl,
-        lancador,
-        troca: trocaEnd ?? undefined,
+        imagem: arquivo ? URL.createObjectURL(arquivo) : undefined,
+        flap: true,
       };
       const lista = [nova, ...lerGuardadas()];
       try {
-        localStorage.setItem(GUARDADAS, JSON.stringify(lista));
+        localStorage.setItem(GUARDADAS, JSON.stringify(lista.map((x) => (x === nova ? { ...x, imagem: undefined } : x))));
       } catch {}
       setLancadas(lista);
       setNome("");
       setSimbolo("");
       setArquivo(null);
+      setDescricao("");
       setSite("");
       setXLink("");
       setTelegram("");
       setSaldo(await leitura.getBalance({ address: endereco }));
-      setEstado(`Lançada! $${nova.simbolo}: no começo vale a taxa anti-sniper do lançador, caindo até 1%.`);
+      setEstado(`Lançada na Flap! $${nova.simbolo} — 10% de taxa em toda compra e venda, pra sua carteira em BNB.`);
     });
 
   /*
@@ -273,7 +330,7 @@ export function LancarBnb({
     if (!lancadas.length) return;
     let vivo = true;
     const ler = () =>
-      lancadas.forEach((l) =>
+      lancadas.filter((l) => !l.flap).forEach((l) =>
         fetch(`/api/bnb/taxas?moeda=${l.moeda}&lancador=${l.lancador ?? ""}&troca=${trocaDe(l) ?? ""}`)
           .then((r) => (r.ok ? r.json() : null))
           .then((j) => j && vivo && setTaxas((t) => ({ ...t, [l.moeda.toLowerCase()]: j })))
@@ -344,7 +401,7 @@ export function LancarBnb({
     return l.lancador && lancador && l.lancador.toLowerCase() === lancador.toLowerCase() ? trocaEnd : null;
   }
 
-  const okLancar = Boolean(lancador && nome.trim() && simbolo.trim() && !ocupado);
+  const okLancar = Boolean(nome.trim() && simbolo.trim() && arquivo && !ocupado);
   const campo =
     "mt-1 w-full rounded-lg border border-ink-700 bg-ink-950 px-3 py-2 text-[14px] text-zinc-100 outline-none focus:border-marca/60";
   const botao =
@@ -355,7 +412,7 @@ export function LancarBnb({
       <div>
         <h1 className="text-2xl font-black text-zinc-50">Lançar na BNB</h1>
         <p className="mt-1 text-[13px] text-zinc-400">
-          A moeda nasce direto numa pool da PancakeSwap (bots e GMGN veem no primeiro segundo). Taxa anti-sniper alta no lançamento, caindo até 1% (configurada no lançador); depois 1% pra sempre. Toda a taxa é de quem cria.
+          Lança pela Flap (onde os snipers e bots da BNB olham), com taxa de 10% em toda compra e venda, pra sempre, paga em BNB pra quem cria. As moedas antigas (lançador próprio) continuam na lista com Coletar e Negociar.
         </p>
       </div>
 
@@ -372,19 +429,13 @@ export function LancarBnb({
         )}
       </section>
 
-      {!lancador ? (
-        <section className="space-y-2 rounded-xl border border-white/[0.06] bg-ink-900/60 p-4">
-          <p className="text-[14px] font-bold text-zinc-100">1. Publicar o lançador (uma vez só)</p>
-          <p className="text-[12px] text-zinc-400">
-            Publica o contrato da Chroma na BNB. Custa menos de US$ 1 em BNB. Depois disso, esta etapa some.
-          </p>
-          <button type="button" onClick={publicar} disabled={ocupado} className={botao}>
-            Publicar lançador
-          </button>
-        </section>
-      ) : (
+      {(
         <section className="space-y-3 rounded-xl border border-white/[0.06] bg-ink-900/60 p-4">
-          <p className="text-[14px] font-bold text-zinc-100">Nova moeda</p>
+          <p className="text-[14px] font-bold text-zinc-100">Nova moeda (pela Flap)</p>
+          <p className="text-[12px] leading-snug text-zinc-400">
+            Taxa de <b className="text-zinc-200">10% em toda compra e venda, pra sempre</b>, direto pra sua carteira em BNB. A
+            moeda nasce na curva da Flap — snipers, bots e GMGN veem na hora — e vai pra PancakeSwap quando forma.
+          </p>
           <label className="block text-[12px] font-semibold text-zinc-400">
             Nome
             <input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={64} className={campo} />
@@ -407,6 +458,10 @@ export function LancarBnb({
             <img src={URL.createObjectURL(arquivo)} alt="" className="size-16 rounded-lg object-cover" />
           )}
           <label className="block text-[12px] font-semibold text-zinc-400">
+            Descrição (opcional)
+            <input value={descricao} onChange={(e) => setDescricao(e.target.value)} maxLength={300} className={campo} />
+          </label>
+          <label className="block text-[12px] font-semibold text-zinc-400">
             Site (opcional)
             <input value={site} onChange={(e) => setSite(e.target.value)} placeholder="https://…" className={campo} />
           </label>
@@ -419,11 +474,10 @@ export function LancarBnb({
             <input value={telegram} onChange={(e) => setTelegram(e.target.value)} placeholder="https://t.me/…" className={campo} />
           </label>
           <p className="text-[11px] leading-snug text-zinc-500">
-            A imagem e os links ficam registrados na rede junto com a moeda. GMGN e DexScreener só mostram imagem e links
-            de moedas fora da four.meme com o perfil pago da DexScreener.
+            A imagem e os links vão pro IPFS da Flap — aparecem na Flap e nos terminais que leem a Flap.
           </p>
           <label className="block text-[12px] font-semibold text-zinc-400">
-            Sua compra inicial (BNB) — entra antes de qualquer bot, com taxa de 1%
+            Sua compra inicial (BNB) — entra na própria transação do lançamento
             <input value={compra} onChange={(e) => setCompra(e.target.value)} inputMode="decimal" className={campo} />
             {precoBnb && compraBnb > 0 && (
               <span className="mt-1 block text-[12px] font-normal text-zinc-300">
@@ -436,33 +490,8 @@ export function LancarBnb({
           </button>
           {/* O aviso fica colado no botão: lá embaixo ninguém via (09/10/2026). */}
           {estado && <p className="text-[13px] leading-relaxed text-zinc-200">{estado}</p>}
-          <p className="text-[11px] text-zinc-500">
-            Lançador: <span className="font-mono">{lancador}</span>
-          </p>
-          <details className="rounded-lg border border-white/[0.06] p-2.5 text-[12px] text-zinc-400">
-            <summary className="cursor-pointer font-bold text-zinc-300">Trocar a taxa anti-sniper (lançador novo)</summary>
-            <p className="mt-1.5">
-              A taxa fica gravada no lançador. Pra mudar, publica-se outro (centavos de BNB). As moedas já lançadas continuam
-              no lançador delas.
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <label>
-                Taxa inicial (%)
-                <input value={taxaTeste} onChange={(e) => setTaxaTeste(e.target.value)} inputMode="decimal" className={campo} />
-              </label>
-              <label>
-                Cai até 1% em (segundos)
-                <input value={janelaTeste} onChange={(e) => setJanelaTeste(e.target.value)} inputMode="numeric" className={campo} />
-              </label>
-            </div>
-            <button type="button" onClick={publicar} disabled={ocupado} className={`${botao} mt-2 w-full`}>
-              Publicar lançador novo ({taxaTeste}% → 1% em {janelaTeste}s)
-            </button>
-          </details>
         </section>
       )}
-
-      {!lancador && estado && <p className="text-[13px] leading-relaxed text-zinc-200">{estado}</p>}
 
       {lancadas.length > 0 && (
         <section className="space-y-2 rounded-xl border border-white/[0.06] bg-ink-900/60 p-4">
@@ -477,6 +506,22 @@ export function LancarBnb({
                 ${l.simbolo} <span className="font-normal text-zinc-400">{l.nome}</span>
               </p>
               <p className="break-all font-mono text-zinc-400">{l.moeda}</p>
+              {l.flap ? (
+                <>
+                  <p className="flex flex-wrap gap-x-3 gap-y-1">
+                    <a className="text-marca underline" href={`https://flap.sh/bnb/${l.moeda}`} target="_blank" rel="noreferrer">
+                      Flap
+                    </a>
+                    <a className="text-marca underline" href={`https://gmgn.ai/bsc/token/${l.moeda}`} target="_blank" rel="noreferrer">
+                      GMGN
+                    </a>
+                    <a className="text-marca underline" href={`https://bscscan.com/token/${l.moeda}`} target="_blank" rel="noreferrer">
+                      BscScan
+                    </a>
+                  </p>
+                  <p className="text-[11.5px] text-zinc-500">Taxa de 10% em toda compra e venda: cai sozinha na sua carteira, em BNB.</p>
+                </>
+              ) : (
               <p className="flex flex-wrap gap-x-3 gap-y-1">
                 <a className="text-marca underline" href={`https://gmgn.ai/bsc/token/${l.moeda}`} target="_blank" rel="noreferrer">
                   GMGN
@@ -510,7 +555,8 @@ export function LancarBnb({
                   {negociando === l.moeda ? "Fechar" : "Negociar"}
                 </button>
               </p>
-              {negociando === l.moeda &&
+              )}
+              {!l.flap && negociando === l.moeda &&
                 (trocaDe(l) ? (
                   <NegociarBnb
                     moeda={l.moeda as `0x${string}`}
