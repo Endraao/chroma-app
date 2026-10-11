@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { idiomaAtual } from "@/lib/idioma-servidor";
+import { CA_DO_CHROMA } from "@/lib/token-oficial";
 import { traducoes } from "@/lib/idiomas";
 
 /**
@@ -16,7 +17,8 @@ import { traducoes } from "@/lib/idiomas";
  */
 
 const CONTRATO_LANCAMENTO = "0xC2715457A640E0509Fd38A7ee59b0aB61E15Fc4D";
-const TOKEN_CHROMA = "0x475ab8dd5b1a13a5d18b0b70a1599e3501b0941c";
+// O token oficial vem de um lugar só (TokenOficial): vazio = sem token oficial agora.
+const TOKEN_CHROMA = CA_DO_CHROMA;
 const SOURCIFY = `https://repo.sourcify.dev/4663/${CONTRATO_LANCAMENTO}`;
 const EXPLORADOR = "https://robinhoodchain.blockscout.com/address/";
 
@@ -297,7 +299,7 @@ export default async function DocsPage() {
             endereco={CONTRATO_LANCAMENTO}
             extra={{ href: SOURCIFY, texto: t.verificado }}
           />
-          <Endereco rotulo={t.tokenChroma} endereco={TOKEN_CHROMA} />
+          {TOKEN_CHROMA && <Endereco rotulo={t.tokenChroma} endereco={TOKEN_CHROMA} />}
         </div>
       </section>
 

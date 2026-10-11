@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import { cn } from "@/lib/utils";
+import { CA_DO_CHROMA } from "@/lib/token-oficial";
 
 /**
  * O contrato OFICIAL do $CHROMA, fixo no site (pedido do dono, 02/10/2026).
@@ -14,7 +15,7 @@ import { cn } from "@/lib/utils";
  * cair em cópia com o mesmo nome: o endereço completo fica à vista, com copiar
  * e o atalho direto pra página da moeda.
  */
-export const CA_DO_CHROMA = "0x475ab8dd5b1a13a5d18b0b70a1599e3501b0941c";
+export { CA_DO_CHROMA };
 
 const TEXTOS = traducoes({
   en: { oficial: "Official token", copiar: "Copy", copiado: "Copied!", negociar: "Trade" },
@@ -25,6 +26,7 @@ const TEXTOS = traducoes({
 export function TokenOficial({ compacto = false, className }: { compacto?: boolean; className?: string }) {
   const t = useTextos(TEXTOS);
   const [copiado, setCopiado] = useState(false);
+  if (!CA_DO_CHROMA) return null;
 
   const copiar = async () => {
     try {
