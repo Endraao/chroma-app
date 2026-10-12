@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { head, put } from "@vercel/blob";
+import { getStore } from "@netlify/blobs";
 
 import { lerImagem } from "./image-probe";
 import { lerVideo } from "./video-probe";
@@ -74,7 +75,33 @@ export type ResultadoDeUpload =
  * o navegador declarou — é o que impede alguém de subir um script chamando de
  * imagem e fazer o navegador executar na hora de servir.
  */
+/*
+ * NETLIFY BLOBS (12/10/2026)
+ * ---------------------------------------------------------------------------
+ * O site saiu da Vercel (o dono não tinha como pagar o Pro) e a conta de lá
+ * pode ser bloqueada. Agora o arquivo é gravado no armazenamento da própria
+ * Netlify. A leitura procura primeiro aqui; o que ainda só existe no Vercel
+ * Blob é lido de lá e copiado pra cá na hora (e /api/admin/migrar-midia copia
+ * tudo de uma vez). Fora da Netlify (máquina local) não há loja: cai no Vercel.
+ */
+function lojaNetlify() {
+  try {
+    return getStore({ name: "midia", consistency: "strong" });
+  } catch {
+    return null;
+  }
+}
+
+export async function guardarNaNetlify(nome: string, bytes: Uint8Array | Buffer): Promise<boolean> {
+  const loja = lojaNetlify();
+  if (!loja) return false;
+  const b = Buffer.from(bytes);
+  await loja.set(nome, b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer);
+  return true;
+}
+
 async function guardar(nome: string, bytes: Uint8Array | Buffer, tipo: string): Promise<void> {
+  if (await guardarNaNetlify(nome, bytes)) return;
   await put(nome, Buffer.from(bytes), {
     access: "private",
     addRandomSuffix: false,
@@ -140,6 +167,16 @@ export async function lerFoto(nome: string): Promise<FotoGuardada | null> {
   const partes = /^([a-f0-9]{32})\.(png|jpg|webp|gif|mp4|json)$/.exec(nome);
   if (!partes) return null;
 
+  const loja = lojaNetlify();
+  if (loja) {
+    try {
+      const achado = await loja.get(nome, { type: "arrayBuffer" });
+      if (achado) return { bytes: Buffer.from(achado), tipo: TIPOS[partes[2]] };
+    } catch {
+      /* loja fora do ar: tenta o Vercel Blob abaixo */
+    }
+  }
+
   const credencial = process.env.BLOB_READ_WRITE_TOKEN;
   if (!credencial) return null;
 
@@ -166,8 +203,11 @@ export async function lerFoto(nome: string): Promise<FotoGuardada | null> {
       });
       if (!resposta.ok) continue;
 
+      const bytes = Buffer.from(await resposta.arrayBuffer());
+      // Achou só no Vercel: copia pra Netlify, pra não depender mais de lá.
+      await guardarNaNetlify(nome, bytes).catch(() => false);
       return {
-        bytes: Buffer.from(await resposta.arrayBuffer()),
+        bytes,
         /* O tipo sai da nossa tabela, não do que o armazenamento devolveu. */
         tipo: TIPOS[partes[2]],
       };

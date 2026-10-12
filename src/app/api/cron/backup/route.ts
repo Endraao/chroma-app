@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { getStore } from "@netlify/blobs";
 
 import { exportarBanco } from "@/lib/backup";
+import { chaveInterna } from "@/lib/chave-interna";
 
 export const maxDuration = 60;
 
@@ -10,14 +12,22 @@ export const maxDuration = 60;
  * Com CRON_SECRET configurado, só a Vercel consegue disparar.
  */
 export async function GET(request: Request) {
-  const segredo = process.env.CRON_SECRET;
-  if (segredo && request.headers.get("authorization") !== `Bearer ${segredo}`) {
+  // Sempre exige a chave (na Netlify não há CRON_SECRET; ver lib/chave-interna.ts).
+  if (request.headers.get("authorization") !== `Bearer ${chaveInterna("backup")}`) {
     return NextResponse.json({ error: "não autorizado" }, { status: 401 });
   }
   try {
     const dados = await exportarBanco();
     const dia = dados.em.slice(0, 10);
-    await put(`backups/${dia}.json`, JSON.stringify(dados), {
+    // Netlify Blobs (12/10/2026); fora da Netlify, o Vercel Blob de antes.
+    let naNetlify = false;
+    try {
+      await getStore({ name: "backups", consistency: "strong" }).set(`${dia}-${Date.now()}.json`, JSON.stringify(dados));
+      naNetlify = true;
+    } catch {
+      /* sem loja da Netlify */
+    }
+    if (!naNetlify) await put(`backups/${dia}.json`, JSON.stringify(dados), {
       access: "private", // o armazenamento da Chroma é privado: só o servidor lê
       addRandomSuffix: true,
       contentType: "application/json",
