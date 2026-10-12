@@ -13,5 +13,7 @@ export function naCdn(segundos: number, velhoAte = segundos * 5): Record<string,
     "cache-control": `public, max-age=0, s-maxage=${segundos}, stale-while-revalidate=${velhoAte}`,
     "cdn-cache-control": `max-age=${segundos}, stale-while-revalidate=${velhoAte}`,
     "vercel-cdn-cache-control": `max-age=${segundos}, stale-while-revalidate=${velhoAte}`,
+    // Netlify: sem isto o cache dela ignora o "?…" e devolve a mesma resposta pra queries diferentes.
+    "netlify-vary": "query",
   };
 }

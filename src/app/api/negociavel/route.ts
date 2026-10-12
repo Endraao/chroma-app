@@ -14,9 +14,9 @@ export async function GET(request: Request) {
   if (!/^0x[0-9a-fA-F]{40}$/.test(moeda)) return NextResponse.json({ error: "moeda inválida" }, { status: 400 });
 
   const guardado = (await statusDasMoedas([moeda])).get(moeda.toLowerCase());
-  if (guardado) return NextResponse.json(guardado.r, { headers: { "cache-control": "public, s-maxage=300" } });
+  if (guardado) return NextResponse.json(guardado.r, { headers: { "netlify-vary": "query", "cache-control": "public, s-maxage=300" } });
 
   const r = await classificar(moeda, pool);
   if (!r) return NextResponse.json({ ok: false, motivo: "erro" }, { status: 502 });
-  return NextResponse.json(r, { headers: { "cache-control": "public, s-maxage=300" } });
+  return NextResponse.json(r, { headers: { "netlify-vary": "query", "cache-control": "public, s-maxage=300" } });
 }

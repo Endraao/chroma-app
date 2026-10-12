@@ -57,11 +57,11 @@ export async function GET(request: Request) {
     return new Response(new Uint8Array(reduzida), {
       headers: {
         "content-type": "image/webp",
-        "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
+        "netlify-vary": "query", "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable",
       },
     });
   } catch {
     // Falhou: o cartão cai na arte original (onError) — ver miniatura().
-    return new Response(null, { status: 404, headers: { "cache-control": "public, s-maxage=300" } });
+    return new Response(null, { status: 404, headers: { "netlify-vary": "query", "cache-control": "public, s-maxage=300" } });
   }
 }
