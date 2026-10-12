@@ -16,6 +16,7 @@ import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
 import { FORA_DA_VITRINE, moedasDaChroma } from "@/lib/moedas-da-chroma";
 import { CHAIN_IDS, CHAINS } from "@/lib/web3";
 import { BannerPromocao } from "@/components/home/BannerPromocao";
+import { ContagemChroma } from "@/components/home/ContagemChroma";
 import type { ChainId, TokenSummary } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -220,6 +221,9 @@ export default async function HomePage({
         quantidadeDeTokens={String(principal.tokens.length + lancadasNaChroma.length)}
         volumeTotal={formatUsd(principal.tokens.reduce((acc, t) => acc + t.volume24hUsd, 0))}
       />
+
+      {/* Contagem do relançamento do $CHROMA (some quando o endereço novo entra). */}
+      <ContagemChroma />
 
       {/* O "post" da promoção do criador (pedido do dono, 03/10/2026). */}
       {/* Em tela larga a promoção mora dentro da abertura (CardPromocao). */}

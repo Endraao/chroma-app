@@ -6,4 +6,9 @@
  * Colosseum — quando o novo nascer, troca-se o endereço aqui. Vazio = o selo
  * some do site.
  */
-export const CA_DO_CHROMA: string = "0x475ab8dd5b1a13a5d18b0b70a1599e3501b0941c";
+// 12/10/2026: o antigo (0x475ab8dd…941c, Robinhood) saiu do site; o novo nasce
+// na pump.fun em LANCAMENTO_DO_CHROMA — pôr o endereço dele aqui na hora.
+export const CA_DO_CHROMA: string = "";
+
+/** Quinta 15/10/2026, 11h de Brasília (14h UTC). Mostra a contagem na home. */
+export const LANCAMENTO_DO_CHROMA = "2026-10-15T14:00:00Z";
