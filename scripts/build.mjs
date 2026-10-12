@@ -24,13 +24,15 @@ import { spawn } from "node:child_process";
  * posta por eles em toda build, e é a forma documentada de saber onde estamos.
  */
 const naVercel = process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
+// Netlify (12/10/2026, saída da Vercel Pro): também máquina limpa, também procura `.next`.
+const naNetlify = process.env.NETLIFY === "true";
 
 const command = process.argv[2] === "start" ? "start" : "build";
 
 const child = spawn("npx", ["next", command], {
   stdio: "inherit",
   shell: true,
-  env: naVercel ? process.env : { ...process.env, NEXT_DIST_DIR: ".next-prod" },
+  env: naVercel || naNetlify ? process.env : { ...process.env, NEXT_DIST_DIR: ".next-prod" },
 });
 
 child.on("exit", (code) => process.exit(code ?? 1));

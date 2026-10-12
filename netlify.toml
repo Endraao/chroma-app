@@ -1,0 +1,7 @@
+# Hospedagem na Netlify (12/10/2026). O plugin de Next.js é ligado sozinho.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
