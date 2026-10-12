@@ -31,6 +31,12 @@ const nextConfig = {
        * site continua isolado. Vem por último pra sobrescrever a de cima.
        */
       { source: "/token/:path*", headers: [{ key: "Cross-Origin-Opener-Policy", value: "unsafe-none" }] },
+      /*
+       * Netlify (12/10/2026): o cache dela, por padrão, ignora o "?…" da URL —
+       * /api/miniatura?u=A e ?u=B saíam com a MESMA imagem (e /api/price com o
+       * mesmo preço pra moedas diferentes). Com isto cada query é uma entrada.
+       */
+      { source: "/api/:path*", headers: [{ key: "Netlify-Vary", value: "query" }] },
     ];
   },
   // Ver scripts/build.mjs: separa os artefatos de dev e de produção.
