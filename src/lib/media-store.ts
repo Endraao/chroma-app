@@ -1,6 +1,8 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { head, put } from "@vercel/blob";
 import { getStore } from "@netlify/blobs";
 
@@ -92,6 +94,25 @@ function lojaNetlify() {
   }
 }
 
+/*
+ * DISCO DA VPS (12/10/2026): a Netlify grátis estourou em 1 dia e o site foi
+ * pra VPS. Lá o disco é permanente, então com MEDIA_DIR definido a mídia fica
+ * em arquivo — primeiro lugar onde se grava e se lê.
+ */
+const PASTA = process.env.MEDIA_DIR;
+
+async function guardarNoDisco(nome: string, bytes: Uint8Array | Buffer): Promise<boolean> {
+  if (!PASTA) return false;
+  await mkdir(PASTA, { recursive: true });
+  await writeFile(join(PASTA, nome), Buffer.from(bytes));
+  return true;
+}
+
+async function lerDoDisco(nome: string): Promise<Buffer | null> {
+  if (!PASTA) return null;
+  return readFile(join(PASTA, nome)).catch(() => null);
+}
+
 export async function guardarNaNetlify(nome: string, bytes: Uint8Array | Buffer): Promise<boolean> {
   const loja = lojaNetlify();
   if (!loja) return false;
@@ -101,6 +122,7 @@ export async function guardarNaNetlify(nome: string, bytes: Uint8Array | Buffer)
 }
 
 async function guardar(nome: string, bytes: Uint8Array | Buffer, tipo: string): Promise<void> {
+  if (await guardarNoDisco(nome, bytes)) return;
   if (await guardarNaNetlify(nome, bytes)) return;
   await put(nome, Buffer.from(bytes), {
     access: "private",
@@ -167,7 +189,10 @@ export async function lerFoto(nome: string): Promise<FotoGuardada | null> {
   const partes = /^([a-f0-9]{32})\.(png|jpg|webp|gif|mp4|json)$/.exec(nome);
   if (!partes) return null;
 
-  const loja = lojaNetlify();
+  const doDisco = await lerDoDisco(nome);
+  if (doDisco) return { bytes: doDisco, tipo: TIPOS[partes[2]] };
+
+  const loja = PASTA ? null : lojaNetlify();
   if (loja) {
     try {
       const achado = await loja.get(nome, { type: "arrayBuffer" });
@@ -205,7 +230,7 @@ export async function lerFoto(nome: string): Promise<FotoGuardada | null> {
 
       const bytes = Buffer.from(await resposta.arrayBuffer());
       // Achou só no Vercel: copia pra Netlify, pra não depender mais de lá.
-      await guardarNaNetlify(nome, bytes).catch(() => false);
+      if (!(await guardarNoDisco(nome, bytes).catch(() => false))) await guardarNaNetlify(nome, bytes).catch(() => false);
       return {
         bytes,
         /* O tipo sai da nossa tabela, não do que o armazenamento devolveu. */

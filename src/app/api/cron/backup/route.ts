@@ -21,7 +21,13 @@ export async function GET(request: Request) {
     const dia = dados.em.slice(0, 10);
     // Netlify Blobs (12/10/2026); fora da Netlify, o Vercel Blob de antes.
     let naNetlify = false;
-    try {
+    // VPS: backup em arquivo, ao lado da mídia (BACKUP_DIR).
+    if (process.env.BACKUP_DIR) {
+      const { mkdir, writeFile } = await import("node:fs/promises");
+      await mkdir(process.env.BACKUP_DIR, { recursive: true });
+      await writeFile(`${process.env.BACKUP_DIR}/${dia}-${Date.now()}.json`, JSON.stringify(dados));
+      naNetlify = true;
+    } else try {
       await getStore({ name: "backups", consistency: "strong" }).set(`${dia}-${Date.now()}.json`, JSON.stringify(dados));
       naNetlify = true;
     } catch {
