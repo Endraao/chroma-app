@@ -499,6 +499,7 @@ async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc
         // como "holder": uma moeda sem ninguém segurando aparecia com 1.
         holders: Math.max(0, (r.token.holders ?? 0) - 1),
         bondingProgress: estado.progresso,
+        curveConfig: estado.config,
         dexId: "chroma-curve",
       },
     };

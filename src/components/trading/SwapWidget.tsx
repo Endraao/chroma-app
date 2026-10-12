@@ -4,7 +4,7 @@ import { Preco } from "@/components/ui/Preco";
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
 import { explicarErroDaCarteira } from "@/lib/erros-da-carteira";
-import { AFFILIATE_FEE_BPS, feeLabelFor, swapFeeBps } from "@/lib/fees";
+import { feeLabelFor, swapFeeBps, taxaDoSiteNaCurvaBps } from "@/lib/fees";
 import { anotarOperacao, avisarNegocio } from "@/lib/posicoes-locais";
 
 import { useEffect, useRef, useState } from "react";
@@ -104,7 +104,7 @@ const TEXTOS = traducoes({
     taxaChroma: (p: string) => `Chroma fee · ${p}`,
     praQuemPostou: "↳ to whoever shared this post · 0.30%",
     taxaDaPool: "Pool fee",
-    poolCurva: "1% · 40% creator · 40% Chroma · 20% Meteora",
+    poolCurva: "1% · 30% creator · 50% Chroma · 20% Meteora",
     poolOutra: "set by the pool",
     conectarPraNegociar: (s: string) => `Connect wallet to trade ${s}`,
     verExplorer: "View on explorer ↗", voceBaga: "You pay", saldoDois: "Balance:", voceRecebe: "You receive (estimated)",
@@ -136,7 +136,7 @@ const TEXTOS = traducoes({
     taxaChroma: (p: string) => `Taxa da Chroma · ${p}`,
     praQuemPostou: "↳ pra quem compartilhou este post · 0,30%",
     taxaDaPool: "Taxa da pool",
-    poolCurva: "1% · 40% criador · 40% Chroma · 20% Meteora",
+    poolCurva: "1% · 30% criador · 50% Chroma · 20% Meteora",
     poolOutra: "definida pela pool",
     conectarPraNegociar: (s: string) => `Conectar carteira pra negociar ${s}`,
     verExplorer: "Ver no explorer ↗", voceBaga: "Você paga", saldoDois: "Saldo:", voceRecebe: "Você recebe (estimado)",
@@ -168,7 +168,7 @@ const TEXTOS = traducoes({
     taxaChroma: (p: string) => `Chroma 手续费 · ${p}`,
     praQuemPostou: "↳ 给分享此帖子的人 · 0.30%",
     taxaDaPool: "池子手续费",
-    poolCurva: "1% · 40% 创建者 · 40% Chroma · 20% Meteora",
+    poolCurva: "1% · 30% 创建者 · 50% Chroma · 20% Meteora",
     poolOutra: "由池子决定",
     conectarPraNegociar: (s: string) => `连接钱包交易 ${s}`,
     verExplorer: "在浏览器中查看 ↗", voceBaga: "你支付", saldoDois: "余额：", voceRecebe: "你将获得（预估）",
@@ -274,6 +274,10 @@ function SolanaSwap({
   };
 
   const { affiliate, affiliateRef } = useAffiliateTracking(chain);
+  // Moeda da Curva da Chroma: o site não cobra nada; só 0,30% pra quem indicou,
+  // e só se veio por um link (11/10/2026). Nas outras, a taxa normal da Solana.
+  const taxaSolBps = naCurvaDaChroma ? taxaDoSiteNaCurvaBps(Boolean(affiliate)) : swapFeeBps("solana");
+  const rotuloTaxaSol = naCurvaDaChroma ? (taxaSolBps > 0 ? "0.30%" : "0%") : feeLabelFor("solana").swap;
   // No celular, o app da carteira abre esta mesma página com valor, lado e indicação.
   const [alvoNaCarteira, setAlvoNaCarteira] = useState<string>();
   useEffect(() => {
@@ -496,8 +500,8 @@ function SolanaSwap({
             </span>
             {/* Transparência (pedido do dono): quanto de taxa ESTE negócio paga, ao vivo. */}
             <span>
-              {t.taxaChroma(naCurvaDaChroma ? "0.30%" : feeLabelFor("solana").swap)}:{" "}
-              {baseEmSol > 0 ? `${(baseEmSol * (naCurvaDaChroma ? AFFILIATE_FEE_BPS : swapFeeBps("solana")) / 10_000).toFixed(6)} SOL` : "—"}
+              {t.taxaChroma(rotuloTaxaSol)}:{" "}
+              {baseEmSol > 0 ? `${(baseEmSol * taxaSolBps / 10_000).toFixed(6)} SOL` : "—"}
             </span>
           </div>
         ) : (
@@ -539,7 +543,7 @@ function SolanaSwap({
           <div className="flex justify-between">
             <span className="text-zinc-500">{t.rota}</span>
             <span className="text-zinc-300">
-              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.curvaDaChromaMaiusc : `${swap.quote && "routePlan" in swap.quote && swap.quote.routePlan.length && swap.quote.routePlan.every((r) => /^pump.?fun$/i.test(r.swapInfo.label ?? "")) ? "Chroma" : "Jupiter"}, ${t.taxaDe(naCurvaDaChroma ? "0,3%" : feeLabelFor("solana").swap)}`}
+              {swap.carregandoRota ? t.procurandoRota : swap.naCurva ? t.curvaDaChromaMaiusc : `${swap.quote && "routePlan" in swap.quote && swap.quote.routePlan.length && swap.quote.routePlan.every((r) => /^pump.?fun$/i.test(r.swapInfo.label ?? "")) ? "Chroma" : "Jupiter"}, ${t.taxaDe(rotuloTaxaSol)}`}
             </span>
           </div>
         </div>

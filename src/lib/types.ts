@@ -44,6 +44,8 @@ export interface TokenSummary {
    * `null` = token que já nasceu listado, não passou por curva na Chroma.
    */
   bondingProgress: number | null;
+  /** Moeda da Curva da Chroma: a config dela (a divisão da taxa depende disto; ver lib/curva-taxas.ts). */
+  curveConfig?: string;
   /** % do total no top 10 de carteiras, sem cofres de pool (Jupiter). */
   top10Pct?: number;
   /** Plataforma onde a moeda NASCEU (chroma, pumpfun, pons, stonkfun…), pro selo da página. */

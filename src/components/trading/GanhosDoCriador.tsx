@@ -8,18 +8,19 @@ import { traducoes } from "@/lib/idiomas";
 import { ganhosDoCriador, transacoesDeSaqueDoCriador } from "@/lib/meteora-dbc";
 import { formatUsd } from "@/lib/utils";
 import { SaquePrivado } from "@/components/trading/SaquePrivado";
+import { pctDaDivisao } from "@/lib/curva-taxas";
 
 const TEXTOS = traducoes({
   en: {
     titulo: "Your creator earnings",
-    taxas: "Trading fees (40%)",
+    taxas: (p: number) => `Trading fees (${p}%)`,
     bonus: "Creator bonus",
     claim: (v: string) => `Claim ${v}`,
     aprovar: "Approve in your wallet…",
     confirmando: "Confirming…",
     feito: "Done! Fees are in your wallet.",
     bonusACaminho: (v: string) => `Your ${v} bonus is on the way — paid in SOL within 7 days.`,
-    nada: "Nothing to claim yet — you earn 40% of every trade fee, plus a bonus at each volume goal.",
+    nada: (p: number) => `Nothing to claim yet — you earn ${p}% of every trade fee, plus a bonus at each volume goal.`,
     falhou: "The claim didn't go through. Nothing was charged — try again.",
     totalGanho: "Earned in total",
     historico: "Claim history",
@@ -28,14 +29,14 @@ const TEXTOS = traducoes({
   },
   pt: {
     titulo: "Seus ganhos de criador",
-    taxas: "Taxas de negociação (40%)",
+    taxas: (p: number) => `Taxas de negociação (${p}%)`,
     bonus: "Bônus do criador",
     claim: (v: string) => `Sacar ${v}`,
     aprovar: "Aprove na carteira…",
     confirmando: "Confirmando…",
     feito: "Pronto! As taxas estão na sua carteira.",
     bonusACaminho: (v: string) => `Seu bônus de ${v} está a caminho — pago em SOL em até 7 dias.`,
-    nada: "Nada pra sacar ainda — você ganha 40% da taxa de toda negociação, mais um bônus a cada meta de volume.",
+    nada: (p: number) => `Nada pra sacar ainda — você ganha ${p}% da taxa de toda negociação, mais um bônus a cada meta de volume.`,
     falhou: "O saque não foi. Nada foi cobrado — tente de novo.",
     totalGanho: "Ganho no total",
     historico: "Histórico de saques",
@@ -44,14 +45,14 @@ const TEXTOS = traducoes({
   },
   zh: {
     titulo: "你的创作者收益",
-    taxas: "交易手续费（40%）",
+    taxas: (p: number) => `交易手续费（${p}%）`,
     bonus: "创作者奖金",
     claim: (v: string) => `领取 ${v}`,
     aprovar: "请在钱包中确认…",
     confirmando: "确认中…",
     feito: "完成！手续费已到你的钱包。",
     bonusACaminho: (v: string) => `你的 ${v} 奖金正在路上——7 天内以 SOL 支付。`,
-    nada: "暂无可领取收益——你可获得每笔交易 40% 的交易费，每个交易量目标还有奖金。",
+    nada: (p: number) => `暂无可领取收益——你可获得每笔交易 ${p}% 的交易费，每个交易量目标还有奖金。`,
     falhou: "领取未成功，未产生任何费用——请重试。",
     totalGanho: "累计收益",
     historico: "领取记录",
@@ -67,7 +68,7 @@ type Historico = { saques: { assinatura: string; sol: number; em: number }[]; sa
  * Os ganhos do criador numa moeda da Curva da Chroma, num número só (pedido
  * do dono, 03/10/2026: "claim de $150 parece mais grandioso que de $50").
  *
- * - Taxas (40%): ficam na pool e saem na hora, assinadas pelo criador.
+ * - Taxas (30%; 40% nas moedas da config antiga): ficam na pool e saem na hora, assinadas pelo criador.
  * - Bônus: sai da carteira da Chroma, que não fica no servidor (seria alvo de
  *   invasão). O botão registra o pedido e o dono paga pelo /admin/bonus.
  *
@@ -118,6 +119,8 @@ export function GanhosDoCriador({ address }: { address: string }) {
   // bônus fica fora: ele é pago à parte e aparece no cartão do bônus.
   const totalGanhoUsd = dados.totalSol * sol;
   const temTaxa = dados.aReceberSol > 0.000001;
+  // A parte do criador depende da config da moeda (30% nas novas, 40% nas antigas).
+  const pctCriador = pctDaDivisao(dados.config).criador;
   const ocupado = estado === "aprovar" || estado === "confirmando";
 
   // As taxas guardadas (curva + pool da Meteora, se a moeda já se formou) vão
@@ -161,7 +164,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
       <p className="tnum mt-2 text-[26px] font-black text-zinc-50">{formatUsd(totalUsd)}</p>
       <div className="tnum mt-2 space-y-1 text-[12px]">
         <div className="flex justify-between text-zinc-400">
-          <span>{t.taxas}</span>
+          <span>{t.taxas(pctCriador)}</span>
           <span className="text-zinc-200">{dados.aReceberSol.toFixed(5)} SOL</span>
         </div>
         {bonusDisponivel > 0 && (
@@ -187,7 +190,7 @@ export function GanhosDoCriador({ address }: { address: string }) {
             : estado === "falhou"
               ? t.falhou
               : !temTaxa && totalUsd < 0.01 && dados.totalSol <= 0
-                ? t.nada
+                ? t.nada(pctCriador)
                 : null}
       </p>
       {dados.totalSol > 0 && (

@@ -404,7 +404,7 @@ export async function executeSolanaSwap(req: SwapRequest): Promise<SwapExecution
    * garante, e não o valor esperado.
    *
    * A escolha é deliberada e custa dinheiro pra nós: quando a execução sai
-   * melhor que o mínimo, cobramos um pouco menos que 0,95%. O contrário —
+   * melhor que o mínimo, cobramos um pouco menos que 0,75%. O contrário —
    * cobrar sobre o esperado — significaria que, numa execução pior que a
    * prevista, a diferença sairia do SOL que a pessoa já tinha na carteira.
    * Cobrar a mais de quem acabou de levar uma execução ruim é o tipo de coisa

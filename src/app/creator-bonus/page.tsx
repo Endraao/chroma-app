@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { METAS, PARTE_DA_CHROMA } from "@/lib/bonus-criador";
+import { METAS, PARTE_DO_CRIADOR } from "@/lib/bonus-criador";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
 
@@ -14,21 +14,21 @@ const TEXTOS = traducoes({
     meta: ["Creator bonus — Chroma", "Launch on Chroma Launchpad and earn a cash bonus when your coin hits volume goals."],
     titulo: "Creator bonus",
     intro:
-      "Launch your coin on Chroma Launchpad and get paid twice: 40% of the fee on every trade, plus a cash bonus for every volume goal your coin hits. The more your community trades, the more you earn.",
+      "Launch your coin on Chroma Launchpad and get paid twice: 30% of the fee on every trade, plus a cash bonus for every volume goal your coin hits. The more your community trades, the more you earn.",
     ganhosTitulo: "What you earn per coin",
     paraVoce: "to you",
     volume: "volume",
     colVolume: "Your coin's volume",
-    colTaxas: "Trading fees (40%)",
+    colTaxas: "Trading fees (30%)",
     colBonus: "Cash bonus",
     colTotal: "Total to you",
     nota: "Trading fees are claimed instantly with the Claim button on your coin's page. The bonus is requested with the same button and paid in SOL within 7 days. Everything goes straight to the wallet that created the coin.",
     destaque: "No other launchpad pays you trading fees and a cash bonus for volume.",
     difTitulo: "Why launch on Chroma",
     difOutras: "Other launchpads",
-    difOutrasTexto: "Most of the fee on every trade stays with the platform.",
+    difOutrasTexto: "You get a slice of the trading fee — and that is it. Launching often costs a fee too.",
     difChroma: "Chroma",
-    difChromaTexto: "We pass it on to you: 40% of every trade fee goes straight to the creator, forever — plus a cash bonus at every volume goal.",
+    difChromaTexto: "Launching is free. You get 30% of every trade fee (0.3% of every trade, same as pump.fun), forever — plus a cash bonus at every volume goal.",
     difRodape: "Your community can trade wherever it already does — Jupiter, Phantom, Axiom, Photon, Telegram bots. Every trade, on any app, pays you and counts toward the bonus.",
     regras: "Rules",
     itens: [
@@ -49,21 +49,21 @@ const TEXTOS = traducoes({
     meta: ["Bônus do criador — Chroma", "Lance na Chroma Launchpad e ganhe um bônus em dinheiro quando sua moeda bater metas de volume."],
     titulo: "Bônus do criador",
     intro:
-      "Lance sua moeda na Chroma Launchpad e ganhe duas vezes: 40% da taxa de cada negociação e um bônus em dinheiro a cada meta de volume que sua moeda bater. Quanto mais sua comunidade negocia, mais você ganha.",
+      "Lance sua moeda na Chroma Launchpad e ganhe duas vezes: 30% da taxa de cada negociação e um bônus em dinheiro a cada meta de volume que sua moeda bater. Quanto mais sua comunidade negocia, mais você ganha.",
     ganhosTitulo: "Quanto você ganha por moeda",
     paraVoce: "pra você",
     volume: "de volume",
     colVolume: "Volume da sua moeda",
-    colTaxas: "Taxas de negociação (40%)",
+    colTaxas: "Taxas de negociação (30%)",
     colBonus: "Bônus em dinheiro",
     colTotal: "Total pra você",
     nota: "As taxas você saca na hora, pelo botão Sacar na página da sua moeda. O bônus é pedido no mesmo botão e pago em SOL em até 7 dias. Tudo vai direto pra carteira que criou a moeda.",
     destaque: "Nenhuma outra launchpad paga taxa de negociação e bônus em dinheiro por volume.",
     difTitulo: "Por que lançar na Chroma",
     difOutras: "Outras launchpads",
-    difOutrasTexto: "A maior parte da taxa de cada negociação fica com a plataforma.",
+    difOutrasTexto: "Você ganha uma fatia da taxa de negociação — e só. Lançar muitas vezes também é pago.",
     difChroma: "Chroma",
-    difChromaTexto: "A gente repassa pra você: 40% da taxa de toda negociação vai direto pro criador, pra sempre — e ainda tem bônus em dinheiro a cada meta de volume.",
+    difChromaTexto: "Lançar é grátis. Você ganha 30% da taxa de toda negociação (0,3% de cada negócio, igual à pump.fun), pra sempre — e ainda tem bônus em dinheiro a cada meta de volume.",
     difRodape: "Sua comunidade negocia onde já está acostumada — Jupiter, Phantom, Axiom, Photon, bots do Telegram. Toda negociação, em qualquer app, paga você e conta pro bônus.",
     regras: "Regras",
     itens: [
@@ -84,21 +84,21 @@ const TEXTOS = traducoes({
     meta: ["创作者奖金 — Chroma", "在 Chroma Launchpad 发币，代币达到交易量目标即可获得现金奖金。"],
     titulo: "创作者奖金",
     intro:
-      "在 Chroma Launchpad 发币，双重收益：每笔交易 40% 的手续费，外加代币每达成一个交易量目标的现金奖金。你的社区交易越多，你赚得越多。",
+      "在 Chroma Launchpad 发币，双重收益：每笔交易 30% 的手续费，外加代币每达成一个交易量目标的现金奖金。你的社区交易越多，你赚得越多。",
     ganhosTitulo: "每个代币你能赚多少",
     paraVoce: "归你",
     volume: "交易量",
     colVolume: "你的代币交易量",
-    colTaxas: "交易手续费（40%）",
+    colTaxas: "交易手续费（30%）",
     colBonus: "现金奖金",
     colTotal: "你的总收益",
     nota: "交易手续费可随时通过代币页面的「领取」按钮即时领取。奖金通过同一按钮申请，7 天内以 SOL 支付。全部直接进入创建代币的钱包。",
     destaque: "没有其他发射平台同时为交易量支付交易手续费和现金奖金。",
     difTitulo: "为什么在 Chroma 发币",
     difOutras: "其他发射平台",
-    difOutrasTexto: "每笔交易的大部分手续费归平台所有。",
+    difOutrasTexto: "你只能拿到交易手续费的一部分——仅此而已。发币往往还要付费。",
     difChroma: "Chroma",
-    difChromaTexto: "我们把它转给你：每笔交易 40% 的手续费永久直接归创作者——每达成一个交易量目标还有现金奖金。",
+    difChromaTexto: "发币免费。你永久获得每笔交易 30% 的手续费（每笔交易的 0.3%，与 pump.fun 相同）——每达成一个交易量目标还有现金奖金。",
     difRodape: "你的社区可以在习惯的地方交易——Jupiter、Phantom、Axiom、Photon、Telegram 机器人。任何应用中的每笔交易都会付给你，并计入奖金。",
     regras: "规则",
     itens: [
@@ -122,12 +122,12 @@ const PERGUNTAS = traducoes({
   en: {
     titulo: "Questions",
     itens: [
-      ["Do I need to sign up or pay to join?", "No. Every coin launched on Chroma Launchpad on Solana joins automatically. The only cost is the 0.02 SOL launch fee."],
+      ["Do I need to sign up or pay to join?", "No. Every coin launched on Chroma Launchpad on Solana joins automatically. Launching is free — you only pay the Solana network fee."],
       ["Where do I see how much I've earned?", "On your coin's page, connected with the wallet that created it. The \"Your creator earnings\" card shows your fees to claim, your bonus and the progress to the next goal."],
       ["When can I claim my trading fees?", "Anytime, as many times as you want. You only pay the Solana network fee."],
       ["How do I receive the bonus?", "When your coin hits a goal, click Claim. Your trading fees arrive instantly, and the bonus request is sent at the same moment. Chroma reviews the volume to make sure it's real trading, then pays the bonus in SOL to the creator's wallet within 7 days."],
       ["Do the bonuses add up?", "The table already shows the total. Reaching $100K gives you $200 in bonus in total: the $50 from the first goal plus $150 more."],
-      ["What happens after my coin graduates from the curve?", "Nothing changes for you. Trades on the new Meteora pool keep counting toward the goals, you keep earning 40% of the fees, and the same Claim button withdraws everything."],
+      ["What happens after my coin graduates from the curve?", "Nothing changes for you. Trades on the new Meteora pool keep counting toward the goals, you keep earning 30% of the fees, and the same Claim button withdraws everything."],
       ["Can my earnings go to another wallet?", "No. Fees and bonus always go to the wallet that created the coin, so keep that wallet safe."],
       ["Does it work for coins on Robinhood Chain?", "Not yet. The creator bonus is only for coins launched on Solana."],
       ["In which currency is the bonus paid?", "In SOL, converted at the SOL price on the day of the payment."],
@@ -136,12 +136,12 @@ const PERGUNTAS = traducoes({
   pt: {
     titulo: "Perguntas frequentes",
     itens: [
-      ["Preciso me inscrever ou pagar pra participar?", "Não. Toda moeda lançada na Chroma Launchpad, na rede Solana, já participa automaticamente. O único custo é a taxa de lançamento de 0,02 SOL."],
+      ["Preciso me inscrever ou pagar pra participar?", "Não. Toda moeda lançada na Chroma Launchpad, na rede Solana, já participa automaticamente. Lançar é grátis — você paga só a taxa de rede da Solana."],
       ["Onde vejo quanto já ganhei?", "Na página da sua moeda, conectado com a carteira que criou o token. O card \"Seus ganhos de criador\" mostra as taxas pra sacar, o bônus e o progresso até a próxima meta."],
       ["Quando posso sacar as taxas?", "A qualquer momento, quantas vezes quiser. Você paga só a taxa de rede da Solana."],
       ["Como recebo o bônus?", "Quando sua moeda bate uma meta, clique em Sacar. As taxas de negociação caem na hora, e o pedido do bônus é feito no mesmo clique. A Chroma confere se o volume é de negociação real e paga o bônus em SOL na carteira do criador em até 7 dias."],
       ["Os bônus se somam?", "A tabela já mostra o total. Ao bater $100 mil você recebe $200 de bônus no total: os $50 da primeira meta mais $150."],
-      ["E depois que a moeda se forma e sai da curva?", "Nada muda pra você. As negociações na nova pool da Meteora continuam contando para as metas, você continua ganhando 40% das taxas, e o mesmo botão Sacar saca tudo."],
+      ["E depois que a moeda se forma e sai da curva?", "Nada muda pra você. As negociações na nova pool da Meteora continuam contando para as metas, você continua ganhando 30% das taxas, e o mesmo botão Sacar saca tudo."],
       ["Posso receber em outra carteira?", "Não. Taxas e bônus vão sempre para a carteira que criou a moeda — guarde bem essa carteira."],
       ["Vale para moedas na Robinhood Chain?", "Por enquanto não. O bônus do criador é só para moedas lançadas na rede Solana."],
       ["Em qual moeda o bônus é pago?", "Em SOL, convertido pelo preço do SOL no dia do pagamento."],
@@ -150,12 +150,12 @@ const PERGUNTAS = traducoes({
   zh: {
     titulo: "常见问题",
     itens: [
-      ["需要报名或付费才能参加吗？", "不需要。在 Chroma Launchpad（Solana 网络）上发行的每个代币都会自动参加。唯一的费用是 0.02 SOL 的发币费。"],
+      ["需要报名或付费才能参加吗？", "不需要。在 Chroma Launchpad（Solana 网络）上发行的每个代币都会自动参加。发币免费——你只需支付 Solana 网络费。"],
       ["在哪里查看我赚了多少？", "在你的代币页面，用创建代币的钱包连接后，「你的创作者收益」卡片会显示可领取的手续费、奖金以及距离下一个目标的进度。"],
       ["什么时候可以领取手续费？", "随时都可以，次数不限。你只需支付 Solana 网络费。"],
       ["如何领取奖金？", "代币达成目标后，点击「领取」。交易手续费即时到账，奖金申请也同时提交。Chroma 会核实交易量是否为真实交易，然后在 7 天内以 SOL 将奖金支付到创作者钱包。"],
       ["奖金会累加吗？", "表格显示的就是累计总额。达到 10 万美元时，你的奖金共 200 美元：第一个目标的 50 美元再加 150 美元。"],
-      ["代币从曲线毕业后会怎样？", "对你来说没有变化。Meteora 新池中的交易继续计入目标，你继续获得 40% 的手续费，同一个「领取」按钮可以领取全部。"],
+      ["代币从曲线毕业后会怎样？", "对你来说没有变化。Meteora 新池中的交易继续计入目标，你继续获得 30% 的手续费，同一个「领取」按钮可以领取全部。"],
       ["收益可以转到其他钱包吗？", "不可以。手续费和奖金始终发送到创建代币的钱包，请妥善保管该钱包。"],
       ["Robinhood Chain 上的代币也适用吗？", "暂时不适用。创作者奖金仅适用于在 Solana 网络上发行的代币。"],
       ["奖金以什么币种支付？", "以 SOL 支付，按支付当天的 SOL 价格换算。"],
@@ -171,7 +171,8 @@ export async function generateMetadata(): Promise<Metadata> {
 const SELO = { en: "Creator promo", pt: "Promoção do criador", zh: "创作者活动" } as const;
 const BOTAO = "inline-flex items-center gap-1.5 rounded-xl bg-marca/90 px-5 py-2.5 text-[14px] font-black text-[#031318] transition-colors hover:bg-marca";
 
-const taxa = (volume: number) => volume * PARTE_DA_CHROMA;
+// O que o criador ganha em taxa numa moeda nova (0,3% do volume; ver lib/curva-taxas.ts).
+const taxa = (volume: number) => volume * PARTE_DO_CRIADOR;
 
 /**
  * Mesmo visual do banner da home (BannerPromocao): borda em degradê girando,
@@ -203,7 +204,7 @@ export default async function CreatorBonus() {
         </div>
       </section>
 
-      {/* Os números grandes: taxa (40%) + bônus, por meta. A maior com a borda da promoção. */}
+      {/* Os números grandes: taxa (30%) + bônus, por meta. A maior com a borda da promoção. */}
       <section>
         <h2 className="text-xl font-bold tracking-tight text-zinc-50">{t.ganhosTitulo}</h2>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">

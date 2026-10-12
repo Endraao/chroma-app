@@ -1,7 +1,7 @@
 /**
  * TABELA DE ENDEREÇOS DA CHROMA NA SOLANA.
  *
- * O lançamento (taxa de 0,02 SOL + criação + compra do criador) em UMA
+ * O lançamento (criação + compra do criador) em UMA
  * transação só passa do limite de 1.232 bytes: cada endereço ocupa 32 bytes.
  * Com os fixos numa tabela na rede, cada um vira 1 byte (medido em
  * scripts/medir-tx-com-tabela.mts: ~1.080 bytes no pior caso).

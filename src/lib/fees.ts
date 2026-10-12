@@ -9,7 +9,8 @@ import type { ChainId, FeeBreakdown } from "./types";
  * Cada rede tem um concorrente dominante diferente, com economia diferente:
  *
  *   Solana          → pump.fun: 1,25% no total, dos quais 0,30% vão pro criador.
- *                     Ou seja, a plataforma guarda 0,95%. Tem folga.
+ *                     Na Chroma (11/10/2026): moedas da curva pagam 1% (+0,30%
+ *                     de indicação, se houver); outras moedas, 0,75% pelo site.
  *
  *   Robinhood Chain → PONS: 1,00% no total, dos quais 0,70% vão pro criador.
  *                     A plataforma guarda 0,30%. Não tem folga nenhuma.
@@ -62,6 +63,11 @@ export interface CreatorTier {
 }
 
 export interface ChainFeeConfig {
+  /**
+   * Taxa do SITE num swap de moeda que NÃO é da curva da Chroma (roteado por
+   * agregador). Inclui a indicação (0,30%) quando houver.
+   */
+  swapBps: number;
   /** o que o trader paga numa moeda lançada na Chroma, na curva */
   curveTotalBps: number;
   /** faixas da fatia do criador, por volume acumulado */
@@ -91,9 +97,12 @@ export const CHAIN_FEES: Record<ChainId, ChainFeeConfig> = {
    * criador só cai conforme o market cap sobe.
    */
   solana: {
+    // 0,75% (era 0,95%; pedido do dono, 11/10/2026): 0,30% pra quem indicou + 0,45% Chroma.
+    swapBps: 75,
     curveTotalBps: 125,
     creatorTiers: tiers([30, 45, 60, 75]),
-    launchFee: Number(process.env.NEXT_PUBLIC_LAUNCH_FEE_SOL || 0.02),
+    // Lançamento grátis (pedido do dono, 11/10/2026). Era 0,02 SOL.
+    launchFee: 0,
     reference: { name: "pump.fun", totalBps: 125, creatorBps: 30, launchFee: "grátis" },
   },
 
@@ -103,6 +112,8 @@ export const CHAIN_FEES: Record<ChainId, ChainFeeConfig> = {
    * manter o afiliado. Ver a explicação no topo do arquivo.
    */
   robinhood: {
+    // 0,75% — igual ao contrato ChromaPons publicado (taxas da Robinhood: discutir depois).
+    swapBps: 75,
     curveTotalBps: 120,
     creatorTiers: tiers([45, 55, 62, 70]),
     // Lançamento pela curva da Pons: 0,0005 da plataforma + 0,0005 da Chroma.
@@ -117,8 +128,7 @@ export const CHAIN_FEES: Record<ChainId, ChainFeeConfig> = {
  * não é cobrada — o trader paga menos do que pagaria na curva.
  */
 export function swapFeeBps(chain: ChainId): number {
-  const config = CHAIN_FEES[chain];
-  return config.curveTotalBps - config.creatorTiers[0].creatorBps;
+  return CHAIN_FEES[chain].swapBps;
 }
 
 /* ------------------------------------------------------------------ */
@@ -206,16 +216,17 @@ export function computeFees(
 
 /** Mesma conta em inteiros (lamports / wei), que é o que a transação usa. */
 /**
- * Taxa do SITE nas moedas da Curva da Chroma: só os 0,30% da indicação.
- * A Chroma já ganha ~0,4% de todo o volume dessas moedas pela própria curva
- * (taxa de parceira), então cobrar mais 0,95% em cima deixava negociar pelo
- * site mais caro que pela Jupiter (06/10/2026). Sem indicação, os 0,30% ficam
- * com a plataforma. O bônus do criador sai da taxa da curva, não desta.
+ * Taxa do SITE nas moedas da Curva da Chroma: a Chroma não cobra nada (ela já
+ * ganha a parte dela de todo o volume pela própria curva). Só existe a
+ * indicação, 0,30%, quando a pessoa chegou pelo link de alguém — e vai inteira
+ * pra quem indicou. Sem indicação: 0% (11/10/2026; antes eram 0,30% sempre).
  */
-export const TAXA_DO_SITE_NA_CURVA_DA_CHROMA_BPS = AFFILIATE_FEE_BPS;
+export function taxaDoSiteNaCurvaBps(temIndicacao: boolean): number {
+  return temIndicacao ? AFFILIATE_FEE_BPS : 0;
+}
 
 export function computeFeesRaw(grossRaw: bigint, affiliate: string | null, chain: ChainId, naCurvaDaChroma = false) {
-  const bps = naCurvaDaChroma ? TAXA_DO_SITE_NA_CURVA_DA_CHROMA_BPS : swapFeeBps(chain);
+  const bps = naCurvaDaChroma ? taxaDoSiteNaCurvaBps(Boolean(affiliate)) : swapFeeBps(chain);
   const totalFee = (grossRaw * BigInt(bps)) / BigInt(BPS_DENOMINATOR);
   const affiliateFee = affiliate
     ? (grossRaw * BigInt(AFFILIATE_FEE_BPS)) / BigInt(BPS_DENOMINATOR)

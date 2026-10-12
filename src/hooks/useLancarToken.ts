@@ -233,10 +233,10 @@ export function useLancarToken() {
           /*
            * Saldo ANTES de tudo. Sem isso, faltando SOL a simulação falhava, a
            * carteira nem abria e a tela ficava em "aprove na carteira" sem dizer
-           * o porquê (05/10/2026). Custo: 0,02 de taxa + ~0,015 das contas da
-           * moeda + a compra inicial + ~0,001 de rede.
+           * o porquê (05/10/2026). Custo: ~0,015 das contas da moeda + a compra
+           * inicial + ~0,001 de rede. Lançar é grátis desde 11/10/2026 (era 0,02).
            */
-          const precisa = 0.02 + 0.015 + compraSol + 0.001;
+          const precisa = 0.015 + compraSol + 0.001;
           const tem = (await connection.getBalance(publicKey)) / 1e9;
           if (tem < precisa) throw new Error(m.semSaldo(precisa.toFixed(3), tem.toFixed(3)));
           setEtapa("aprovar-unica");

@@ -10,6 +10,7 @@ import { PublicKey } from "@solana/web3.js";
 import { usePublicClient } from "wagmi";
 import { erc20Abi, formatUnits, type Address } from "viem";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
+import { swapFeeBps } from "@/lib/fees";
 import { ABI_DA_CURVA, CHROMA_CURVE_EVM } from "@/lib/chroma-evm";
 import { EVENTO_NEGOCIO, posicaoLocal, type NegocioRecente } from "@/lib/posicoes-locais";
 import { useAccount } from "wagmi";
@@ -146,8 +147,9 @@ export function MinhaPosicao({
               { cache: "no-store" },
             ).then((r) => (r.ok ? r.json() : null)).catch(() => null);
             const saida = Number(q?.outAmount ?? 0) / 1e9;
-            // Menos a taxa de 0,95% da Chroma, cobrada na venda.
-            if (!cancelado) setVendaEmSol(saida > 0 ? saida * (1 - 0.0095) : null);
+            // Menos a taxa da Chroma cobrada na venda (0,75%; nas moedas da curva é
+            // menor ou zero, então o valor mostrado fica um pouco abaixo — nunca acima).
+            if (!cancelado) setVendaEmSol(saida > 0 ? saida * (1 - swapFeeBps("solana") / 10_000) : null);
           } else if (!cancelado) setVendaEmSol(null);
         } else if (publicClient) {
           const [bruto, dec] = await Promise.all([

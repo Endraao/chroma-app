@@ -1,5 +1,4 @@
 import { cached } from "@/lib/cache";
-import { PARTE_DA_CHROMA } from "@/lib/bonus-criador";
 import { gravarNoCacheDoBanco, lerDoCacheDoBanco } from "@/lib/db";
 
 /**
@@ -64,10 +63,10 @@ async function volumeDosNegocios(pool: string): Promise<number | null> {
  * Volume real em SOL, ou null quando não dá pra medir (moeda que passou de
  * 24 h ou de 300 negócios antes da foto) — aí vale a conta antiga pela taxa.
  */
-export async function volumeRealSol(pool: string, ganhoSol: number): Promise<number | null> {
+export async function volumeRealSol(pool: string, ganhoSol: number, parteDaChroma: number): Promise<number | null> {
   const chave = `volume-real:${pool}`;
   const foto = await lerDoCacheDoBanco<Foto>(chave).catch(() => null);
-  if (foto) return foto.volumeSol + Math.max(0, ganhoSol - foto.ganhoSol) / PARTE_DA_CHROMA;
+  if (foto) return foto.volumeSol + Math.max(0, ganhoSol - foto.ganhoSol) / parteDaChroma;
 
   const criada = await criadaEm(pool).catch(() => null);
   if (!criada) return null;

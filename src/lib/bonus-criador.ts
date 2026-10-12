@@ -2,13 +2,13 @@
  * BÔNUS DO CRIADOR na Curva da Chroma (ideia do dono, 03/10/2026).
  *
  * O prêmio se paga sozinho: é METADE do que a Chroma já ganhou com a moeda.
- * Na Curva da Chroma a Chroma é parceira e leva ~0,4% de todo o volume (taxa
- * de 1%, 20% pra Meteora, o resto meio a meio com o criador). Então, quando a
- * moeda bate a meta, o dinheiro do bônus já entrou — o caixa nunca adianta.
+ * Na Curva da Chroma a Chroma é parceira e leva parte de todo o volume (0,40%
+ * nas moedas da config antiga, ~0,50% nas da nova). Então, quando a moeda bate
+ * a meta, o dinheiro do bônus já entrou — o caixa nunca adianta.
  *
  * Fraude não compensa: quem negocia a própria moeda pra bater meta paga 1% e
- * recebe de volta 0,4% como criador, perdendo 0,6% do volume — US$ 150 pra
- * ganhar US$ 50 na primeira meta.
+ * recebe de volta 0,3–0,4% como criador, perdendo 0,6–0,7% do volume — US$ 150
+ * ou mais pra ganhar US$ 50 na primeira meta.
  *
  * O progresso é medido pelo que a Chroma ganhou de verdade (taxa de parceira
  * na curva + metade da taxa da pool da Meteora depois que a moeda se forma,
@@ -17,8 +17,14 @@
  * minutos a taxa anti-robô é maior, e a meta chega um pouco antes.
  */
 
-/** Quanto da negociação vira ganho da Chroma (1% × 80% × 50%). */
-export const PARTE_DA_CHROMA = 0.004;
+/**
+ * Quanto da negociação vira ganho da Chroma depende da config da moeda (ver
+ * lib/curva-taxas.ts): 0,40% na antiga, ~0,50% na nova (11/10/2026). O bônus
+ * (~0,20% do volume em cada meta) cabe com folga nas duas.
+ */
+export { divisaoDaConfig } from "@/lib/curva-taxas";
+/** Quanto o criador ganha por negócio numa moeda nova (pra textos e exemplos). */
+export { PARTE_DO_CRIADOR } from "@/lib/curva-taxas";
 
 /** Metas: volume da moeda → bônus TOTAL acumulado do criador. */
 export const METAS = [

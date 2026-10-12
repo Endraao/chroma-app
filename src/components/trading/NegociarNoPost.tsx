@@ -16,6 +16,7 @@ import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
 import { cn, formatPct, formatPrice, formatUsd } from "@/lib/utils";
 import { feeLabelFor } from "@/lib/fees";
+import { pctDaDivisao, type DivisaoDaCurva } from "@/lib/curva-taxas";
 import { PLATFORM_FEE_WALLET_EVM, PLATFORM_FEE_WALLET_SOL, robinhoodChain } from "@/lib/web3";
 
 const X_DA_CHROMA = "https://x.com/ChromaLaunch";
@@ -29,8 +30,10 @@ const TEXTOS = traducoes({
     abrir: "Open on Chroma", mc: "MC",
     abaNegociar: "Trade", abaLink: "My link",
     pool: "Pool",
-    comoFunciona: (taxa: string, curva: boolean) =>
-      `Chroma charges ${taxa} per trade — 0.30% of it goes to whoever shared the post.${curva ? " On coins launched on the Chroma Curve, the 1% pool fee splits 40% creator · 40% Chroma · 20% Meteora." : ""}`,
+    comoFunciona: (taxa: string, solana: boolean, naCurva: boolean, d: DivisaoDaCurva) =>
+      naCurva
+        ? `On Chroma Curve coins Chroma adds no fee — only 0.30% goes to whoever shared the post. The coin's 1% fee splits ${d.criador}% creator · ${d.chroma}% Chroma · ${d.meteora}% Meteora.`
+        : `Chroma charges ${taxa} per trade — 0.30% of it goes to whoever shared the post.${solana ? " On coins launched on the Chroma Curve, Chroma adds no fee: only 0.30% to whoever shared the post." : ""}`,
     emSol: (m: string) => `All fees and payouts in ${m}, on-chain, in the same transaction.`,
     linkTitulo: "Share with your own link",
     linkTexto: (m: string) => `Everyone who trades through your link pays you 0.30% of the trade — in ${m}, on-chain, instantly.`,
@@ -46,8 +49,10 @@ const TEXTOS = traducoes({
     abrir: "Abrir na Chroma", mc: "MC",
     abaNegociar: "Negociar", abaLink: "Meu link",
     pool: "Pool",
-    comoFunciona: (taxa: string, curva: boolean) =>
-      `A Chroma cobra ${taxa} por negócio — 0,30% disso vai pra quem compartilhou o post.${curva ? " Nas moedas lançadas na Curva da Chroma, a taxa de 1% da pool é dividida: 40% criador · 40% Chroma · 20% Meteora." : ""}`,
+    comoFunciona: (taxa: string, solana: boolean, naCurva: boolean, d: DivisaoDaCurva) =>
+      naCurva
+        ? `Nas moedas da Curva da Chroma a Chroma não cobra nada a mais — só 0,30% pra quem compartilhou o post. A taxa de 1% da moeda é dividida: ${d.criador}% criador · ${d.chroma}% Chroma · ${d.meteora}% Meteora.`
+        : `A Chroma cobra ${taxa} por negócio — 0,30% disso vai pra quem compartilhou o post.${solana ? " Nas moedas lançadas na Curva da Chroma, a Chroma não cobra nada a mais: só 0,30% pra quem compartilhou o post." : ""}`,
     emSol: (m: string) => `Todas as taxas e pagamentos em ${m}, na blockchain, na mesma transação.`,
     linkTitulo: "Compartilhe com o seu link",
     linkTexto: (m: string) => `Quem negociar pelo seu link te paga 0,30% do negócio — em ${m}, na blockchain, na hora.`,
@@ -63,8 +68,10 @@ const TEXTOS = traducoes({
     abrir: "在 Chroma 打开", mc: "市值",
     abaNegociar: "交易", abaLink: "我的链接",
     pool: "池子",
-    comoFunciona: (taxa: string, curva: boolean) =>
-      `Chroma 每笔交易收取 ${taxa} —— 其中 0.30% 归分享该帖子的人。${curva ? "在 Chroma 曲线上发行的代币，1% 池子手续费分配为：40% 创建者 · 40% Chroma · 20% Meteora。" : ""}`,
+    comoFunciona: (taxa: string, solana: boolean, naCurva: boolean, d: DivisaoDaCurva) =>
+      naCurva
+        ? `在 Chroma 曲线代币上，Chroma 不额外收费——仅 0.30% 归分享该帖子的人。代币的 1% 手续费分配为：${d.criador}% 创建者 · ${d.chroma}% Chroma · ${d.meteora}% Meteora。`
+        : `Chroma 每笔交易收取 ${taxa} —— 其中 0.30% 归分享该帖子的人。${solana ? "在 Chroma 曲线上发行的代币，Chroma 不额外收费：仅 0.30% 归分享该帖子的人。" : ""}`,
     emSol: (m: string) => `所有手续费和收益均以 ${m} 链上同笔交易支付。`,
     linkTitulo: "用你自己的链接分享",
     linkTexto: (m: string) => `通过你的链接交易的每个人都会付给你 0.30% —— ${m}，链上，即时。`,
@@ -215,7 +222,7 @@ function Conteudo({ base }: { base: TokenSummary }) {
               onClick={() => setExplicando(false)}
               className="absolute inset-x-2 top-[92px] z-20 cursor-pointer space-y-1 rounded-lg border border-white/10 bg-ink-900 px-3 py-2.5 text-[11.5px] leading-snug text-zinc-300 shadow-2xl"
             >
-              <p>{t.comoFunciona(feeLabelFor(token.chain).swap, token.chain === "solana")}</p>
+              <p>{t.comoFunciona(feeLabelFor(token.chain).swap, token.chain === "solana", token.dexId === "chroma-curve", pctDaDivisao(token.curveConfig))}</p>
               <p className="font-semibold text-marca">{t.emSol(token.chain === "robinhood" ? "ETH" : "SOL")}</p>
               <p className="text-right text-[10.5px] text-zinc-500">✕</p>
             </div>

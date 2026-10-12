@@ -42,29 +42,29 @@ const TEXTO_CURVA = traducoes({
   en: {
     titulo: "Bonding curve",
     classica: "Classic",
-    chroma: "Chroma Curve · 40% of fees + cash bonus for you",
+    chroma: "Chroma Curve · free launch · 30% of fees + cash bonus for you",
     notaClassica: "The most traded curve on Solana. Graduates at ~85 SOL.",
-    ganho: "You earn 40% of the trading fee on every trade of your coin, on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay up to 25%.",
-    bonus: "Example: $100K volume → $600 to you · see the creator bonus →",
-    notaChroma: "You earn 40% of the trading fee on every trade of your coin, on any app, forever. Snipers pay up to 25% in the first 2 minutes; your first buy pays the minimum. Graduates to Meteora with locked liquidity.",
+    ganho: "Launching is free. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay 25%.",
+    bonus: "Example: $100K volume → $500 to you · see the creator bonus →",
+    notaChroma: "Free to launch. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. Same 1% fee for everyone from the first second, like pump.fun — and your first buy goes in before anyone else. Graduates to Meteora with locked liquidity.",
   },
   pt: {
     titulo: "Curva de lançamento",
     classica: "Clássica",
-    chroma: "Curva da Chroma · 40% das taxas + bônus pra você",
+    chroma: "Curva da Chroma · lançamento grátis · 30% das taxas + bônus pra você",
     notaClassica: "A curva mais negociada da Solana. Gradua com ~85 SOL.",
-    ganho: "Você ganha 40% da taxa de toda negociação da sua moeda, em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam até 25%.",
-    bonus: "Exemplo: $100 mil de volume → $600 pra você · veja o bônus do criador →",
-    notaChroma: "Você ganha 40% da taxa de toda negociação da sua moeda, em qualquer app, pra sempre. Robôs pagam até 25% nos primeiros 2 minutos; sua primeira compra paga o mínimo. Gradua pra Meteora com liquidez travada.",
+    ganho: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam 25%.",
+    bonus: "Exemplo: $100 mil de volume → $500 pra você · veja o bônus do criador →",
+    notaChroma: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Taxa de 1% igual pra todos desde o primeiro segundo, como na pump.fun — e a sua primeira compra entra antes de todo mundo. Gradua pra Meteora com liquidez travada.",
   },
   zh: {
     titulo: "联合曲线",
     classica: "经典",
-    chroma: "Chroma 曲线 · 40% 手续费 + 现金奖金归你",
+    chroma: "Chroma 曲线 · 免费发币 · 30% 手续费 + 现金奖金归你",
     notaClassica: "Solana 上交易最活跃的曲线。约 85 SOL 时毕业。",
-    ganho: "你的代币在任何应用上的每笔交易，你都永久获得 40% 的交易费。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人最高支付 25%。",
-    bonus: "示例：交易量 10 万美元 → 你获得 600 美元 · 查看创作者奖金 →",
-    notaChroma: "你的代币在任何应用上的每笔交易，你都永久获得 40% 的交易费。前 2 分钟狙击机器人最高支付 25%；你的首次买入只付最低费用。毕业后迁移至 Meteora，流动性锁定。",
+    ganho: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人支付 25%。",
+    bonus: "示例：交易量 10 万美元 → 你获得 500 美元 · 查看创作者奖金 →",
+    notaChroma: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。从第一秒起所有人统一 1% 手续费，与 pump.fun 相同——你的首次买入先于所有人成交。毕业后迁移至 Meteora，流动性锁定。",
   },
 });
 import type { ChainId } from "@/lib/types";
@@ -100,6 +100,7 @@ const TEXTOS = traducoes({
     imutavel: (agora: React.ReactNode) => <>The coin&apos;s data — image, banner and social links — can only be added {agora} and cannot be changed or edited after creation.</>,
     agora: "now", rede: "Network", gasEm: (s: string) => `gas in ${s}`, par: "Liquidity pair", parSub: "what your token is priced against",
     custo: (taxa: string) => <>Launching costs <strong>{taxa}</strong> + network fee. Your first buy is separate: it buys your own coin.</>,
+    custoGratis: <>Launching is <strong>free</strong> — you only pay the Solana network costs (~0.015 SOL to create the coin&apos;s accounts). Your first buy is separate: it buys your own coin.</>,
     imagemFixa: "The image can't be changed after the coin is created.",
     midia: "Image or video", obrigatorio: "required", selecione: "Select the video or image you want to upload.", arraste: "or drag and drop it here.",
     tamanho: "File size and type", img15: "Image — max 15 MB. '.jpg', '.gif' or '.png' recommended.", video30: "Video — max 30 MB. '.mp4' recommended.",
@@ -121,7 +122,7 @@ const TEXTOS = traducoes({
     ganhoEvm: "You receive 0.70% of every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.",
     taxaCriadorTitulo: "Creator tax (optional)", taxaCriadorNota: (total: string) => `Extra fee on every trade, paid entirely to you (0–10%). With the value you choose, traders pay ${total}% in total.`,
     verFaixas: "see the tiers",
-    totalNaCarteira: (total: string) => <>Required balance: <strong>{total} SOL</strong>. Includes the launch fee (0.02 SOL), the creation of the coin&apos;s accounts on Solana (~0.015 SOL), your initial buy and the network fee.</>,
+    totalNaCarteira: (total: string) => <>Required balance: <strong>{total} SOL</strong>. Includes the creation of the coin&apos;s accounts on Solana (~0.015 SOL), your initial buy and the network fee. Launching itself is free.</>,
     compraInicial: "Initial buy", quanto: (s: string) => `How much do you want to buy at launch (in ${s})`, semDolar: "dollar price unavailable right now",
     segundaConfirmacao: "your wallet asks for a second confirmation for this buy, right after creating",
     naoCustodia: "Chroma is non-custodial: the coin is yours and the transaction comes from your wallet. The initial buy pays the same price as anyone else — there is no token reserve for the creator. What you buy here shows up in the security panel as creator concentration.",
@@ -140,6 +141,7 @@ const TEXTOS = traducoes({
     imutavel: (agora: React.ReactNode) => <>Os dados da moeda — imagem, banner e links de redes sociais — só podem ser adicionados {agora} e não poderão ser alterados nem editados depois da criação.</>,
     agora: "agora", rede: "Rede", gasEm: (s: string) => `gás em ${s}`, par: "Par de liquidez", parSub: "contra o que seu token é cotado",
     custo: (taxa: string) => <>Lançar custa <strong>{taxa}</strong> + taxa de rede. A sua primeira compra é à parte: ela compra a sua própria moeda.</>,
+    custoGratis: <>Lançar é <strong>grátis</strong> — você paga só os custos da rede Solana (~0,015 SOL pra criar as contas da moeda). A sua primeira compra é à parte: ela compra a sua própria moeda.</>,
     imagemFixa: "A imagem não pode ser trocada depois que a moeda for criada.",
     midia: "Imagem ou vídeo", obrigatorio: "obrigatório", selecione: "Selecione o vídeo ou a imagem que deseja enviar.", arraste: "ou arraste e solte aqui.",
     tamanho: "Tamanho e tipo do arquivo", img15: "Imagem — máximo 15 MB. Recomenda-se o formato '.jpg', '.gif' ou '.png'.", video30: "Vídeo — máximo 30 MB. Formato '.mp4' recomendado.",
@@ -161,7 +163,7 @@ const TEXTOS = traducoes({
     ganhoEvm: "Você recebe 0,70% de cada negociação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.",
     taxaCriadorTitulo: "Taxa do criador (opcional)", taxaCriadorNota: (total: string) => `Taxa extra em cada negociação, paga toda para você (de 0 a 10%). Com o valor escolhido, quem negocia paga ${total}% no total.`,
     verFaixas: "ver as faixas",
-    totalNaCarteira: (total: string) => <>Saldo necessário: <strong>{total} SOL</strong>. Inclui a taxa de lançamento (0,02 SOL), a criação das contas da moeda na Solana (~0,015 SOL), a sua compra inicial e a taxa de rede.</>,
+    totalNaCarteira: (total: string) => <>Saldo necessário: <strong>{total} SOL</strong>. Inclui a criação das contas da moeda na Solana (~0,015 SOL), a sua compra inicial e a taxa de rede. O lançamento em si é grátis.</>,
     compraInicial: "Compra inicial", quanto: (s: string) => `Quanto você quer comprar no lançamento (em ${s})`, semDolar: "cotação do dólar indisponível agora",
     segundaConfirmacao: "a carteira pede uma segunda confirmação para esta compra, logo depois de criar",
     naoCustodia: "A Chroma não faz custódia: a moeda é sua e a transação sai da sua carteira. A compra inicial paga o mesmo preço que qualquer outra pessoa — não existe reserva de tokens para o criador. O que você comprar aqui aparece no painel de segurança como concentração do criador.",
@@ -180,6 +182,7 @@ const TEXTOS = traducoes({
     imutavel: (agora: React.ReactNode) => <>代币资料 —— 图片、横幅和社交链接 —— 只能{agora}添加，创建后无法修改或编辑。</>,
     agora: "现在", rede: "网络", gasEm: (s: string) => `以 ${s} 支付 Gas`, par: "流动性交易对", parSub: "你的代币以什么计价",
     custo: (taxa: string) => <>发币费用 <strong>{taxa}</strong> + 网络费。你的首次买入是单独的：它买入你自己的代币。</>,
+    custoGratis: <>发币<strong>免费</strong>——你只需支付 Solana 网络成本（创建代币账户约 0.015 SOL）。你的首次买入是单独的：它买入你自己的代币。</>,
     imagemFixa: "代币创建后，图片无法更改。",
     midia: "图片或视频", obrigatorio: "必填", selecione: "选择要上传的视频或图片。", arraste: "或拖放到这里。",
     tamanho: "文件大小与类型", img15: "图片 —— 最大 15 MB，推荐 '.jpg'、'.gif' 或 '.png'。", video30: "视频 —— 最大 30 MB，推荐 '.mp4'。",
@@ -201,7 +204,7 @@ const TEXTOS = traducoes({
     ganhoEvm: "你的代币每笔交易你都能获得 0.70%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。",
     taxaCriadorTitulo: "创作者税（可选）", taxaCriadorNota: (total: string) => `每笔交易的额外费用，全部归你（0–10%）。按你选择的数值，交易者总共支付 ${total}%。`,
     verFaixas: "查看档位",
-    totalNaCarteira: (total: string) => <>所需余额：<strong>{total} SOL</strong>。包括发币费（0.02 SOL）、在 Solana 上创建代币账户（约 0.015 SOL）、你的首次买入和网络费。</>,
+    totalNaCarteira: (total: string) => <>所需余额：<strong>{total} SOL</strong>。包括在 Solana 上创建代币账户（约 0.015 SOL）、你的首次买入和网络费。发币本身免费。</>,
     compraInicial: "首次买入", quanto: (s: string) => `发行时想买入多少（以 ${s} 计）`, semDolar: "暂时无法获取美元报价",
     segundaConfirmacao: "创建后钱包会立即请求第二次确认以完成这笔买入",
     naoCustodia: "Chroma 不托管资产：代币属于你，交易从你的钱包发出。首次买入与其他人价格相同 —— 没有为创建者预留代币。你在这里买入的部分会在安全面板中显示为创建者持仓集中度。",
@@ -272,7 +275,7 @@ export default function CreateTokenPage() {
   // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
   const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
   // Padrão: a Curva da Chroma (decisão do dono, 02/10/2026) — a Chroma ganha em
-  // toda negociação e o criador leva 40% da taxa. A Clássica segue como opção.
+  // toda negociação e o criador leva ~30% da taxa. A Clássica segue como opção.
   const [curva, setCurva] = useState<"pump" | "chroma">(CURVA_CHROMA_DISPONIVEL ? "chroma" : "pump");
   // Robinhood: taxa extra do criador (0 a 10%), igual à da plataforma de lançamento.
   const [taxaDoCriador, setTaxaDoCriador] = useState("");
@@ -378,13 +381,13 @@ export default function CreateTokenPage() {
 
       {/* Quanto custa lançar, antes de qualquer campo. */}
       <p className="px-1 text-[12px] leading-relaxed text-zinc-300">
-        {t.custo(chain === "solana" ? "0.02 SOL" : "0.001 ETH")}
+        {chain === "solana" ? t.custoGratis : t.custo("0.001 ETH")}
       </p>
 
       {/*
         Em qual curva a moeda nasce, na Solana. A Curva da Chroma (Meteora DBC)
-        dá ao criador metade da taxa de TODA negociação, em qualquer site, e
-        tem taxa anti-robô nos primeiros 2 minutos (ver lib/meteora-dbc.ts).
+        dá ao criador ~30% da taxa de TODA negociação, em qualquer site, e
+        cobra 1% fixo desde o primeiro segundo, sem anti-robô (ver lib/curva-taxas.ts).
         Ao usuário nunca se fala o nome de quem opera a curva clássica.
       */}
       {chain === "solana" && CURVA_CHROMA_DISPONIVEL && (
@@ -683,7 +686,7 @@ export default function CreateTokenPage() {
           {/* Quanto precisa ter na carteira, antes do clique (Curva da Chroma). */}
           {chain === "solana" && curva === "chroma" && (
             <p className="rounded-lg border border-marca/25 bg-marca/[0.06] px-3 py-2 text-[12px] leading-relaxed text-zinc-300">
-              {t.totalNaCarteira((0.036 + (compraInicial > 0 ? compraInicial : 0)).toFixed(3))}
+              {t.totalNaCarteira((0.016 + (compraInicial > 0 ? compraInicial : 0)).toFixed(3))}
             </p>
           )}
           <p className="text-[11px] leading-relaxed text-zinc-500">

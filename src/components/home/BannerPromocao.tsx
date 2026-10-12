@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { METAS, PARTE_DA_CHROMA } from "@/lib/bonus-criador";
+import { METAS, PARTE_DO_CRIADOR } from "@/lib/bonus-criador";
 import type { Idioma } from "@/lib/idiomas";
 
 /**
@@ -13,7 +13,7 @@ const TEXTOS: Record<Idioma, { selo: string; titulo: string; sub: string; volume
   en: {
     selo: "Creator promo",
     titulo: "Launch on Chroma. Get paid in cash.",
-    sub: "Up to $1,000 bonus per coin, on top of 40% of every trade fee, forever.",
+    sub: "Free to launch. Up to $1,000 bonus per coin, on top of 30% of every trade fee, forever.",
     volume: "volume",
     paraVoce: "to you",
     cta: "See how it works",
@@ -21,7 +21,7 @@ const TEXTOS: Record<Idioma, { selo: string; titulo: string; sub: string; volume
   pt: {
     selo: "Promoção do criador",
     titulo: "Lance na Chroma. Ganhe em dinheiro.",
-    sub: "Bônus de até $1.000 por moeda, além de 40% da taxa de toda negociação, pra sempre.",
+    sub: "Lançar é grátis. Bônus de até $1.000 por moeda, além de 30% da taxa de toda negociação, pra sempre.",
     volume: "de volume",
     paraVoce: "pra você",
     cta: "Veja como funciona",
@@ -29,7 +29,7 @@ const TEXTOS: Record<Idioma, { selo: string; titulo: string; sub: string; volume
   zh: {
     selo: "创作者活动",
     titulo: "在 Chroma 发币，赚取现金。",
-    sub: "每个代币最高 1,000 美元奖金，另外永久获得每笔交易 40% 的手续费。",
+    sub: "发币免费。每个代币最高 1,000 美元奖金，另外永久获得每笔交易 30% 的手续费。",
     volume: "交易量",
     paraVoce: "归你",
     cta: "查看规则",
@@ -62,7 +62,7 @@ export function BannerPromocao({ idioma }: { idioma: Idioma }) {
               <p className="tnum text-[10.5px] text-zinc-500">
                 {curto(m.volumeUsd)} {t.volume}
               </p>
-              <p className="tnum text-[18px] font-black text-marca">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd, idioma)}</p>
+              <p className="tnum text-[18px] font-black text-marca">{cheio(m.volumeUsd * PARTE_DO_CRIADOR + m.bonusUsd, idioma)}</p>
               <p className="text-[10px] font-semibold text-zinc-400">{t.paraVoce}</p>
             </div>
           ))}
@@ -109,7 +109,7 @@ export function CardPromocao({ idioma }: { idioma: Idioma }) {
                 <span className="tnum whitespace-nowrap text-[11px] text-zinc-400">
                   {curto(m.volumeUsd)} {t.volume}
                 </span>
-                <span className="promo-valor tnum text-[18px] font-black">{cheio(m.volumeUsd * PARTE_DA_CHROMA + m.bonusUsd, idioma)}</span>
+                <span className="promo-valor tnum text-[18px] font-black">{cheio(m.volumeUsd * PARTE_DO_CRIADOR + m.bonusUsd, idioma)}</span>
               </div>
             ))}
             <p className="text-right text-[10.5px] font-semibold text-zinc-500">{t.paraVoce}</p>

@@ -1,6 +1,8 @@
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import BN from "bn.js";
 
+import { CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
+
 /**
  * A "Curva da Chroma" na Solana: Meteora Dynamic Bonding Curve (DBC).
  *
@@ -19,9 +21,12 @@ import BN from "bn.js";
  * O kit da Meteora é pesado (~6 MB): é importado só na hora do lançamento.
  */
 
-/** Conta de configuração da curva da Chroma (criada uma vez; ver /admin/curva-chroma). */
-// Criada em 02/10/2026 pela carteira de testes; as taxas da Chroma vão pra carteira da plataforma.
-export const CONFIG_DA_CURVA = process.env.NEXT_PUBLIC_CHROMA_DBC_CONFIG || "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw";
+/**
+ * Conta de configuração da curva da Chroma (ver /admin/curva-chroma e
+ * lib/curva-taxas.ts). A NOVA (11/10/2026: criador 0,30%, lançamento grátis)
+ * vale pros lançamentos; a antiga (02/10/2026) segue reconhecida.
+ */
+export const CONFIG_DA_CURVA = CONFIG_NOVA || process.env.NEXT_PUBLIC_CHROMA_DBC_CONFIG || CONFIG_ANTIGA;
 export const CURVA_CHROMA_DISPONIVEL = CONFIG_DA_CURVA.length > 30;
 
 /**
@@ -29,7 +34,7 @@ export const CURVA_CHROMA_DISPONIVEL = CONFIG_DA_CURVA.length > 30;
  * (saque do criador, bônus, resgate da plataforma); lançamento novo usa só a
  * atual. Trocar a config (ex.: mudar a taxa anti-sniper) = mover a atual pra cá.
  */
-const CONFIGS_ANTIGAS: string[] = [];
+const CONFIGS_ANTIGAS: string[] = [CONFIG_ANTIGA];
 export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, ...CONFIGS_ANTIGAS])];
 
 type KitDbc = typeof import("@meteora-ag/dynamic-bonding-curve-sdk");
@@ -63,13 +68,14 @@ const SOL = new PublicKey("So11111111111111111111111111111111111111112");
  *
  *  - Começa em 30 SOL de valor de mercado e gradua em 420 SOL (parecido com a
  *    pump.fun), migrando sozinha pra uma pool DAMM v2 da Meteora.
- *  - Taxa anti-robô: 25% nos primeiros 40 segundos, depois 1%. (A config
- *    anterior, BbbaZG…, caía de 25% a 1% em 2 minutos.) A
+ *  - Taxa: 1% fixo desde o primeiro segundo, sem anti-robô, igual à pump.fun.
+ *    (A config anterior, BbbaZG…, caía de 25% a 1% em 2 minutos.) A
  *    PRIMEIRA compra — a do criador, na mesma transação do lançamento — paga
  *    a taxa mínima. É o "criador compra primeiro" feito pela própria curva.
- *  - Da taxa de negociação, 20% vão pra Meteora; do resto, metade é do criador
- *    e metade da Chroma. Indicação (referral) recebe 20% da taxa, pago pela curva.
- *  - Taxa de lançamento: 0,02 SOL, cobrada pela curva e paga à Chroma.
+ *  - Da taxa de negociação, 20% vão pra Meteora; do resto, 38% são do criador
+ *    (30,4% da taxa = 0,3% do volume, igual à pump.fun) e o resto da Chroma.
+ *    (Na config antiga era metade/metade: 40% / 40% / 20%.) Indicação (referral) recebe 20% da taxa, pago pela curva.
+ *  - Lançamento grátis (era 0,02 SOL na config antiga, paga à Chroma).
  *  - Depois de graduar, a liquidez fica travada pra sempre (metade criador,
  *    metade Chroma), e as duas partes seguem recebendo as taxas da pool.
  */
@@ -86,15 +92,19 @@ export async function parametrosDaCurva() {
     },
     fee: {
       baseFeeParams: {
-        // 25% fixos nos primeiros 40 s, depois 1% (pedido do dono, 07/10/2026:
-        // "sniper só entra nos primeiros segundos, depois é trade real").
+        // 1% fixo desde o primeiro segundo, sem anti-sniper — igual à pump.fun
+        // (pedido do dono, 11/10/2026). O criador ainda compra primeiro, na
+        // mesma transação do lançamento.
         baseFeeMode: sdk.BaseFeeMode.FeeSchedulerLinear,
-        feeSchedulerParam: { startingFeeBps: 2500, endingFeeBps: 100, numberOfPeriod: 1, totalDuration: 40 },
+        feeSchedulerParam: { startingFeeBps: 100, endingFeeBps: 100, numberOfPeriod: 0, totalDuration: 0 },
       },
       dynamicFeeEnabled: false,
       collectFeeMode: sdk.CollectFeeMode.QuoteToken,
-      creatorTradingFeePercentage: 50,
-      poolCreationFee: 0.02,
+      // Criador fica com 38% da parte da parceira (80% da taxa) = ~30% da taxa,
+      // 0,30% do volume — igual à pump.fun (pedido do dono, 11/10/2026).
+      creatorTradingFeePercentage: 38,
+      // Lançamento grátis (pedido do dono, 11/10/2026). Era 0,02 SOL.
+      poolCreationFee: 0,
       enableFirstSwapWithMinFee: true,
     },
     migration: {
@@ -205,7 +215,7 @@ export async function lerPoolDaCurva(conexao: Connection, mint: string): Promise
 export async function estadoNaCurvaDaChroma(
   conexao: Connection,
   mint: string,
-): Promise<{ precoSol: number; solReal: number; progresso: number; completa: boolean; criador: string; pool: string } | null> {
+): Promise<{ precoSol: number; solReal: number; progresso: number; completa: boolean; criador: string; pool: string; config: string } | null> {
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
@@ -223,6 +233,8 @@ export async function estadoNaCurvaDaChroma(
     completa: Number(estado.isMigrated) !== 0 || (limite > 0 && reserva >= limite),
     criador: estado.creator.toBase58(),
     pool: achado.pool.toBase58(),
+    // Qual config (a divisão da taxa muda: ver lib/curva-taxas.ts).
+    config: achado.config,
   };
 }
 
@@ -231,7 +243,7 @@ export async function estadoNaCurvaDaChroma(
  *
  * Na DBC as taxas não caem sozinhas na carteira: ficam guardadas em cada
  * pool até o "fee claimer" (a carteira da plataforma) resgatar — taxa de
- * negociação de cada pool e a taxa de lançamento (0,02 SOL) de cada moeda.
+ * negociação de cada pool e a taxa de lançamento (0,02 SOL, só nas moedas da config antiga) de cada moeda.
  * Cada pool vira uma transação, simulada antes: a que não tem nada a
  * resgatar (ou já foi resgatada) fica de fora.
  */
@@ -319,7 +331,7 @@ export async function transacoesDeResgate(conexao: Connection, carteira: PublicK
  * de 1%, config FixedBps100 da Meteora). A liquidez fica travada pra sempre em
  * DUAS posições: metade da Chroma, metade do criador. Cada posição recebe sua
  * parte da taxa da pool (80% da taxa vai pras posições, 20% pra Meteora) —
- * as mesmas proporções da curva: 0,4% do volume pra cada lado.
+ * as mesmas proporções da curva (ver lib/curva-taxas.ts).
  *
  * A pool cobra a taxa só em SOL (collectFeeMode = OnlyB), então tudo aqui
  * soma lamports. A curva continua existindo depois da migração: o que sobrou
@@ -416,17 +428,20 @@ async function montarTransacoes(conexao: Connection, pagador: PublicKey, grupos:
  * moeda já se formou, na pool da Meteora. Base do bônus do criador (ver
  * lib/bonus-criador.ts) — conta TODA negociação, antes e depois de formar.
  */
-export async function ganhoDaChromaNaMoeda(conexao: Connection, mint: string): Promise<{ sol: number; pool: string } | null> {
+export async function ganhoDaChromaNaMoeda(
+  conexao: Connection,
+  mint: string,
+): Promise<{ sol: number; pool: string; config: string } | null> {
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
   const achado = await acharPool(sdk, cliente, mint);
   if (!achado) return null;
-  const { pool } = achado;
+  const { pool, config } = achado;
   const [b, m] = await Promise.all([cliente.state.getPoolFeeBreakdown(pool).catch(() => null), poolNaMeteora(conexao, mint)]);
   if (!b) return null;
   const lamports = Number(b.partner.totalQuoteFee.toString()) + (m ? metadeDaTaxaNaMeteora(m.estado) : 0);
-  return { sol: lamports / LAMPORTS_PER_SOL, pool: pool.toBase58() };
+  return { sol: lamports / LAMPORTS_PER_SOL, pool: pool.toBase58(), config };
 }
 
 /** Todas as moedas da curva com o ganho da Chroma e o criador (painel de bônus). */
@@ -450,20 +465,20 @@ export async function ganhosDeTodasAsMoedas(conexao: Connection) {
 }
 
 /**
- * O que o CRIADOR tem pra sacar numa moeda da curva: 40% da taxa de cada
+ * O que o CRIADOR tem pra sacar numa moeda da curva: a parte dele da taxa de cada
  * negociação fica guardado (na curva e, depois que a moeda se forma, na
  * posição dele na pool da Meteora) até ele resgatar.
  */
 export async function ganhosDoCriador(
   conexao: Connection,
   mint: string,
-): Promise<{ pool: string; criador: string; aReceberSol: number; totalSol: number } | null> {
+): Promise<{ pool: string; criador: string; aReceberSol: number; totalSol: number; config: string } | null> {
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
   const achado = await acharPool(sdk, cliente, mint);
   if (!achado) return null;
-  const { pool, estado } = achado;
+  const { pool, estado, config } = achado;
   const b = await cliente.state.getPoolFeeBreakdown(pool).catch(() => null);
   if (!b) return null;
   const m = await posicoesNaMeteora(conexao, mint, estado.creator);
@@ -474,6 +489,7 @@ export async function ganhosDoCriador(
     criador: estado.creator.toBase58(),
     aReceberSol: (Number(b.creator.unclaimedQuoteFee.toString()) + naMeteoraAReceber) / LAMPORTS_PER_SOL,
     totalSol: (Number(b.creator.totalQuoteFee.toString()) + naMeteoraTotal) / LAMPORTS_PER_SOL,
+    config,
   };
 }
 

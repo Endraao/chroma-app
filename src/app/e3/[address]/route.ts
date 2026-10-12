@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ address:
   const { token } = await getToken(address);
 
   const titulo = esc(`$${token.symbol} — buy right in this post on Chroma`);
-  const descricao = esc(`Trade ${token.name} without leaving X. Creators keep 40% of every trade fee on Chroma.`);
+  const descricao = esc(`Trade ${token.name} without leaving X. Free to launch on Chroma; creators earn 30% of every trade fee.`);
   // Capa = a imagem da própria moeda (pedido do dono, 09/10/2026), igual ao /e.
   const imagem = token.imageUrl?.startsWith("http")
     ? token.imageUrl

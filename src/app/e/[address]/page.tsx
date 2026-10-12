@@ -25,7 +25,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const sufixo = ref && REF.test(ref) ? `?ref=${encodeURIComponent(ref)}` : "";
   const player = `${SITE}/p/${address}${sufixo}`;
   const titulo = `$${token.symbol} — buy right in this post on Chroma`;
-  const descricao = `Trade ${token.name} without leaving X. Creators keep 40% of every trade fee on Chroma.`;
+  const descricao = `Trade ${token.name} without leaving X. Free to launch on Chroma; creators earn 30% of every trade fee.`;
   const imagem = token.imageUrl?.startsWith("http")
     ? token.imageUrl
     : token.imageUrl?.startsWith("/")
