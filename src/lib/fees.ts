@@ -112,12 +112,14 @@ export const CHAIN_FEES: Record<ChainId, ChainFeeConfig> = {
    * manter o afiliado. Ver a explicação no topo do arquivo.
    */
   robinhood: {
-    // 0,75% — igual ao contrato ChromaPons publicado (taxas da Robinhood: discutir depois).
-    swapBps: 75,
+    // 0,50% (era 0,75%; pedido do dono, 11/10/2026): 0,30% pra quem indicou + 0,20% Chroma.
+    // Tem que bater com taxaTotalBps do ChromaPons (ver /admin/taxas-pons).
+    swapBps: 50,
     curveTotalBps: 120,
     creatorTiers: tiers([45, 55, 62, 70]),
-    // Lançamento pela curva da Pons: 0,0005 da plataforma + 0,0005 da Chroma.
-    launchFee: 0.001,
+    // Lançamento pela curva da Pons: só os 0,0005 ETH da Pons (a Chroma parou de
+    // cobrar a parte dela em 11/10/2026).
+    launchFee: 0.0005,
     reference: { name: "PONS", totalBps: 100, creatorBps: 70, launchFee: "0,0005 ETH" },
   },
 };

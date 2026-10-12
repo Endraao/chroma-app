@@ -381,7 +381,7 @@ export default function CreateTokenPage() {
 
       {/* Quanto custa lançar, antes de qualquer campo. */}
       <p className="px-1 text-[12px] leading-relaxed text-zinc-300">
-        {chain === "solana" ? t.custoGratis : t.custo("0.001 ETH")}
+        {chain === "solana" ? t.custoGratis : t.custo(`${CHAIN_FEES.robinhood.launchFee} ETH`)}
       </p>
 
       {/*
