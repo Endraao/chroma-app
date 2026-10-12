@@ -46,7 +46,7 @@ const TEXTO_CURVA = traducoes({
     notaClassica: "The most traded curve on Solana. Graduates at ~85 SOL.",
     ganho: "Launching is free. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay 25%.",
     bonus: "Example: $100K volume → $500 to you · see the creator bonus →",
-    notaChroma: "Free to launch. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. Same 1% fee for everyone from the first second, like pump.fun — and your first buy goes in before anyone else. Graduates to Meteora with locked liquidity.",
+    notaChroma: "Free to launch. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. Same 1% fee for everyone from the first second — and your first buy goes in before anyone else. Graduates to Meteora with locked liquidity.",
   },
   pt: {
     titulo: "Curva de lançamento",
@@ -55,7 +55,7 @@ const TEXTO_CURVA = traducoes({
     notaClassica: "A curva mais negociada da Solana. Gradua com ~85 SOL.",
     ganho: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam 25%.",
     bonus: "Exemplo: $100 mil de volume → $500 pra você · veja o bônus do criador →",
-    notaChroma: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Taxa de 1% igual pra todos desde o primeiro segundo, como na pump.fun — e a sua primeira compra entra antes de todo mundo. Gradua pra Meteora com liquidez travada.",
+    notaChroma: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Taxa de 1% igual pra todos desde o primeiro segundo — e a sua primeira compra entra antes de todo mundo. Gradua pra Meteora com liquidez travada.",
   },
   zh: {
     titulo: "联合曲线",
@@ -64,7 +64,7 @@ const TEXTO_CURVA = traducoes({
     notaClassica: "Solana 上交易最活跃的曲线。约 85 SOL 时毕业。",
     ganho: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人支付 25%。",
     bonus: "示例：交易量 10 万美元 → 你获得 500 美元 · 查看创作者奖金 →",
-    notaChroma: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。从第一秒起所有人统一 1% 手续费，与 pump.fun 相同——你的首次买入先于所有人成交。毕业后迁移至 Meteora，流动性锁定。",
+    notaChroma: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。从第一秒起所有人统一 1% 手续费——你的首次买入先于所有人成交。毕业后迁移至 Meteora，流动性锁定。",
   },
 });
 import type { ChainId } from "@/lib/types";

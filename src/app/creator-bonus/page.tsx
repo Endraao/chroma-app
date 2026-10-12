@@ -28,7 +28,7 @@ const TEXTOS = traducoes({
     difOutras: "Other launchpads",
     difOutrasTexto: "You get a slice of the trading fee — and that is it. Launching often costs a fee too.",
     difChroma: "Chroma",
-    difChromaTexto: "Launching is free. You get 30% of every trade fee (0.3% of every trade, same as pump.fun), forever — plus a cash bonus at every volume goal.",
+    difChromaTexto: "Launching is free. You get 30% of every trade fee (0.3% of every trade), forever — plus a cash bonus at every volume goal.",
     difRodape: "Your community can trade wherever it already does — Jupiter, Phantom, Axiom, Photon, Telegram bots. Every trade, on any app, pays you and counts toward the bonus.",
     regras: "Rules",
     itens: [
@@ -63,7 +63,7 @@ const TEXTOS = traducoes({
     difOutras: "Outras launchpads",
     difOutrasTexto: "Você ganha uma fatia da taxa de negociação — e só. Lançar muitas vezes também é pago.",
     difChroma: "Chroma",
-    difChromaTexto: "Lançar é grátis. Você ganha 30% da taxa de toda negociação (0,3% de cada negócio, igual à pump.fun), pra sempre — e ainda tem bônus em dinheiro a cada meta de volume.",
+    difChromaTexto: "Lançar é grátis. Você ganha 30% da taxa de toda negociação (0,3% de cada negócio), pra sempre — e ainda tem bônus em dinheiro a cada meta de volume.",
     difRodape: "Sua comunidade negocia onde já está acostumada — Jupiter, Phantom, Axiom, Photon, bots do Telegram. Toda negociação, em qualquer app, paga você e conta pro bônus.",
     regras: "Regras",
     itens: [
@@ -98,7 +98,7 @@ const TEXTOS = traducoes({
     difOutras: "其他发射平台",
     difOutrasTexto: "你只能拿到交易手续费的一部分——仅此而已。发币往往还要付费。",
     difChroma: "Chroma",
-    difChromaTexto: "发币免费。你永久获得每笔交易 30% 的手续费（每笔交易的 0.3%，与 pump.fun 相同）——每达成一个交易量目标还有现金奖金。",
+    difChromaTexto: "发币免费。你永久获得每笔交易 30% 的手续费（每笔交易的 0.3%）——每达成一个交易量目标还有现金奖金。",
     difRodape: "你的社区可以在习惯的地方交易——Jupiter、Phantom、Axiom、Photon、Telegram 机器人。任何应用中的每笔交易都会付给你，并计入奖金。",
     regras: "规则",
     itens: [
