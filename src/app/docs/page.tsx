@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { CA_DO_CHROMA } from "@/lib/token-oficial";
+import { lerDoCacheDoBanco } from "@/lib/db";
 import { traducoes } from "@/lib/idiomas";
 
 /**
@@ -261,6 +262,8 @@ const TEXTOS = traducoes({
 
 export default async function DocsPage() {
   const t = TEXTOS[await idiomaAtual()];
+  // Trocável sem recompilar (ver /api/token-oficial).
+  const tokenChroma = (await lerDoCacheDoBanco<{ ca: string }>("token-oficial").catch(() => null))?.ca ?? TOKEN_CHROMA;
   return (
     <div className="mx-auto max-w-3xl space-y-10 pt-6">
       <header>
@@ -299,7 +302,7 @@ export default async function DocsPage() {
             endereco={CONTRATO_LANCAMENTO}
             extra={{ href: SOURCIFY, texto: t.verificado }}
           />
-          {TOKEN_CHROMA && <Endereco rotulo={t.tokenChroma} endereco={TOKEN_CHROMA} />}
+          {tokenChroma && <Endereco rotulo={t.tokenChroma} endereco={tokenChroma} />}
         </div>
       </section>
 

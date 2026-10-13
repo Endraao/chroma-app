@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
-import { CA_DO_CHROMA, LANCAMENTO_DO_CHROMA } from "@/lib/token-oficial";
+import { LANCAMENTO_DO_CHROMA } from "@/lib/token-oficial";
+import { useCaDoChroma } from "@/hooks/useCaDoChroma";
 
 /**
  * Contagem regressiva do relançamento do $CHROMA (pedido do dono, 12/10/2026):
@@ -42,6 +43,7 @@ export function ContagemChroma() {
   const t = useTextos(TEXTOS);
   const alvo = new Date(LANCAMENTO_DO_CHROMA).getTime();
   const [agora, setAgora] = useState<number | null>(null);
+  const ca = useCaDoChroma();
 
   useEffect(() => {
     setAgora(Date.now());
@@ -50,7 +52,7 @@ export function ContagemChroma() {
   }, []);
 
   // Já tem endereço novo: o selo do token oficial assume.
-  if (CA_DO_CHROMA) return null;
+  if (ca) return null;
 
   const falta = agora === null ? null : Math.max(0, alvo - agora);
   const quando = new Date(alvo).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });

@@ -7,6 +7,7 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import { cn } from "@/lib/utils";
 import { CA_DO_CHROMA } from "@/lib/token-oficial";
+import { useCaDoChroma } from "@/hooks/useCaDoChroma";
 
 /**
  * O contrato OFICIAL do $CHROMA, fixo no site (pedido do dono, 02/10/2026).
@@ -26,11 +27,12 @@ const TEXTOS = traducoes({
 export function TokenOficial({ compacto = false, className }: { compacto?: boolean; className?: string }) {
   const t = useTextos(TEXTOS);
   const [copiado, setCopiado] = useState(false);
-  if (!CA_DO_CHROMA) return null;
+  const ca = useCaDoChroma();
+  if (!ca) return null;
 
   const copiar = async () => {
     try {
-      await navigator.clipboard.writeText(CA_DO_CHROMA);
+      await navigator.clipboard.writeText(ca);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 1500);
     } catch {
@@ -54,7 +56,7 @@ export function TokenOficial({ compacto = false, className }: { compacto?: boole
         title={t.copiar}
         className="min-w-0 truncate font-mono text-[12px] text-zinc-200 hover:text-white"
       >
-        {compacto ? `${CA_DO_CHROMA.slice(0, 8)}…${CA_DO_CHROMA.slice(-6)}` : CA_DO_CHROMA}
+        {compacto ? `${ca.slice(0, 8)}…${ca.slice(-6)}` : ca}
       </button>
       <div className="flex shrink-0 items-center gap-1.5">
         <button
@@ -65,7 +67,7 @@ export function TokenOficial({ compacto = false, className }: { compacto?: boole
           {copiado ? t.copiado : t.copiar}
         </button>
         <Link
-          href={`/token/${CA_DO_CHROMA}`}
+          href={`/token/${ca}`}
           className="rounded-md bg-marca px-2.5 py-0.5 text-[11px] font-bold text-[#08090b] transition-colors hover:bg-marca-forte"
         >
           {t.negociar} →
