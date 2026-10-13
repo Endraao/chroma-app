@@ -90,6 +90,8 @@ export function rankingDeDivulgadores(dias: number | null): Promise<Divulgador[]
     const porQuem = new Map<string, Divulgador & { _moedas: Set<string> }>();
     for (const { ok, sol: ganho, l } of conferidos) {
       if (!ok) continue;
+      // A própria Chroma não entra no quadro (pedido do dono, 13/10/2026).
+      if (l.conta?.toLowerCase() === "chroma" || l.wallet === process.env.NEXT_PUBLIC_PLATFORM_FEE_WALLET_SOL) continue;
       const chave = l.conta ?? l.wallet;
       const d =
         porQuem.get(chave) ??
@@ -98,7 +100,8 @@ export function rankingDeDivulgadores(dias: number | null): Promise<Divulgador[]
       d.ganhoSol += ganho;
       // Volume declarado só até o que a comissão comprovada permite (menor taxa possível: 0,2%).
       const tetoUsd = (ganho * sol) / 0.002;
-      d.volumeUsd += Math.min(Number(l.volume_usd) || 0, tetoUsd);
+      // Sem volume gravado no evento, sai da própria comissão (0,30% do negócio).
+      d.volumeUsd += Number(l.volume_usd) > 0 ? Math.min(Number(l.volume_usd), tetoUsd) : (ganho * sol) / 0.003;
       if (l.token_address) d._moedas.add(l.token_address);
       d.ultimo = Math.max(d.ultimo, Number(l.at));
       porQuem.set(chave, d);
