@@ -82,17 +82,29 @@ async function responder(lista: string[]) {
   const mints = [...new Set(lista.filter((m) => MINT.test(m)))].slice(0, MAX);
   const evms = [...new Set(lista.filter((m) => EVM.test(m)).map((m) => m.toLowerCase()))].slice(0, MAX);
   const saida: Record<string, number[]> = {};
-  const series = await Promise.all(evms.map(fechamentosEvm));
-  evms.forEach((m, j) => {
-    if (series[j].length >= 4) saida[m] = series[j];
-  });
+  /*
+   * Responde em até 3 s com o que já estiver pronto (13/10/2026: na VPS de 1
+   * processador, 200 gráficos de uma vez levavam 22 s e derrubavam o site). O
+   * que faltar continua sendo buscado por trás e entra na próxima atualização.
+   */
+  const prazo = new Promise<void>((r) => setTimeout(r, 3_000));
+  const tarefas: Promise<void>[] = evms.map((m) =>
+    fechamentosEvm(m).then((v) => {
+      if (v.length >= 4) saida[m] = v;
+    }),
+  );
   // Em lotes de 25: rajada grande demais vira recusa.
-  for (let i = 0; i < mints.length; i += 25) {
-    const lote = mints.slice(i, i + 25);
-    const series = await Promise.all(lote.map(fechamentos));
-    lote.forEach((m, j) => {
-      if (series[j].length >= 4) saida[m] = series[j];
-    });
-  }
-  return NextResponse.json(saida);
+  tarefas.push(
+    (async () => {
+      for (let i = 0; i < mints.length; i += 25) {
+        const lote = mints.slice(i, i + 25);
+        const series = await Promise.all(lote.map(fechamentos));
+        lote.forEach((m, j) => {
+          if (series[j].length >= 4) saida[m] = series[j];
+        });
+      }
+    })(),
+  );
+  await Promise.race([Promise.all(tarefas), prazo]);
+  return NextResponse.json({ ...saida });
 }
