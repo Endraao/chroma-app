@@ -125,11 +125,18 @@ const CHAVE_ULTIMA_BOA = "moedas-da-chroma-ultima-boa";
 let ultimaGravacao = 0;
 
 export async function moedasDaChroma(): Promise<TokenSummary[]> {
-  try {
-    return await moedasDaChromaComCache();
-  } catch {
-    return moedasDaChromaSemCache();
-  }
+  /*
+   * Memória do processo por cima (13/10/2026, VPS): se alguma moeda vinha com
+   * valor 0, o cache de cima recusava a lista e CADA visita remontava tudo —
+   * 13 s por página. Aqui a última lista fica 20 s e é renovada por trás.
+   */
+  return cached("moedas-da-chroma-mem", 20_000, async () => {
+    try {
+      return await moedasDaChromaComCache();
+    } catch {
+      return moedasDaChromaSemCache();
+    }
+  });
 }
 
 async function moedasDaChromaSemCache(): Promise<TokenSummary[]> {
