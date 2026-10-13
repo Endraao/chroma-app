@@ -59,7 +59,8 @@ const TTL = 300_000;
 export async function fornecimentoDaRede(mints: string[]): Promise<Map<string, number>> {
   const saida = new Map<string, number>();
 
-  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  // Helius primeiro: o RPC público do site (RPC Fast) só aceita 5 contas por getMultipleAccounts (13/10/2026).
+  const rpc = process.env.HELIUS_RPC || process.env.NEXT_PUBLIC_SOLANA_RPC;
   if (!rpc || mints.length === 0) return saida;
 
   /* Só endereços de Solana: em EVM o fornecimento não mora numa conta dessas. */

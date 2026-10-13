@@ -391,7 +391,8 @@ interface Estados {
 async function lerCurvasDaRede(mints: string[]): Promise<Estados> {
   if (mints.length === 0) return { curvas: new Map(), config: null };
 
-  const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  // Helius primeiro: o RPC Fast só aceita 5 contas por getMultipleAccounts (13/10/2026).
+  const rpc = process.env.HELIUS_RPC || process.env.NEXT_PUBLIC_SOLANA_RPC;
   if (!rpc) {
     console.warn("[chroma] NEXT_PUBLIC_SOLANA_RPC não definido: curvas não serão lidas");
     return { curvas: new Map(), config: null };
