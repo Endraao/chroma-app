@@ -14,7 +14,8 @@ import type { TokenSummary } from "@/lib/types";
  *
  * Fora: moeda grande demais (> $300M, não é "descoberta").
  */
-export const revalidate = 600;
+// Montada na hora (13/10/2026): pré-montar no build consultava o banco e estourava 60 s na VPS.
+export const dynamic = "force-dynamic";
 
 function melhores(tokens: TokenSummary[], quantas: number) {
   return tokens
