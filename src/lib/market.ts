@@ -329,8 +329,18 @@ export async function corrigirCapitalizacao(resumos: TokenSummary[]): Promise<To
 /* Token individual                                                    */
 /* ------------------------------------------------------------------ */
 
+/*
+ * "Sem par listado" também fica guardado, por 3 min (13/10/2026). Moeda nova
+ * da curva não tem par na DexScreener; sem isto cada visita à home refazia
+ * dezenas dessas consultas e a página levava 10 s pra terminar na VPS.
+ */
+const semPar = new Map<string, number>();
+const SEM_PAR_MS = 3 * 60_000;
+
 export async function fetchToken(address: string): Promise<TokenSummary | null> {
   const key = `token:${address}`;
+  const visto = semPar.get(address);
+  if (visto && Date.now() - visto < SEM_PAR_MS) return stale<TokenSummary>(key);
   try {
     return await cached(key, TTL.token, async () => {
       const data = await getJson<{ pairs: DexPair[] | null }>(
@@ -345,14 +355,17 @@ export async function fetchToken(address: string): Promise<TokenSummary | null> 
       const alvo = address.toLowerCase();
       const pares = (data.pairs ?? []).filter((p) => p.baseToken?.address?.toLowerCase() === alvo);
       const pair = bestPair(pares);
-      if (!pair) throw new Error("token sem par listado");
+      if (!pair) {
+        semPar.set(address, Date.now());
+        throw new Error("token sem par listado");
+      }
 
       const resumo = somarPools(toSummary(pair), pares);
       const [comFornecimento] = await corrigirCapitalizacao([resumo]);
       return comFornecimento;
     });
   } catch (error) {
-    console.warn("[market] fetchToken falhou:", error);
+    if (!semPar.has(address)) console.warn("[market] fetchToken falhou:", error);
     // Se a API caiu mas já vimos esse token antes, devolve o último valor conhecido.
     return stale<TokenSummary>(key);
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { naCdn } from "@/lib/cdn";
 import { getTokenMeta } from "@/lib/jupiter";
 import { ehMoedaSeria, listTokens, pontuacaoEmAlta } from "@/lib/tokens";
 import type { TokenSummary } from "@/lib/types";
@@ -50,5 +51,5 @@ export async function GET() {
       return { ...m, twitter: meta?.twitter ?? null };
     }),
   );
-  return NextResponse.json(comX);
+  return NextResponse.json(comX, { headers: naCdn(600) });
 }
