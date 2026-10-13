@@ -125,7 +125,7 @@ const TEXTOS = traducoes({
     } as Rotulos,
     valores: {
       Sim: "Yes", Não: "No", sim: "yes", não: "no", "Vende ok": "Sells OK", "NÃO VENDE": "CAN'T SELL", Nenhuma: "None",
-      "sem pool": "no pool", "não confirmada": "not confirmed", "não verificado": "not verified", ativo: "active",
+      "sem pool": "no pool", "não confirmada": "not confirmed", "LP queimada": "LP burned", "na curva": "on the curve", "não verificado": "not verified", ativo: "active",
       "sem dono": "no owner", renunciado: "renounced", Ativa: "Active", Revogada: "Revoked", Presente: "Present", Aguardando: "Waiting",
     } as Record<string, string>,
     pools: "pool(s)",
@@ -216,7 +216,7 @@ const TEXTOS = traducoes({
     } as Rotulos,
     valores: {
       Sim: "是", Não: "否", sim: "是", não: "否", "Vende ok": "可卖出", "NÃO VENDE": "无法卖出", Nenhuma: "无",
-      "sem pool": "无池子", "não confirmada": "未确认", "não verificado": "未验证", ativo: "有效",
+      "sem pool": "无池子", "não confirmada": "未确认", "LP queimada": "LP 已销毁", "na curva": "在曲线中", "não verificado": "未验证", ativo: "有效",
       "sem dono": "无所有者", renunciado: "已放弃", Ativa: "有效", Revogada: "已撤销", Presente: "存在", Aguardando: "等待中",
     } as Record<string, string>,
     pools: "个池子",

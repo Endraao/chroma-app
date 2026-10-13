@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 
+import { estadoDaCurvaPump } from "@/lib/pumpfun";
 import { GOPLUS_CHAIN_ID, robinhoodChain } from "@/lib/web3";
 import type { ChainId, RiskLevel, SecurityCheck, SecurityReport } from "@/lib/types";
 
@@ -336,7 +337,26 @@ function travaDaLiquidez(d: any): {
  * Sem nenhuma pool a resposta não é "seguro" nem "perigoso" — é que não há o
  * que medir, e a verificação `liquidity` já trata esse caso.
  */
-function checkDeLiquidezSolana(d: any, daListaDeConfianca = false): SecurityCheck {
+function checkDeLiquidezSolana(d: any, daListaDeConfianca = false, pump: { completa: boolean } | null = null): SecurityCheck {
+  /*
+   * MOEDA DA PUMP.FUN (13/10/2026, pedido do dono): o aviso "liquidez não
+   * travada" não se aplica. Na curva, a liquidez está no contrato da pump.fun
+   * e ninguém retira; ao se formar, a migração pra PumpSwap queima a LP. A
+   * GoPlus não reconhece a pool da PumpSwap como "standard" e caía no "não
+   * confirmada" — alarme falso numa das moedas mais seguras nesse quesito.
+   */
+  if (pump) {
+    return {
+      id: "lp_locked",
+      label: "Liquidez travada",
+      description: pump.completa
+        ? "Moeda formada na pump.fun: a migração pra PumpSwap queima a LP."
+        : "Na curva da pump.fun a liquidez fica no contrato; ninguém consegue retirar.",
+      level: "safe",
+      value: pump.completa ? "LP queimada" : "na curva",
+      critico: true,
+    };
+  }
   const { pct, pools, mensuravel } = travaDaLiquidez(d);
 
   if (pools === 0) {
@@ -476,6 +496,12 @@ async function fetchSolana(address: string): Promise<SecurityReport | null> {
    */
   const daListaDeConfianca = d.trusted_token === 1;
 
+  // Nasceu na pump.fun? (a conta da curva existe, mesmo depois de formada)
+  const rpc = process.env.HELIUS_RPC || process.env.NEXT_PUBLIC_SOLANA_RPC;
+  const pump = rpc
+    ? await estadoDaCurvaPump(new Connection(rpc, "confirmed"), new PublicKey(address)).catch(() => null)
+    : null;
+
   /*
    * A VERIFICAÇÃO DE LIQUIDEZ VEM PRIMEIRO, e a ordem não é estética.
    *
@@ -484,7 +510,7 @@ async function fetchSolana(address: string): Promise<SecurityReport | null> {
    * nesta ordem, e o primeiro é o que a pessoa lê.
    */
   const checks: SecurityCheck[] = [
-    checkDeLiquidezSolana(d, daListaDeConfianca),
+    checkDeLiquidezSolana(d, daListaDeConfianca, pump),
     {
       id: "mintable",
       label: "Mint authority",
