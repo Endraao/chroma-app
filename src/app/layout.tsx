@@ -11,6 +11,7 @@ import { Rodape } from "@/components/ui/Rodape";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { IdiomaProvider } from "@/components/IdiomaProvider";
 import { RpcNotice } from "@/components/web3/RpcNotice";
+import { ContadorDeVisitas } from "@/components/ContadorDeVisitas";
 
 import "./globals.css";
 
@@ -82,6 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         {/* Barrinha de carregamento no topo ao trocar de página, como na pump.fun */}
         <NextTopLoader color="#34d399" height={3} showSpinner={false} shadow="0 0 10px #34d399,0 0 5px #34d399" />
+        <ContadorDeVisitas />
         <IdiomaProvider idioma={idioma}>
         <WalletProviders>
           {/* useSearchParams precisa de um limite de Suspense no App Router. */}

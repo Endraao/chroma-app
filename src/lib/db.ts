@@ -356,6 +356,20 @@ async function criarTabelas(): Promise<void> {
     /* O saldo de uma carteira é sempre "soma tudo desta carteira na temporada". */
     `CREATE INDEX IF NOT EXISTS idx_pontos_carteira ON pontos(carteira, temporada)`,
     `CREATE INDEX IF NOT EXISTS idx_pontos_tipo ON pontos(temporada, tipo)`,
+
+    /*
+     * Contador de visitas (15/10/2026): uma linha por visitante por dia, sem
+     * IP. O visitante é um número sorteado no navegador — robô não roda o
+     * script, então o que entra aqui é gente.
+     */
+    `CREATE TABLE IF NOT EXISTS visitas (
+       dia       TEXT NOT NULL,
+       visitante TEXT NOT NULL,
+       entrada   TEXT,
+       origem    TEXT,
+       paginas   INTEGER NOT NULL DEFAULT 1,
+       PRIMARY KEY (dia, visitante)
+     )`,
   ];
 
   for (const passo of passos) await sql.query(passo);
