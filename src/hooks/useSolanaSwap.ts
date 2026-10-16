@@ -8,6 +8,7 @@ import { SOL_MINT, cotar, type JupiterQuote } from "@/lib/jupiter";
 import { COTACAO_VENCIDA, executeSolanaSwap } from "@/lib/solana-swap";
 import { reivindicarPontos } from "@/lib/reivindicar-pontos";
 import { computeFeesRaw } from "@/lib/fees";
+import { useHolderDoChroma } from "@/hooks/useHolderDoChroma";
 import { formatUnits, parseUnits } from "@/lib/utils";
 import type { TradeSide } from "@/lib/types";
 
@@ -54,6 +55,8 @@ export function useSolanaSwap({
 }: Options) {
   const { connection } = useConnection();
   const { publicKey, signTransaction, connected } = useWallet();
+  // Quem segura 10M de $CHROMA paga 0,60% em vez de 0,75% (16/10/2026).
+  const { holder: holderDoChroma } = useHolderDoChroma();
 
   const [tokenDecimals, setTokenDecimals] = useState<number | null>(null);
   const [tokenProgram, setTokenProgram] = useState<string | null>(null);
@@ -157,7 +160,7 @@ export function useSolanaSwap({
   const grossRaw = inputDecimals === null ? 0n : parseUnits(amount, inputDecimals);
 
   // A rota de swap implementada hoje é só a da Solana.
-  const fees = computeFeesRaw(grossRaw, affiliate, "solana", naCurvaDaChroma);
+  const fees = computeFeesRaw(grossRaw, affiliate, "solana", naCurvaDaChroma, holderDoChroma);
 
   /*
    * Quanto de fato vai pra rota.
@@ -217,8 +220,8 @@ export function useSolanaSwap({
    */
   const taxaNaSaida = useMemo(() => {
     if (!quote || !ehVenda) return 0n;
-    return computeFeesRaw(BigInt(quote.otherAmountThreshold), affiliate, "solana", naCurvaDaChroma).totalFee;
-  }, [quote, ehVenda, affiliate, naCurvaDaChroma]);
+    return computeFeesRaw(BigInt(quote.otherAmountThreshold), affiliate, "solana", naCurvaDaChroma, holderDoChroma).totalFee;
+  }, [quote, ehVenda, affiliate, naCurvaDaChroma, holderDoChroma]);
 
   const outAmount = useMemo(() => {
     if (!quote || outputDecimals === null) return 0;

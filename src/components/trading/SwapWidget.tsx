@@ -4,7 +4,8 @@ import { Preco } from "@/components/ui/Preco";
 import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes, traduzirDoServidor } from "@/lib/idiomas";
 import { explicarErroDaCarteira } from "@/lib/erros-da-carteira";
-import { feeLabelFor, swapFeeBps, taxaDoSiteNaCurvaBps } from "@/lib/fees";
+import { feeLabelFor, swapFeeBps, swapFeeBpsSolana, taxaDoSiteNaCurvaBps } from "@/lib/fees";
+import { useHolderDoChroma } from "@/hooks/useHolderDoChroma";
 import { anotarOperacao, avisarNegocio } from "@/lib/posicoes-locais";
 
 import { useEffect, useRef, useState } from "react";
@@ -276,8 +277,13 @@ function SolanaSwap({
   const { affiliate, affiliateRef } = useAffiliateTracking(chain);
   // Moeda da Curva da Chroma: o site não cobra nada; só 0,30% pra quem indicou,
   // e só se veio por um link (11/10/2026). Nas outras, a taxa normal da Solana.
-  const taxaSolBps = naCurvaDaChroma ? taxaDoSiteNaCurvaBps(Boolean(affiliate)) : swapFeeBps("solana");
-  const rotuloTaxaSol = naCurvaDaChroma ? (taxaSolBps > 0 ? "0.30%" : "0%") : feeLabelFor("solana").swap;
+  const { holder: holderDoChroma } = useHolderDoChroma();
+  const taxaSolBps = naCurvaDaChroma ? taxaDoSiteNaCurvaBps(Boolean(affiliate)) : swapFeeBpsSolana(holderDoChroma);
+  const rotuloTaxaSol = naCurvaDaChroma
+    ? (taxaSolBps > 0 ? "0.30%" : "0%")
+    : holderDoChroma
+      ? "0.60% 💎"
+      : feeLabelFor("solana").swap;
   // No celular, o app da carteira abre esta mesma página com valor, lado e indicação.
   const [alvoNaCarteira, setAlvoNaCarteira] = useState<string>();
   useEffect(() => {

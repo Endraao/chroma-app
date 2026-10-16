@@ -133,6 +133,22 @@ export function swapFeeBps(chain: ChainId): number {
   return CHAIN_FEES[chain].swapBps;
 }
 
+/*
+ * DESCONTO PRA QUEM SEGURA $CHROMA (decisão do dono, 16/10/2026).
+ *
+ * Com 10 milhões de $CHROMA na carteira (~1% do fornecimento, ~US$ 30 no dia),
+ * a taxa da Solana cai de 0,75% pra 0,60%. A exigência é em TOKENS, não em
+ * dólar: se o $CHROMA sobe, entrar no desconto fica mais caro sozinho. A
+ * indicação (0,30%) sai igual; o que diminui é a parte da Chroma.
+ */
+export const HOLDER_CHROMA_MINIMO = 10_000_000;
+export const SWAP_BPS_HOLDER_SOLANA = 60;
+
+/** Taxa de swap na Solana, com o desconto de holder quando vale. */
+export function swapFeeBpsSolana(holderDoChroma: boolean): number {
+  return holderDoChroma ? SWAP_BPS_HOLDER_SOLANA : swapFeeBps("solana");
+}
+
 /* ------------------------------------------------------------------ */
 /* Distribuição                                                        */
 /* ------------------------------------------------------------------ */
@@ -227,8 +243,18 @@ export function taxaDoSiteNaCurvaBps(temIndicacao: boolean): number {
   return temIndicacao ? AFFILIATE_FEE_BPS : 0;
 }
 
-export function computeFeesRaw(grossRaw: bigint, affiliate: string | null, chain: ChainId, naCurvaDaChroma = false) {
-  const bps = naCurvaDaChroma ? taxaDoSiteNaCurvaBps(Boolean(affiliate)) : swapFeeBps(chain);
+export function computeFeesRaw(
+  grossRaw: bigint,
+  affiliate: string | null,
+  chain: ChainId,
+  naCurvaDaChroma = false,
+  holderDoChroma = false,
+) {
+  const bps = naCurvaDaChroma
+    ? taxaDoSiteNaCurvaBps(Boolean(affiliate))
+    : chain === "solana"
+      ? swapFeeBpsSolana(holderDoChroma)
+      : swapFeeBps(chain);
   const totalFee = (grossRaw * BigInt(bps)) / BigInt(BPS_DENOMINATOR);
   const affiliateFee = affiliate
     ? (grossRaw * BigInt(AFFILIATE_FEE_BPS)) / BigInt(BPS_DENOMINATOR)
