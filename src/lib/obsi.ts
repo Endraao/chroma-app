@@ -299,7 +299,9 @@ export async function darBoasVindas(moeda: { endereco: string; nome: string; sim
 async function enviarAoTelegram(texto: string): Promise<void> {
   const token = process.env.TELEGRAM_COMPRA_TOKEN;
   if (!token) return;
-  const destino = process.env.OBSI_TELEGRAM_CHAT || "@ChromaLaunch";
+  // Desligado por padrão (16/10/2026: o dono quer foco no site). Pra religar: OBSI_TELEGRAM_CHAT=@ChromaLaunch.
+  const destino = process.env.OBSI_TELEGRAM_CHAT;
+  if (!destino) return;
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",

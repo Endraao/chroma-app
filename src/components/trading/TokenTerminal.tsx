@@ -10,6 +10,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { SwapWidget } from "@/components/trading/SwapWidget";
 import { SecurityPanel } from "@/components/security/SecurityPanel";
+import { ObsiDaMoeda } from "@/components/trading/ObsiDaMoeda";
 import { CurvaPanel } from "@/components/trading/CurvaPanel";
 import { CurvaProvider } from "@/components/trading/CurvaProvider";
 import { useCurvaEvm } from "@/hooks/useCurvaEvm";
@@ -274,6 +275,9 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             fato grave continua marcado em vermelho aqui dentro; o resto ficou
             em amarelo, que informa sem assustar.
           */}
+          {/* O Obsi resume a auditoria na voz dele (16/10/2026). */}
+          <ObsiDaMoeda token={token} report={report} carregando={auditando} />
+
           <SegurancaDaMoeda
             token={token}
             report={report}
