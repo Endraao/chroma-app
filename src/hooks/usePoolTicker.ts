@@ -174,6 +174,13 @@ export function usePoolTicker({
     let janela: number | null = null;
     /** O slot das variações que estão esperando par. */
     let slotPendente: number | null = null;
+    /**
+     * Pool da PumpSwap (produto constante, taxa guardada fora dos cofres): a
+     * razão entre os SALDOS é o preço à vista exato. Sem isso o preço vinha da
+     * variação, passava pela faixa de 3% contra a âncora do servidor e, em
+     * moeda agitada, quase todo tique caía pra âncora — que muda a cada ~20 s.
+     */
+    let cofresDaPumpSwap: { token: string; cotacao: string } | null = null;
 
     /**
      * Fecha a janela e publica, se o que chegou for mesmo um negócio.
@@ -194,7 +201,12 @@ export function usePoolTicker({
       if (base === 0 || cotacao === 0) return;
       if (Math.sign(base) === Math.sign(cotacao)) return;
 
-      const precoEmCotacao = Math.abs(cotacao) / Math.abs(base);
+      let precoEmCotacao = Math.abs(cotacao) / Math.abs(base);
+      if (cofresDaPumpSwap) {
+        const t = reservasRef.current.get(cofresDaPumpSwap.token)?.quantidade ?? 0;
+        const q = reservasRef.current.get(cofresDaPumpSwap.cotacao)?.quantidade ?? 0;
+        if (t > 0 && q > 0) precoEmCotacao = q / t;
+      }
       const precoUsd = precoEmCotacao * precoDaCotacaoRef.current;
       if (!Number.isFinite(precoUsd) || precoUsd <= 0) return;
 
@@ -202,6 +214,7 @@ export function usePoolTicker({
         precoUsd,
         volumeUsd: Math.abs(cotacao) * precoDaCotacaoRef.current,
         em: Date.now(),
+        exato: cofresDaPumpSwap !== null,
       });
     };
 
@@ -332,13 +345,24 @@ export function usePoolTicker({
           b.quantidade - a.quantidade;
 
         const cofreDoToken = todas.filter((c) => c.mint === tokenMint).sort(maior)[0];
-        const cofreDaCotacao = todas
-          .filter((c) => c.mint !== tokenMint && COTACOES.has(c.mint))
-          .sort(maior)[0];
+        const outras = todas.filter((c) => c.mint !== tokenMint);
+        /*
+         * Cotação conhecida primeiro. Sem ela, aceita a outra ponta quando ela
+         * é a ÚNICA conta além do token — é o par, não sobra avulsa (moeda da
+         * pump.fun pareada com $TRUMP, 16/10/2026).
+         */
+        const cofreDaCotacao =
+          outras.filter((c) => COTACOES.has(c.mint)).sort(maior)[0] ?? (outras.length === 1 ? outras[0] : undefined);
 
         if (!cofreDoToken || !cofreDaCotacao) {
           setEstado("indisponivel");
           return;
+        }
+
+        const dadosDaPool = await conexao.getAccountInfo(dono, "processed").catch(() => null);
+        if (cancelado) return;
+        if (dadosDaPool?.owner.equals(PUMP_AMM)) {
+          cofresDaPumpSwap = { token: cofreDoToken.conta, cotacao: cofreDaCotacao.conta };
         }
 
         const cofres = [cofreDoToken, cofreDaCotacao];
@@ -448,6 +472,7 @@ export function usePoolTicker({
  */
 const PUMP = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
 const DBC = new PublicKey("dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN");
+const PUMP_AMM = new PublicKey("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA");
 const CONFIGS_DBC = ["Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs", "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw"];
 
 type TipoDeCurva = "pump" | "dbc";
