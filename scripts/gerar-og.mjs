@@ -1,4 +1,4 @@
-// Gerava public/og.png (1200x630). Desde 15/10/2026 a capa é feita à mão no padrão dos posts — não rodar, sobrescreve.
+// Gerava public/og.png (1200x630). Desde 15/10/2026 a capa é feita à mão no padrão dos posts (public/og-2.png: nome novo pra furar o cache do X) — não rodar, sobrescreve.
 // Uso: node scripts/gerar-og.mjs
 import sharp from "sharp";
 

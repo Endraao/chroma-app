@@ -42,7 +42,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Chroma — Launchpad & Terminal Web3",
     description: "Launch and trade meme coins on Solana and Robinhood Chain — live charts, contract audit and referral rewards.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "Chroma" }],
+    images: [{ url: "/og-2.png", width: 1200, height: 630, alt: "Chroma" }],
   },
   title: "Chroma — Launchpad & Terminal Web3",
   description:
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@ChromaLaunch",
     creator: "@ChromaLaunch",
-    images: ["/og.png"],
+    images: ["/og-2.png"],
   },
 };
 
