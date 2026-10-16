@@ -51,6 +51,13 @@ const WSOL = "So11111111111111111111111111111111111111112";
  */
 const JANELA_DO_SWAP_MS = 120;
 
+/**
+ * De quanto em quanto tempo a pool é relida: meio segundo (pedido do dono,
+ * 16/10/2026 — com 1 s o gráfico ainda ficava atrás da Fomo). A chave do RPC é
+ * dividida entre todos os visitantes; mais rápido que isso arrisca o limite.
+ */
+const LEITURA_MS = 500;
+
 /*
  * Os DOIS programas de token da Solana.
  *
@@ -305,7 +312,7 @@ export function usePoolTicker({
               lendo = false;
             }
           };
-          inscricoes.push(window.setInterval(() => void ler(), 1_000));
+          inscricoes.push(window.setInterval(() => void ler(), LEITURA_MS));
           if (!cancelado) setEstado("ao-vivo");
           return;
         }
@@ -439,7 +446,7 @@ export function usePoolTicker({
             lendo = false;
           }
         };
-        const relogio = window.setInterval(() => void ler(), 1_000);
+        const relogio = window.setInterval(() => void ler(), LEITURA_MS);
         inscricoes.push(relogio);
 
         if (!cancelado) setEstado("ao-vivo");
