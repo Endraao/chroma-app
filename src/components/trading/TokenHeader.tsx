@@ -96,7 +96,7 @@ export function TokenHeader({
       <div className="flex flex-wrap items-center gap-3">
         <ImagemDaMoedaGrande token={token} />
 
-        {/* No celular o nome estica e o preço fica na MESMA linha, à direita. */}
+        {/* No celular o nome estica; o preço vem na linha de baixo. */}
         <div className="min-w-0 flex-1 lg:flex-none">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-base font-bold text-zinc-50">{token.name}</h1>
@@ -175,10 +175,13 @@ export function TokenHeader({
           </div>
         </div>
 
-        {/* Números na MESMA linha do nome: o cabeçalho fica baixo e sobra altura pro gráfico e pra compra. */}
-        {/* Celular: preço na mesma linha do nome, à direita. */}
-        <div className="shrink-0 self-start text-right lg:hidden">
-          <div className="tnum text-base font-black text-zinc-50">$<Preco valor={price} /></div>
+        {/*
+          Celular: preço numa linha só dele, embaixo do nome. Ao lado do nome,
+          um preço com todos os zeros ($0.0000000002643) espremia o nome, os
+          selos e o endereço numa coluna estreita (16/10/2026).
+        */}
+        <div className="flex w-full items-baseline gap-2 lg:hidden">
+          <div className="tnum text-lg font-black text-zinc-50">$<Preco valor={price} /></div>
           <div className={cn("tnum text-[11px] font-semibold", up ? "text-bull" : "text-bear")}>
             {formatPct(variacao)} <span className="text-zinc-600">24h</span>
           </div>

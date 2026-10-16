@@ -405,7 +405,7 @@ export function useLiveChartData({
 
   const { tick: tickSolana, estado: estadoSolana } = usePoolTicker({
     pool: chain === "solana" ? pool : null,
-    tokenMint: address,
+    tokenMint: chain === "solana" ? address : "",
     ligado,
   });
 
@@ -485,7 +485,8 @@ export function useLiveChartData({
 
     if (referencia > 0) {
       const fator = preco / referencia;
-      const limite = chain === "robinhood" ? FATOR_MAXIMO_EVM : FATOR_MAXIMO;
+      // Preço lido do estado da curva é exato, como o evento da Robinhood.
+      const limite = chain === "robinhood" || ("exato" in tickDaPool && tickDaPool.exato) ? FATOR_MAXIMO_EVM : FATOR_MAXIMO;
       if (fator > limite || fator < 1 / limite) {
         /*
          * Fora da faixa: vale o preço do servidor, não o descarte puro.

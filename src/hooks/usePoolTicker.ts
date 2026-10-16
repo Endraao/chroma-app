@@ -94,6 +94,11 @@ export interface TickDaPool {
   volumeUsd: number;
   /** quando chegou — usado pelo gráfico pra abrir vela nova na hora certa */
   em: number;
+  /**
+   * Preço à vista lido do estado da curva, não estimado pela variação dos
+   * cofres — o gráfico pode confiar nele com uma faixa larga.
+   */
+  exato?: boolean;
 }
 
 export type EstadoDoTicker = "desligado" | "conectando" | "ao-vivo" | "indisponivel";
@@ -126,7 +131,8 @@ export function usePoolTicker({
   const precoDaCotacaoRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!ligado || !pool || !tokenMint) {
+    // Sem par ainda dá pra tentar a curva: o endereço dela sai do próprio token.
+    if (!ligado || !tokenMint) {
       setEstado("desligado");
       return;
     }
@@ -237,6 +243,64 @@ export function usePoolTicker({
 
     (async () => {
       try {
+        /*
+         * Moeda ainda na curva (pump.fun ou Chroma Curve): o preço à vista
+         * está escrito na conta da curva. Os cofres dela não são da própria
+         * conta, então o caminho dos cofres abaixo desistia e o gráfico
+         * andava pela DexScreener, de 10 em 10 segundos (pedido do dono,
+         * 16/10/2026: "parece uma coisa morta" do lado da pump.fun).
+         */
+        const curva = await acharCurva(conexao, pool, tokenMint);
+        if (cancelado) return;
+        if (curva) {
+          const res = await fetch(`/api/price?address=${WSOL}`);
+          const { priceUsd } = (await res.json()) as { priceUsd: number };
+          if (cancelado) return;
+          if (!Number.isFinite(priceUsd) || priceUsd <= 0) {
+            setEstado("indisponivel");
+            return;
+          }
+          precoDaCotacaoRef.current = priceUsd;
+
+          let anterior = lerCurva(curva.tipo, curva.dados);
+          if (!anterior) {
+            setEstado("indisponivel");
+            return;
+          }
+          let lendo = false;
+          let falhas = 0;
+          const ler = async () => {
+            if (lendo || cancelado || document.visibilityState !== "visible") return;
+            lendo = true;
+            try {
+              const info = await conexao.getAccountInfo(curva.conta, "processed");
+              if (cancelado || !info) return;
+              falhas = 0;
+              const agora = lerCurva(curva.tipo, info.data);
+              if (!agora || (agora.precoSol === anterior?.precoSol && agora.solGuardado === anterior?.solGuardado)) return;
+              const volumeSol = Math.abs(agora.solGuardado - (anterior?.solGuardado ?? agora.solGuardado));
+              anterior = agora;
+              setTick({
+                precoUsd: agora.precoSol * precoDaCotacaoRef.current,
+                volumeUsd: volumeSol * precoDaCotacaoRef.current,
+                em: Date.now(),
+                exato: true,
+              });
+            } catch {
+              if (++falhas >= 3 && !cancelado) setEstado("indisponivel");
+            } finally {
+              lendo = false;
+            }
+          };
+          inscricoes.push(window.setInterval(() => void ler(), 1_000));
+          if (!cancelado) setEstado("ao-vivo");
+          return;
+        }
+        if (!pool) {
+          setEstado("indisponivel");
+          return;
+        }
+
         /*
          * Acha os cofres pelo dono. É genérico o bastante pra cobrir as DEXes
          * que usam PDA da própria pool como dono das contas de token; quando
@@ -382,6 +446,71 @@ export function usePoolTicker({
  * `Buffer` é um polyfill, e nem toda versão dele traz os métodos de 64 bits.
  * DataView é da própria plataforma e sempre está lá.
  */
+const PUMP = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
+const DBC = new PublicKey("dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN");
+const CONFIGS_DBC = ["Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs", "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw"];
+
+type TipoDeCurva = "pump" | "dbc";
+
+/**
+ * A conta da curva da moeda, se ela ainda estiver numa. Tenta o par que veio
+ * da DexScreener e, sem ele, os endereços derivados do token (moeda recém
+ * lançada que a DexScreener ainda não indexou).
+ */
+async function acharCurva(
+  conexao: Connection,
+  pool: string | null | undefined,
+  tokenMint: string,
+): Promise<{ conta: PublicKey; tipo: TipoDeCurva; dados: Uint8Array } | null> {
+  const mint = new PublicKey(tokenMint);
+  const sol = new PublicKey(WSOL);
+  const [pump] = PublicKey.findProgramAddressSync([Buffer.from("bonding-curve"), mint.toBuffer()], PUMP);
+  const solMaior = Buffer.compare(sol.toBuffer(), mint.toBuffer()) > 0;
+  const dbc = CONFIGS_DBC.map(
+    (config) =>
+      PublicKey.findProgramAddressSync(
+        [Buffer.from("pool"), new PublicKey(config).toBuffer(), (solMaior ? sol : mint).toBuffer(), (solMaior ? mint : sol).toBuffer()],
+        DBC,
+      )[0],
+  );
+  // Com par conhecido, só ele: moeda que graduou tem o par na DEX, e a curva
+  // antiga continuaria existindo com o último preço dela.
+  const candidatas = pool ? [new PublicKey(pool)] : [pump, ...dbc];
+  const infos = await conexao.getMultipleAccountsInfo(candidatas, "processed").catch(() => []);
+  for (let i = 0; i < infos.length; i++) {
+    const info = infos[i];
+    if (!info) continue;
+    const tipo: TipoDeCurva | null = info.owner.equals(PUMP) ? "pump" : info.owner.equals(DBC) ? "dbc" : null;
+    if (tipo && lerCurva(tipo, info.data)) return { conta: candidatas[i], tipo, dados: info.data };
+  }
+  return null;
+}
+
+/**
+ * Preço à vista (SOL por token) e SOL guardado, lidos dos bytes da conta.
+ * Null quando a curva já completou — aí a moeda negocia numa pool de verdade.
+ *
+ * pump.fun: reservas virtuais em 8 (token) e 16 (SOL), SOL real em 32,
+ * "completa" em 48. Chroma Curve (Meteora DBC): mint em 136, SOL guardado em
+ * 240, raiz do preço (u128, Q64) em 280 — offsets conferidos contra o SDK.
+ */
+function lerCurva(tipo: TipoDeCurva, dados: Uint8Array): { precoSol: number; solGuardado: number } | null {
+  const d = new DataView(dados.buffer, dados.byteOffset, dados.byteLength);
+  if (tipo === "pump") {
+    if (dados.length < 49 || dados[48] !== 0) return null;
+    const token = Number(d.getBigUint64(8, true)) / 1e6;
+    const sol = Number(d.getBigUint64(16, true)) / 1e9;
+    if (!(token > 0)) return null;
+    return { precoSol: sol / token, solGuardado: Number(d.getBigUint64(32, true)) / 1e9 };
+  }
+  if (dados.length < 296) return null;
+  const raiz = (d.getBigUint64(280, true) + (d.getBigUint64(288, true) << 64n));
+  const r = Number(raiz) / 2 ** 64;
+  const precoSol = (r * r * 1e6) / 1e9;
+  if (!(precoSol > 0)) return null;
+  return { precoSol, solGuardado: Number(d.getBigUint64(240, true)) / 1e9 };
+}
+
 function saldoDoCofre(dados: Uint8Array): bigint {
   const visao = new DataView(dados.buffer, dados.byteOffset, dados.byteLength);
   return visao.getBigUint64(64, true);
