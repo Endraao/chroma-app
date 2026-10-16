@@ -106,6 +106,8 @@ interface LiveChartData {
    * e não o escolhido, pra decidir quando redesenhar tudo.
    */
   intervaloDasVelas: Interval;
+  /** true enquanto o gráfico mostra só a vela de agora, à espera do histórico. */
+  provisorio: boolean;
   setInterval: (i: Interval) => void;
 }
 
@@ -174,7 +176,12 @@ export function useLiveChartData({
 }: Options): LiveChartData {
   const [interval, setIntervalState] = useState<Interval>(initial);
   const [candles, setCandles] = useState<Candle[]>([]);
+  const velasNaTelaRef = useRef(0);
+  useEffect(() => {
+    velasNaTelaRef.current = candles.length;
+  }, [candles.length]);
   const [intervaloDasVelas, setIntervaloDasVelas] = useState<Interval>(initial);
+  const [provisorio, setProvisorio] = useState(false);
   const [status, setStatus] = useState<LiveChartData["status"]>("connecting");
   const [volumeObservadoUsd, setVolumeObservado] = useState(0);
 
@@ -216,16 +223,18 @@ export function useLiveChartData({
       }
     };
 
-    const semente = async (): Promise<boolean> => {
+    // plana: só o preço de agora, sem abrir no preço de nascimento da curva.
+    const semente = async (plana = false): Promise<boolean> => {
       try {
         const precos = await precoInicialDaCurva();
         if (cancelled || !precos) return false;
         const priceUsd = precos.agora;
-        const abre = precos.inicial > 0 && precos.inicial < priceUsd ? precos.inicial : priceUsd;
+        const abre = !plana && precos.inicial > 0 && precos.inicial < priceUsd ? precos.inicial : priceUsd;
         const agora = Math.floor(Date.now() / 1000);
         const vela = { time: agora - (agora % intervalSec), open: abre, high: priceUsd, low: abre, close: priceUsd, volume: 0 };
         setIntervaloDasVelas(interval);
         setCandles((prev) => (prev.length ? prev : [vela]));
+        setProvisorio(true);
         setStatus("live");
         return true;
       } catch {
@@ -234,6 +243,20 @@ export function useLiveChartData({
     };
 
     const load = async (isRefresh = false, tentativa = 1): Promise<void> => {
+      /*
+       * O histórico pode levar mais de 10 s (a GeckoTerminal devolve 429 e o
+       * servidor espera). Sem velas o tempo real não liga, e a página ficava
+       * parada esse tempo todo (16/10/2026). Passado 1,5 s, o gráfico começa
+       * com uma vela no preço de agora e já anda com os negócios; o histórico
+       * entra no lugar quando chegar.
+       */
+      const adiantar =
+        !isRefresh && tentativa === 1
+          ? window.setTimeout(() => {
+              // Trocar de tempo gráfico mantém as velas antigas na tela: aí não adianta.
+              if (!velasNaTelaRef.current) void semente(true);
+            }, 1500)
+          : null;
       try {
         /*
          * Primeiro direto do navegador na GeckoTerminal: cada visitante tem o
@@ -249,6 +272,7 @@ export function useLiveChartData({
           if (!res.ok) throw new Error(`api/candles respondeu ${res.status}`);
           data = (await res.json()) as Candle[];
         }
+        if (adiantar !== null) window.clearTimeout(adiantar);
         if (cancelled) return;
 
         /*
@@ -288,6 +312,7 @@ export function useLiveChartData({
         }
 
         setStatus("live");
+        if (!isRefresh) setProvisorio(false);
         /*
          * As velas chegam JUNTO com o intervalo a que pertencem. Antes, trocar
          * de 1m pra 15m fazia o gráfico redesenhar na hora com as velas de 1m
@@ -636,6 +661,7 @@ export function useLiveChartData({
     volumeObservadoUsd,
     interval,
     intervaloDasVelas,
+    provisorio,
     setInterval,
   };
 }
