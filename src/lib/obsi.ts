@@ -268,6 +268,10 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
   const texto = comIa ?? escreverSemIa(momento);
   const modelo = comIa ? MODELO : null;
   const postou = await publicar("nota", hora, texto, modelo);
+  // No Telegram só 3 notas por dia (12h, 18h e 23h UTC): de hora em hora seria spam no grupo.
+  if (postou && [12, 18, 23].includes(new Date().getUTCHours())) {
+    await enviarAoTelegram(`💎 Obsi: ${texto}\n\nchromalaunch.fun`);
+  }
   return { postou, texto, modelo };
 }
 
@@ -280,5 +284,31 @@ export async function darBoasVindas(moeda: { endereco: string; nome: string; sim
     `$${moeda.simbolo} just launched on chroma (${rede}). first candles are being written now.`,
   ];
   const texto = frases[moeda.endereco.charCodeAt(moeda.endereco.length - 1) % frases.length];
-  await publicar("boas-vindas", moeda.endereco, texto, null).catch((e) => console.warn("[obsi] boas-vindas falhou:", e));
+  const postou = await publicar("boas-vindas", moeda.endereco, texto, null).catch((e) => {
+    console.warn("[obsi] boas-vindas falhou:", e);
+    return false;
+  });
+  if (postou) await enviarAoTelegram(`💎 Obsi: ${texto}\n\nhttps://chromalaunch.fun/token/${moeda.endereco}`);
+}
+
+/**
+ * O Obsi também fala no grupo do Telegram (16/10/2026), pelo bot de compra,
+ * que é admin lá. Grupo público: o @ basta como destino. Grátis — a API do
+ * Telegram não cobra. Falha aqui nunca derruba o mural.
+ */
+async function enviarAoTelegram(texto: string): Promise<void> {
+  const token = process.env.TELEGRAM_COMPRA_TOKEN;
+  if (!token) return;
+  const destino = process.env.OBSI_TELEGRAM_CHAT || "@ChromaLaunch";
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: destino, text: texto, disable_web_page_preview: true }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!r.ok) console.warn("[obsi] telegram respondeu", r.status, await r.text().catch(() => ""));
+  } catch (erro) {
+    console.warn("[obsi] telegram falhou:", erro);
+  }
 }
