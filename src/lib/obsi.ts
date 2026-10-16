@@ -168,22 +168,96 @@ async function escreverComIa(momento: Momento): Promise<string | null> {
   }
 }
 
-/** A mesma nota, com frases prontas — vale quando não há chave ou a API falha. */
+/*
+ * A VOZ SEM IA (decisão do dono, 16/10/2026: sem gastar com API por ora).
+ *
+ * Frases escritas uma vez, na voz do Obsi, e sorteadas a cada hora: abertura
+ * (pela hora do dia), o que aconteceu na Chroma, o $CHROMA, o que está quente
+ * e um fecho. Combinadas, dão milhares de notas diferentes — e todas usam só
+ * os números reais do momento. Nada de "compre": ele observa, não aconselha.
+ */
+const sortear = <T,>(lista: T[]): T => lista[Math.floor(Math.random() * lista.length)];
+
+const ABERTURAS: Record<"manha" | "tarde" | "noite" | "madrugada", string[]> = {
+  manha: ["gm from the crystal caves.", "gm. coffee for you, charts for me.", "gm, trenches.", "morning. the aurora went to sleep, i didn't.", "gm. new day, new candles."],
+  tarde: ["afternoon check-in.", "midday report from under the hoodie.", "still here, still watching.", "quick look at the board.", "checking the curve between snacks."],
+  noite: ["evening watch.", "the aurora is out. so am i.", "night shift has started.", "lights low, eyes glowing.", "evening report from the trenches."],
+  madrugada: ["late night, quiet caves.", "3am energy, crystal edition.", "everyone's asleep. i'm counting candles.", "the night is long and the charts are honest.", "deep night report."],
+};
+
+function periodo(hora: number): keyof typeof ABERTURAS {
+  if (hora >= 6 && hora < 12) return "manha";
+  if (hora >= 12 && hora < 18) return "tarde";
+  if (hora >= 18) return "noite";
+  return "madrugada";
+}
+
+const SEM_LANCAMENTO = [
+  "no new launches on chroma this hour. the curve is waiting.",
+  "quiet hour on chroma. zero launches, plenty of patience.",
+  "nobody launched this hour. the launch button is still warm.",
+  "no new coins on chroma this hour. a blank canvas is still a canvas.",
+  "launches this hour: 0. honest numbers only.",
+  "nothing new on the chroma curve this hour. it's calm in here.",
+];
+
+function frasesDeLancamento(m: Momento): string {
+  const n = m.lancadasNaUltimaHora.length;
+  const nomes = m.lancadasNaUltimaHora.map((c) => `$${c.simbolo}`).join(", ");
+  if (n === 1) {
+    return sortear([
+      `a new crystal formed on chroma this hour: ${nomes}.`,
+      `${nomes} was born on chroma this hour. welcome to the trenches 💎`,
+      `one launch this hour: ${nomes}. first candles are being written.`,
+    ]);
+  }
+  return sortear([
+    `${n} launches on chroma this hour: ${nomes}.`,
+    `busy hour in the caves. ${n} new coins: ${nomes}.`,
+    `${n} new crystals this hour: ${nomes} 💎`,
+  ]);
+}
+
+function frasesDoChroma(c: NonNullable<Momento["chroma"]>): string {
+  const usa1h = c.var1h !== null;
+  const v = usa1h ? (c.var1h as number) : c.var24h;
+  const janela = usa1h ? "1h" : "24h";
+  const mcap = formatUsd(c.mcap);
+  const pct = formatPct(v);
+  if (v >= 5) {
+    return sortear([`$CHROMA is moving: ${pct} ${janela}, ${mcap} mcap.`, `$CHROMA ${pct} ${janela}. my eyes are glowing a bit brighter. ${mcap} mcap.`, `green candles on $CHROMA: ${pct} ${janela}, now ${mcap}.`]);
+  }
+  if (v <= -5) {
+    return sortear([`$CHROMA ${pct} ${janela}, ${mcap} mcap. red days happen. we keep building.`, `$CHROMA cooled off: ${pct} ${janela}. ${mcap} mcap. still shipping.`, `$CHROMA at ${mcap}, ${pct} ${janela}. crystals form under pressure.`]);
+  }
+  return sortear([`$CHROMA steady at ${mcap} mcap (${pct} ${janela}).`, `$CHROMA: ${mcap} mcap, ${pct} ${janela}. calm waters.`, `$CHROMA sitting at ${mcap}, ${pct} ${janela}.`]);
+}
+
+function frasesDoQuente(q: Momento["quentes"][number]): string {
+  return sortear([
+    `trending on solana: $${q.simbolo} (${formatPct(q.var24h)} 24h).`,
+    `the trenches are talking about $${q.simbolo} right now.`,
+    `top of the solana trending board: $${q.simbolo}, ${formatUsd(q.mcap)} mcap.`,
+  ]);
+}
+
+const FECHOS = ["", "", "", "not financial advice, just a crystal with eyes.", "stay safe out there.", "dyor, always.", "more next hour.", "back to watching."];
+
+/** A nota da hora com as frases prontas — vale quando não há chave ou a API falha. */
 function escreverSemIa(m: Momento): string {
-  const partes: string[] = [];
-  if (m.lancadasNaUltimaHora.length) {
-    const nomes = m.lancadasNaUltimaHora.map((c) => `$${c.simbolo}`).join(", ");
-    partes.push(`new on chroma this hour: ${nomes}. welcome to the trenches 💎`);
-  } else {
-    const calmas = ["quiet hour on chroma, no new launches.", "no launches this hour. the curve is waiting.", "nothing new launched this hour. still watching."];
-    partes.push(calmas[new Date().getUTCHours() % calmas.length]);
+  const agora = new Date();
+  const partes = [sortear(ABERTURAS[periodo(agora.getUTCHours())])];
+  partes.push(m.lancadasNaUltimaHora.length ? frasesDeLancamento(m) : sortear(SEM_LANCAMENTO));
+  if (m.chroma) partes.push(frasesDoChroma(m.chroma));
+  // Toda segunda (UTC) lembra da recompra; nas outras horas, às vezes, o que está quente.
+  if (agora.getUTCDay() === 1 && agora.getUTCHours() % 4 === 0) {
+    partes.push("it's monday: 25% of chroma's revenue goes to the $CHROMA buyback. receipt on x.");
+  } else if (m.quentes[0] && Math.random() < 0.5) {
+    partes.push(frasesDoQuente(m.quentes[0]));
   }
-  if (m.chroma) {
-    const v = m.chroma.var1h ?? m.chroma.var24h;
-    partes.push(`$CHROMA at ${formatUsd(m.chroma.mcap)} mcap, ${formatPct(v)} ${m.chroma.var1h !== null ? "1h" : "24h"}.`);
-  }
-  if (m.quentes[0]) partes.push(`hottest on solana right now: $${m.quentes[0].simbolo} (${formatPct(m.quentes[0].var24h)} 24h).`);
-  return partes.join(" ").slice(0, 280);
+  partes.push(sortear(FECHOS));
+  const texto = partes.filter(Boolean).join(" ");
+  return texto.length <= 280 ? texto : partes.slice(1, 3).join(" ").slice(0, 280);
 }
 
 /** A nota da hora. Uma por hora, no máximo — a hora é a referência. */
