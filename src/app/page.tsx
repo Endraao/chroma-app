@@ -17,6 +17,7 @@ import { FORA_DA_VITRINE, moedasDaChroma } from "@/lib/moedas-da-chroma";
 import { CHAIN_IDS, CHAINS } from "@/lib/web3";
 import { BannerPromocao } from "@/components/home/BannerPromocao";
 import { ContagemChroma } from "@/components/home/ContagemChroma";
+import { MuralDoObsi } from "@/components/home/MuralDoObsi";
 import type { ChainId, TokenSummary } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -233,6 +234,9 @@ export default async function HomePage({
 
       {/* Criadas na Chroma — ao vivo, das duas redes */}
       <PainelDaChroma moedas={lancadasNaChroma} />
+
+      {/* O mascote comenta a Chroma de hora em hora (16/10/2026). */}
+      <MuralDoObsi />
 
       <section id="mercado" className="scroll-mt-20">
         <div className="mb-4 flex flex-wrap items-center gap-y-2">

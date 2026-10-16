@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 
 import { enderecoDaCurva, lerCurva } from "@/lib/chroma-program";
-import { registrarMoeda } from "@/lib/db";
+import { registrarMoeda as registrarNoBanco, type MoedaRegistrada } from "@/lib/db";
+import { darBoasVindas } from "@/lib/obsi";
 import { creditarMoeda } from "@/lib/airdrop";
 import { lerMoedaDaCurvaEvm } from "@/lib/curva-evm";
 import { lancamentoPonsNaTransacao, lerMoedaDaPons } from "@/lib/pons";
 import { revalidateTag } from "next/cache";
 import { TAG_DO_UNIVERSO } from "@/lib/tokens";
+
+/** Registra e o Obsi dá as boas-vindas no mural (uma vez por moeda: o mural não repete). */
+async function registrarMoeda(m: MoedaRegistrada): Promise<void> {
+  await registrarNoBanco(m);
+  void darBoasVindas({ endereco: m.endereco, nome: m.nome, simbolo: m.simbolo, rede: m.rede });
+}
 
 /**
  * POST /api/moedas — registra uma moeda recém-lançada na Chroma.

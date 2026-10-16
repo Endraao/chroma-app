@@ -370,6 +370,23 @@ async function criarTabelas(): Promise<void> {
        paginas   INTEGER NOT NULL DEFAULT 1,
        PRIMARY KEY (dia, visitante)
      )`,
+
+    /*
+     * O mural do Obsi, o mascote (16/10/2026): notas de hora em hora e
+     * boas-vindas a cada moeda lançada. `ref` impede post repetido — a hora da
+     * nota, o endereço da moeda.
+     */
+    `CREATE TABLE IF NOT EXISTS mural (
+       id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+       autor     TEXT NOT NULL,
+       tipo      TEXT NOT NULL,
+       ref       TEXT NOT NULL,
+       texto     TEXT NOT NULL,
+       modelo    TEXT,
+       criado_em BIGINT NOT NULL,
+       UNIQUE (tipo, ref)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_mural_criado ON mural(criado_em DESC)`,
   ];
 
   for (const passo of passos) await sql.query(passo);
