@@ -56,6 +56,14 @@ interface Trader {
   vendas: number;
 }
 
+interface Historico {
+  gastoSol: number;
+  recebidoSol: number;
+  tokensComprados: number;
+  compras: number;
+  vendas: number;
+}
+
 interface Quadro {
   lista: Trader[];
   precoUsd: number;
@@ -66,16 +74,19 @@ const TEXTOS = traducoes({
     suaPosicao: "Your position", compras: (n: number) => `${n} ${n === 1 ? "buy" : "buys"}`, vendas: (n: number) => `${n} ${n === 1 ? "sell" : "sells"}`,
     jaTinha: "You held this coin before the trades we can read, so your average price cannot be calculated.",
     precoMedio: "Average price", agora: "now", realizado: "Realized on sells", calculado: "Calculated from this pair's recent trades. Not financial advice.",
+    posicao: "Position", lucro: "PnL", gasto: "Spent", entrada: "Avg entry", mc: "MC", doHistorico: "From your wallet's own history. Not financial advice.",
   },
   pt: {
     suaPosicao: "Sua posição", compras: (n: number) => `${n} ${n === 1 ? "compra" : "compras"}`, vendas: (n: number) => `${n} ${n === 1 ? "venda" : "vendas"}`,
     jaTinha: "Você já tinha esta moeda antes dos negócios que conseguimos ler, então não dá pra calcular o seu preço médio.",
     precoMedio: "Preço médio", agora: "agora", realizado: "Já realizado nas vendas", calculado: "Calculado sobre os negócios recentes deste par. Não é aconselhamento.",
+    posicao: "Posição", lucro: "Lucro", gasto: "Gasto", entrada: "Entrada média", mc: "MC", doHistorico: "Calculado pelo histórico da sua carteira. Não é aconselhamento.",
   },
   zh: {
     suaPosicao: "你的持仓", compras: (n: number) => `${n} 次买入`, vendas: (n: number) => `${n} 次卖出`,
     jaTinha: "你在我们能读取的交易之前就已持有该代币，因此无法计算你的均价。",
     precoMedio: "均价", agora: "当前", realizado: "卖出已实现", calculado: "根据该交易对的近期交易计算，不构成投资建议。",
+    posicao: "持仓", lucro: "盈亏", gasto: "花费", entrada: "平均入场", mc: "市值", doHistorico: "根据你钱包自己的历史计算，不构成投资建议。",
   },
 });
 
@@ -84,10 +95,13 @@ export function MinhaPosicao({
   symbol,
   chain,
   precoUsd = 0,
+  fornecimento = 0,
 }: {
   address: string;
   symbol: string;
   chain: ChainId;
+  /** fornecimento da moeda, pra mostrar a entrada média como market cap */
+  fornecimento?: number;
   /** preço ao vivo da página (o mesmo do gráfico) */
   precoUsd?: number;
 }) {
@@ -117,6 +131,24 @@ export function MinhaPosicao({
    * quando a rede e os índices alcançam) — antes ficava ~30 s parado.
    */
   const [versao, setVersao] = useState(0);
+  /* O histórico da PRÓPRIA carteira nesta moeda (17/10/2026): gasto, recebido, compras. */
+  const [historico, setHistorico] = useState<Historico | null>(null);
+  useEffect(() => {
+    setHistorico(null);
+    if (!minhaCarteira || CHAINS[chain].kind !== "solana") return;
+    let cancelado = false;
+    const ler = () =>
+      fetch(`/api/minha-posicao?dono=${minhaCarteira}&mint=${address}`, { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: Historico | null) => !cancelado && j && typeof j.gastoSol === "number" && setHistorico(j))
+        .catch(() => {});
+    void ler();
+    const id = window.setInterval(ler, 30_000);
+    return () => {
+      cancelado = true;
+      window.clearInterval(id);
+    };
+  }, [minhaCarteira, address, chain, versao]);
   useEffect(() => {
     const aoNegociar = (e: Event) => {
       const n = (e as CustomEvent<NegocioRecente>).detail;
@@ -252,11 +284,26 @@ export function MinhaPosicao({
    * O lucro no papel é o que interessa aqui: é o que a pessoa ganha ou perde
    * se vender AGORA. O realizado entra à parte, porque já saiu da mesa.
    */
-  const noPapel = eu.vindoDeAntes ? null : eu.naoRealizadoUsd;
-  const custo = eu.vindoDeAntes ? null : eu.precoMedioUsd;
+  /*
+   * Com o histórico da carteira, o lucro é o da pump.fun: o que a posição vale
+   * agora + o que já voltou nas vendas − o que foi gasto. Sem ele (outra rede,
+   * ou ainda carregando), fica o cálculo antigo pelos negócios recentes.
+   */
+  const gastoUsd = historico && precoNativo ? historico.gastoSol * precoNativo : null;
+  const recebidoUsd = historico && precoNativo ? historico.recebidoSol * precoNativo : 0;
+  const usaHistorico = gastoUsd !== null && gastoUsd > 0;
+  const entradaUsd = usaHistorico && historico!.tokensComprados > 0 ? gastoUsd! / historico!.tokensComprados : null;
+  if (historico) {
+    eu.compras = historico.compras;
+    eu.vendas = historico.vendas;
+  }
 
-  const pct =
-    noPapel !== null && custo !== null && custo > 0 && eu.saldo > 0
+  const noPapel = usaHistorico ? valorAtual + recebidoUsd - gastoUsd! : eu.vindoDeAntes ? null : eu.naoRealizadoUsd;
+  const custo = usaHistorico ? entradaUsd : eu.vindoDeAntes ? null : eu.precoMedioUsd;
+
+  const pct = usaHistorico
+    ? (noPapel! / gastoUsd!) * 100
+    : noPapel !== null && custo !== null && custo > 0 && eu.saldo > 0
       ? (noPapel / (custo * eu.saldo)) * 100
       : null;
 
@@ -277,6 +324,7 @@ export function MinhaPosicao({
 
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
+            <div className="text-[10.5px] text-zinc-500">{t.posicao}</div>
             <div className="tnum text-xl font-black tracking-tight text-zinc-50">
               {formatUsd(valorAtual)}
             </div>
@@ -287,6 +335,7 @@ export function MinhaPosicao({
 
           {noPapel !== null ? (
             <div className="text-right">
+              <div className="text-[10.5px] text-zinc-500">{t.lucro}</div>
               <div
                 className={cn(
                   "tnum text-lg font-black tracking-tight",
@@ -314,7 +363,21 @@ export function MinhaPosicao({
           null}
         </div>
 
-        {custo !== null && (
+        {usaHistorico && (
+          <div className="flex items-center justify-between border-t border-white/[0.06] pt-2 text-[11px]">
+            <span className="text-zinc-500">
+              {t.gasto} <span className="tnum font-semibold text-zinc-200">{formatUsd(gastoUsd!)}</span>
+            </span>
+            <span className="text-zinc-500">
+              {t.entrada}{" "}
+              <span className="tnum font-semibold text-zinc-200">
+                {fornecimento > 0 && entradaUsd ? `${formatUsd(entradaUsd * fornecimento)} ${t.mc}` : <>$<Preco valor={entradaUsd ?? 0} /></>}
+              </span>
+            </span>
+          </div>
+        )}
+
+        {!usaHistorico && custo !== null && (
           <div className="flex items-center justify-between border-t border-white/[0.06] pt-2 text-[11px]">
             <span className="text-zinc-600">{t.precoMedio}</span>
             <span className="tnum text-zinc-400">
@@ -342,7 +405,7 @@ export function MinhaPosicao({
         )}
 
         <p className="text-[10px] leading-relaxed text-zinc-700">
-          {t.calculado}
+          {usaHistorico ? t.doHistorico : t.calculado}
         </p>
       </CardBody>
     </Card>

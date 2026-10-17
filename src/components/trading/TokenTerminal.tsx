@@ -256,7 +256,13 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             <ConviteParaCompartilhar token={token} />
           </div>
 
-          <MinhaPosicao address={token.address} symbol={token.symbol} chain={token.chain} precoUsd={price} />
+          <MinhaPosicao
+            address={token.address}
+            symbol={token.symbol}
+            chain={token.chain}
+            precoUsd={price}
+            fornecimento={token.priceUsd > 0 ? token.marketCapUsd / token.priceUsd : 0}
+          />
 
           {/* Bônus do criador: só aparece em moeda da Curva da Chroma (Solana). */}
           {token.chain === "solana" && <GanhosDoCriador address={token.address} />}
