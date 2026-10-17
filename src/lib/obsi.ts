@@ -1,6 +1,7 @@
 import "server-only";
 
 import Anthropic from "@anthropic-ai/sdk";
+import { jsonSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/json-schema";
 
 import { banco, lerDoCacheDoBanco, sql } from "@/lib/db";
 import { fetchPoolFeed, fetchToken } from "@/lib/market";
@@ -15,14 +16,17 @@ import { formatPct, formatUsd } from "@/lib/utils";
  * na Chroma, o $CHROMA, o que está quente na Solana) e dá boas-vindas a cada
  * moeda lançada aqui. Tudo vai pro mural da home, marcado como IA.
  *
- * Com ANTHROPIC_API_KEY ele escreve com a voz dele; sem a chave, usa frases
- * prontas montadas com os mesmos números — o mural nunca fica parado.
- * OBSI_MODELO troca o modelo (padrão Claude Opus 5.5; claude-haiku-5-5 sai
- * ~10x mais barato).
+ * Com ANTHROPIC_API_KEY ele escreve com a voz dele, nas 3 línguas do site;
+ * sem a chave (ou se a API falhar), usa frases prontas montadas com os mesmos
+ * números — o mural nunca fica parado.
+ *
+ * 17/10/2026: IA ligada. Padrão Haiku 5.5 (24 notas/dia ≈ US$ 0,01/dia, pago
+ * com as taxas de criador); OBSI_MODELO troca o modelo. E o $CHROMA virou a
+ * moeda DO OBSI — ele fala dela como "minha moeda", sem nunca mandar comprar.
  */
 
 export const AUTOR_OBSI = "obsi";
-const MODELO = process.env.OBSI_MODELO || "claude-opus-5-5";
+const MODELO = process.env.OBSI_MODELO || "claude-haiku-5-5";
 
 export interface PostDoMural {
   id: number;
@@ -129,26 +133,35 @@ async function lerMomento(): Promise<Momento> {
 const PERSONA = `You are Obsi, the mascot of Chroma (chromalaunch.fun), a memecoin launchpad on Solana and Robinhood Chain.
 You are a small creature with a head of black obsidian crystal, glowing cyan eyes and an oversized dark hoodie. You live in the trenches at night under the aurora, watching charts.
 Voice: short, warm, a little mysterious, dry humor, honest. Lowercase is fine. At most one emoji.
+$CHROMA is YOUR coin: the community coin of Obsi and of Chroma. 25% of Chroma's revenue buys it back every Monday, with a receipt on X.
 Every hour you write ONE note for the public wall on Chroma's home page, using ONLY the numbers you are given. Never invent numbers, coins or events.
 Rules:
 - Max 260 characters. Plain text, no links, no hashtags.
 - Never tell anyone to buy or sell. No price predictions. Never promise returns.
 - If nothing happened, say so honestly: a quiet hour is fine.
-- $CHROMA is Chroma's own token: mention it plainly, never shill it.
-- Don't repeat the structure or opening of your previous notes.`;
+- Talk about $CHROMA like a creature talks about its own home: with affection and honesty, never shilling. Not every note needs it.
+- Don't repeat the structure or opening of your previous notes.
+- Write the same note in English (en), Brazilian Portuguese (pt) and Simplified Chinese (zh). Same meaning, natural in each language, same numbers.`;
+
+const FORMATO_DA_NOTA = jsonSchemaOutputFormat({
+  type: "object",
+  properties: { en: { type: "string" }, pt: { type: "string" }, zh: { type: "string" } },
+  required: ["en", "pt", "zh"],
+  additionalProperties: false,
+} as const);
 
 let cliente: Anthropic | null = null;
 
-async function escreverComIa(momento: Momento): Promise<string | null> {
+const limpar = (s: string) => s.trim().replace(/^["“]|["”]$/g, "").slice(0, 280);
+
+async function escreverComIa(momento: Momento): Promise<TextoTri | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
   cliente ??= new Anthropic();
-  const comFallback = /^claude-(opus|sonnet|fable)/.test(MODELO);
   try {
-    const resposta = await cliente.beta.messages.create({
+    const resposta = await cliente.messages.parse({
       model: MODELO,
       max_tokens: 16000,
-      output_config: { effort: "low" },
-      ...(comFallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
+      output_config: { effort: "low", format: FORMATO_DA_NOTA },
       system: PERSONA,
       messages: [
         {
@@ -161,14 +174,10 @@ async function escreverComIa(momento: Momento): Promise<string | null> {
         },
       ],
     });
-    if (resposta.stop_reason === "refusal") return null;
-    const texto = resposta.content
-      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim()
-      .replace(/^["“]|["”]$/g, "");
-    return texto ? texto.slice(0, 280) : null;
+    if (resposta.stop_reason !== "end_turn") return null;
+    const nota = resposta.parsed_output;
+    if (!nota?.en?.trim()) return null;
+    return { en: limpar(nota.en), pt: limpar(nota.pt || nota.en), zh: limpar(nota.zh || nota.en) };
   } catch (erro) {
     if (erro instanceof Anthropic.RateLimitError) console.warn("[obsi] limite da API, usando frase pronta");
     else if (erro instanceof Anthropic.AuthenticationError) console.warn("[obsi] ANTHROPIC_API_KEY inválida");
@@ -339,9 +348,9 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
   const hora = new Date().toISOString().slice(0, 13);
   const momento = await lerMomento();
   const comIa = await escreverComIa(momento);
-  // A nota da IA sai só em inglês (é a voz dela); as prontas saem nas 3 línguas.
-  const textos: TextoTri | null = comIa ? null : escreverSemIa(momento);
-  const texto = comIa ?? textos!.en;
+  // Com IA ou com frases prontas, a nota sai nas 3 línguas do site.
+  const textos: TextoTri = comIa ?? escreverSemIa(momento);
+  const texto = textos.en;
   const modelo = comIa ? MODELO : null;
   const postou = await publicar("nota", hora, texto, modelo, textos);
   // No Telegram só 3 notas por dia (12h, 18h e 23h UTC): de hora em hora seria spam no grupo.

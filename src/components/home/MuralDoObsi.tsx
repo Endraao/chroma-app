@@ -23,6 +23,7 @@ const TEXTOS = traducoes({
     boasVindas: "new launch",
     mais: "Show more",
     menos: "Show less",
+    moeda: "Obsi's coin",
   },
   pt: {
     titulo: "Notas do Obsi",
@@ -34,6 +35,7 @@ const TEXTOS = traducoes({
     boasVindas: "lançamento",
     mais: "Ver mais",
     menos: "Ver menos",
+    moeda: "A moeda do Obsi",
   },
   zh: {
     titulo: "Obsi 的笔记",
@@ -45,6 +47,7 @@ const TEXTOS = traducoes({
     boasVindas: "新发行",
     mais: "显示更多",
     menos: "收起",
+    moeda: "Obsi 的币",
   },
 });
 
@@ -62,6 +65,15 @@ export function MuralDoObsi() {
   const idioma = useIdioma();
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [aberto, setAberto] = useState(false);
+  const [ca, setCa] = useState("");
+
+  // O $CHROMA é a moeda do Obsi (17/10/2026): o endereço vem do banco, trocável sem recompilar.
+  useEffect(() => {
+    fetch("/api/token-oficial")
+      .then((r) => r.json())
+      .then((d: { ca?: string }) => setCa(d.ca ?? ""))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -100,6 +112,15 @@ export function MuralDoObsi() {
           </div>
           <p className="text-[12px] text-zinc-500">{t.sub}</p>
         </div>
+        {ca && (
+          <a
+            href={`/token/${ca}`}
+            className="shrink-0 rounded-lg border border-marca/40 bg-marca/10 px-2.5 py-1.5 text-center leading-tight transition hover:bg-marca/20 active:scale-95"
+          >
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">{t.moeda}</span>
+            <span className="block text-[13px] font-black text-marca">$CHROMA</span>
+          </a>
+        )}
       </div>
 
       {posts !== null && posts.length === 0 && <p className="text-[13px] text-zinc-500">{t.vazio}</p>}
@@ -117,7 +138,6 @@ export function MuralDoObsi() {
             <p className="text-[13.5px] leading-snug text-zinc-100">{p.textos?.[idioma] || p.texto}</p>
             <div className="mt-1 text-[10px] uppercase tracking-wider text-zinc-600">
               {t.aviso}
-              {p.modelo ? ` · runs on ${p.modelo}` : ""}
             </div>
           </li>
         ))}
