@@ -1,38 +1,29 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+
 import { useTextos } from "@/components/IdiomaProvider";
-import { traducoes } from "@/lib/idiomas";
-
-import { useEffect, useState, type ReactNode } from "react";
-
 import { Card } from "@/components/ui/Card";
+import { traducoes } from "@/lib/idiomas";
 import { CHAINS } from "@/lib/web3";
-import { cn, formatPrice, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
+import { cn, formatUsd, shortenAddress, timeAgo } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 
 /**
- * A tabela dos traders: quem está posicionado, quanto botou, quanto ganhou.
+ * Holders e traders da moeda — refeita no molde da Fomo Family (17/10/2026:
+ * "nossa tela de traders é horrível").
  *
- * ---------------------------------------------------------------------------
- * A FRASE DO CABEÇALHO NÃO É DECORAÇÃO
- * ---------------------------------------------------------------------------
- * Isto é calculado sobre os últimos ~300 negócios do par. Numa moeda parada
- * isso pode ser um dia inteiro; numa moeda em movimento pode ser UM MINUTO E
- * MEIO — foi exatamente o que a primeira leitura devolveu em teste.
+ * Duas abas:
+ *   - HOLDERS: quem segura AGORA, lido da rede (as 20 maiores contas), com o
+ *     valor em dólar, a fatia do fornecimento e o que cada conta é — carteira,
+ *     curva, pool ou o DEV. É a pergunta que importa antes de comprar.
+ *   - TOP TRADERS: quem mais lucrou/investiu nos últimos negócios do par. A
+ *     janela (ex.: "300 negócios · 3 min") fica num selo com a explicação no
+ *     título — antes era um parágrafo inteiro em cima da tabela.
  *
- * Uma tabela de "lucro dos traders" sem essa informação vira outra coisa: a
- * pessoa lê "+$2.400" do lado de uma carteira e entende que aquele endereço
- * ganhou isso NA MOEDA. Ganhou isso na janela. Pode estar no prejuízo há três
- * dias. Por isso a janela aparece em cima, sempre, junto com o relógio.
- *
- * ---------------------------------------------------------------------------
- * "—" NÃO É ZERO
- * ---------------------------------------------------------------------------
- * Quem vendeu mais do que comprou na janela já tinha token antes dela, e o
- * preço que essa pessoa pagou está fora da nossa vista. O lucro dela aparece
- * como traço, com o motivo escrito ao lado. Mostrar zero ali seria afirmar uma
- * coisa que não sabemos — e é justo na conta de quem está vendendo em cima de
- * todo mundo que o erro sairia mais caro.
+ * "—" no lucro continua querendo dizer "não sabemos" (comprou antes da janela),
+ * nunca zero.
  */
 
 interface Trader {
@@ -42,7 +33,6 @@ interface Trader {
   investidoUsd: number;
   recebidoUsd: number;
   lucroUsd: number | null;
-  precoMedioUsd: number | null;
   negocios: number;
   compras: number;
   vendas: number;
@@ -50,184 +40,193 @@ interface Trader {
   ultimoEm: number;
 }
 
-interface Quadro {
+interface QuadroTraders {
   lista: Trader[];
   negociosLidos: number;
   desde: number | null;
   ate: number | null;
-  precoUsd: number;
-  fornecimento: number;
 }
 
-type Ordem = "investido" | "posicao" | "lucro";
+type TipoDeHolder = "carteira" | "curva" | "pool" | "contrato";
 
-const ORDENS: { chave: Ordem; rotulo: string }[] = [
-  { chave: "investido", rotulo: "investido" },
-  { chave: "posicao", rotulo: "posicao" },
-  { chave: "lucro", rotulo: "lucro" },
-];
+interface Holder {
+  carteira: string;
+  quantidade: number;
+  pct: number;
+  tipo: TipoDeHolder;
+  dev: boolean;
+}
 
-/** Quantas linhas antes do "mostrar mais". Vinte cabe numa tela sem rolar. */
-const PRIMEIRA_LEVA = 20;
+interface QuadroHolders {
+  lista: Holder[];
+  top10Pct: number;
+  devPct: number | null;
+  precoUsd: number;
+  totalDeHolders: number;
+}
 
-/** A tabela repesca junto com o resto dos números de mercado. */
+type Aba = "holders" | "traders";
+type Ordem = "lucro" | "investido";
+
 const INTERVALO_MS = 30_000;
+const PRIMEIRA_LEVA = 15;
 
 const TEXTOS = traducoes({
   en: {
-    investido: "Invested", posicao: "Position", lucro: "Profit", retirado: "Withdrawn", trader: "Trader", traders: "Traders",
-    falhouPar: "Could not load this pair's trades right now.", nenhumRecente: "No recent trades on this pair.",
-    mostrarMenos: "Show less", mostrarOutras: (n: number) => `Show the other ${n} wallets`, carteiras: (n: number) => `${n} wallets`,
-    carregando: "Loading recent trades…", falhou: "Could not load the trades. Retrying shortly.",
-    negocios: (n: number) => `${n} trades`,
-    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>Calculated from the last {n} of this pair — from {de} to {ate} ({dur}). Not the coin&apos;s full history nor the wallets&apos; real balances.</>,
-    semNegocios: "No trades in this window.", c: "B", v: "S",
-    vendeuMais: "Sold more than bought in this window: already held tokens before it.",
-    comprouAntes: "Bought before this window, so the price paid is unknown.",
+    holders: "Holders", traders: "Top traders", top10: "Top 10", dev: "Dev", lucro: "PnL", investido: "Invested",
+    comprou: "Bought", vendeu: "Sold", voce: "YOU", curva: "CURVE", pool: "POOL", contrato: "CONTRACT", devSelo: "DEV",
+    janela: (n: number, dur: string) => `last ${n} trades · ${dur}`,
+    janelaDica: "Profit is calculated over this pair's recent trades only, not the wallet's full history.",
+    compras: (c: number, v: number) => `${c} buy${c === 1 ? "" : "s"} · ${v} sell${v === 1 ? "" : "s"}`,
+    desconhecido: "Bought before this window: the price paid is unknown.",
+    carregando: "Loading…", falhou: "Could not load this right now. Retrying shortly.", vazio: "Nothing to show yet.",
+    mais: (n: number) => `Show ${n} more`, menos: "Show less", soNaSolana: "Live holders are available for Solana coins.",
   },
   pt: {
-    investido: "Investido", posicao: "Posição", lucro: "Lucro", retirado: "Retirado", trader: "Trader", traders: "Traders",
-    falhouPar: "Não foi possível carregar as operações deste par agora.", nenhumRecente: "Nenhum negócio recente neste par.",
-    mostrarMenos: "Mostrar menos", mostrarOutras: (n: number) => `Mostrar as outras ${n} carteiras`, carteiras: (n: number) => `${n} carteiras`,
-    carregando: "Carregando as operações recentes…", falhou: "Não foi possível carregar as operações. Tentando novamente em instantes.",
-    negocios: (n: number) => `${n} negócios`,
-    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>Calculado sobre os últimos {n} deste par — de {de} até {ate} ({dur}). Não é o histórico da moeda nem o saldo real das carteiras.</>,
-    semNegocios: "Sem negócios na janela.", c: "C", v: "V",
-    vendeuMais: "Vendeu mais do que comprou na janela: já tinha token antes dela.",
-    comprouAntes: "Comprou antes da janela, então o preço que pagou é desconhecido.",
+    holders: "Holders", traders: "Top traders", top10: "Top 10", dev: "Dev", lucro: "Lucro", investido: "Investido",
+    comprou: "Comprou", vendeu: "Vendeu", voce: "VOCÊ", curva: "CURVA", pool: "POOL", contrato: "CONTRATO", devSelo: "DEV",
+    janela: (n: number, dur: string) => `últimos ${n} negócios · ${dur}`,
+    janelaDica: "O lucro é calculado só sobre os negócios recentes deste par, não sobre o histórico inteiro da carteira.",
+    compras: (c: number, v: number) => `${c} compra${c === 1 ? "" : "s"} · ${v} venda${v === 1 ? "" : "s"}`,
+    desconhecido: "Comprou antes desta janela: o preço que pagou é desconhecido.",
+    carregando: "Carregando…", falhou: "Não deu pra carregar agora. Tentando de novo em instantes.", vazio: "Nada pra mostrar ainda.",
+    mais: (n: number) => `Mostrar mais ${n}`, menos: "Mostrar menos", soNaSolana: "Holders ao vivo estão disponíveis para moedas da Solana.",
   },
   zh: {
-    investido: "投入", posicao: "持仓", lucro: "盈亏", retirado: "取出", trader: "交易者", traders: "交易者",
-    falhouPar: "暂时无法加载该交易对的交易。", nenhumRecente: "该交易对近期没有交易。",
-    mostrarMenos: "收起", mostrarOutras: (n: number) => `显示其余 ${n} 个钱包`, carteiras: (n: number) => `${n} 个钱包`,
-    carregando: "正在加载近期交易…", falhou: "无法加载交易，稍后自动重试。",
-    negocios: (n: number) => `${n} 笔交易`,
-    escopo: (n: React.ReactNode, de: string, ate: string, dur: string) => <>基于该交易对最近的 {n} 计算 —— 从 {de} 到 {ate}（{dur}）。并非代币的完整历史，也不是钱包的真实余额。</>,
-    semNegocios: "该时间段内没有交易。", c: "买", v: "卖",
-    vendeuMais: "该时间段内卖出多于买入：之前就已持有代币。",
-    comprouAntes: "在该时间段之前买入，因此买入价格未知。",
+    holders: "持有者", traders: "顶级交易者", top10: "前 10", dev: "开发者", lucro: "盈亏", investido: "投入",
+    comprou: "买入", vendeu: "卖出", voce: "你", curva: "曲线", pool: "池子", contrato: "合约", devSelo: "开发者",
+    janela: (n: number, dur: string) => `最近 ${n} 笔交易 · ${dur}`,
+    janelaDica: "盈亏只按该交易对最近的交易计算，不是钱包的完整历史。",
+    compras: (c: number, v: number) => `${c} 买 · ${v} 卖`,
+    desconhecido: "在此时间段之前买入：买入价格未知。",
+    carregando: "加载中…", falhou: "暂时无法加载，稍后自动重试。", vazio: "暂无数据。",
+    mais: (n: number) => `再显示 ${n} 个`, menos: "收起", soNaSolana: "实时持有者仅适用于 Solana 代币。",
   },
 });
 
-export function TabelaDeTraders({ address, symbol, chain }: { address: string; symbol: string; chain: ChainId }) {
-  const tr = useTextos(TEXTOS);
-  const [quadro, setQuadro] = useState<Quadro | null>(null);
-  const [carregando, setCarregando] = useState(true);
+/** Lê uma rota a cada 30 s, mantendo o último dado bom se uma leitura falhar. */
+function useLeitura<T>(url: string | null): { dados: T | null; falhou: boolean } {
+  const [dados, setDados] = useState<T | null>(null);
   const [falhou, setFalhou] = useState(false);
-  const [ordem, setOrdem] = useState<Ordem>("investido");
-  const [todos, setTodos] = useState(false);
-
   useEffect(() => {
+    setDados(null);
+    setFalhou(false);
+    if (!url) return;
     let cancelado = false;
-
     const ler = async () => {
       try {
-        const res = await fetch(`/api/traders?address=${address}`, { cache: "no-store" });
-        if (!res.ok) throw new Error(String(res.status));
-        const dados = (await res.json()) as Quadro;
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok) throw new Error(String(r.status));
+        const j = (await r.json()) as T;
         if (!cancelado) {
-          setQuadro(dados);
+          setDados(j);
           setFalhou(false);
         }
       } catch {
-        /* A falha é só marcada; quem decide mostrá-la é o render, e só quando
-           não há dado nenhum na tela. Com uma tabela já carregada, é melhor
-           manter os números de 30s atrás do que piscar erro a cada oscilação. */
         if (!cancelado) setFalhou(true);
-      } finally {
-        if (!cancelado) setCarregando(false);
       }
     };
-
     void ler();
-    const timer = window.setInterval(() => void ler(), INTERVALO_MS);
-
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") void ler();
+    }, INTERVALO_MS);
     return () => {
       cancelado = true;
-      window.clearInterval(timer);
+      window.clearInterval(id);
     };
-  }, [address]);
+  }, [url]);
+  return { dados, falhou };
+}
 
-  const lista = quadro ? ordenar(quadro.lista, ordem) : [];
-  const visiveis = todos ? lista : lista.slice(0, PRIMEIRA_LEVA);
+export function TabelaDeTraders({ address, symbol, chain }: { address: string; symbol: string; chain: ChainId }) {
+  const t = useTextos(TEXTOS);
+  const solana = chain === "solana";
+  const [aba, setAba] = useState<Aba>(solana ? "holders" : "traders");
+  const [ordem, setOrdem] = useState<Ordem>("lucro");
+  const [todos, setTodos] = useState(false);
+  const { publicKey } = useWallet();
+  const minha = publicKey?.toBase58() ?? null;
 
-  /* A barrinha da coluna de posição é relativa ao MAIOR da tabela, não ao
-     fornecimento: com 0,2% de supply no topo, uma barra absoluta seria um
-     fio invisível em todas as linhas e não compararia nada. */
-  const maiorPct = lista.reduce((m, t) => Math.max(m, t.pctDoFornecimento), 0);
+  const traders = useLeitura<QuadroTraders>(`/api/traders?address=${address}`);
+  const holders = useLeitura<QuadroHolders>(solana ? `/api/holders?address=${address}` : null);
+
+  // O lucro da janela entra também na aba de holders, quando a carteira negociou nela.
+  const lucroPorCarteira = new Map((traders.dados?.lista ?? []).map((tr) => [tr.carteira, tr]));
+
+  const trocar = (nova: Aba) => {
+    setAba(nova);
+    setTodos(false);
+  };
 
   return (
     <Card className="overflow-hidden">
-      <Cabecalho
-        quadro={quadro}
-        ordem={ordem}
-        setOrdem={setOrdem}
-        carregando={carregando && !quadro}
-        falhou={falhou && !quadro}
-      />
-
-      {carregando && !quadro ? (
-        <Esqueleto />
-      ) : falhou && !quadro ? (
-        <p className="px-4 py-10 text-center text-[12px] text-zinc-600">
-          {tr.falhouPar}
-        </p>
-      ) : lista.length === 0 ? (
-        <p className="px-4 py-10 text-center text-[12px] text-zinc-600">
-          {tr.nenhumRecente}
-        </p>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] border-collapse">
-              {/*
-                Larguras fixas nas colunas de número, e só a do trader
-                elástica. Sem isso o navegador distribui a largura pelo
-                CONTEÚDO, e a tabela dança a cada atualização: um lucro que
-                passa de $9,9K pra $10,1K empurra as outras quatro colunas.
-              */}
-              <colgroup>
-                <col />
-                <col className="w-[104px]" />
-                <col className="w-[108px]" />
-                <col className="w-[96px]" />
-                <col className="w-[112px]" />
-              </colgroup>
-              <thead>
-                <tr className="border-y border-ink-700 text-left">
-                  <Th className="pl-4">{tr.trader}</Th>
-                  <Th align="right">{tr.posicao}</Th>
-                  <Th align="right">{tr.investido}</Th>
-                  <Th align="right">{tr.retirado}</Th>
-                  <Th align="right" className="pr-4">
-                    {tr.lucro}
-                  </Th>
-                </tr>
-              </thead>
-              <tbody>
-                {visiveis.map((t, i) => (
-                  <Linha
-                    key={t.carteira}
-                    trader={t}
-                    posicao={i + 1}
-                    symbol={symbol}
-                    chain={chain}
-                    maiorPct={maiorPct}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {lista.length > PRIMEIRA_LEVA && (
-            <button
-              onClick={() => setTodos((v) => !v)}
-              className="w-full border-t border-ink-700 py-2.5 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-ink-800 hover:text-marca"
-            >
-              {todos ? tr.mostrarMenos : tr.mostrarOutras(lista.length - PRIMEIRA_LEVA)}
-            </button>
+      <div className="flex flex-wrap items-center gap-2 border-b border-ink-700 px-3 py-2.5">
+        <div className="flex gap-1 rounded-lg bg-white/[0.03] p-0.5">
+          {solana && (
+            <Aba ativa={aba === "holders"} onClick={() => trocar("holders")}>
+              {t.holders}
+              {holders.dados?.totalDeHolders ? (
+                <span className="ml-1.5 text-zinc-500">{holders.dados.totalDeHolders.toLocaleString("en-US")}</span>
+              ) : null}
+            </Aba>
           )}
-        </>
+          <Aba ativa={aba === "traders"} onClick={() => trocar("traders")}>
+            {t.traders}
+          </Aba>
+        </div>
+
+        <div className="ml-auto flex flex-wrap items-center gap-1.5 text-[11px]">
+          {aba === "holders" && holders.dados && (
+            <>
+              <Selo tom={holders.dados.top10Pct >= 50 ? "ruim" : holders.dados.top10Pct >= 30 ? "medio" : "bom"}>
+                {t.top10} {holders.dados.top10Pct.toFixed(1)}%
+              </Selo>
+              {holders.dados.devPct !== null && (
+                <Selo tom={holders.dados.devPct >= 5 ? "ruim" : holders.dados.devPct >= 2 ? "medio" : "bom"}>
+                  {t.dev} {holders.dados.devPct.toFixed(1)}%
+                </Selo>
+              )}
+            </>
+          )}
+          {aba === "traders" && (
+            <>
+              {traders.dados?.desde && traders.dados.ate ? (
+                <span title={t.janelaDica} className="cursor-help rounded-full border border-white/[0.08] px-2 py-0.5 text-zinc-500">
+                  {t.janela(traders.dados.negociosLidos, duracao(traders.dados.desde, traders.dados.ate))}
+                </span>
+              ) : null}
+              <div className="flex gap-1">
+                {(["lucro", "investido"] as const).map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => setOrdem(o)}
+                    className={cn(
+                      "rounded-md px-2 py-0.5 font-semibold transition-colors",
+                      ordem === o ? "bg-white/[0.08] text-zinc-100" : "text-zinc-500 hover:text-zinc-300",
+                    )}
+                  >
+                    {o === "lucro" ? t.lucro : t.investido}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {aba === "holders" ? (
+        <ListaDeHolders
+          quadro={holders.dados}
+          falhou={holders.falhou}
+          chain={chain}
+          symbol={symbol}
+          minha={minha}
+          lucroPorCarteira={lucroPorCarteira}
+          todos={todos}
+          setTodos={setTodos}
+        />
+      ) : (
+        <ListaDeTraders quadro={traders.dados} falhou={traders.falhou} chain={chain} minha={minha} ordem={ordem} todos={todos} setTodos={setTodos} />
       )}
     </Card>
   );
@@ -235,260 +234,248 @@ export function TabelaDeTraders({ address, symbol, chain }: { address: string; s
 
 /* ------------------------------------------------------------------ */
 
-function Cabecalho({
+function ListaDeHolders({
   quadro,
-  ordem,
-  setOrdem,
-  carregando,
   falhou,
-}: {
-  quadro: Quadro | null;
-  ordem: Ordem;
-  setOrdem: (o: Ordem) => void;
-  carregando: boolean;
-  falhou: boolean;
-}) {
-  const tr = useTextos(TEXTOS);
-  return (
-    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <span aria-hidden className="h-3.5 w-[2px] shrink-0 rounded-full bg-chroma-gradient" />
-          <h2 className="text-[13px] font-bold uppercase tracking-rotulo text-zinc-100">
-            {tr.traders}
-          </h2>
-          {quadro && (
-            <span className="tnum text-[11px] text-zinc-600">{tr.carteiras(quadro.lista.length)}</span>
-          )}
-        </div>
-
-        {/*
-          O escopo, em cima e sempre. Ver o comentário do topo do arquivo: sem
-          esta frase os números viram outra coisa na cabeça de quem lê.
-        */}
-        <p className="mt-1.5 text-[11px] leading-snug text-zinc-500">
-          {carregando ? (
-            tr.carregando
-          ) : falhou ? (
-            /* "Sem negócios" seria uma afirmação sobre o mercado; o que houve
-               foi uma falha nossa em ler. São coisas diferentes e a tela não
-               pode confundir as duas. */
-            tr.falhou
-          ) : quadro?.desde && quadro?.ate ? (
-            tr.escopo(
-              <strong className="font-semibold text-zinc-400">{tr.negocios(quadro.negociosLidos)}</strong>,
-              hora(quadro.desde),
-              hora(quadro.ate),
-              duracao(quadro.desde, quadro.ate),
-            )
-          ) : (
-            tr.semNegocios
-          )}
-        </p>
-      </div>
-
-      <div className="flex shrink-0 gap-1">
-        {ORDENS.map((o) => (
-          <button
-            key={o.chave}
-            onClick={() => setOrdem(o.chave)}
-            className={cn(
-              "rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors",
-              ordem === o.chave
-                ? "bg-white/[0.06] text-zinc-100"
-                : "text-zinc-500 hover:text-zinc-300",
-            )}
-          >
-            {tr[o.rotulo as "investido" | "posicao" | "lucro"]}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Linha({
-  trader,
-  posicao,
-  symbol,
   chain,
-  maiorPct,
+  symbol,
+  minha,
+  lucroPorCarteira,
+  todos,
+  setTodos,
 }: {
-  trader: Trader;
-  posicao: number;
-  symbol: string;
+  quadro: QuadroHolders | null;
+  falhou: boolean;
   chain: ChainId;
-  maiorPct: number;
+  symbol: string;
+  minha: string | null;
+  lucroPorCarteira: Map<string, Trader>;
+  todos: boolean;
+  setTodos: (v: boolean) => void;
 }) {
-  const tr = useTextos(TEXTOS);
-  const t = trader;
-  const lucrando = (t.lucroUsd ?? 0) >= 0;
+  const t = useTextos(TEXTOS);
+  if (!quadro) return falhou ? <Aviso>{t.falhou}</Aviso> : <Esqueleto />;
+  if (!quadro.lista.length) return <Aviso>{t.vazio}</Aviso>;
 
-  /*
-   * O quanto o lucro representa do que a pessoa botou.
-   *
-   * Sem isso, "+$300" do lado de "+$300" não diz qual carteira foi melhor —
-   * uma pode ter investido mil e a outra dez mil.
-   */
-  const pctSobreInvestido =
-    t.lucroUsd !== null && t.investidoUsd > 0 ? (t.lucroUsd / t.investidoUsd) * 100 : null;
+  const lista = todos ? quadro.lista : quadro.lista.slice(0, PRIMEIRA_LEVA);
+  const maiorPct = quadro.lista.reduce((m, h) => Math.max(m, h.pct), 0);
 
   return (
-    <tr className="border-b border-ink-800/60 transition-colors last:border-0 hover:bg-white/[0.02]">
-      <td className="py-2.5 pl-4 pr-2">
-        <div className="flex items-center gap-2.5">
-          <span className="tnum w-5 shrink-0 text-right text-[11px] font-semibold text-zinc-700">
-            {posicao}
-          </span>
-
-          <Identicon carteira={t.carteira} />
-
-          <div className="min-w-0">
-            <a
-              href={linkDaCarteira(chain, t.carteira)}
-              target="_blank"
-              rel="noreferrer"
-              className="tnum block truncate text-[12px] font-semibold text-zinc-200 transition-colors hover:text-marca"
+    <>
+      <ul>
+        {lista.map((h, i) => {
+          const tr = lucroPorCarteira.get(h.carteira);
+          const valor = h.quantidade * quadro.precoUsd;
+          const naoEhCarteira = h.tipo !== "carteira";
+          return (
+            <li
+              key={h.carteira}
+              className={cn(
+                "flex items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 last:border-0",
+                h.carteira === minha && "bg-marca/[0.06]",
+                naoEhCarteira && "opacity-75",
+              )}
             >
-              {shortenAddress(t.carteira, 4)}
-            </a>
-            <span className="flex items-center gap-1.5 text-[10px] text-zinc-600">
-              <span className="tnum">
-                {t.compras}{tr.c} · {t.vendas}{tr.v}
-              </span>
-              <span>·</span>
-              <span className="tnum">{timeAgo(t.ultimoEm)}</span>
-            </span>
-          </div>
-        </div>
-      </td>
-
-      {/* Posição */}
-      <td className="px-2 py-2.5 text-right">
-        {t.vindoDeAntes ? (
-          <Desconhecido motivo={tr.vendeuMais} />
-        ) : (
-          <>
-            <span className="tnum block text-[12px] font-bold text-zinc-200">
-              {t.pctDoFornecimento.toFixed(2)}%
-            </span>
-            <span className="tnum block text-[10px] text-zinc-600">
-              {compacto(t.saldo)} {symbol}
-            </span>
-            {/* Largura fixa e colada à direita. Com `w-full` o traço herdava a
-                coluna inteira, e como a tabela é elástica a coluna de posição
-                crescia até espremer as outras três pra fora da tela. */}
-            <span className="ml-auto mt-1 block h-[2px] w-14 overflow-hidden rounded-full bg-ink-700">
-              <span
-                className="block h-full rounded-full bg-marca/70"
-                style={{
-                  width: `${maiorPct > 0 ? Math.min(100, (t.pctDoFornecimento / maiorPct) * 100) : 0}%`,
-                }}
-              />
-            </span>
-          </>
-        )}
-      </td>
-
-      {/* Investido */}
-      <td className="px-2 py-2.5 text-right">
-        <span className="tnum block text-[12px] font-semibold text-zinc-300">
-          {t.investidoUsd > 0 ? formatUsd(t.investidoUsd) : "—"}
-        </span>
-        {t.precoMedioUsd !== null && t.precoMedioUsd > 0 && (
-          <span className="tnum block text-[10px] text-zinc-600">
-            média ${precoCurto(t.precoMedioUsd)}
-          </span>
-        )}
-      </td>
-
-      {/* Retirado */}
-      <td className="px-2 py-2.5 text-right">
-        <span className="tnum block text-[12px] font-semibold text-zinc-300">
-          {t.recebidoUsd > 0 ? formatUsd(t.recebidoUsd) : "—"}
-        </span>
-      </td>
-
-      {/* Lucro */}
-      <td className="py-2.5 pl-2 pr-4 text-right">
-        {t.lucroUsd === null ? (
-          <Desconhecido motivo={tr.comprouAntes} />
-        ) : (
-          <>
-            <span
-              className={cn("tnum block text-[12px] font-bold", lucrando ? "text-bull" : "text-bear")}
-            >
-              {lucrando ? "+" : "−"}
-              {formatUsd(Math.abs(t.lucroUsd))}
-            </span>
-            {pctSobreInvestido !== null && (
-              <span
-                className={cn("tnum block text-[10px]", lucrando ? "text-bull/70" : "text-bear/70")}
-              >
-                {lucrando ? "+" : "−"}
-                {Math.abs(pctSobreInvestido).toFixed(1)}%
-              </span>
-            )}
-          </>
-        )}
-      </td>
-    </tr>
+              <span className="tnum w-5 shrink-0 text-right text-[11px] text-zinc-600">{i + 1}</span>
+              <Identicon carteira={h.carteira} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <a href={linkDaCarteira(chain, h.carteira)} target="_blank" rel="noreferrer" className="tnum text-[13px] font-semibold text-zinc-100 hover:text-marca">
+                    {shortenAddress(h.carteira, 4)}
+                  </a>
+                  {h.carteira === minha && <Marca cor="marca">{t.voce}</Marca>}
+                  {h.dev && <Marca cor="ambar">{t.devSelo}</Marca>}
+                  {h.tipo === "curva" && <Marca cor="marca">{t.curva}</Marca>}
+                  {h.tipo === "pool" && <Marca cor="marca">{t.pool}</Marca>}
+                  {h.tipo === "contrato" && <Marca cor="cinza">{t.contrato}</Marca>}
+                  {h.tipo === "carteira" && h.pct >= 2 && <span title="whale">🐋</span>}
+                </div>
+                <div className="tnum text-[11px] text-zinc-500">
+                  {compacto(h.quantidade)} ${symbol}
+                  {tr && tr.lucroUsd !== null && (
+                    <span className={cn("ml-2 font-semibold", tr.lucroUsd >= 0 ? "text-bull" : "text-bear")}>
+                      {t.lucro} {sinal(tr.lucroUsd)}
+                      {formatUsd(Math.abs(tr.lucroUsd))}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="tnum w-[84px] shrink-0 text-right text-[13px] font-bold text-zinc-100">{quadro.precoUsd > 0 ? formatUsd(valor) : "—"}</div>
+              <div className="w-[76px] shrink-0">
+                <div className="tnum text-right text-[12px] font-semibold text-zinc-300">{h.pct.toFixed(2)}%</div>
+                <div className="mt-1 h-1 rounded-full bg-white/[0.06]">
+                  <div className={cn("h-1 rounded-full", naoEhCarteira ? "bg-zinc-500" : "bg-marca")} style={{ width: `${maiorPct > 0 ? (h.pct / maiorPct) * 100 : 0}%` }} />
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <MaisMenos total={quadro.lista.length} todos={todos} setTodos={setTodos} />
+    </>
   );
 }
 
-function Desconhecido({ motivo }: { motivo: string }) {
+function ListaDeTraders({
+  quadro,
+  falhou,
+  chain,
+  minha,
+  ordem,
+  todos,
+  setTodos,
+}: {
+  quadro: QuadroTraders | null;
+  falhou: boolean;
+  chain: ChainId;
+  minha: string | null;
+  ordem: Ordem;
+  todos: boolean;
+  setTodos: (v: boolean) => void;
+}) {
+  const t = useTextos(TEXTOS);
+  if (!quadro) return falhou ? <Aviso>{t.falhou}</Aviso> : <Esqueleto />;
+  if (!quadro.lista.length) return <Aviso>{t.vazio}</Aviso>;
+
+  const ordenada = [...quadro.lista].sort((a, b) => {
+    if (ordem === "investido") return b.investidoUsd - a.investidoUsd;
+    // Lucro desconhecido vai pro fim: não dá pra ranquear um traço.
+    if (a.lucroUsd === null && b.lucroUsd === null) return b.investidoUsd - a.investidoUsd;
+    if (a.lucroUsd === null) return 1;
+    if (b.lucroUsd === null) return -1;
+    return b.lucroUsd - a.lucroUsd;
+  });
+  const lista = todos ? ordenada : ordenada.slice(0, PRIMEIRA_LEVA);
+
+  return (
+    <>
+      <ul>
+        {lista.map((tr, i) => {
+          const pct = tr.lucroUsd !== null && tr.investidoUsd > 0 ? (tr.lucroUsd / tr.investidoUsd) * 100 : null;
+          return (
+            <li key={tr.carteira} className={cn("flex items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 last:border-0", tr.carteira === minha && "bg-marca/[0.06]")}>
+              <span className="tnum w-5 shrink-0 text-right text-[11px] text-zinc-600">{i + 1}</span>
+              <Identicon carteira={tr.carteira} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <a href={linkDaCarteira(chain, tr.carteira)} target="_blank" rel="noreferrer" className="tnum text-[13px] font-semibold text-zinc-100 hover:text-marca">
+                    {shortenAddress(tr.carteira, 4)}
+                  </a>
+                  {tr.carteira === minha && <Marca cor="marca">{t.voce}</Marca>}
+                </div>
+                <div className="text-[11px] text-zinc-500">
+                  {t.compras(tr.compras, tr.vendas)} · {timeAgo(tr.ultimoEm)}
+                </div>
+              </div>
+              <div className="tnum hidden w-[150px] shrink-0 text-right text-[11px] leading-tight sm:block">
+                <div className="text-zinc-400">
+                  {t.comprou} <span className="font-semibold text-zinc-200">{formatUsd(tr.investidoUsd)}</span>
+                </div>
+                <div className="text-zinc-500">
+                  {t.vendeu} <span className="font-semibold text-zinc-300">{tr.recebidoUsd > 0 ? formatUsd(tr.recebidoUsd) : "—"}</span>
+                </div>
+              </div>
+              <div className="tnum w-[92px] shrink-0 text-right">
+                {tr.lucroUsd === null ? (
+                  <span title={t.desconhecido} className="cursor-help text-[13px] font-semibold text-zinc-600 underline decoration-dotted underline-offset-4">
+                    —
+                  </span>
+                ) : (
+                  <>
+                    <div className={cn("text-[14px] font-black", tr.lucroUsd >= 0 ? "text-bull" : "text-bear")}>
+                      {sinal(tr.lucroUsd)}
+                      {formatUsd(Math.abs(tr.lucroUsd))}
+                    </div>
+                    {pct !== null && <div className={cn("text-[11px]", tr.lucroUsd >= 0 ? "text-bull/80" : "text-bear/80")}>{`${sinal(pct)}${Math.abs(pct).toFixed(1)}%`}</div>}
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <MaisMenos total={ordenada.length} todos={todos} setTodos={setTodos} />
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function Aba({ ativa, onClick, children }: { ativa: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "rounded-md px-3 py-1 text-[12px] font-bold transition-colors",
+        ativa ? "bg-white/[0.08] text-zinc-50" : "text-zinc-500 hover:text-zinc-300",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Selo({ tom, children }: { tom: "bom" | "medio" | "ruim"; children: React.ReactNode }) {
   return (
     <span
-      title={motivo}
-      className="tnum cursor-help text-[12px] font-semibold text-zinc-700 underline decoration-dotted underline-offset-4"
+      className={cn(
+        "tnum rounded-full border px-2 py-0.5 font-semibold",
+        tom === "bom" && "border-bull/30 text-bull",
+        tom === "medio" && "border-warn/30 text-warn",
+        tom === "ruim" && "border-bear/30 text-bear",
+      )}
     >
-      —
+      {children}
     </span>
   );
 }
 
+function Marca({ cor, children }: { cor: "marca" | "ambar" | "cinza"; children: React.ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "rounded px-1.5 py-px text-[9.5px] font-black tracking-wider",
+        cor === "marca" && "bg-marca/15 text-marca",
+        cor === "ambar" && "bg-warn/15 text-warn",
+        cor === "cinza" && "bg-white/[0.06] text-zinc-400",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function MaisMenos({ total, todos, setTodos }: { total: number; todos: boolean; setTodos: (v: boolean) => void }) {
+  const t = useTextos(TEXTOS);
+  if (total <= PRIMEIRA_LEVA) return null;
+  return (
+    <button
+      onClick={() => setTodos(!todos)}
+      className="w-full border-t border-ink-700 py-2.5 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-ink-800 hover:text-marca"
+    >
+      {todos ? t.menos : t.mais(total - PRIMEIRA_LEVA)}
+    </button>
+  );
+}
+
+function Aviso({ children }: { children: React.ReactNode }) {
+  return <p className="px-4 py-10 text-center text-[12px] text-zinc-600">{children}</p>;
+}
+
 /**
- * Um quadradinho de cor derivado do endereço.
- *
- * Não identifica ninguém — serve pra vista achar a mesma carteira de novo
- * quando ela aparece em duas linhas diferentes da tela, que é uma coisa que
- * texto monoespaçado faz mal.
+ * Um quadradinho de cor derivado do endereço: não identifica ninguém, só ajuda
+ * a vista a achar a mesma carteira nas duas abas.
  */
 function Identicon({ carteira }: { carteira: string }) {
   let h = 0;
   for (let i = 0; i < carteira.length; i++) h = (h * 31 + carteira.charCodeAt(i)) >>> 0;
   const matiz = h % 360;
-
   return (
     <span
       aria-hidden
-      className="size-5 shrink-0 rounded"
-      style={{
-        background: `linear-gradient(135deg, hsl(${matiz} 58% 52%), hsl(${(matiz + 48) % 360} 58% 38%))`,
-      }}
+      className="size-7 shrink-0 rounded-full"
+      style={{ background: `linear-gradient(135deg, hsl(${matiz} 58% 52%), hsl(${(matiz + 48) % 360} 58% 38%))` }}
     />
-  );
-}
-
-function Th({
-  children,
-  align = "left",
-  className,
-}: {
-  children: ReactNode;
-  align?: "left" | "right";
-  className?: string;
-}) {
-  return (
-    <th
-      className={cn(
-        "px-2 py-2 text-[10px] font-medium uppercase tracking-rotulo text-zinc-600",
-        align === "right" ? "text-right" : "text-left",
-        className,
-      )}
-    >
-      {children}
-    </th>
   );
 }
 
@@ -496,73 +483,27 @@ function Esqueleto() {
   return (
     <div className="space-y-2 px-4 py-4">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="h-9 animate-pulse rounded bg-ink-800" />
+        <div key={i} className="h-10 animate-pulse rounded bg-ink-800" />
       ))}
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-
-/**
- * O link do explorador pra uma CARTEIRA.
- *
- * O `explorer` de cada rede aponta pra página de TOKEN, que é o outro uso. Os
- * dois exploradores chamam a página de carteira de um jeito diferente
- * (`/account/` no Solscan, `/address/` no Blockscout), então a troca é feita
- * por rede em vez de por substituição de texto — que era como estava e daria
- * link quebrado na Robinhood Chain.
- */
+/** Carteira no explorador: `/account/` no Solscan, `/address/` no Blockscout. */
 function linkDaCarteira(chain: ChainId, carteira: string): string {
   const base = CHAINS[chain].explorer.replace(/\/token\/$/, "");
-  return CHAINS[chain].kind === "solana"
-    ? `${base}/account/${carteira}`
-    : `${base}/address/${carteira}`;
+  return CHAINS[chain].kind === "solana" ? `${base}/account/${carteira}` : `${base}/address/${carteira}`;
 }
 
-function ordenar(lista: Trader[], ordem: Ordem): Trader[] {
-  const copia = [...lista];
+const sinal = (n: number) => (n >= 0 ? "+" : "-");
 
-  if (ordem === "posicao") {
-    return copia.sort((a, b) => b.pctDoFornecimento - a.pctDoFornecimento);
-  }
-
-  if (ordem === "lucro") {
-    /* Quem tem lucro desconhecido vai pro fim: não dá pra ranquear um traço. */
-    return copia.sort((a, b) => {
-      if (a.lucroUsd === null && b.lucroUsd === null) return b.investidoUsd - a.investidoUsd;
-      if (a.lucroUsd === null) return 1;
-      if (b.lucroUsd === null) return -1;
-      return b.lucroUsd - a.lucroUsd;
-    });
-  }
-
-  return copia.sort((a, b) => b.investidoUsd - a.investidoUsd);
-}
-
-/** 12.345.678 → 12,3M. Na coluna de posição o número exato não cabe nem ajuda. */
+/** 12.345.678 → 12.35M. */
 function compacto(n: number): string {
   const abs = Math.abs(n);
   if (abs >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
   if (abs >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (abs >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
   return n.toFixed(0);
-}
-
-/**
- * Preço médio, na mesma notação do resto do site.
- *
- * A primeira versão caía em notação científica ("$9.24e−4") pra preço de meme
- * coin — que é praticamente todos eles. Fora de lugar num terminal, e pior:
- * impossível de comparar de bate-pronto com o preço do cabeçalho, que usa a
- * notação de zeros subscritos. Duas grafias pro mesmo número na mesma tela.
- */
-function precoCurto(n: number): string {
-  return formatPrice(n, 4);
-}
-
-function hora(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function duracao(de: number, ate: number): string {
