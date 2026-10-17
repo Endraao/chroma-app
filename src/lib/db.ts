@@ -387,6 +387,8 @@ async function criarTabelas(): Promise<void> {
        UNIQUE (tipo, ref)
      )`,
     `CREATE INDEX IF NOT EXISTS idx_mural_criado ON mural(criado_em DESC)`,
+    /* A nota nas 3 línguas do site (17/10/2026). */
+    `ALTER TABLE mural ADD COLUMN IF NOT EXISTS textos JSONB`,
   ];
 
   for (const passo of passos) await sql.query(passo);

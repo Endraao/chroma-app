@@ -29,6 +29,8 @@ export interface PostDoMural {
   autor: string;
   tipo: string;
   texto: string;
+  /** A mesma nota nas 3 línguas do site (só as frases prontas têm). */
+  textos: Partial<Record<"en" | "pt" | "zh", string>> | null;
   modelo: string | null;
   criadoEm: number;
 }
@@ -36,12 +38,13 @@ export interface PostDoMural {
 export async function listarMural(limite = 20): Promise<PostDoMural[]> {
   await banco();
   const linhas = (await sql`
-    SELECT id, autor, tipo, texto, modelo, criado_em FROM mural
+    SELECT id, autor, tipo, texto, textos, modelo, criado_em FROM mural
     ORDER BY criado_em DESC LIMIT ${limite}`) as {
     id: string;
     autor: string;
     tipo: string;
     texto: string;
+    textos: Partial<Record<"en" | "pt" | "zh", string>> | null;
     modelo: string | null;
     criado_em: string;
   }[];
@@ -50,16 +53,23 @@ export async function listarMural(limite = 20): Promise<PostDoMural[]> {
     autor: l.autor,
     tipo: l.tipo,
     texto: l.texto,
+    textos: l.textos,
     modelo: l.modelo,
     criadoEm: Number(l.criado_em),
   }));
 }
 
-async function publicar(tipo: string, ref: string, texto: string, modelo: string | null): Promise<boolean> {
+async function publicar(
+  tipo: string,
+  ref: string,
+  texto: string,
+  modelo: string | null,
+  textos: Record<string, string> | null = null,
+): Promise<boolean> {
   await banco();
   const r = (await sql`
-    INSERT INTO mural (autor, tipo, ref, texto, modelo, criado_em)
-    VALUES (${AUTOR_OBSI}, ${tipo}, ${ref}, ${texto}, ${modelo}, ${Date.now()})
+    INSERT INTO mural (autor, tipo, ref, texto, textos, modelo, criado_em)
+    VALUES (${AUTOR_OBSI}, ${tipo}, ${ref}, ${texto}, ${textos ? JSON.stringify(textos) : null}, ${modelo}, ${Date.now()})
     ON CONFLICT (tipo, ref) DO NOTHING RETURNING id`) as unknown[];
   return r.length > 0;
 }
@@ -175,14 +185,52 @@ async function escreverComIa(momento: Momento): Promise<string | null> {
  * (pela hora do dia), o que aconteceu na Chroma, o $CHROMA, o que está quente
  * e um fecho. Combinadas, dão milhares de notas diferentes — e todas usam só
  * os números reais do momento. Nada de "compre": ele observa, não aconselha.
+ *
+ * Cada frase existe nas 3 línguas do site, na mesma posição (17/10/2026: "o
+ * site não traduz as falas do Obsi"). O sorteio escolhe a POSIÇÃO uma vez e
+ * as três versões saem juntas — a nota é a mesma em qualquer idioma.
  */
-const sortear = <T,>(lista: T[]): T => lista[Math.floor(Math.random() * lista.length)];
+type Lingua = "en" | "pt" | "zh";
+export type TextoTri = Record<Lingua, string>;
+const tri = (en: string, pt: string, zh: string): TextoTri => ({ en, pt, zh });
 
-const ABERTURAS: Record<"manha" | "tarde" | "noite" | "madrugada", string[]> = {
-  manha: ["gm from the crystal caves.", "gm. coffee for you, charts for me.", "gm, trenches.", "morning. the aurora went to sleep, i didn't.", "gm. new day, new candles."],
-  tarde: ["afternoon check-in.", "midday report from under the hoodie.", "still here, still watching.", "quick look at the board.", "checking the curve between snacks."],
-  noite: ["evening watch.", "the aurora is out. so am i.", "night shift has started.", "lights low, eyes glowing.", "evening report from the trenches."],
-  madrugada: ["late night, quiet caves.", "3am energy, crystal edition.", "everyone's asleep. i'm counting candles.", "the night is long and the charts are honest.", "deep night report."],
+const sortear = <T,>(lista: T[]): T => lista[Math.floor(Math.random() * lista.length)];
+const VAZIO = tri("", "", "");
+
+function juntar(partes: TextoTri[]): TextoTri {
+  const uma = (l: Lingua) => partes.map((p) => p[l]).filter(Boolean).join(l === "zh" ? "" : " ");
+  return { en: uma("en"), pt: uma("pt"), zh: uma("zh") };
+}
+
+const ABERTURAS: Record<"manha" | "tarde" | "noite" | "madrugada", TextoTri[]> = {
+  manha: [
+    tri("gm from the crystal caves.", "bom dia das cavernas de cristal.", "来自水晶洞穴的早安。"),
+    tri("gm. coffee for you, charts for me.", "bom dia. café pra você, gráfico pra mim.", "早安。你喝咖啡，我看图表。"),
+    tri("gm, trenches.", "bom dia, trincheiras.", "早安，战壕。"),
+    tri("morning. the aurora went to sleep, i didn't.", "manhã. a aurora foi dormir, eu não.", "早上好。极光睡了，我没睡。"),
+    tri("gm. new day, new candles.", "bom dia. dia novo, velas novas.", "早安。新的一天，新的K线。"),
+  ],
+  tarde: [
+    tri("afternoon check-in.", "passando pra dar notícias da tarde.", "下午打卡。"),
+    tri("midday report from under the hoodie.", "relatório do meio-dia, direto do capuz.", "来自卫衣下的午间报告。"),
+    tri("still here, still watching.", "ainda aqui, ainda de olho.", "我还在，还在看着。"),
+    tri("quick look at the board.", "uma olhada rápida no quadro.", "快速看一眼行情。"),
+    tri("checking the curve between snacks.", "conferindo a curva entre um lanche e outro.", "边吃零食边看曲线。"),
+  ],
+  noite: [
+    tri("evening watch.", "plantão da noite.", "傍晚值班。"),
+    tri("the aurora is out. so am i.", "a aurora apareceu. eu também.", "极光出来了，我也出来了。"),
+    tri("night shift has started.", "começou o turno da noite.", "夜班开始了。"),
+    tri("lights low, eyes glowing.", "luz baixa, olhos brilhando.", "灯光调暗，眼睛发亮。"),
+    tri("evening report from the trenches.", "relatório da noite, direto das trincheiras.", "来自战壕的晚间报告。"),
+  ],
+  madrugada: [
+    tri("late night, quiet caves.", "madrugada, cavernas em silêncio.", "深夜，洞穴很安静。"),
+    tri("3am energy, crystal edition.", "energia de 3 da manhã, edição cristal.", "凌晨三点的能量，水晶版。"),
+    tri("everyone's asleep. i'm counting candles.", "todo mundo dormindo. eu contando velas.", "大家都睡了，我在数K线。"),
+    tri("the night is long and the charts are honest.", "a noite é longa e os gráficos são honestos.", "夜很长，图表很诚实。"),
+    tri("deep night report.", "relatório da madrugada.", "深夜报告。"),
+  ],
 };
 
 function periodo(hora: number): keyof typeof ABERTURAS {
@@ -192,72 +240,98 @@ function periodo(hora: number): keyof typeof ABERTURAS {
   return "madrugada";
 }
 
-const SEM_LANCAMENTO = [
-  "no new launches on chroma this hour. the curve is waiting.",
-  "quiet hour on chroma. zero launches, plenty of patience.",
-  "nobody launched this hour. the launch button is still warm.",
-  "no new coins on chroma this hour. a blank canvas is still a canvas.",
-  "launches this hour: 0. honest numbers only.",
-  "nothing new on the chroma curve this hour. it's calm in here.",
+const SEM_LANCAMENTO: TextoTri[] = [
+  tri("no new launches on chroma this hour. the curve is waiting.", "nenhum lançamento na chroma nesta hora. a curva está esperando.", "这一小时 Chroma 没有新发行。曲线在等待。"),
+  tri("quiet hour on chroma. zero launches, plenty of patience.", "hora calma na chroma. zero lançamentos, muita paciência.", "Chroma 安静的一小时。零发行，满满耐心。"),
+  tri("nobody launched this hour. the launch button is still warm.", "ninguém lançou nesta hora. o botão de lançar ainda está quentinho.", "这一小时没人发行。发行按钮还是热的。"),
+  tri("no new coins on chroma this hour. a blank canvas is still a canvas.", "nenhuma moeda nova na chroma nesta hora. tela em branco ainda é tela.", "这一小时 Chroma 没有新币。空白画布也是画布。"),
+  tri("launches this hour: 0. honest numbers only.", "lançamentos nesta hora: 0. só números honestos.", "本小时发行：0。只说真实数字。"),
+  tri("nothing new on the chroma curve this hour. it's calm in here.", "nada novo na curva da chroma nesta hora. está calmo por aqui.", "这一小时 Chroma 曲线上没有新东西。这里很平静。"),
 ];
 
-function frasesDeLancamento(m: Momento): string {
+function frasesDeLancamento(m: Momento): TextoTri {
   const n = m.lancadasNaUltimaHora.length;
   const nomes = m.lancadasNaUltimaHora.map((c) => `$${c.simbolo}`).join(", ");
   if (n === 1) {
     return sortear([
-      `a new crystal formed on chroma this hour: ${nomes}.`,
-      `${nomes} was born on chroma this hour. welcome to the trenches 💎`,
-      `one launch this hour: ${nomes}. first candles are being written.`,
+      tri(`a new crystal formed on chroma this hour: ${nomes}.`, `um cristal novo se formou na chroma nesta hora: ${nomes}.`, `这一小时 Chroma 上形成了一颗新水晶：${nomes}。`),
+      tri(`${nomes} was born on chroma this hour. welcome to the trenches 💎`, `${nomes} nasceu na chroma nesta hora. bem-vinda às trincheiras 💎`, `${nomes} 这一小时在 Chroma 诞生。欢迎来到战壕 💎`),
+      tri(`one launch this hour: ${nomes}. first candles are being written.`, `um lançamento nesta hora: ${nomes}. as primeiras velas estão sendo escritas.`, `本小时一次发行：${nomes}。第一根K线正在写下。`),
     ]);
   }
   return sortear([
-    `${n} launches on chroma this hour: ${nomes}.`,
-    `busy hour in the caves. ${n} new coins: ${nomes}.`,
-    `${n} new crystals this hour: ${nomes} 💎`,
+    tri(`${n} launches on chroma this hour: ${nomes}.`, `${n} lançamentos na chroma nesta hora: ${nomes}.`, `这一小时 Chroma 有 ${n} 次发行：${nomes}。`),
+    tri(`busy hour in the caves. ${n} new coins: ${nomes}.`, `hora movimentada nas cavernas. ${n} moedas novas: ${nomes}.`, `洞穴里忙碌的一小时。${n} 个新币：${nomes}。`),
+    tri(`${n} new crystals this hour: ${nomes} 💎`, `${n} cristais novos nesta hora: ${nomes} 💎`, `本小时 ${n} 颗新水晶：${nomes} 💎`),
   ]);
 }
 
-function frasesDoChroma(c: NonNullable<Momento["chroma"]>): string {
+function frasesDoChroma(c: NonNullable<Momento["chroma"]>): TextoTri {
   const usa1h = c.var1h !== null;
   const v = usa1h ? (c.var1h as number) : c.var24h;
-  const janela = usa1h ? "1h" : "24h";
-  const mcap = formatUsd(c.mcap);
-  const pct = formatPct(v);
+  const j = usa1h ? "1h" : "24h";
+  const mc = formatUsd(c.mcap);
+  const p = formatPct(v);
   if (v >= 5) {
-    return sortear([`$CHROMA is moving: ${pct} ${janela}, ${mcap} mcap.`, `$CHROMA ${pct} ${janela}. my eyes are glowing a bit brighter. ${mcap} mcap.`, `green candles on $CHROMA: ${pct} ${janela}, now ${mcap}.`]);
+    return sortear([
+      tri(`$CHROMA is moving: ${p} ${j}, ${mc} mcap.`, `$CHROMA se mexendo: ${p} em ${j}, ${mc} de market cap.`, `$CHROMA 在动：${j} ${p}，市值 ${mc}。`),
+      tri(`$CHROMA ${p} ${j}. my eyes are glowing a bit brighter. ${mc} mcap.`, `$CHROMA ${p} em ${j}. meus olhos estão brilhando um pouco mais. ${mc} de market cap.`, `$CHROMA ${j} ${p}。我的眼睛更亮了一点。市值 ${mc}。`),
+      tri(`green candles on $CHROMA: ${p} ${j}, now ${mc}.`, `velas verdes no $CHROMA: ${p} em ${j}, agora ${mc}.`, `$CHROMA 出现绿K：${j} ${p}，现在 ${mc}。`),
+    ]);
   }
   if (v <= -5) {
-    return sortear([`$CHROMA ${pct} ${janela}, ${mcap} mcap. red days happen. we keep building.`, `$CHROMA cooled off: ${pct} ${janela}. ${mcap} mcap. still shipping.`, `$CHROMA at ${mcap}, ${pct} ${janela}. crystals form under pressure.`]);
+    return sortear([
+      tri(`$CHROMA ${p} ${j}, ${mc} mcap. red days happen. we keep building.`, `$CHROMA ${p} em ${j}, ${mc} de market cap. dia vermelho acontece. a gente segue construindo.`, `$CHROMA ${j} ${p}，市值 ${mc}。红色的日子总会有，我们继续建设。`),
+      tri(`$CHROMA cooled off: ${p} ${j}. ${mc} mcap. still shipping.`, `$CHROMA esfriou: ${p} em ${j}. ${mc} de market cap. seguimos entregando.`, `$CHROMA 降温了：${j} ${p}。市值 ${mc}。我们照常交付。`),
+      tri(`$CHROMA at ${mc}, ${p} ${j}. crystals form under pressure.`, `$CHROMA em ${mc}, ${p} em ${j}. cristais se formam sob pressão.`, `$CHROMA 市值 ${mc}，${j} ${p}。水晶在压力下形成。`),
+    ]);
   }
-  return sortear([`$CHROMA steady at ${mcap} mcap (${pct} ${janela}).`, `$CHROMA: ${mcap} mcap, ${pct} ${janela}. calm waters.`, `$CHROMA sitting at ${mcap}, ${pct} ${janela}.`]);
-}
-
-function frasesDoQuente(q: Momento["quentes"][number]): string {
   return sortear([
-    `trending on solana: $${q.simbolo} (${formatPct(q.var24h)} 24h).`,
-    `the trenches are talking about $${q.simbolo} right now.`,
-    `top of the solana trending board: $${q.simbolo}, ${formatUsd(q.mcap)} mcap.`,
+    tri(`$CHROMA steady at ${mc} mcap (${p} ${j}).`, `$CHROMA estável em ${mc} de market cap (${p} em ${j}).`, `$CHROMA 稳定在市值 ${mc}（${j} ${p}）。`),
+    tri(`$CHROMA: ${mc} mcap, ${p} ${j}. calm waters.`, `$CHROMA: ${mc} de market cap, ${p} em ${j}. águas calmas.`, `$CHROMA：市值 ${mc}，${j} ${p}。风平浪静。`),
+    tri(`$CHROMA sitting at ${mc}, ${p} ${j}.`, `$CHROMA parado em ${mc}, ${p} em ${j}.`, `$CHROMA 停在 ${mc}，${j} ${p}。`),
   ]);
 }
 
-const FECHOS = ["", "", "", "not financial advice, just a crystal with eyes.", "stay safe out there.", "dyor, always.", "more next hour.", "back to watching."];
+function frasesDoQuente(q: Momento["quentes"][number]): TextoTri {
+  const p = formatPct(q.var24h);
+  const mc = formatUsd(q.mcap);
+  return sortear([
+    tri(`trending on solana: $${q.simbolo} (${p} 24h).`, `em alta na solana: $${q.simbolo} (${p} em 24h).`, `Solana 热门：$${q.simbolo}（24h ${p}）。`),
+    tri(`the trenches are talking about $${q.simbolo} right now.`, `as trincheiras estão falando de $${q.simbolo} agora.`, `战壕里现在都在聊 $${q.simbolo}。`),
+    tri(`top of the solana trending board: $${q.simbolo}, ${mc} mcap.`, `no topo da lista de alta da solana: $${q.simbolo}, ${mc} de market cap.`, `Solana 热门榜第一：$${q.simbolo}，市值 ${mc}。`),
+  ]);
+}
+
+const FECHOS: TextoTri[] = [
+  VAZIO,
+  VAZIO,
+  VAZIO,
+  tri("not financial advice, just a crystal with eyes.", "não é conselho financeiro, só um cristal com olhos.", "非投资建议，只是一颗有眼睛的水晶。"),
+  tri("stay safe out there.", "se cuida por aí.", "注意安全。"),
+  tri("dyor, always.", "faça sua própria pesquisa, sempre.", "永远自己做研究。"),
+  tri("more next hour.", "mais na próxima hora.", "下个小时见。"),
+  tri("back to watching.", "voltando a observar.", "继续观察。"),
+];
+
+const RECOMPRA = tri(
+  "it's monday: 25% of chroma's revenue goes to the $CHROMA buyback. receipt on x.",
+  "é segunda: 25% da receita da chroma vai pra recompra do $CHROMA. comprovante no x.",
+  "今天是周一：Chroma 收入的 25% 用于回购 $CHROMA，凭证发在 X 上。",
+);
 
 /** A nota da hora com as frases prontas — vale quando não há chave ou a API falha. */
-function escreverSemIa(m: Momento): string {
+function escreverSemIa(m: Momento): TextoTri {
   const agora = new Date();
   const partes = [sortear(ABERTURAS[periodo(agora.getUTCHours())])];
   partes.push(m.lancadasNaUltimaHora.length ? frasesDeLancamento(m) : sortear(SEM_LANCAMENTO));
   if (m.chroma) partes.push(frasesDoChroma(m.chroma));
   // Toda segunda (UTC) lembra da recompra; nas outras horas, às vezes, o que está quente.
-  if (agora.getUTCDay() === 1 && agora.getUTCHours() % 4 === 0) {
-    partes.push("it's monday: 25% of chroma's revenue goes to the $CHROMA buyback. receipt on x.");
-  } else if (m.quentes[0] && Math.random() < 0.5) {
-    partes.push(frasesDoQuente(m.quentes[0]));
-  }
+  if (agora.getUTCDay() === 1 && agora.getUTCHours() % 4 === 0) partes.push(RECOMPRA);
+  else if (m.quentes[0] && Math.random() < 0.5) partes.push(frasesDoQuente(m.quentes[0]));
   partes.push(sortear(FECHOS));
-  const texto = partes.filter(Boolean).join(" ");
-  return texto.length <= 280 ? texto : partes.slice(1, 3).join(" ").slice(0, 280);
+  const nota = juntar(partes);
+  return nota.en.length <= 280 ? nota : juntar(partes.slice(1, 3));
 }
 
 /** A nota da hora. Uma por hora, no máximo — a hora é a referência. */
@@ -265,9 +339,11 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
   const hora = new Date().toISOString().slice(0, 13);
   const momento = await lerMomento();
   const comIa = await escreverComIa(momento);
-  const texto = comIa ?? escreverSemIa(momento);
+  // A nota da IA sai só em inglês (é a voz dela); as prontas saem nas 3 línguas.
+  const textos: TextoTri | null = comIa ? null : escreverSemIa(momento);
+  const texto = comIa ?? textos!.en;
   const modelo = comIa ? MODELO : null;
-  const postou = await publicar("nota", hora, texto, modelo);
+  const postou = await publicar("nota", hora, texto, modelo, textos);
   // No Telegram só 3 notas por dia (12h, 18h e 23h UTC): de hora em hora seria spam no grupo.
   if (postou && [12, 18, 23].includes(new Date().getUTCHours())) {
     await enviarAoTelegram(`💎 Obsi: ${texto}\n\nchromalaunch.fun`);
@@ -278,17 +354,18 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
 /** Boas-vindas a uma moeda recém-lançada na Chroma (frase pronta: tem que sair na hora). */
 export async function darBoasVindas(moeda: { endereco: string; nome: string; simbolo: string; rede: string }): Promise<void> {
   const rede = moeda.rede === "robinhood" ? "robinhood chain" : "solana";
+  const s = `$${moeda.simbolo}`;
   const frases = [
-    `welcome to chroma, $${moeda.simbolo} (${moeda.nome}). just born on ${rede}. the curve is open 💎`,
-    `a new crystal formed: $${moeda.simbolo} launched on ${rede}. welcome, ${moeda.nome}.`,
-    `$${moeda.simbolo} just launched on chroma (${rede}). first candles are being written now.`,
+    tri(`welcome to chroma, ${s} (${moeda.nome}). just born on ${rede}. the curve is open 💎`, `bem-vinda à chroma, ${s} (${moeda.nome}). acabou de nascer na ${rede}. a curva está aberta 💎`, `欢迎来到 Chroma，${s}（${moeda.nome}）。刚在 ${rede} 诞生，曲线已开放 💎`),
+    tri(`a new crystal formed: ${s} launched on ${rede}. welcome, ${moeda.nome}.`, `um cristal novo se formou: ${s} lançada na ${rede}. bem-vinda, ${moeda.nome}.`, `一颗新水晶形成了：${s} 在 ${rede} 发行。欢迎，${moeda.nome}。`),
+    tri(`${s} just launched on chroma (${rede}). first candles are being written now.`, `${s} acabou de ser lançada na chroma (${rede}). as primeiras velas estão sendo escritas.`, `${s} 刚在 Chroma（${rede}）发行，第一根K线正在写下。`),
   ];
-  const texto = frases[moeda.endereco.charCodeAt(moeda.endereco.length - 1) % frases.length];
-  const postou = await publicar("boas-vindas", moeda.endereco, texto, null).catch((e) => {
+  const textos = frases[moeda.endereco.charCodeAt(moeda.endereco.length - 1) % frases.length];
+  const postou = await publicar("boas-vindas", moeda.endereco, textos.en, null, textos).catch((e) => {
     console.warn("[obsi] boas-vindas falhou:", e);
     return false;
   });
-  if (postou) await enviarAoTelegram(`💎 Obsi: ${texto}\n\nhttps://chromalaunch.fun/token/${moeda.endereco}`);
+  if (postou) await enviarAoTelegram(`💎 Obsi: ${textos.en}\n\nhttps://chromalaunch.fun/token/${moeda.endereco}`);
 }
 
 /**

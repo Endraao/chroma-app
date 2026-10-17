@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-import { useTextos } from "@/components/IdiomaProvider";
+import { useIdioma, useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import { timeAgo } from "@/lib/utils";
 
 /**
  * O mural do Obsi na home (16/10/2026): o mascote comenta a Chroma de hora em
  * hora e dá boas-vindas a cada moeda lançada. Os posts são em inglês (é a voz
- * dele); a moldura segue o idioma do site.
+ * dele); a moldura segue o idioma do site. Desde 17/10/2026 as notas
+ * prontas vêm nas 3 línguas e aparecem na do site.
  */
 const TEXTOS = traducoes({
   en: {
@@ -51,12 +52,14 @@ interface Post {
   id: number;
   tipo: string;
   texto: string;
+  textos: Partial<Record<string, string>> | null;
   modelo: string | null;
   criadoEm: number;
 }
 
 export function MuralDoObsi() {
   const t = useTextos(TEXTOS);
+  const idioma = useIdioma();
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [aberto, setAberto] = useState(false);
 
@@ -111,7 +114,7 @@ export function MuralDoObsi() {
               <span>·</span>
               <span>{timeAgo(p.criadoEm)}</span>
             </div>
-            <p className="text-[13.5px] leading-snug text-zinc-100">{p.texto}</p>
+            <p className="text-[13.5px] leading-snug text-zinc-100">{p.textos?.[idioma] || p.texto}</p>
             <div className="mt-1 text-[10px] uppercase tracking-wider text-zinc-600">
               {t.aviso}
               {p.modelo ? ` · runs on ${p.modelo}` : ""}
