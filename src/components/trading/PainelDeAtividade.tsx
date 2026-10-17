@@ -4,7 +4,7 @@ import { Preco } from "@/components/ui/Preco";
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount } from "wagmi";
 
@@ -241,11 +241,32 @@ function ListaDeNegocios({
    */
   const vistosRef = useRef<Set<string> | null>(null);
   const chave = (n: Negocio) => n.txHash + n.lado + n.tokens;
-  const novos = new Set(vistosRef.current ? lista.filter((n) => !vistosRef.current!.has(chave(n))).map(chave) : []);
-  useEffect(() => {
-    const vistos = vistosRef.current ?? new Set<string>();
-    for (const n of lista) vistos.add(chave(n));
-    vistosRef.current = vistos;
+  /*
+   * O destaque dura 2,5 s mesmo que a lista atualize no meio (ela atualiza a
+   * cada 4 s): sem guardar, a próxima renderização tirava a classe e cortava
+   * o efeito pela metade. Marcado num efeito de LAYOUT (antes de pintar a
+   * tela), pra linha nova já nascer com a animação — sem aparecer parada
+   * por um quadro antes de deslizar.
+   */
+  const [destaques, setDestaques] = useState<Set<string>>(() => new Set());
+  const novos = destaques;
+  useLayoutEffect(() => {
+    if (!vistosRef.current) {
+      vistosRef.current = new Set(lista.map(chave));
+      return;
+    }
+    const vistos = vistosRef.current;
+    const chegaram = lista.map(chave).filter((k) => !vistos.has(k));
+    if (!chegaram.length) return;
+    chegaram.forEach((k) => vistos.add(k));
+    setDestaques((d) => new Set([...d, ...chegaram]));
+    window.setTimeout(() => {
+      setDestaques((d) => {
+        const resto = new Set(d);
+        chegaram.forEach((k) => resto.delete(k));
+        return resto;
+      });
+    }, 2_500);
   });
   const filtrada = lista.filter((n) => {
     if (filtro === "compras") return n.lado === "compra";
