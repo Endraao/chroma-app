@@ -106,7 +106,7 @@ export function MuralDoObsi() {
 
       <ul className="space-y-2">
         {visiveis.map((p) => (
-          <li key={p.id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+          <li key={p.id} className="fx-surgir rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
             <div className="mb-1 flex items-center gap-2 text-[11px] text-zinc-500">
               <span className="font-bold text-zinc-300">Obsi</span>
               <span>·</span>

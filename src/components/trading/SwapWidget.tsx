@@ -515,9 +515,12 @@ function SolanaSwap({
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.voceRecebe}</p>
           <div className="tnum text-lg font-bold text-zinc-200">
-            {swap.quote && Number(swap.outAmount) > 0
-              ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
-              : "—"}
+            {/* A chave muda a cada cotação nova: o número dá um pulsinho quando atualiza. */}
+            <span key={swap.outAmount} className="fx-pulso">
+              {swap.quote && Number(swap.outAmount) > 0
+                ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
+                : "—"}
+            </span>
           </div>
         </div>
 
@@ -531,7 +534,7 @@ function SolanaSwap({
                   type="button"
                   onClick={() => setSlippage(pct)}
                   className={cn(
-                    "tnum rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-colors",
+                    "fx-aperto tnum rounded-full px-2.5 py-0.5 text-[11px] font-bold",
                     slippage === pct ? "bg-white/[0.1] text-zinc-50" : "text-zinc-500 hover:text-zinc-200",
                   )}
                 >
@@ -707,7 +710,7 @@ function AbasDeLado({
             disabled={disabled}
             onClick={() => onChange(s)}
             className={cn(
-              "rounded-full text-[14px] font-bold transition-colors disabled:opacity-40", compacto ? "py-1.5" : "py-2",
+              "fx-aperto rounded-full text-[14px] font-bold disabled:opacity-40", compacto ? "py-1.5" : "py-2",
               ativo
                 ? s === "buy"
                   ? "bg-bull text-ink-950"
@@ -745,7 +748,7 @@ function Atalho({
          botão "25%" passa a se chamar "Conecte a carteira…". */
       aria-label={rotulo}
       className={cn(
-        "rounded-full border py-2 text-[13px] font-bold transition-colors",
+        "fx-aperto rounded-full border py-2 text-[13px] font-bold",
         !ligado
           ? "cursor-not-allowed border-white/[0.04] bg-white/[0.02] text-zinc-700"
           : tom === "buy"

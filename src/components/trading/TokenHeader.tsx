@@ -1,5 +1,6 @@
 "use client";
 import { Preco } from "@/components/ui/Preco";
+import { PrecoVivo } from "@/components/ui/PrecoVivo";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
@@ -181,7 +182,7 @@ export function TokenHeader({
           selos e o endereço numa coluna estreita (16/10/2026).
         */}
         <div className="flex w-full items-baseline gap-2 lg:hidden">
-          <div className="tnum text-lg font-black text-zinc-50">$<Preco valor={price} /></div>
+          <div className="tnum text-lg font-black text-zinc-50"><PrecoVivo valor={price} /></div>
           <div className={cn("tnum text-[11px] font-semibold", up ? "text-bull" : "text-bear")}>
             {formatPct(variacao)} <span className="text-zinc-600">24h</span>
           </div>
@@ -192,7 +193,7 @@ export function TokenHeader({
         {/* Computador: o preço é o primeiro número (o canto direito virou o "Poste e ganhe"). */}
         <div className="hidden lg:block">
           <div className="text-[9.5px] font-semibold uppercase tracking-wider text-zinc-500">{t.preco}</div>
-          <div className="tnum text-[15px] font-black text-zinc-50">$<Preco valor={price} /></div>
+          <div className="tnum text-[15px] font-black text-zinc-50"><PrecoVivo valor={price} /></div>
         </div>
         <Numero rotulo={t.mcap} valor={formatUsd(marketCapAoVivo)} />
         <Numero

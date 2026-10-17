@@ -272,9 +272,11 @@ function ListaDeHolders({
               key={h.carteira}
               className={cn(
                 "flex items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 last:border-0",
+                "fx-surgir",
                 h.carteira === minha && "bg-marca/[0.06]",
                 naoEhCarteira && "opacity-75",
               )}
+              style={{ animationDelay: `${Math.min(i, 14) * 25}ms` }}
             >
               <span className="tnum w-5 shrink-0 text-right text-[11px] text-zinc-600">{i + 1}</span>
               <Identicon carteira={h.carteira} />
@@ -353,7 +355,11 @@ function ListaDeTraders({
         {lista.map((tr, i) => {
           const pct = tr.lucroUsd !== null && tr.investidoUsd > 0 ? (tr.lucroUsd / tr.investidoUsd) * 100 : null;
           return (
-            <li key={tr.carteira} className={cn("flex items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 last:border-0", tr.carteira === minha && "bg-marca/[0.06]")}>
+            <li
+              key={tr.carteira}
+              className={cn("fx-surgir flex items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 last:border-0", tr.carteira === minha && "bg-marca/[0.06]")}
+              style={{ animationDelay: `${Math.min(i, 14) * 25}ms` }}
+            >
               <span className="tnum w-5 shrink-0 text-right text-[11px] text-zinc-600">{i + 1}</span>
               <Identicon carteira={tr.carteira} />
               <div className="min-w-0 flex-1">
@@ -406,7 +412,7 @@ function Aba({ ativa, onClick, children }: { ativa: boolean; onClick: () => void
     <button
       onClick={onClick}
       className={cn(
-        "rounded-md px-3 py-1 text-[12px] font-bold transition-colors",
+        "fx-aperto rounded-md px-3 py-1 text-[12px] font-bold",
         ativa ? "bg-white/[0.08] text-zinc-50" : "text-zinc-500 hover:text-zinc-300",
       )}
     >

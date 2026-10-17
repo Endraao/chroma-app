@@ -1170,3 +1170,55 @@ body::after {
 .rolagem-discreta:hover {
   scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }
+
+/* ------------------------------------------------------------------ */
+/* EFEITOS (17/10/2026: "é tudo muito duro, as coisas aparecem e somem  */
+/* do nada"). Curtos e suaves: chegam deslizando, piscam a cor do lado  */
+/* e somem sozinhos. Nada fica em loop.                                 */
+/* ------------------------------------------------------------------ */
+@keyframes fx-entrar {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fx-surgir {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fx-flash-compra {
+  0% { background-color: rgba(0, 209, 143, 0.28); }
+  100% { background-color: rgba(0, 209, 143, 0); }
+}
+@keyframes fx-flash-venda {
+  0% { background-color: rgba(255, 77, 94, 0.28); }
+  100% { background-color: rgba(255, 77, 94, 0); }
+}
+@keyframes fx-texto-sobe {
+  0% { color: #00d18f; text-shadow: 0 0 12px rgba(0, 209, 143, 0.55); }
+  100% { text-shadow: 0 0 0 transparent; }
+}
+@keyframes fx-texto-desce {
+  0% { color: #ff4d5e; text-shadow: 0 0 12px rgba(255, 77, 94, 0.55); }
+  100% { text-shadow: 0 0 0 transparent; }
+}
+@keyframes fx-pulso {
+  0% { opacity: 0.45; transform: scale(0.98); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* Negócio novo na lista: desce deslizando e acende na cor do lado. */
+.fx-entrar-compra { animation: fx-entrar 0.4s cubic-bezier(0.22, 1, 0.36, 1), fx-flash-compra 1.8s ease-out; }
+.fx-entrar-venda { animation: fx-entrar 0.4s cubic-bezier(0.22, 1, 0.36, 1), fx-flash-venda 1.8s ease-out; }
+/* Bloco/linha que aparece: sobe de leve e ganha opacidade (com atraso pra cascata). */
+.fx-surgir { animation: fx-surgir 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+/* Preço que mudou: brilha verde/vermelho e volta à cor normal. */
+.fx-sobe { animation: fx-texto-sobe 0.9s ease-out; }
+.fx-desce { animation: fx-texto-desce 0.9s ease-out; }
+/* Número recalculado (cotação): um pulsinho discreto. */
+.fx-pulso { animation: fx-pulso 0.35s ease-out; display: inline-block; }
+/* Botões: afundam um pouco no clique. */
+.fx-aperto { transition: transform 0.12s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+.fx-aperto:active { transform: scale(0.96); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-entrar-compra, .fx-entrar-venda, .fx-surgir, .fx-sobe, .fx-desce, .fx-pulso { animation: none; }
+}

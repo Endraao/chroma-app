@@ -406,7 +406,7 @@ export function SecurityPanel({
       */}
 
       {aberto && (
-        <div className="border-t border-white/[0.06] px-3 py-2">
+        <div className="fx-surgir border-t border-white/[0.06] px-3 py-2">
           {/* Os pontos de atenção, com a explicação de cada um. */}
           {leves.length > 0 && (
             <div className="mb-2 space-y-1.5">

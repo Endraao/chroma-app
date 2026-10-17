@@ -4,7 +4,7 @@ import { Preco } from "@/components/ui/Preco";
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useAccount } from "wagmi";
 
@@ -233,14 +233,20 @@ function ListaDeNegocios({
   linkDaCarteira: (carteira: string) => string;
 }) {
   const t = useTextos(TEXTOS);
-  // Relógio pro destaque dos negócios novos (o render não pode ler a hora direto).
-  const [agora, setAgora] = useState(0);
+  /*
+   * Quais negócios já estavam na tela. Só os que chegam DEPOIS da primeira
+   * leitura ganham o efeito de entrada — senão a lista inteira "chegaria" ao
+   * abrir a página. A linha é montada uma vez (chave estável), então o efeito
+   * roda uma vez e não repete quando a lista atualiza.
+   */
+  const vistosRef = useRef<Set<string> | null>(null);
+  const chave = (n: Negocio) => n.txHash + n.lado + n.tokens;
+  const novos = new Set(vistosRef.current ? lista.filter((n) => !vistosRef.current!.has(chave(n))).map(chave) : []);
   useEffect(() => {
-    const tique = () => setAgora(Date.now());
-    tique();
-    const id = window.setInterval(tique, 2_000);
-    return () => window.clearInterval(id);
-  }, []);
+    const vistos = vistosRef.current ?? new Set<string>();
+    for (const n of lista) vistos.add(chave(n));
+    vistosRef.current = vistos;
+  });
   const filtrada = lista.filter((n) => {
     if (filtro === "compras") return n.lado === "compra";
     if (filtro === "vendas") return n.lado === "venda";
@@ -258,7 +264,7 @@ function ListaDeNegocios({
             key={f}
             onClick={() => setFiltro(f)}
             className={cn(
-              "shrink-0 rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors",
+              "fx-aperto shrink-0 rounded-full px-3 py-1 text-[11.5px] font-semibold",
               filtro === f ? "bg-white/[0.08] text-zinc-50" : "text-zinc-500 hover:text-zinc-300",
             )}
           >
@@ -274,16 +280,16 @@ function ListaDeNegocios({
           {filtrada.slice(0, 40).map((n) => {
             const compra = n.lado === "compra";
             const eu = minha !== null && n.carteira.toLowerCase() === minha;
-            const novo = agora > 0 && agora - n.em < 10_000;
+            const novo = novos.has(chave(n));
             const preco = n.tokens > 0 ? n.usd / n.tokens : 0;
             const mc = fornecimento > 0 ? preco * fornecimento : 0;
             return (
               <li
-                key={n.txHash + n.lado + n.tokens}
+                key={chave(n)}
                 className={cn(
                   "group relative flex items-center gap-3 border-b border-ink-700/40 px-3 py-2 transition-colors last:border-0 hover:bg-white/[0.03]",
                   eu && "bg-marca/[0.06]",
-                  novo && (compra ? "bg-bull/[0.07]" : "bg-bear/[0.07]"),
+                  novo && (compra ? "fx-entrar-compra" : "fx-entrar-venda"),
                 )}
               >
                 {/* faixa lateral na cor do lado */}

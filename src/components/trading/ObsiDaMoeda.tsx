@@ -151,7 +151,7 @@ export function ObsiDaMoeda({ token, report, carregando }: { token: TokenSummary
   if (!carregando && !leitura) return null;
 
   return (
-    <section className="rounded-xl border border-marca/20 bg-gradient-to-b from-marca/[0.05] to-transparent p-3">
+    <section className="fx-surgir rounded-xl border border-marca/20 bg-gradient-to-b from-marca/[0.05] to-transparent p-3">
       <div className="mb-2 flex items-center gap-2">
         <img src="/obsi.webp" alt="Obsi" className="size-8 rounded-full border border-marca/40 object-cover shadow-[0_0_14px_rgba(34,211,238,.3)]" />
         <h3 className="text-[14px] font-black text-zinc-50">{t.titulo}</h3>
