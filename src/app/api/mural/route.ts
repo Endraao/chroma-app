@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { cached } from "@/lib/cache";
 import { chaveInterna } from "@/lib/chave-interna";
-import { listarMural, postarNotaDaHora } from "@/lib/obsi";
+import { listarMural, mandarPostDoXAoDono, postarNotaDaHora } from "@/lib/obsi";
 
 /**
  * O mural do Obsi (16/10/2026).
@@ -23,6 +23,9 @@ export async function POST(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${chaveInterna("mural")}`) {
     return NextResponse.json({ error: "não autorizado" }, { status: 401 });
   }
+  // ?postx=personagem|diario → manda agora o post do X pro Telegram do dono (teste / pedido manual).
+  const postx = new URL(request.url).searchParams.get("postx");
+  if (postx === "personagem" || postx === "diario") return NextResponse.json(await mandarPostDoXAoDono(postx));
   const r = await postarNotaDaHora();
   return NextResponse.json(r);
 }

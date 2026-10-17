@@ -357,7 +357,81 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
   if (postou && [12, 18, 23].includes(new Date().getUTCHours())) {
     await enviarAoTelegram(`💎 Obsi: ${texto}\n\nchromalaunch.fun`);
   }
+  // Post do X pro dono 2x por dia: 14h UTC (11h BRT) personagem, 22h UTC (19h BRT) diário.
+  const h = new Date().getUTCHours();
+  if (postou && (h === 14 || h === 22)) await mandarPostDoXAoDono(h === 14 ? "personagem" : "diario", momento);
   return { postou, texto, modelo };
+}
+
+/* ------------------------------------------------------------------ */
+/* O Obsi no X — semiautomático e grátis (17/10/2026)                  */
+/* ------------------------------------------------------------------ */
+
+/*
+ * O dono não quer conta nova no X nem pagar a API (US$ 0,015/post): o Obsi
+ * fala pela própria @ChromaLaunch. Duas vezes por dia ele monta o post com
+ * frases prontas + números reais e manda no Telegram do dono com o botão
+ * "Postar no X" (x.com/intent/post já com o texto) — um toque e confirma.
+ * Sem link no texto: link em post de conta nova cai em "provável spam".
+ * Sem ".fun" escrito também (o X transforma em link).
+ */
+const PERSONAGEM = [
+  "gm from the crystal caves. i'm obsi, chroma's little obsidian agent. i watch the solana trenches all day and write down what i see. $CHROMA is my coin 💎",
+  "people ask what i am. a crystal with eyes and an oversized hoodie. i live on chroma, count candles at night and say hi to every coin born there.",
+  "every coin launched on chroma gets a welcome note from me on the home page. no bots, no fake volume. just a crystal saying hi 💎",
+  "launching on chroma is free. creators keep 30% of every trade fee, plus a cash bonus up to $1,000 per coin. i'll write your welcome note myself.",
+  "every monday 25% of chroma's revenue buys back $CHROMA, receipt posted here. small numbers for now. honest numbers always.",
+  "i don't sleep, i don't shill, i don't predict prices. i just watch the trenches and tell you what's real. that's the whole job.",
+  "fun fact: obsidian is volcanic glass. it forms when lava cools too fast to crystallize. i formed when a launchpad needed someone to watch the charts at 3am.",
+  "the trenches are loud. i try to be the quiet one with the real numbers. $CHROMA is my home, chroma is my cave, you're welcome to visit 💎",
+  "hold 10M $CHROMA and your swap fee on chroma drops from 0.75% to 0.60%. small perk from a small crystal.",
+  "some coins are born to moon. some are born to teach. i say hi to all of them the same way.",
+];
+
+function montarPostDoX(tipo: "personagem" | "diario", m: Momento): string {
+  if (tipo === "personagem") return sortear(PERSONAGEM);
+  const linhas = ["obsi's daily log 📓", `launches on chroma today: ${m.lancadas24h}`];
+  if (m.chroma) {
+    const holders = m.chroma.holders > 0 ? `, ${m.chroma.holders} holders` : "";
+    linhas.push(`$CHROMA: ${formatUsd(m.chroma.mcap)} mcap, ${formatPct(m.chroma.var24h)} 24h${holders}`);
+  }
+  if (m.quentes[0]) linhas.push(`trenches favorite today: $${m.quentes[0].simbolo}`);
+  linhas.push(
+    sortear([
+      "quiet days build the cave. more tomorrow.",
+      "honest numbers only. see you tomorrow 💎",
+      "not financial advice, just a crystal with eyes.",
+      "back to watching.",
+      m.lancadas24h === 0 ? "the launch button is still warm. it's free, by the way." : "welcome to every new crystal 💎",
+    ]),
+  );
+  return linhas.join("\n").slice(0, 280);
+}
+
+/** Manda o post do X pronto pro Telegram do dono, com o botão que abre o X já escrito. */
+export async function mandarPostDoXAoDono(tipo: "personagem" | "diario", momento?: Momento): Promise<{ ok: boolean; texto: string }> {
+  const texto = montarPostDoX(tipo, momento ?? (await lerMomento()));
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chat = process.env.TELEGRAM_CHAT_DONO;
+  if (!token || !chat) return { ok: false, texto };
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chat,
+        text: `💎 Post do Obsi pro X (${tipo === "personagem" ? "personagem" : "diário"})\n\n${texto}\n\nToque no botão: o X abre com o texto pronto, é só confirmar.`,
+        disable_web_page_preview: true,
+        reply_markup: { inline_keyboard: [[{ text: "Postar no X", url: `https://x.com/intent/post?text=${encodeURIComponent(texto)}` }]] },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!r.ok) console.warn("[obsi] post do X pro dono: telegram respondeu", r.status, await r.text().catch(() => ""));
+    return { ok: r.ok, texto };
+  } catch (erro) {
+    console.warn("[obsi] post do X pro dono falhou:", erro);
+    return { ok: false, texto };
+  }
 }
 
 /** Boas-vindas a uma moeda recém-lançada na Chroma (frase pronta: tem que sair na hora). */
