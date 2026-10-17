@@ -15,6 +15,8 @@ import type { TradeSide } from "@/lib/types";
 const SOL_DECIMALS = 9;
 /** Espera o usuário parar de digitar antes de cotar — senão é uma chamada por tecla. */
 const QUOTE_DEBOUNCE_MS = 450;
+/** De quanto em quanto tempo a cotação na tela é renovada sozinha. */
+const COTACAO_VIVA_MS = 1_500;
 
 /** Decimais e program id do mint mudam raramente: uma consulta por sessão basta. */
 const metaCache = new Map<string, { decimals: number; tokenProgram: string }>();
@@ -206,6 +208,30 @@ export function useSolanaSwap({
 
     return () => window.clearTimeout(timer);
   }, [tokenMint, inputMint, outputMint, valorDaRota, slippageBps, inputDecimals, enabled]);
+
+  /*
+   * COTAÇÃO VIVA (17/10/2026: "o mínimo garantido só muda a cada 20 s, o
+   * gráfico muda a cada segundo"). Com uma cotação na tela, ela é renovada a
+   * cada 1,5 s em silêncio — sem voltar pro "cotando…", sem apagar a atual se
+   * uma renovação falhar (a Jupiter limita ~60 pedidos/min por pessoa; 1,5 s
+   * fica abaixo disso). Para enquanto a aba está escondida ou a compra está
+   * sendo assinada.
+   */
+  useEffect(() => {
+    if (!enabled || !tokenMint || inputDecimals === null || valorDaRota <= 0n) return;
+    if (phase !== "ready") return;
+    const timer = window.setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      const id = ++requestRef.current;
+      try {
+        const data = await cotar({ inputMint, outputMint, amount: valorDaRota.toString(), slippageBps });
+        if (id === requestRef.current) setQuote(data);
+      } catch {
+        /* renovação falhou: a cotação anterior continua valendo */
+      }
+    }, COTACAO_VIVA_MS);
+    return () => window.clearInterval(timer);
+  }, [phase, tokenMint, inputMint, outputMint, valorDaRota, slippageBps, inputDecimals, enabled]);
 
   /* --- Valores derivados pra interface ----------------------------- */
   /*
