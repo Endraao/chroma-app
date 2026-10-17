@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey } from "@solana/web3.js";
 import { useAccount } from "wagmi";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
+import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
 
 /**
  * Quanto as carteiras conectadas valem: SOL e moedas da Solana, mais o ETH da
@@ -100,20 +102,51 @@ export function useWalletBalance() {
   const evm = useLeitura<SaldoEvm>(donoEvm);
 
   /*
-   * O total só existe se todas as partes conectadas tiverem valor em dólar.
-   * Somar uma parte e ignorar a outra (preço do ETH fora do ar, por exemplo)
-   * daria um número menor que o real com cara de certo.
+   * SOL NA HORA (17/10/2026: "logo que conecta, demora a ver o saldo real").
+   *
+   * A conta completa (/api/carteira) lê todas as moedas e os preços — ~2 s na
+   * Solana e ~6 s na Robinhood. Enquanto ela não chega, o saldo em SOL lido
+   * direto da rede (uma chamada, instantânea) vezes o preço do SOL já dá um
+   * número de verdade no topo; as moedas entram por cima quando chegarem.
    */
-  const partes: (number | null)[] = [];
-  if (donoSolana) partes.push(solana ? solana.totalUsd : null);
-  if (donoEvm) partes.push(evm && evm.ethUsd !== null ? evm.ethUsd + (evm.tokensUsd ?? 0) : null);
-  const usd =
-    partes.length > 0 && partes.every((p) => p !== null)
-      ? partes.reduce<number>((soma, p) => soma + (p as number), 0)
+  const { connection } = useConnection();
+  const precoDoSol = usePrecoDoSol();
+  const [solRapido, setSolRapido] = useState<number | null>(null);
+  const donoConectado = publicKey?.toBase58() ?? null;
+  useEffect(() => {
+    setSolRapido(null);
+    if (!donoConectado) return;
+    let cancelado = false;
+    connection
+      .getBalance(new PublicKey(donoConectado), "confirmed")
+      .then((l) => !cancelado && setSolRapido(l / 1e9))
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [connection, donoConectado]);
+
+  const parteSolana = solana
+    ? solana.totalUsd
+    : solRapido !== null && precoDoSol !== null && donoSolana === donoConectado
+      ? solRapido * precoDoSol
       : null;
 
+  /*
+   * Cada rede soma quando chega, em vez de o total esperar pela mais lenta (a
+   * Robinhood segurava o número do topo por ~6 s). `parcial` diz que ainda
+   * falta alguma parte — quem mostra pode indicar que está carregando.
+   */
+  const partes: (number | null)[] = [];
+  if (donoSolana) partes.push(parteSolana);
+  if (donoEvm) partes.push(evm && evm.ethUsd !== null ? evm.ethUsd + (evm.tokensUsd ?? 0) : null);
+  const prontas = partes.filter((p): p is number => p !== null);
+  const usd = prontas.length ? prontas.reduce((soma, p) => soma + p, 0) : null;
+  const parcial = prontas.length < partes.length || (Boolean(donoSolana) && !solana);
+
   return {
-    sol: solana?.sol ?? null,
+    parcial,
+    sol: solana?.sol ?? solRapido,
     eth: evm?.eth ?? null,
     usd,
     emMoedas:

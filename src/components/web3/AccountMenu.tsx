@@ -53,7 +53,7 @@ export function AccountMenu() {
   useEffect(() => {
     if (redeDoModal && account.conectadas[redeDoModal]) setRedeDoModal(null);
   }, [redeDoModal, account.conectadas]);
-  const { sol, eth, usd, emMoedas, quantasMoedas } = useWalletBalance();
+  const { sol, eth, usd, parcial, emMoedas, quantasMoedas } = useWalletBalance();
   const { wallet: solanaWallet, disconnect: disconnectSolana } = useWallet();
   const { disconnect: disconnectEvm } = useDisconnect();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -129,7 +129,8 @@ export function AccountMenu() {
           href="/profile"
           className="tnum hidden h-[38px] items-center gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 text-[13px] font-bold text-zinc-100 transition-colors hover:border-marca/40 sm:flex"
         >
-          {saldoVisivel ? formatUsd(usd) : "••••"}
+          {/* Ainda somando as moedas: o número pisca de leve até fechar a conta. */}
+          <span className={parcial ? "animate-pulse" : undefined}>{saldoVisivel ? formatUsd(usd) : "••••"}</span>
           <ChevronIcon />
         </Link>
       )}
