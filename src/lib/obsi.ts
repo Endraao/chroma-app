@@ -357,9 +357,6 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
   if (postou && [12, 18, 23].includes(new Date().getUTCHours())) {
     await enviarAoTelegram(`💎 Obsi: ${texto}\n\nchromalaunch.fun`);
   }
-  // Post do X pro dono 2x por dia: 14h UTC (11h BRT) personagem, 22h UTC (19h BRT) diário.
-  const h = new Date().getUTCHours();
-  if (postou && (h === 14 || h === 22)) await mandarPostDoXAoDono(h === 14 ? "personagem" : "diario", momento);
   return { postou, texto, modelo };
 }
 
@@ -369,9 +366,11 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
 
 /*
  * O dono não quer conta nova no X nem pagar a API (US$ 0,015/post): o Obsi
- * fala pela própria @ChromaLaunch. Duas vezes por dia ele monta o post com
- * frases prontas + números reais e manda no Telegram do dono com o botão
- * "Postar no X" (x.com/intent/post já com o texto) — um toque e confirma.
+ * fala pela própria @ChromaLaunch. Ele monta 2 posts por dia (personagem e
+ * diário) com frases prontas + números reais, e uma página ESCONDIDA do site
+ * (/obsi/[chave]) mostra os dois com o botão "Postar no X"
+ * (x.com/intent/post já com o texto) — um toque e confirma. Telegram
+ * descartado pelo dono (17/10/2026: "só tem bot e scam").
  * Sem link no texto: link em post de conta nova cai em "provável spam".
  * Sem ".fun" escrito também (o X transforma em link).
  */
@@ -388,8 +387,11 @@ const PERSONAGEM = [
   "some coins are born to moon. some are born to teach. i say hi to all of them the same way.",
 ];
 
-function montarPostDoX(tipo: "personagem" | "diario", m: Momento): string {
-  if (tipo === "personagem") return sortear(PERSONAGEM);
+/** O dia (UTC) desde 1970: o post de personagem muda por dia, e "outro" anda na lista. */
+const diaDeHoje = () => Math.floor(Date.now() / 86_400_000);
+
+function montarPostDoX(tipo: "personagem" | "diario", m: Momento, outro = 0): string {
+  if (tipo === "personagem") return PERSONAGEM[(diaDeHoje() + outro) % PERSONAGEM.length];
   const linhas = ["obsi's daily log 📓", `launches on chroma today: ${m.lancadas24h}`];
   if (m.chroma) {
     const holders = m.chroma.holders > 0 ? `, ${m.chroma.holders} holders` : "";
@@ -408,30 +410,10 @@ function montarPostDoX(tipo: "personagem" | "diario", m: Momento): string {
   return linhas.join("\n").slice(0, 280);
 }
 
-/** Manda o post do X pronto pro Telegram do dono, com o botão que abre o X já escrito. */
-export async function mandarPostDoXAoDono(tipo: "personagem" | "diario", momento?: Momento): Promise<{ ok: boolean; texto: string }> {
-  const texto = montarPostDoX(tipo, momento ?? (await lerMomento()));
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chat = process.env.TELEGRAM_CHAT_DONO;
-  if (!token || !chat) return { ok: false, texto };
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chat,
-        text: `💎 Post do Obsi pro X (${tipo === "personagem" ? "personagem" : "diário"})\n\n${texto}\n\nToque no botão: o X abre com o texto pronto, é só confirmar.`,
-        disable_web_page_preview: true,
-        reply_markup: { inline_keyboard: [[{ text: "Postar no X", url: `https://x.com/intent/post?text=${encodeURIComponent(texto)}` }]] },
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!r.ok) console.warn("[obsi] post do X pro dono: telegram respondeu", r.status, await r.text().catch(() => ""));
-    return { ok: r.ok, texto };
-  } catch (erro) {
-    console.warn("[obsi] post do X pro dono falhou:", erro);
-    return { ok: false, texto };
-  }
+/** Os 2 posts do dia pro X (página escondida /obsi/[chave]); `outro` troca o de personagem. */
+export async function postsDoXDeHoje(outro = 0): Promise<{ personagem: string; diario: string }> {
+  const momento = await lerMomento();
+  return { personagem: montarPostDoX("personagem", momento, outro), diario: montarPostDoX("diario", momento) };
 }
 
 /** Boas-vindas a uma moeda recém-lançada na Chroma (frase pronta: tem que sair na hora). */

@@ -20,6 +20,8 @@ import { ConviteParaCompartilhar } from "@/components/trading/ConviteParaCompart
 import { PainelSobre } from "@/components/trading/PainelSobre";
 import { AvisoRecompensas } from "@/components/trading/AvisoRecompensas";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
+import { PainelTreino } from "@/components/trading/PainelTreino";
+import { cn } from "@/lib/utils";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { BonusDoCriador } from "@/components/trading/BonusDoCriador";
 import { GanhosDoCriador } from "@/components/trading/GanhosDoCriador";
@@ -71,15 +73,34 @@ export interface StatsAoVivo {
 }
 
 const TEXTOS = traducoes({
-  en: { demo: "There is no market data for this address yet. Price, liquidity and volume below are illustrative only. The contract audit is still real.", sobre: "About" },
-  pt: { demo: "Ainda não há dados de mercado para este endereço. Preço, liquidez e volume abaixo são apenas ilustrativos. A auditoria do contrato continua sendo real.", sobre: "Sobre" },
-  zh: { demo: "该地址暂无市场数据。下方价格、流动性和交易量仅供示意，合约审计结果是真实的。", sobre: "简介" },
+  en: { demo: "There is no market data for this address yet. Price, liquidity and volume below are illustrative only. The contract audit is still real.", sobre: "About", real: "Real trade", treino: "Practice 🎮" },
+  pt: { demo: "Ainda não há dados de mercado para este endereço. Preço, liquidez e volume abaixo são apenas ilustrativos. A auditoria do contrato continua sendo real.", sobre: "Sobre", real: "Real", treino: "Treino 🎮" },
+  zh: { demo: "该地址暂无市场数据。下方价格、流动性和交易量仅供示意，合约审计结果是真实的。", sobre: "简介", real: "真实交易", treino: "练习 🎮" },
 });
+
+const CHAVE_DO_MODO = "chroma-modo-compra";
 
 export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; isDemo?: boolean }) {
   const t = useTextos(TEXTOS);
   const [price, setPrice] = useState(token.priceUsd);
   const [volumeDaSessao, setVolumeDaSessao] = useState(0);
+  // A última escolha (real/treino) volta na próxima moeda que a pessoa abrir.
+  const [modo, setModo] = useState<"real" | "treino">("real");
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(CHAVE_DO_MODO) === "treino") setModo("treino");
+    } catch {
+      /* sem armazenamento: começa no real */
+    }
+  }, []);
+  const trocarModo = (m: "real" | "treino") => {
+    setModo(m);
+    try {
+      window.localStorage.setItem(CHAVE_DO_MODO, m);
+    } catch {
+      /* sem armazenamento: vale só nesta página */
+    }
+  };
   /*
    * Holders pela GeckoTerminal, lido pelo navegador (cada visitante tem o
    * próprio limite). As fontes do servidor quase nunca traziam esse número.
@@ -229,16 +250,36 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
 
           {token.recompensasParaDetentores && <AvisoRecompensas />}
 
-          <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
-            <SwapWidget
-              symbol={token.symbol}
-              chain={token.chain}
-              tokenAddress={token.address}
-              pool={token.pairAddress ?? null}
-              priceUsd={price}
-              naCurvaDaChroma={token.dexId === "chroma-curve"}
-            />
-          </Suspense>
+          {/* Real ou treino (17/10/2026): o treino troca só o painel de compra, no mesmo lugar. */}
+          <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-1">
+            {(["real", "treino"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => trocarModo(m)}
+                className={cn(
+                  "rounded-md py-1.5 text-[12px] font-bold transition active:scale-95",
+                  modo === m ? "bg-marca/15 text-marca" : "text-zinc-500 hover:text-zinc-300",
+                )}
+              >
+                {m === "real" ? t.real : t.treino}
+              </button>
+            ))}
+          </div>
+
+          {modo === "treino" ? (
+            <PainelTreino address={token.address} chain={token.chain} symbol={token.symbol} imagem={token.imageUrl} priceUsd={price} />
+          ) : (
+            <Suspense fallback={<Skeleton className="h-[520px] rounded-2xl" />}>
+              <SwapWidget
+                symbol={token.symbol}
+                chain={token.chain}
+                tokenAddress={token.address}
+                pool={token.pairAddress ?? null}
+                priceUsd={price}
+                naCurvaDaChroma={token.dexId === "chroma-curve"}
+              />
+            </Suspense>
+          )}
 
           {/*
             A POSIÇÃO VEM LOGO ABAIXO DO BOTÃO, e não no fim da página.

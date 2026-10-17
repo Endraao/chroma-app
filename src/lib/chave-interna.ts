@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
  * variável na Netlify: sai do DATABASE_URL, que só o servidor conhece. Se
  * CRON_SECRET existir, vale ela.
  */
-export function chaveInterna(uso: "backup" | "migrar" | "mural"): string {
+export function chaveInterna(uso: "backup" | "migrar" | "mural" | "obsi-x"): string {
   if (uso === "backup" && process.env.CRON_SECRET) return process.env.CRON_SECRET;
   const base = process.env.DATABASE_URL;
   if (!base) throw new Error("DATABASE_URL não configurada");
