@@ -514,13 +514,19 @@ function SolanaSwap({
         <>
         <div className="flex items-baseline justify-between gap-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.voceRecebe}</p>
-          <div className="tnum text-lg font-bold text-zinc-200">
+          <div className="tnum text-right text-lg font-bold text-zinc-200">
             {/* A chave muda a cada cotação nova: o número dá um pulsinho quando atualiza. */}
             <span key={swap.outAmount} className="fx-pulso">
               {swap.quote && Number(swap.outAmount) > 0
                 ? `${Number(swap.outAmount).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}`
                 : "—"}
             </span>
+            {/* Em dólar também (17/10/2026: "eu lá vou saber quanto é 0,12 SOL"). */}
+            {swap.quote && Number(swap.outAmount) > 0 && (comprando ? priceUsd > 0 : Boolean(precoDoSol)) && (
+              <div className="text-[12px] font-semibold text-zinc-500">
+                ≈ {formatUsd(Number(swap.outAmount) * (comprando ? priceUsd : (precoDoSol ?? 0)))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -547,6 +553,9 @@ function SolanaSwap({
             <span className="text-zinc-500">{t.minimo}</span>
             <span className="tnum text-zinc-300">
               {swap.quote ? `${Number(swap.minReceived).toLocaleString(undefined, { maximumFractionDigits: comprando ? 0 : 6 })} ${comprando ? symbol : "SOL"}` : "—"}
+              {swap.quote && Number(swap.minReceived) > 0 && (comprando ? priceUsd > 0 : Boolean(precoDoSol)) && (
+                <span className="ml-1.5 text-zinc-500">≈ {formatUsd(Number(swap.minReceived) * (comprando ? priceUsd : (precoDoSol ?? 0)))}</span>
+              )}
             </span>
           </div>
           <div className="flex justify-between">
