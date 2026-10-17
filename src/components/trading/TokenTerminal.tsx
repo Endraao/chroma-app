@@ -292,7 +292,12 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
 
         {/* Negociações: embaixo do gráfico no computador; no celular, por último. */}
         <div className="min-w-0 lg:col-start-1 lg:row-start-2">
-          <PainelDeAtividade address={token.address} symbol={token.symbol} chain={token.chain} />
+          <PainelDeAtividade
+            address={token.address}
+            symbol={token.symbol}
+            chain={token.chain}
+            fornecimento={token.priceUsd > 0 ? token.marketCapUsd / token.priceUsd : 0}
+          />
         </div>
       </div>
 

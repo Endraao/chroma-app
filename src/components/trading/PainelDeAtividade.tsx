@@ -5,6 +5,8 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
 import { useEffect, useState } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useAccount } from "wagmi";
 
 import { TabelaDeTraders } from "@/components/trading/TabelaDeTraders";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
@@ -26,9 +28,9 @@ interface Negocio {
 const RECARREGA_MS = 4_000;
 
 const TEXTOS = traducoes({
-  en: { transacoes: "Transactions", traders: "Traders", aoVivo: "live", carregando: "Loading…", nenhum: "No trades yet. The first one could be yours.", quando: "Time", lado: "Side", trader: "Trader", preco: "Price", compra: "Buy", venda: "Sell" },
-  pt: { transacoes: "Transações", traders: "Traders", aoVivo: "ao vivo", carregando: "Carregando…", nenhum: "Nenhum negócio ainda. O primeiro pode ser o seu.", quando: "Quando", lado: "Lado", trader: "Trader", preco: "Preço", compra: "Compra", venda: "Venda" },
-  zh: { transacoes: "交易记录", traders: "交易者", aoVivo: "实时", carregando: "加载中…", nenhum: "还没有交易。第一笔可能就是你的。", quando: "时间", lado: "方向", trader: "交易者", preco: "价格", compra: "买入", venda: "卖出" },
+  en: { transacoes: "Transactions", traders: "Traders", aoVivo: "live", carregando: "Loading…", nenhum: "No trades yet. The first one could be yours.", quando: "Time", lado: "Side", trader: "Trader", preco: "Price", compra: "Buy", venda: "Sell", todas: "All", compras: "Buys", vendas: "Sells", grandes: "≥ $100", minhas: "Mine", voce: "YOU", mc: "MC", valor: "Value", nenhumFiltro: "No trades match this filter." },
+  pt: { transacoes: "Transações", traders: "Traders", aoVivo: "ao vivo", carregando: "Carregando…", nenhum: "Nenhum negócio ainda. O primeiro pode ser o seu.", quando: "Quando", lado: "Lado", trader: "Trader", preco: "Preço", compra: "Compra", venda: "Venda", todas: "Todas", compras: "Compras", vendas: "Vendas", grandes: "≥ $100", minhas: "Minhas", voce: "VOCÊ", mc: "MC", valor: "Valor", nenhumFiltro: "Nenhum negócio com esse filtro." },
+  zh: { transacoes: "交易记录", traders: "交易者", aoVivo: "实时", carregando: "加载中…", nenhum: "还没有交易。第一笔可能就是你的。", quando: "时间", lado: "方向", trader: "交易者", preco: "价格", compra: "买入", venda: "卖出", todas: "全部", compras: "买入", vendas: "卖出", grandes: "≥ $100", minhas: "我的", voce: "你", mc: "市值", valor: "金额", nenhumFiltro: "没有符合筛选条件的交易。" },
 });
 
 /**
@@ -42,12 +44,19 @@ export function PainelDeAtividade({
   address,
   symbol,
   chain,
+  fornecimento = 0,
 }: {
   address: string;
   symbol: string;
   chain: ChainId;
+  /** Fornecimento da moeda, pra mostrar o market cap de cada negócio. */
+  fornecimento?: number;
 }) {
   const t = useTextos(TEXTOS);
+  const [filtro, setFiltro] = useState<Filtro>("todas");
+  const { publicKey } = useWallet();
+  const { address: carteiraEvm } = useAccount();
+  const minha = (chain === "solana" ? publicKey?.toBase58() : carteiraEvm)?.toLowerCase() ?? null;
   const [aba, setAba] = useState<"negocios" | "holders">("negocios");
   const [negocios, setNegocios] = useState<Negocio[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -135,61 +144,18 @@ export function PainelDeAtividade({
           {t.nenhum}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="tnum w-full min-w-[720px] text-[12px]">
-            <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-zinc-600">
-                <th className="px-4 py-2.5 font-semibold">{t.quando}</th>
-                <th className="px-2 py-2.5 font-semibold">{t.lado}</th>
-                <th className="px-2 py-2.5 font-semibold">{t.trader}</th>
-                <th className="px-2 py-2.5 text-right font-semibold">{meta.nativeSymbol}</th>
-                <th className="px-2 py-2.5 text-right font-semibold">USD</th>
-                <th className="px-2 py-2.5 text-right font-semibold">{symbol}</th>
-                <th className="px-2 py-2.5 text-right font-semibold">{t.preco}</th>
-                <th className="px-4 py-2.5 text-right font-semibold">TX</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lista.slice(0, 30).map((n) => {
-                const compra = n.lado === "compra";
-                return (
-                  <tr key={n.txHash + n.lado + n.tokens} className="border-t border-ink-700/60">
-                    <td className="whitespace-nowrap px-4 py-2.5 text-zinc-500">{timeAgo(n.em)}</td>
-                    <td className="px-2 py-2.5">
-                      <span
-                        className={cn(
-                          "rounded border px-1.5 py-0.5 text-[11px] font-semibold",
-                          compra ? "border-bull/40 text-bull" : "border-bear/40 text-bear",
-                        )}
-                      >
-                        {compra ? t.compra : t.venda}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2.5 font-mono text-zinc-300">{shortenAddress(n.carteira, 4)}</td>
-                    <td className="px-2 py-2.5 text-right text-zinc-200">
-                      {precoNativo ? (n.usd / precoNativo).toFixed(5) : "—"}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-zinc-200">{formatUsd(n.usd)}</td>
-                    <td className="px-2 py-2.5 text-right text-zinc-300">{compacto(n.tokens)}</td>
-                    <td className="px-2 py-2.5 text-right text-zinc-400">
-                      $<Preco valor={n.tokens > 0 ? n.usd / n.tokens : 0} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <a
-                        href={linkDaTx(n.txHash)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-marca hover:underline"
-                      >
-                        {n.txHash.slice(0, 8)}… ↗
-                      </a>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ListaDeNegocios
+          lista={lista}
+          filtro={filtro}
+          setFiltro={setFiltro}
+          minha={minha}
+          symbol={symbol}
+          precoNativo={precoNativo}
+          simboloNativo={meta.nativeSymbol}
+          fornecimento={fornecimento}
+          linkDaTx={linkDaTx}
+          linkDaCarteira={(c) => `${meta.explorer.replace(/\/token\/$/, "")}/${meta.kind === "solana" ? "account" : "address"}/${c}`}
+        />
       )}
     </div>
   );
@@ -229,5 +195,164 @@ function Contador({ children }: { children: React.ReactNode }) {
     <span className="rounded border border-ink-600 px-1.5 text-[10px] font-bold text-zinc-400">
       {children}
     </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*
+ * A LISTA DE NEGÓCIOS no molde da Fomo (17/10/2026: "arruma a tela de
+ * transações também"). Em vez de uma planilha com hash de transação e preço
+ * de 10 casas, cada linha diz o que importa de relance: quem, comprou ou
+ * vendeu, quanto em dólar (grande e colorido) e a que market cap. A linha
+ * inteira abre a transação no explorador. Filtros pra achar as compras, as
+ * vendas, os negócios grandes e os seus.
+ */
+type Filtro = "todas" | "compras" | "vendas" | "grandes" | "minhas";
+
+function ListaDeNegocios({
+  lista,
+  filtro,
+  setFiltro,
+  minha,
+  symbol,
+  precoNativo,
+  simboloNativo,
+  fornecimento,
+  linkDaTx,
+  linkDaCarteira,
+}: {
+  lista: Negocio[];
+  filtro: Filtro;
+  setFiltro: (f: Filtro) => void;
+  minha: string | null;
+  symbol: string;
+  precoNativo: number | null;
+  simboloNativo: string;
+  fornecimento: number;
+  linkDaTx: (hash: string) => string;
+  linkDaCarteira: (carteira: string) => string;
+}) {
+  const t = useTextos(TEXTOS);
+  // Relógio pro destaque dos negócios novos (o render não pode ler a hora direto).
+  const [agora, setAgora] = useState(0);
+  useEffect(() => {
+    const tique = () => setAgora(Date.now());
+    tique();
+    const id = window.setInterval(tique, 2_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const filtrada = lista.filter((n) => {
+    if (filtro === "compras") return n.lado === "compra";
+    if (filtro === "vendas") return n.lado === "venda";
+    if (filtro === "grandes") return n.usd >= 100;
+    if (filtro === "minhas") return minha !== null && n.carteira.toLowerCase() === minha;
+    return true;
+  });
+  const filtros: Filtro[] = minha ? ["todas", "compras", "vendas", "grandes", "minhas"] : ["todas", "compras", "vendas", "grandes"];
+
+  return (
+    <>
+      <div className="flex gap-1 overflow-x-auto border-b border-ink-700/60 px-3 py-2 [scrollbar-width:none]">
+        {filtros.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFiltro(f)}
+            className={cn(
+              "shrink-0 rounded-full px-3 py-1 text-[11.5px] font-semibold transition-colors",
+              filtro === f ? "bg-white/[0.08] text-zinc-50" : "text-zinc-500 hover:text-zinc-300",
+            )}
+          >
+            {t[f]}
+          </button>
+        ))}
+      </div>
+
+      {filtrada.length === 0 ? (
+        <p className="px-4 py-10 text-center text-[13px] text-zinc-600">{t.nenhumFiltro}</p>
+      ) : (
+        <ul className="tnum">
+          {filtrada.slice(0, 40).map((n) => {
+            const compra = n.lado === "compra";
+            const eu = minha !== null && n.carteira.toLowerCase() === minha;
+            const novo = agora > 0 && agora - n.em < 10_000;
+            const preco = n.tokens > 0 ? n.usd / n.tokens : 0;
+            const mc = fornecimento > 0 ? preco * fornecimento : 0;
+            return (
+              <li
+                key={n.txHash + n.lado + n.tokens}
+                className={cn(
+                  "group relative flex items-center gap-3 border-b border-ink-700/40 px-3 py-2 transition-colors last:border-0 hover:bg-white/[0.03]",
+                  eu && "bg-marca/[0.06]",
+                  novo && (compra ? "bg-bull/[0.07]" : "bg-bear/[0.07]"),
+                )}
+              >
+                {/* faixa lateral na cor do lado */}
+                <span className={cn("absolute inset-y-1 left-0 w-0.5 rounded-full", compra ? "bg-bull/70" : "bg-bear/70")} />
+                <span className="w-9 shrink-0 text-[11px] text-zinc-500">{timeAgo(n.em)}</span>
+
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <Bolinha carteira={n.carteira} />
+                  <a href={linkDaCarteira(n.carteira)} target="_blank" rel="noopener noreferrer" className="truncate text-[12.5px] font-semibold text-zinc-200 hover:text-marca">
+                    {shortenAddress(n.carteira, 4)}
+                  </a>
+                  {eu && <span className="rounded bg-marca/15 px-1.5 py-px text-[9.5px] font-black tracking-wider text-marca">{t.voce}</span>}
+                  {n.usd >= 500 && <span title="whale">🐋</span>}
+                </div>
+
+                <div className={cn("w-[96px] shrink-0 text-right text-[13.5px] font-black", compra ? "text-bull" : "text-bear")}>
+                  {compra ? "+" : "-"}
+                  {formatUsd(n.usd)}
+                  <div className="text-[10px] font-semibold uppercase tracking-wider opacity-70">{compra ? t.compra : t.venda}</div>
+                </div>
+
+                <div className="hidden w-[92px] shrink-0 text-right text-[11.5px] leading-tight text-zinc-400 sm:block">
+                  {compacto(n.tokens)} <span className="text-zinc-600">{symbol}</span>
+                  <div className="text-zinc-500">
+                    {precoNativo ? (n.usd / precoNativo).toFixed(3) : "—"} {simboloNativo}
+                  </div>
+                </div>
+
+                <div className="hidden w-[78px] shrink-0 text-right text-[11.5px] text-zinc-400 md:block">
+                  {mc > 0 ? (
+                    <>
+                      <span className="text-zinc-600">{t.mc} </span>
+                      {formatUsd(mc)}
+                    </>
+                  ) : (
+                    <>
+                      $<Preco valor={preco} />
+                    </>
+                  )}
+                </div>
+
+                <a
+                  href={linkDaTx(n.txHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="tx"
+                  className="shrink-0 text-[13px] text-zinc-600 transition-colors group-hover:text-marca"
+                >
+                  ↗
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** Bolinha de cor derivada do endereço — a mesma da aba de holders. */
+function Bolinha({ carteira }: { carteira: string }) {
+  let h = 0;
+  for (let i = 0; i < carteira.length; i++) h = (h * 31 + carteira.charCodeAt(i)) >>> 0;
+  const matiz = h % 360;
+  return (
+    <span
+      aria-hidden
+      className="size-5 shrink-0 rounded-full"
+      style={{ background: `linear-gradient(135deg, hsl(${matiz} 58% 52%), hsl(${(matiz + 48) % 360} 58% 38%))` }}
+    />
   );
 }
