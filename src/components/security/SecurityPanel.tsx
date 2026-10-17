@@ -254,7 +254,7 @@ export function SecurityPanel({
   const t = useTextos(TEXTOS);
   const [aberto, setAberto] = useState(false);
 
-  if (carregando) return <Skeleton className="h-[86px] rounded-2xl" />;
+  if (carregando) return <Skeleton className="h-[38px] rounded-xl" />;
   if (!report) return null;
 
   /* A auditoria chega em português do servidor; aqui ela vira o idioma da página. */
@@ -268,6 +268,24 @@ export function SecurityPanel({
       checks: report.checks
         .filter((c) => c.id !== "lp_locked")
         .map((c) => (c.id === "liquidity" ? { ...c, level: "safe" as const, value: t.curvaValor } : c)),
+    };
+  }
+
+  /*
+   * Liquidez coerente com o resto (17/10/2026): o painel dizia "LP queimada"
+   * e, duas linhas abaixo, "Pools de liquidez: Nenhuma". A lista de pools vem
+   * de outra fonte e não conhece toda DEX; se o mercado mostra liquidez, ou a
+   * LP está provadamente queimada/travada, a pool existe.
+   */
+  const lpProvada = report.checks.some((c) => c.id === "lp_locked" && c.level === "safe");
+  if (!naCurva && ((liquidityUsd ?? 0) > 0 || lpProvada)) {
+    report = {
+      ...report,
+      checks: report.checks.map((c) =>
+        c.id === "liquidity" && c.level !== "safe"
+          ? { ...c, level: "safe" as const, value: (liquidityUsd ?? 0) > 0 ? formatUsd(liquidityUsd ?? 0) : "✓" }
+          : c,
+      ),
     };
   }
 
@@ -301,19 +319,19 @@ export function SecurityPanel({
     */
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border",
-        tom === "bear" ? "border-bear/25 bg-bear/[0.04]" : "border-white/[0.07] bg-white/[0.02]",
+        "overflow-hidden rounded-xl border",
+        tom === "bear" ? "border-bear/25 bg-bear/[0.04]" : "border-white/[0.06] bg-white/[0.015]",
       )}
     >
       <button
         onClick={() => setAberto((v) => !v)}
-        className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left"
       >
         <Sinal tom={tom} />
-        <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 flex-1 items-baseline gap-2">
           <span
             className={cn(
-              "block text-[12.5px] font-semibold",
+              "truncate text-[12px] font-semibold",
               tom === "bear" ? "text-bear" : tom === "warn" ? "text-warn/90" : "text-zinc-300",
             )}
           >
@@ -333,10 +351,10 @@ export function SecurityPanel({
             Os alertas leves são CONTADOS aqui, não listados lá fora. Assim o
             painel continua dizendo que existem, sem ocupar a coluna com eles.
           */}
-          <span className="block text-[11px] text-zinc-600">
-            {t.passaram(passaram.length)}
-            {leves.length > 0 && ` · ${t.atencao(leves.length)}`}
-          </span>
+        </span>
+        <span className="tnum shrink-0 rounded-full bg-white/[0.05] px-2 py-0.5 text-[10.5px] font-semibold text-zinc-400">
+          {passaram.length}/{report.checks.filter((c) => c.level !== "unknown").length} ✓
+          {leves.length > 0 && <span className="text-warn"> · {leves.length} !</span>}
         </span>
         <Seta aberto={aberto} />
       </button>
@@ -355,7 +373,7 @@ export function SecurityPanel({
         toque e está resumida no cabeçalho.
       */}
       {aVista.length > 0 && (
-        <div className="space-y-2 border-t border-white/[0.07] px-3.5 py-2.5">
+        <div className="space-y-1.5 border-t border-white/[0.06] px-3 py-2">
           {aVista.map((a) => (
             <div key={a.id}>
               <div
@@ -388,7 +406,7 @@ export function SecurityPanel({
       */}
 
       {aberto && (
-        <div className="space-y-1 border-t border-white/[0.07] bg-ink-950/40 px-3.5 py-2.5">
+        <div className="border-t border-white/[0.06] px-3 py-2">
           {/* Os pontos de atenção, com a explicação de cada um. */}
           {leves.length > 0 && (
             <div className="mb-2 space-y-1.5">
@@ -401,13 +419,15 @@ export function SecurityPanel({
             </div>
           )}
 
-          {report.checks
-            // "Não verificado" em liquidez travada e honeypot só contradizia o alerta de cima.
-            .filter((c) => !(c.level === "unknown" && (c.id === "honeypot" || c.id === "lp_locked")))
-            .map((c) => (
-            <Linha key={c.id} check={c} />
-          ))}
-          <p className="pt-1.5 text-[10px] leading-relaxed text-zinc-600">
+          <div className="grid grid-cols-2 gap-1">
+            {report.checks
+              // "Não verificado" em liquidez travada e honeypot só contradizia o alerta de cima.
+              .filter((c) => !(c.level === "unknown" && (c.id === "honeypot" || c.id === "lp_locked")))
+              .map((c) => (
+                <Linha key={c.id} check={c} />
+              ))}
+          </div>
+          <p className="pt-2 text-[10px] leading-relaxed text-zinc-600">
             {t.naoEGarantia}
           </p>
         </div>
@@ -579,9 +599,10 @@ function montarAlertas(
 
 function Linha({ check }: { check: SecurityCheck }) {
   return (
-    <div className="flex items-center gap-2 text-[11px]">
+    // Um "chip" por verificação, em grade de 2 colunas: cabe o painel inteiro sem rolar.
+    <div className="flex items-center gap-1.5 rounded-md bg-white/[0.025] px-2 py-1 text-[10.5px]" title={check.description}>
       <Ponto nivel={check.level} />
-      <span className="min-w-0 flex-1 truncate text-zinc-400" title={check.description}>
+      <span className="min-w-0 flex-1 truncate text-zinc-400">
         {check.label}
       </span>
       <span
