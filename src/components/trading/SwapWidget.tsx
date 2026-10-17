@@ -61,12 +61,10 @@ import type { ChainId, TradeSide } from "@/lib/types";
  * engrenagem, com padrão seguro, pra quem sabe o que faz mexer.
  */
 
-/** Valores em dólar, do jeito que se pensa em tamanho de ordem. */
-const ATALHOS_EM_DOLAR = [10, 100, 500, 1000];
 // Dentro do post do X: valores menores (quem compra pelo post testa com pouco).
 const ATALHOS_NO_POST = [5, 10, 100, 200];
 /** Porcentagens do saldo — de SOL na compra, do token na venda. */
-const ATALHOS_EM_PORCENTAGEM = [25, 50, 75, 100];
+const ATALHOS_EM_PORCENTAGEM = [25, 50, 100];
 
 const SLIPPAGES = [1, 3, 5, 10];
 
@@ -441,15 +439,16 @@ function SolanaSwap({
               onClick={() => atalhoEmPorcentagem(100)}
               disabled={swap.balance <= 0}
               title={comprando ? t.usaSaldoMenos(RESERVA_DE_REDE_SOL) : t.venderTodos(symbol)}
-              className="tnum normal-case tracking-normal text-zinc-500 hover:text-zinc-200 disabled:cursor-not-allowed"
+              className="tnum inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] py-1 pl-2.5 pr-1 text-[11px] font-semibold normal-case tracking-normal text-zinc-300 transition-colors hover:bg-white/[0.09] disabled:cursor-not-allowed"
             >
-              {t.saldoDois} <Preco valor={swap.balance} casas={comprando ? 4 : 2} /> {comprando ? "SOL" : symbol}
-              <span className="ml-1 font-bold text-marca">{t.maxMaiusc}</span>
+              <IconeCarteira />
+              <Preco valor={swap.balance} casas={comprando ? 4 : 2} /> {comprando ? "SOL" : symbol}
+              <span className="rounded-full bg-marca/15 px-2 py-0.5 text-[10px] font-black text-marca">{t.maxMaiusc}</span>
             </button>
           )}
         </div>
 
-        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-1.5" : "py-3")}>
+        <label className={cn("flex items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 transition-colors focus-within:border-marca/50", compacto ? "py-1.5" : "py-3")}>
           <input
             inputMode="decimal"
             value={digitado}
@@ -469,9 +468,10 @@ function SolanaSwap({
           </p>
         )}
 
-        <div className="grid grid-cols-4 gap-2">
-          {comprando
-            ? (compacto ? ATALHOS_NO_POST : ATALHOS_EM_DOLAR).map((v) => (
+        {/* 25% · 50% · 100% do saldo, na compra e na venda (pedido do dono, 17/10/2026). No post do X a compra continua em dólar. */}
+        <div className={cn("grid gap-2", comprando && compacto ? "grid-cols-4" : "grid-cols-3")}>
+          {comprando && compacto
+            ? ATALHOS_NO_POST.map((v) => (
                 <Atalho
                   key={v}
                   rotulo={`$${v}`}
@@ -484,8 +484,8 @@ function SolanaSwap({
             : ATALHOS_EM_PORCENTAGEM.map((v) => (
                 <Atalho
                   key={v}
-                  rotulo={v === 100 && !compacto ? t.maxMaiusc : `${v}%`}
-                  tom="sell"
+                  rotulo={`${v}%`}
+                  tom={comprando ? "buy" : "sell"}
                   ligado={atalhoPctLigado}
                   onClick={() => atalhoEmPorcentagem(v)}
                   titulo={atalhoPctLigado ? undefined : t.conecteParaPct}
@@ -524,15 +524,15 @@ function SolanaSwap({
         <div className="space-y-1 text-[11.5px]">
           <div className="flex items-center justify-between">
             <span className="text-zinc-500">{t.slippage}</span>
-            <div className="flex gap-1">
+            <div className="flex gap-0.5 rounded-full bg-white/[0.04] p-0.5">
               {[1, 3, 5].map((pct) => (
                 <button
                   key={pct}
                   type="button"
                   onClick={() => setSlippage(pct)}
                   className={cn(
-                    "tnum rounded border px-2 py-0.5 text-[11px] font-semibold",
-                    slippage === pct ? "border-marca bg-marca/15 text-marca" : "border-ink-600 text-zinc-500 hover:text-zinc-200",
+                    "tnum rounded-full px-2.5 py-0.5 text-[11px] font-bold transition-colors",
+                    slippage === pct ? "bg-white/[0.1] text-zinc-50" : "text-zinc-500 hover:text-zinc-200",
                   )}
                 >
                   {pct}%
@@ -562,7 +562,7 @@ function SolanaSwap({
         )}
 
         {embutido ? (
-          <Button variant={comprando ? "buy" : "sell"} size="lg" className="w-full" disabled={semValor} onClick={abrirJanelaDeCompra}>
+          <Button variant={comprando ? "buy" : "sell"} size="lg" className="w-full rounded-full" disabled={semValor} onClick={abrirJanelaDeCompra}>
             {semValor ? t.informeValor : `${comprando ? t.comprar : t.vender} ${symbol} ↗`}
           </Button>
         ) : (
@@ -698,7 +698,7 @@ function AbasDeLado({
 }) {
   const t = useTextos(TEXTOS);
   return (
-    <div className="grid grid-cols-2 gap-1.5 p-1.5">
+    <div className="m-2 grid grid-cols-2 gap-1 rounded-full bg-white/[0.04] p-1">
       {(["buy", "sell"] as TradeSide[]).map((s) => {
         const ativo = side === s;
         return (
@@ -707,7 +707,7 @@ function AbasDeLado({
             disabled={disabled}
             onClick={() => onChange(s)}
             className={cn(
-              "rounded-lg text-[14px] font-bold transition-colors disabled:opacity-40", compacto ? "py-1.5" : "py-2.5",
+              "rounded-full text-[14px] font-bold transition-colors disabled:opacity-40", compacto ? "py-1.5" : "py-2",
               ativo
                 ? s === "buy"
                   ? "bg-bull text-ink-950"
@@ -745,12 +745,12 @@ function Atalho({
          botão "25%" passa a se chamar "Conecte a carteira…". */
       aria-label={rotulo}
       className={cn(
-        "rounded-lg border py-2 text-[13px] font-semibold transition-colors",
+        "rounded-full border py-2 text-[13px] font-bold transition-colors",
         !ligado
-          ? "cursor-not-allowed border-ink-700 text-zinc-700"
+          ? "cursor-not-allowed border-white/[0.04] bg-white/[0.02] text-zinc-700"
           : tom === "buy"
-            ? "border-bull/25 bg-bull/[0.08] text-bull hover:bg-bull/[0.16]"
-            : "border-bear/25 bg-bear/[0.08] text-bear hover:bg-bear/[0.16]",
+            ? "border-white/[0.06] bg-white/[0.04] text-zinc-200 hover:border-bull/40 hover:bg-bull/[0.1] hover:text-bull"
+            : "border-white/[0.06] bg-white/[0.04] text-zinc-200 hover:border-bear/40 hover:bg-bear/[0.1] hover:text-bear",
       )}
     >
       {rotulo}
@@ -1147,7 +1147,7 @@ function EvmSwap({
               rel="noopener noreferrer"
               className="block"
             >
-              <Button variant="outline" size="lg" className="w-full">
+              <Button variant="outline" size="lg" className="w-full rounded-full">
                 {t.verExplorer}
               </Button>
             </a>
@@ -1177,18 +1177,18 @@ function EvmSwap({
             <button
               type="button"
               onClick={() => usarPorcentagem(100)}
-              className="tnum normal-case tracking-normal text-zinc-500 hover:text-zinc-200"
+              className="tnum inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] py-1 pl-2.5 pr-1 text-[11px] font-semibold normal-case tracking-normal text-zinc-300 transition-colors hover:bg-white/[0.09]"
             >
-              {t.saldoDois}{" "}
+              <IconeCarteira />
               {saldo === null
                 ? "…"
                 : `${saldo.toLocaleString(undefined, { maximumFractionDigits: ehCompra ? 5 : 2 })} ${ehCompra ? meta.nativeSymbol : symbol}`}
-              <span className="ml-1 font-bold text-marca">{t.maxMaiusc}</span>
+              <span className="rounded-full bg-marca/15 px-2 py-0.5 text-[10px] font-black text-marca">{t.maxMaiusc}</span>
             </button>
           )}
         </div>
 
-        <label className={cn("flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 focus-within:border-marca/50", compacto ? "py-1.5" : "py-3")}>
+        <label className={cn("flex items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 transition-colors focus-within:border-marca/50", compacto ? "py-1.5" : "py-3")}>
           <input
             inputMode="decimal"
             value={digitado}
@@ -1209,14 +1209,14 @@ function EvmSwap({
           </p>
         )}
 
-        <div className="grid grid-cols-4 gap-2">
-          {(ehCompra ? (compacto ? ATALHOS_NO_POST : ATALHOS_EM_DOLAR) : ATALHOS_EM_PORCENTAGEM).map((v) => (
+        <div className={cn("grid gap-2", ehCompra && compacto ? "grid-cols-4" : "grid-cols-3")}>
+          {(ehCompra && compacto ? ATALHOS_NO_POST : ATALHOS_EM_PORCENTAGEM).map((v) => (
             <Atalho
               key={v}
-              rotulo={ehCompra ? `$${v}` : v === 100 ? t.maxMaiusc : `${v}%`}
+              rotulo={ehCompra && compacto ? `${v}` : `${v}%`}
               tom={ehCompra ? "buy" : "sell"}
-              ligado={ehCompra ? precoDoEth > 0 : saldo !== null && saldo > 0}
-              onClick={() => (ehCompra ? precoDoEth > 0 && setDigitado(String(v)) : usarPorcentagem(v))}
+              ligado={ehCompra && compacto ? precoDoEth > 0 : saldo !== null && saldo > 0}
+              onClick={() => (ehCompra && compacto ? precoDoEth > 0 && setDigitado(String(v)) : usarPorcentagem(v))}
             />
           ))}
         </div>
@@ -1460,5 +1460,14 @@ function ReciboDaOperacao({ recibo, onFechar }: { recibo: Recibo; onFechar: () =
         style={{ animationDuration: `${DURACAO}ms`, animationPlayState: pausado ? "paused" : "running" }}
       />
     </div>
+  );
+}
+
+/** Carteirinha do selo de saldo. */
+function IconeCarteira() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-3.5 text-zinc-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h14a1 1 0 0 1 1 1v3h-4a2 2 0 0 0 0 4h4v3a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2V5" />
+    </svg>
   );
 }
