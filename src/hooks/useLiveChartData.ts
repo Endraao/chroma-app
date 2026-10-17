@@ -274,6 +274,7 @@ export function useLiveChartData({
         }
         if (adiantar !== null) window.clearTimeout(adiantar);
         if (cancelled) return;
+        if (Array.isArray(data)) data = emendarVelas(data);
 
         /*
          * Resposta vazia não é sucesso.
@@ -468,6 +469,12 @@ export function useLiveChartData({
    */
   const referenciaRef = useRef(0);
 
+  /** O último preço ao vivo aceito — a continuidade que o tique novo precisa respeitar. */
+  const ultimoAplicadoRef = useRef(0);
+  useEffect(() => {
+    ultimoAplicadoRef.current = 0;
+  }, [address]);
+
   useEffect(() => {
     if (!address) return;
     let cancelado = false;
@@ -512,7 +519,12 @@ export function useLiveChartData({
       const fator = preco / referencia;
       // Preço lido do estado da curva é exato, como o evento da Robinhood.
       const limite = chain === "robinhood" || ("exato" in tickDaPool && tickDaPool.exato) ? FATOR_MAXIMO_EVM : FATOR_MAXIMO;
-      if (fator > limite || fator < 1 / limite) {
+      // Tique estimado (variação dos cofres) longe do ÚLTIMO preço desenhado
+      // mas perto da âncora: é o mercado andando, não erro — e trocar pela
+      // âncora (atrasada ~20 s) fazia a vela pular entre dois preços.
+      const ultimo = ultimoAplicadoRef.current;
+      const pertoDoUltimo = ultimo > 0 && preco / ultimo < 1.5 && preco / ultimo > 1 / 1.5;
+      if ((fator > limite || fator < 1 / limite) && !(pertoDoUltimo && fator < 3 && fator > 1 / 3)) {
         /*
          * Fora da faixa: vale o preço do servidor, não o descarte puro.
          *
@@ -535,6 +547,7 @@ export function useLiveChartData({
     }
 
     precoPendenteRef.current = preco;
+    ultimoAplicadoRef.current = preco;
     volumePendenteRef.current += tickDaPool.volumeUsd;
   }, [tickDaPool, chain]);
 
@@ -699,4 +712,21 @@ async function velasDiretoDaGecko(
   } catch {
     return null;
   }
+}
+
+/**
+ * Velas emendadas, como na pump.fun (17/10/2026: "o gráfico tá meio bugado").
+ *
+ * A fonte abre cada vela no PRIMEIRO negócio do minuto, que raramente é o
+ * fechamento do minuto anterior — e o gráfico ficava cheio de degraus entre
+ * uma vela e a outra. Aqui cada vela abre onde a anterior fechou; a máxima e a
+ * mínima se esticam pra caber a abertura. O fechamento (o que de fato
+ * aconteceu no fim do minuto) não muda.
+ */
+function emendarVelas(velas: Candle[]): Candle[] {
+  return velas.map((v, i) => {
+    if (i === 0) return v;
+    const abre = velas[i - 1].close;
+    return { ...v, open: abre, high: Math.max(v.high, abre), low: Math.min(v.low, abre) };
+  });
 }
