@@ -86,7 +86,7 @@ interface Momento {
   lancadasNaUltimaHora: { nome: string; simbolo: string }[];
   lancadas24h: number;
   totalNaChroma: number;
-  chroma: { preco: number; mcap: number; var1h: number | null; var24h: number; holders: number; volume24h: number } | null;
+  chroma: { simbolo: string; preco: number; mcap: number; var1h: number | null; var24h: number; holders: number; volume24h: number } | null;
   quentes: { simbolo: string; var24h: number; mcap: number }[];
   ultimosPosts: string[];
 }
@@ -100,7 +100,7 @@ async function lerMomento(): Promise<Momento> {
     sql`SELECT texto FROM mural WHERE tipo = 'nota' ORDER BY criado_em DESC LIMIT 3`,
   ]);
 
-  const salvo = await lerDoCacheDoBanco<{ ca: string }>("token-oficial").catch(() => null);
+  const salvo = await lerDoCacheDoBanco<{ ca: string; simbolo?: string }>("token-oficial").catch(() => null);
   const ca = salvo?.ca || CA_DO_CHROMA;
   const [token, feed] = await Promise.all([
     ca ? fetchToken(ca).catch(() => null) : Promise.resolve(null),
@@ -113,6 +113,7 @@ async function lerMomento(): Promise<Momento> {
     totalNaChroma: Number((contagem as { total: number }[])[0]?.total ?? 0),
     chroma: token
       ? {
+          simbolo: salvo?.simbolo || token.symbol || "",
           preco: token.priceUsd,
           mcap: token.marketCapUsd,
           var1h: token.priceChanges?.h1 ?? null,
@@ -130,18 +131,20 @@ async function lerMomento(): Promise<Momento> {
 /* A voz                                                               */
 /* ------------------------------------------------------------------ */
 
-const PERSONA = `You are Obsi, the mascot of Chroma (chromalaunch.fun), a memecoin launchpad on Solana and Robinhood Chain.
+function persona(simbolo?: string): string {
+  const moeda = simbolo ? "$" + simbolo : "";
+  return `You are Obsi, the mascot of Chroma (chromalaunch.fun), a memecoin launchpad on Solana and Robinhood Chain.
 You are a small creature with a head of black obsidian crystal, glowing cyan eyes and an oversized dark hoodie. You live in the trenches at night under the aurora, watching charts.
 Voice: short, warm, a little mysterious, dry humor, honest. Lowercase is fine. At most one emoji.
-$CHROMA is YOUR coin: the community coin of Obsi and of Chroma. 25% of Chroma's revenue buys it back every Monday, with a receipt on X.
+${moeda ? moeda + " is YOUR coin: the official token of Chroma, home of Obsi." : "Chroma's official token is being relaunched: never name any coin as yours."}
 Every hour you write ONE note for the public wall on Chroma's home page, using ONLY the numbers you are given. Never invent numbers, coins or events.
 Rules:
 - Max 260 characters. Plain text, no links, no hashtags.
 - Never tell anyone to buy or sell. No price predictions. Never promise returns.
 - If nothing happened, say so honestly: a quiet hour is fine.
-- Talk about $CHROMA like a creature talks about its own home: with affection and honesty, never shilling. Not every note needs it.
-- Don't repeat the structure or opening of your previous notes.
+${moeda ? "- Talk about " + moeda + " like a creature talks about its own home: with affection and honesty, never shilling. Not every note needs it.\n" : ""}- Don't repeat the structure or opening of your previous notes.
 - Write the same note in English (en), Brazilian Portuguese (pt) and Simplified Chinese (zh). Same meaning, natural in each language, same numbers.`;
+}
 
 const FORMATO_DA_NOTA = jsonSchemaOutputFormat({
   type: "object",
@@ -162,7 +165,7 @@ async function escreverComIa(momento: Momento): Promise<TextoTri | null> {
       model: MODELO,
       max_tokens: 16000,
       output_config: { effort: "low", format: FORMATO_DA_NOTA },
-      system: PERSONA,
+      system: persona(momento.chroma?.simbolo),
       messages: [
         {
           role: "user",
@@ -276,6 +279,7 @@ function frasesDeLancamento(m: Momento): TextoTri {
 }
 
 function frasesDoChroma(c: NonNullable<Momento["chroma"]>): TextoTri {
+  const s = "$" + (c.simbolo || "token");
   const usa1h = c.var1h !== null;
   const v = usa1h ? (c.var1h as number) : c.var24h;
   const j = usa1h ? "1h" : "24h";
@@ -283,22 +287,22 @@ function frasesDoChroma(c: NonNullable<Momento["chroma"]>): TextoTri {
   const p = formatPct(v);
   if (v >= 5) {
     return sortear([
-      tri(`$CHROMA is moving: ${p} ${j}, ${mc} mcap.`, `$CHROMA se mexendo: ${p} em ${j}, ${mc} de market cap.`, `$CHROMA 在动：${j} ${p}，市值 ${mc}。`),
-      tri(`$CHROMA ${p} ${j}. my eyes are glowing a bit brighter. ${mc} mcap.`, `$CHROMA ${p} em ${j}. meus olhos estão brilhando um pouco mais. ${mc} de market cap.`, `$CHROMA ${j} ${p}。我的眼睛更亮了一点。市值 ${mc}。`),
-      tri(`green candles on $CHROMA: ${p} ${j}, now ${mc}.`, `velas verdes no $CHROMA: ${p} em ${j}, agora ${mc}.`, `$CHROMA 出现绿K：${j} ${p}，现在 ${mc}。`),
+      tri(`${s} is moving: ${p} ${j}, ${mc} mcap.`, `${s} se mexendo: ${p} em ${j}, ${mc} de market cap.`, `${s} 在动：${j} ${p}，市值 ${mc}。`),
+      tri(`${s} ${p} ${j}. my eyes are glowing a bit brighter. ${mc} mcap.`, `${s} ${p} em ${j}. meus olhos estão brilhando um pouco mais. ${mc} de market cap.`, `${s} ${j} ${p}。我的眼睛更亮了一点。市值 ${mc}。`),
+      tri(`green candles on ${s}: ${p} ${j}, now ${mc}.`, `velas verdes no ${s}: ${p} em ${j}, agora ${mc}.`, `${s} 出现绿K：${j} ${p}，现在 ${mc}。`),
     ]);
   }
   if (v <= -5) {
     return sortear([
-      tri(`$CHROMA ${p} ${j}, ${mc} mcap. red days happen. we keep building.`, `$CHROMA ${p} em ${j}, ${mc} de market cap. dia vermelho acontece. a gente segue construindo.`, `$CHROMA ${j} ${p}，市值 ${mc}。红色的日子总会有，我们继续建设。`),
-      tri(`$CHROMA cooled off: ${p} ${j}. ${mc} mcap. still shipping.`, `$CHROMA esfriou: ${p} em ${j}. ${mc} de market cap. seguimos entregando.`, `$CHROMA 降温了：${j} ${p}。市值 ${mc}。我们照常交付。`),
-      tri(`$CHROMA at ${mc}, ${p} ${j}. crystals form under pressure.`, `$CHROMA em ${mc}, ${p} em ${j}. cristais se formam sob pressão.`, `$CHROMA 市值 ${mc}，${j} ${p}。水晶在压力下形成。`),
+      tri(`${s} ${p} ${j}, ${mc} mcap. red days happen. we keep building.`, `${s} ${p} em ${j}, ${mc} de market cap. dia vermelho acontece. a gente segue construindo.`, `${s} ${j} ${p}，市值 ${mc}。红色的日子总会有，我们继续建设。`),
+      tri(`${s} cooled off: ${p} ${j}. ${mc} mcap. still shipping.`, `${s} esfriou: ${p} em ${j}. ${mc} de market cap. seguimos entregando.`, `${s} 降温了：${j} ${p}。市值 ${mc}。我们照常交付。`),
+      tri(`${s} at ${mc}, ${p} ${j}. crystals form under pressure.`, `${s} em ${mc}, ${p} em ${j}. cristais se formam sob pressão.`, `${s} 市值 ${mc}，${j} ${p}。水晶在压力下形成。`),
     ]);
   }
   return sortear([
-    tri(`$CHROMA steady at ${mc} mcap (${p} ${j}).`, `$CHROMA estável em ${mc} de market cap (${p} em ${j}).`, `$CHROMA 稳定在市值 ${mc}（${j} ${p}）。`),
-    tri(`$CHROMA: ${mc} mcap, ${p} ${j}. calm waters.`, `$CHROMA: ${mc} de market cap, ${p} em ${j}. águas calmas.`, `$CHROMA：市值 ${mc}，${j} ${p}。风平浪静。`),
-    tri(`$CHROMA sitting at ${mc}, ${p} ${j}.`, `$CHROMA parado em ${mc}, ${p} em ${j}.`, `$CHROMA 停在 ${mc}，${j} ${p}。`),
+    tri(`${s} steady at ${mc} mcap (${p} ${j}).`, `${s} estável em ${mc} de market cap (${p} em ${j}).`, `${s} 稳定在市值 ${mc}（${j} ${p}）。`),
+    tri(`${s}: ${mc} mcap, ${p} ${j}. calm waters.`, `${s}: ${mc} de market cap, ${p} em ${j}. águas calmas.`, `${s}：市值 ${mc}，${j} ${p}。风平浪静。`),
+    tri(`${s} sitting at ${mc}, ${p} ${j}.`, `${s} parado em ${mc}, ${p} em ${j}.`, `${s} 停在 ${mc}，${j} ${p}。`),
   ]);
 }
 
@@ -323,11 +327,6 @@ const FECHOS: TextoTri[] = [
   tri("back to watching.", "voltando a observar.", "继续观察。"),
 ];
 
-const RECOMPRA = tri(
-  "it's monday: 25% of chroma's revenue goes to the $CHROMA buyback. receipt on x.",
-  "é segunda: 25% da receita da chroma vai pra recompra do $CHROMA. comprovante no x.",
-  "今天是周一：Chroma 收入的 25% 用于回购 $CHROMA，凭证发在 X 上。",
-);
 
 /** A nota da hora com as frases prontas — vale quando não há chave ou a API falha. */
 function escreverSemIa(m: Momento): TextoTri {
@@ -335,9 +334,8 @@ function escreverSemIa(m: Momento): TextoTri {
   const partes = [sortear(ABERTURAS[periodo(agora.getUTCHours())])];
   partes.push(m.lancadasNaUltimaHora.length ? frasesDeLancamento(m) : sortear(SEM_LANCAMENTO));
   if (m.chroma) partes.push(frasesDoChroma(m.chroma));
-  // Toda segunda (UTC) lembra da recompra; nas outras horas, às vezes, o que está quente.
-  if (agora.getUTCDay() === 1 && agora.getUTCHours() % 4 === 0) partes.push(RECOMPRA);
-  else if (m.quentes[0] && Math.random() < 0.5) partes.push(frasesDoQuente(m.quentes[0]));
+  // Às vezes, o que está quente na Solana (a recompra saiu junto com o $CHROMA, 18/10/2026).
+  if (m.quentes[0] && Math.random() < 0.5) partes.push(frasesDoQuente(m.quentes[0]));
   partes.push(sortear(FECHOS));
   const nota = juntar(partes);
   return nota.en.length <= 280 ? nota : juntar(partes.slice(1, 3));
@@ -375,15 +373,14 @@ export async function postarNotaDaHora(): Promise<{ postou: boolean; texto: stri
  * Sem ".fun" escrito também (o X transforma em link).
  */
 const PERSONAGEM = [
-  "gm from the crystal caves. i'm obsi, chroma's little obsidian agent. i watch the solana trenches all day and write down what i see. $CHROMA is my coin 💎",
+  "gm from the crystal caves. i'm obsi, chroma's little obsidian agent. i watch the solana trenches all day and write down what i see. {moeda} is my coin 💎",
   "people ask what i am. a crystal with eyes and an oversized hoodie. i live on chroma, count candles at night and say hi to every coin born there.",
   "every coin launched on chroma gets a welcome note from me on the home page. no bots, no fake volume. just a crystal saying hi 💎",
   "launching on chroma is free. creators keep 30% of every trade fee, plus a cash bonus up to $1,000 per coin. i'll write your welcome note myself.",
-  "every monday 25% of chroma's revenue buys back $CHROMA, receipt posted here. small numbers for now. honest numbers always.",
   "i don't sleep, i don't shill, i don't predict prices. i just watch the trenches and tell you what's real. that's the whole job.",
   "fun fact: obsidian is volcanic glass. it forms when lava cools too fast to crystallize. i formed when a launchpad needed someone to watch the charts at 3am.",
-  "the trenches are loud. i try to be the quiet one with the real numbers. $CHROMA is my home, chroma is my cave, you're welcome to visit 💎",
-  "hold 10M $CHROMA and your swap fee on chroma drops from 0.75% to 0.60%. small perk from a small crystal.",
+  "the trenches are loud. i try to be the quiet one with the real numbers. {moeda} is my home, chroma is my cave, you're welcome to visit 💎",
+  "hold 10M {moeda} and your swap fee on chroma drops from 0.75% to 0.60%. small perk from a small crystal.",
   "some coins are born to moon. some are born to teach. i say hi to all of them the same way.",
 ];
 
@@ -391,11 +388,16 @@ const PERSONAGEM = [
 const diaDeHoje = () => Math.floor(Date.now() / 86_400_000);
 
 function montarPostDoX(tipo: "personagem" | "diario", m: Momento, outro = 0): string {
-  if (tipo === "personagem") return PERSONAGEM[(diaDeHoje() + outro) % PERSONAGEM.length];
+  if (tipo === "personagem") {
+    // {moeda} = o token oficial; sem token registrado, essas frases ficam de fora.
+    const simbolo = m.chroma?.simbolo;
+    const lista = simbolo ? PERSONAGEM : PERSONAGEM.filter((f) => !f.includes("{moeda}"));
+    return lista[(diaDeHoje() + outro) % lista.length].split("{moeda}").join("$" + simbolo);
+  }
   const linhas = ["obsi's daily log 📓", `launches on chroma today: ${m.lancadas24h}`];
   if (m.chroma) {
     const holders = m.chroma.holders > 0 ? `, ${m.chroma.holders} holders` : "";
-    linhas.push(`$CHROMA: ${formatUsd(m.chroma.mcap)} mcap, ${formatPct(m.chroma.var24h)} 24h${holders}`);
+    linhas.push(`${m.chroma.simbolo || "token"}: ${formatUsd(m.chroma.mcap)} mcap, ${formatPct(m.chroma.var24h)} 24h${holders}`);
   }
   if (m.quentes[0]) linhas.push(`trenches favorite today: $${m.quentes[0].simbolo}`);
   linhas.push(

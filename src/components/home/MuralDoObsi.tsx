@@ -65,13 +65,14 @@ export function MuralDoObsi() {
   const idioma = useIdioma();
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [aberto, setAberto] = useState(false);
-  const [ca, setCa] = useState("");
+  const [oficial, setOficial] = useState({ ca: "", simbolo: "" });
+  const ca = oficial.ca;
 
-  // O $CHROMA é a moeda do Obsi (17/10/2026): o endereço vem do banco, trocável sem recompilar.
+  // O token oficial é a moeda do Obsi (17/10/2026): o endereço vem do banco, trocável sem recompilar.
   useEffect(() => {
     fetch("/api/token-oficial")
       .then((r) => r.json())
-      .then((d: { ca?: string }) => setCa(d.ca ?? ""))
+      .then((d: { ca?: string; simbolo?: string }) => setOficial({ ca: d.ca ?? "", simbolo: d.simbolo ?? "" }))
       .catch(() => {});
   }, []);
 
@@ -118,7 +119,7 @@ export function MuralDoObsi() {
             className="shrink-0 rounded-lg border border-marca/40 bg-marca/10 px-2.5 py-1.5 text-center leading-tight transition hover:bg-marca/20 active:scale-95"
           >
             <span className="block text-[10px] uppercase tracking-wider text-zinc-400">{t.moeda}</span>
-            <span className="block text-[13px] font-black text-marca">$CHROMA</span>
+            <span className="block text-[13px] font-black text-marca">{oficial.simbolo ? `${oficial.simbolo}` : "Token"}</span>
           </a>
         )}
       </div>

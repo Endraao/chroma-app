@@ -7,7 +7,7 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import { cn } from "@/lib/utils";
 import { CA_DO_CHROMA } from "@/lib/token-oficial";
-import { useCaDoChroma } from "@/hooks/useCaDoChroma";
+import { useTokenOficial } from "@/hooks/useCaDoChroma";
 
 /**
  * O contrato OFICIAL do $CHROMA, fixo no site (pedido do dono, 02/10/2026).
@@ -27,7 +27,7 @@ const TEXTOS = traducoes({
 export function TokenOficial({ compacto = false, className }: { compacto?: boolean; className?: string }) {
   const t = useTextos(TEXTOS);
   const [copiado, setCopiado] = useState(false);
-  const ca = useCaDoChroma();
+  const { ca, simbolo } = useTokenOficial();
   if (!ca) return null;
 
   const copiar = async () => {
@@ -48,7 +48,7 @@ export function TokenOficial({ compacto = false, className }: { compacto?: boole
       )}
     >
       <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-marca">
-        {t.oficial} · $CHROMA
+        {t.oficial}{simbolo ? ` · ${simbolo}` : ""}
       </span>
       <button
         type="button"
