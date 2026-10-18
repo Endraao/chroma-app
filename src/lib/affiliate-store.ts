@@ -5,6 +5,7 @@ import type { ChainId } from "./types";
 import { banco, sql } from "./db";
 import { precosNativos } from "./precos-nativos";
 import { MOEDA_DA_REDE, type AffiliateSummary, type GanhosDaRede } from "./affiliate-types";
+import { transporteRobinhood } from "@/lib/rpc-robinhood";
 
 export type { AffiliateSummary, GanhosDaRede };
 
@@ -226,7 +227,7 @@ async function comSimbolos(trades: AffiliateRecord[]): Promise<AffiliateRecord[]
     ]);
     const cliente = createPublicClient({
       chain: robinhoodChain,
-      transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0]),
+      transport: transporteRobinhood(),
     });
     await Promise.all(
       faltando.map(async (a) => {

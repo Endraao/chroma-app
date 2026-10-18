@@ -2,6 +2,7 @@ import { createPublicClient, http, parseAbi, type Address } from "viem";
 
 import { cached } from "@/lib/cache";
 import { robinhoodChain } from "@/lib/web3";
+import { transporteRobinhood } from "@/lib/rpc-robinhood";
 
 /**
  * GET /api/logo/0x… → a arte da moeda, lida do PRÓPRIO contrato.
@@ -22,7 +23,7 @@ import { robinhoodChain } from "@/lib/web3";
 
 const cliente = createPublicClient({
   chain: robinhoodChain,
-  transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0]),
+  transport: transporteRobinhood(),
 });
 
 const ABI = parseAbi(["function logo() view returns (string)", "function symbol() view returns (string)"]);

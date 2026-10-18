@@ -9,6 +9,7 @@ import { temposDosBlocos } from "@/lib/tempo-dos-blocos";
 import { robinhoodChain } from "@/lib/web3";
 import type { NegocioDoPool } from "@/lib/market";
 import type { Candle, TokenSummary } from "@/lib/types";
+import { transporteRobinhood } from "@/lib/rpc-robinhood";
 
 /**
  * Moeda lançada na curva da Pons (Robinhood Chain), lida direto dos contratos.
@@ -22,7 +23,7 @@ import type { Candle, TokenSummary } from "@/lib/types";
 
 const cliente = createPublicClient({
   chain: robinhoodChain,
-  transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0]),
+  transport: transporteRobinhood(),
 });
 
 const ESCALA = 1e18;

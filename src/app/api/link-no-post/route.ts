@@ -4,6 +4,7 @@ import { createPublicClient, http, parseEther } from "viem";
 
 import { gravarNoCacheDoBanco, lerDoCacheDoBanco } from "@/lib/db";
 import { robinhoodChain } from "@/lib/web3";
+import { transporteRobinhood } from "@/lib/rpc-robinhood";
 
 /**
  * "MEU LINK" DENTRO DO POST DO X (pedido do dono, 08/10/2026): quem quer gerar
@@ -44,7 +45,7 @@ async function conferirNaSolana(carteira: string, tx: string): Promise<boolean> 
 
 async function conferirNaRobinhood(carteira: string, tx: string): Promise<boolean> {
   if (!PLATAFORMA_EVM || !/^0x[0-9a-fA-F]{64}$/.test(tx)) return false;
-  const cliente = createPublicClient({ chain: robinhoodChain, transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0]) });
+  const cliente = createPublicClient({ chain: robinhoodChain, transport: transporteRobinhood() });
   const hash = tx as `0x${string}`;
   const [t, recibo] = await Promise.all([
     cliente.getTransaction({ hash }).catch(() => null),

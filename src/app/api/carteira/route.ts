@@ -8,11 +8,12 @@ import { precosNativos } from "@/lib/precos-nativos";
 import { robinhoodChain } from "@/lib/web3";
 import { saldosNaCarteiraEvm } from "@/lib/curva-evm";
 import { moedasDaChroma } from "@/lib/moedas-da-chroma";
+import { URL_DO_NO_ROBINHOOD, fetchDaRobinhood } from "@/lib/rpc-robinhood";
 
 /** Saldo nativo na Robinhood Chain, pelo mesmo nó que a ponte `/api/rpc/robinhood` usa. */
 async function saldoEth(dono: string): Promise<bigint> {
-  const no = process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0];
-  const r = await fetch(no, {
+  const no = URL_DO_NO_ROBINHOOD;
+  const r = await fetchDaRobinhood(no, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [dono, "latest"] }),

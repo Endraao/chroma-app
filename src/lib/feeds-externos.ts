@@ -8,6 +8,7 @@ import { lerMoedaDaPons, precoNaPons, progressoNaPons } from "@/lib/pons";
 import { precosNativos } from "@/lib/precos-nativos";
 import { robinhoodChain } from "@/lib/web3";
 import type { TokenSummary } from "@/lib/types";
+import { transporteRobinhood } from "@/lib/rpc-robinhood";
 
 /**
  * Mais moedas na vitrine (pedido do dono, 30/09/2026): as de destaque e as
@@ -118,7 +119,7 @@ export async function moedasDaCurvaSolana(): Promise<TokenSummary[]> {
 
 const cliente = createPublicClient({
   chain: robinhoodChain,
-  transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0]),
+  transport: transporteRobinhood(),
 });
 const EVENTO_LANCADA = parseAbiItem(
   "event TokenLaunched(address indexed token, address indexed curve, address indexed deployer, address pairToken, uint256 launchConfigId, uint256 graduationThreshold)",

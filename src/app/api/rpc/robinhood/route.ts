@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { robinhoodChain } from "@/lib/web3";
+import { URL_DO_NO_ROBINHOOD, fetchDaRobinhood } from "@/lib/rpc-robinhood";
 
 /**
  * POST /api/rpc/robinhood — ponte pro nó da Robinhood Chain.
@@ -197,9 +198,9 @@ export async function POST(request: Request) {
      * prefixo público, o valor vai junto no pacote que o navegador baixa — e
      * se um dia for um nó pago com chave no endereço, a chave iria junto.
      */
-    const no = process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0];
+    const no = URL_DO_NO_ROBINHOOD;
 
-    const resposta = await fetch(no, {
+    const resposta = await fetchDaRobinhood(no, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

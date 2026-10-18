@@ -6,9 +6,10 @@ import type { TokenSummary } from "@/lib/types";
 import { valorDaCarteira } from "@/lib/carteira";
 import { precosNativos } from "@/lib/precos-nativos";
 import { robinhoodChain } from "@/lib/web3";
+import { URL_DO_NO_ROBINHOOD, fetchDaRobinhood } from "@/lib/rpc-robinhood";
 
 async function saldoEth(dono: string): Promise<bigint> {
-  const r = await fetch(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0], {
+  const r = await fetchDaRobinhood(URL_DO_NO_ROBINHOOD, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [dono, "latest"] }),

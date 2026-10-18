@@ -17,6 +17,7 @@ import { temposDosBlocos } from "@/lib/tempo-dos-blocos";
 import { robinhoodChain } from "@/lib/web3";
 import type { NegocioDoPool } from "@/lib/market";
 import type { Candle, TokenSummary } from "@/lib/types";
+import { transporteRobinhood } from "@/lib/rpc-robinhood";
 
 /**
  * Moeda da curva da Chroma na Robinhood Chain, lida direto do contrato.
@@ -82,7 +83,7 @@ async function contarHolders(moeda: string): Promise<number> {
 
 const cliente = createPublicClient({
   chain: robinhoodChain,
-  transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0]),
+  transport: transporteRobinhood(),
 });
 
 export interface MoedaDaCurvaEvm {

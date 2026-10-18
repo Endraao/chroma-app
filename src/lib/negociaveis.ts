@@ -4,6 +4,7 @@ import { gravarNoCacheDoBanco, lerVariosDoCacheDoBanco } from "@/lib/db";
 import { verificarNegociavel, type Negociavel } from "@/lib/negociavel-evm";
 import type { TokenSummary } from "@/lib/types";
 import { robinhoodChain } from "@/lib/web3";
+import { transporteRobinhood } from "@/lib/rpc-robinhood";
 
 /**
  * Quais moedas externas da Robinhood a Chroma consegue negociar.
@@ -28,8 +29,8 @@ const VALIDADE_MS = {
 
 export const cliente = createPublicClient({
   chain: robinhoodChain,
-  transport: http(process.env.ROBINHOOD_RPC || robinhoodChain.rpcUrls.default.http[0], {
-    retryCount: 6,
+  transport: transporteRobinhood({
+    retryCount: 2,
     retryDelay: 900,
   }),
 });
