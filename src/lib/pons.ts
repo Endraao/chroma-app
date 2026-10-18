@@ -5,6 +5,7 @@ import { createPublicClient, decodeEventLog, http, parseAbi, parseAbiItem, type 
 import { cached } from "@/lib/cache";
 import { CHROMA_PONS, FABRICA_DA_PONS } from "@/lib/chroma-pons";
 import { precosNativos } from "@/lib/precos-nativos";
+import { temposDosBlocos } from "@/lib/tempo-dos-blocos";
 import { robinhoodChain } from "@/lib/web3";
 import type { NegocioDoPool } from "@/lib/market";
 import type { Candle, TokenSummary } from "@/lib/types";
@@ -261,7 +262,6 @@ function detentoresAtuais(negocios: NegocioDaPons[]): number {
   return [...saldo.values()].filter((v) => v > POEIRA).length;
 }
 
-const TEMPO_DO_BLOCO = new Map<bigint, number>();
 
 interface NegocioDaPons {
   time: number;
@@ -300,14 +300,8 @@ async function negociosDaPons(m: MoedaDaPons): Promise<NegocioDaPons[]> {
     ]);
     const traderDaTx = new Map(nossos.map((l) => [l.transactionHash, l.args.trader!]));
 
-    const blocos = [...new Set([...compras, ...vendas].map((l) => l.blockNumber))];
-    // O horário de um bloco nunca muda: guardado, só os blocos novos vão à rede.
-    const tempos = TEMPO_DO_BLOCO;
-    await Promise.all(
-      blocos
-        .filter((b) => !tempos.has(b))
-        .map(async (b) => tempos.set(b, Number((await cliente.getBlock({ blockNumber: b })).timestamp))),
-    );
+    // Horário dos blocos com cota por chamada (ver lib/tempo-dos-blocos — derrubou a VPS em 18/10).
+    const tempos = await temposDosBlocos(cliente, [...compras, ...vendas].map((l) => l.blockNumber));
 
     const lista: (NegocioDaPons & { ordem: bigint })[] = [];
     for (const l of compras) {

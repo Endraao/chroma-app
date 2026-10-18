@@ -13,6 +13,7 @@ import {
   type EstadoDaCurvaEvm,
 } from "@/lib/chroma-evm";
 import { precosNativos } from "@/lib/precos-nativos";
+import { temposDosBlocos } from "@/lib/tempo-dos-blocos";
 import { robinhoodChain } from "@/lib/web3";
 import type { NegocioDoPool } from "@/lib/market";
 import type { Candle, TokenSummary } from "@/lib/types";
@@ -233,15 +234,8 @@ async function negociosDaCurvaEvm(moeda: string): Promise<NegocioDaCurva[]> {
       toBlock: "latest",
     });
 
-    /* Um bloco por negócio distinto; a rede devolve o carimbo de tempo dele. */
-    const blocos = [...new Set(logs.map((l) => l.blockNumber))];
-    const tempos = new Map<bigint, number>();
-    await Promise.all(
-      blocos.map(async (b) => {
-        const bloco = await cliente.getBlock({ blockNumber: b });
-        tempos.set(b, Number(bloco.timestamp));
-      }),
-    );
+    /* Horário de cada bloco com negócio, com cota por chamada (ver lib/tempo-dos-blocos). */
+    const tempos = await temposDosBlocos(cliente, logs.map((l) => l.blockNumber));
 
     return logs.map((l) => {
       const a = l.args;
