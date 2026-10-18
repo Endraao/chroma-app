@@ -3,7 +3,7 @@
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -27,6 +27,7 @@ import {
   feeLabelFor,
 } from "@/lib/fees";
 import { cn, formatUsd } from "@/lib/utils";
+import { imagemParaClonar, lerParaClonar } from "@/lib/clonar";
 import { CURVA_CHROMA_DISPONIVEL } from "@/lib/meteora-dbc";
 
 /**
@@ -289,6 +290,24 @@ export default function CreateTokenPage() {
     telegram: "",
     initialBuy: "",
   });
+
+  /*
+   * Clonar (18/10/2026): veio do botão "Clonar" da página de uma moeda —
+   * preenche nome, símbolo, descrição, links e imagem com os dados dela.
+   */
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("clonar") !== "1") return;
+    const c = lerParaClonar();
+    if (!c) return;
+    setForm((f) => ({ ...f, name: c.name, symbol: c.symbol, description: c.description, website: c.website, twitter: c.twitter, telegram: c.telegram }));
+    let cancelado = false;
+    void imagemParaClonar(c.address, c.symbol).then((img) => {
+      if (img && !cancelado) setMedia(img);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const meta = CHAINS[chain];
   const pairs = LIQUIDITY_PAIRS[chain];

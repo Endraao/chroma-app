@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
+import { guardarParaClonar } from "@/lib/clonar";
 import { cn, formatUsd } from "@/lib/utils";
 import { CHAINS } from "@/lib/web3";
 
 const TEXTOS = traducoes({
-  en: { sobre: "About", compras: "buys", vendas: "sells", vol: "vol.", compradores: "buyers", vendedores: "sellers", site: "Site", buscar: "Search on", verMais: "Show more", verMenos: "Show less" },
-  pt: { sobre: "Sobre", compras: "compras", vendas: "vendas", vol: "vol.", compradores: "compradores", vendedores: "vendedores", site: "Site", buscar: "Buscar no", verMais: "Ver mais", verMenos: "Ver menos" },
-  zh: { sobre: "关于", compras: "买入", vendas: "卖出", vol: "交易量", compradores: "买家", vendedores: "卖家", site: "官网", buscar: "搜索于", verMais: "展开", verMenos: "收起" },
+  en: { sobre: "About", compras: "buys", vendas: "sells", vol: "vol.", compradores: "buyers", vendedores: "sellers", site: "Site", buscar: "Search on", verMais: "Show more", verMenos: "Show less", clonar: "Clone", clonarDica: "Launch a new coin with this name, ticker, image, description and links" },
+  pt: { sobre: "Sobre", compras: "compras", vendas: "vendas", vol: "vol.", compradores: "compradores", vendedores: "vendedores", site: "Site", buscar: "Buscar no", verMais: "Ver mais", verMenos: "Ver menos", clonar: "Clonar", clonarDica: "Lançar uma moeda nova com este nome, símbolo, imagem, descrição e links" },
+  zh: { sobre: "关于", compras: "买入", vendas: "卖出", vol: "交易量", compradores: "买家", vendedores: "卖家", site: "官网", buscar: "搜索于", verMais: "展开", verMenos: "收起", clonar: "克隆", clonarDica: "用此名称、代号、图片、简介和链接发行新币" },
 });
 
 type Janela = "m5" | "h1" | "h6" | "h24";
@@ -35,6 +37,7 @@ interface Estatisticas {
  */
 export function PainelSobre({ token }: { token: TokenSummary }) {
   const t = useTextos(TEXTOS);
+  const router = useRouter();
   const [janela, setJanela] = useState<Janela>("h24");
   const [dados, setDados] = useState<Estatisticas | null>(null);
   const [aberto, setAberto] = useState(false);
@@ -117,6 +120,17 @@ export function PainelSobre({ token }: { token: TokenSummary }) {
         {token.twitter && <Pilula href={token.twitter} icone={<IconeX />} rotulo="Twitter" />}
         {token.telegram && <Pilula href={token.telegram} icone={<IconeTelegram />} rotulo="Telegram" />}
         <Pilula href={buscaNoX} rotulo={t.buscar} depois={<IconeX />} />
+        <button
+          type="button"
+          title={t.clonarDica}
+          onClick={() => {
+            guardarParaClonar(token);
+            router.push("/create?clonar=1");
+          }}
+          className="fx-aperto inline-flex items-center gap-1.5 rounded-full border border-marca/40 bg-marca/10 px-3 py-1.5 text-[12px] font-semibold text-marca transition-colors hover:bg-marca/20"
+        >
+          ⧉ {t.clonar}
+        </button>
       </div>
 
       {token.description && (
