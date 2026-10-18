@@ -26,11 +26,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ address:
   const titulo = esc(`$${token.symbol} — buy right in this post on Chroma`);
   const descricao = esc(`Trade ${token.name} without leaving X. Free to launch on Chroma; creators earn 30% of every trade fee.`);
   // Capa = a imagem da própria moeda (pedido do dono, 09/10/2026), igual ao /e.
-  const imagem = token.imageUrl?.startsWith("http")
-    ? token.imageUrl
-    : token.imageUrl?.startsWith("/")
-      ? `${SITE}${token.imageUrl}`
-      : `${SITE}/logo.png`;
+  // Servida pelo NOSSO /api/logo (18/10/2026): a imagem direto do IPFS
+  // (ipfs.io) demora demais pro robô do X, e o cartão do $OBSI saiu sem logo.
+  const imagem = token.imageUrl ? `${SITE}/api/logo/${address}` : `${SITE}/logo.png`;
   const player = `${SITE}/p/${address}${sufixo}`;
   const moeda = `${SITE}/token/${address}${sufixo}`;
 
