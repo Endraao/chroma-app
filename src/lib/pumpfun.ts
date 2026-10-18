@@ -543,16 +543,34 @@ const TOKENS_A_VENDA_INICIAL = 793_100_000_000_000n;
 export async function estadoDaCurvaPump(
   conn: Connection,
   mint: PublicKey,
-): Promise<{ progresso: number; solReal: number; completa: boolean } | null> {
+): Promise<{ progresso: number; solReal: number; completa: boolean; solNaFormatura: number; mcNaFormaturaSol: number } | null> {
   const programa = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
   const [curva] = PublicKey.findProgramAddressSync([Buffer.from("bonding-curve"), mint.toBuffer()], programa);
   const conta = await conn.getAccountInfo(curva, "confirmed");
   if (!conta || !conta.owner.equals(programa) || conta.data.length < 49) return null;
   const d = conta.data;
+  const tokenVirtual = d.readBigUInt64LE(8);
+  const solVirtual = d.readBigUInt64LE(16);
   const tokenReal = d.readBigUInt64LE(24);
   const solReal = Number(d.readBigUInt64LE(32)) / LAMPORTS_PER_SOL;
+  const emissao = d.readBigUInt64LE(40);
   const completa = d[48] !== 0;
   const vendidos = TOKENS_A_VENDA_INICIAL > tokenReal ? TOKENS_A_VENDA_INICIAL - tokenReal : 0n;
   const progresso = completa ? 100 : Number((vendidos * 10_000n) / TOKENS_A_VENDA_INICIAL) / 100;
-  return { progresso, solReal, completa };
+
+  /*
+   * Onde ela forma (18/10/2026, painel "como na pump.fun"): produto constante
+   * nas reservas VIRTUAIS. Vendido o último token, a reserva virtual de token
+   * vira (virtual − real) e a de SOL, k / isso. Daí saem o SOL guardado e o
+   * preço no instante da formatura — ~410 SOL de market cap na curva padrão.
+   */
+  const tokenNoFim = tokenVirtual > tokenReal ? tokenVirtual - tokenReal : 0n;
+  let solNaFormatura = solReal;
+  let mcNaFormaturaSol = 0;
+  if (tokenNoFim > 0n) {
+    const solVirtualNoFim = (tokenVirtual * solVirtual) / tokenNoFim;
+    solNaFormatura = solReal + Number(solVirtualNoFim - solVirtual) / LAMPORTS_PER_SOL;
+    mcNaFormaturaSol = ((Number(solVirtualNoFim) / Number(tokenNoFim)) * Number(emissao)) / LAMPORTS_PER_SOL;
+  }
+  return { progresso, solReal, completa, solNaFormatura, mcNaFormaturaSol };
 }

@@ -215,7 +215,19 @@ export async function lerPoolDaCurva(conexao: Connection, mint: string): Promise
 export async function estadoNaCurvaDaChroma(
   conexao: Connection,
   mint: string,
-): Promise<{ precoSol: number; solReal: number; progresso: number; completa: boolean; criador: string; pool: string; config: string } | null> {
+): Promise<{
+  precoSol: number;
+  solReal: number;
+  progresso: number;
+  completa: boolean;
+  criador: string;
+  pool: string;
+  config: string;
+  /** SOL que a curva guarda quando forma (o limite de migração). */
+  solNaFormatura: number;
+  /** Market cap no preço de migração da config, em SOL (0 se não deu pra ler). */
+  mcNaFormaturaSol: number;
+} | null> {
   if (!CURVA_CHROMA_DISPONIVEL) return null;
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
@@ -226,7 +238,21 @@ export async function estadoNaCurvaDaChroma(
   if (!config) return null;
   const limite = Number(config.migrationQuoteThreshold.toString());
   const reserva = Number(estado.quoteReserve.toString());
+  // Market cap na formatura = preço de migração da config × emissão da moeda.
+  let mcNaFormaturaSol = 0;
+  try {
+    const raiz = (config as { migrationSqrtPrice?: Parameters<typeof sdk.getPriceFromSqrtPrice>[0] }).migrationSqrtPrice;
+    if (raiz) {
+      const precoNoFim = Number(sdk.getPriceFromSqrtPrice(raiz, sdk.TokenDecimal.SIX, 9).toString());
+      const emissao = (await conexao.getTokenSupply(new PublicKey(mint))).value.uiAmount ?? 0;
+      mcNaFormaturaSol = precoNoFim * emissao;
+    }
+  } catch {
+    /* sem o número de formatura: o painel mostra só progresso e SOL */
+  }
   return {
+    solNaFormatura: limite / LAMPORTS_PER_SOL,
+    mcNaFormaturaSol,
     precoSol: Number(sdk.getPriceFromSqrtPrice(estado.sqrtPrice, sdk.TokenDecimal.SIX, 9).toString()),
     solReal: reserva / LAMPORTS_PER_SOL,
     progresso: limite > 0 ? Math.min(100, (reserva / limite) * 100) : 0,

@@ -21,6 +21,7 @@ import { PainelSobre } from "@/components/trading/PainelSobre";
 import { AvisoRecompensas } from "@/components/trading/AvisoRecompensas";
 import { MinhaPosicao } from "@/components/trading/MinhaPosicao";
 import { PainelTreino } from "@/components/trading/PainelTreino";
+import { ProgressoDaCurva } from "@/components/trading/ProgressoDaCurva";
 import { cn } from "@/lib/utils";
 import { TokenHeader } from "@/components/trading/TokenHeader";
 import { BonusDoCriador } from "@/components/trading/BonusDoCriador";
@@ -247,6 +248,12 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             */}
           <CurvaPanel />
           <StatusDaCurva token={token} />
+          {/* Solana na curva (pump.fun ou da Chroma): progresso, MC de formatura e SOL que falta. */}
+          {token.chain === "solana" &&
+            (token.bondingProgress !== null ||
+              token.dexId === "pumpfun" ||
+              token.dexId === "chroma-curve" ||
+              token.address.endsWith("pump")) && <ProgressoDaCurva mint={token.address} />}
 
           {token.recompensasParaDetentores && <AvisoRecompensas />}
 
