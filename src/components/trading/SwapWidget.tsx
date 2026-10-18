@@ -84,7 +84,7 @@ const TEXTOS = traducoes({
   en: {
     usaSaldoMenos: (r: number) => `Uses your balance minus ${r} SOL, to keep network fee`,
     venderTodos: (s: string) => `Sell all your ${s}`,
-    saldo: "balance", max: "max", maxMaiusc: "Max", curvaDaChroma: "Chroma curve", curvaDaChromaMaiusc: "Chroma curve",
+    saldo: "balance", max: "max", maxMaiusc: "Max", trocarUnidade: "Switch between SOL and token amount", curvaDaChroma: "Chroma curve", curvaDaChromaMaiusc: "Chroma curve",
     impacto: (p: React.ReactNode) => <>This order moves the price by {p}. It is too large for the available liquidity: you buy at a worse price and whoever sells afterwards gets less.</>,
     semRota: "No route for this amount — it may be too small to trade.",
     compraFeita: "Buy completed", vendaFeita: "Sell completed", verNoExplorador: "view transaction ↗",
@@ -116,7 +116,7 @@ const TEXTOS = traducoes({
   pt: {
     usaSaldoMenos: (r: number) => `Usa o saldo menos ${r} SOL, pra sobrar taxa de rede`,
     venderTodos: (s: string) => `Vender todos os seus ${s}`,
-    saldo: "saldo", max: "máx", maxMaiusc: "Máx", curvaDaChroma: "curva da Chroma", curvaDaChromaMaiusc: "Curva da Chroma",
+    saldo: "saldo", max: "máx", maxMaiusc: "Máx", trocarUnidade: "Alternar entre valor em SOL e em tokens", curvaDaChroma: "curva da Chroma", curvaDaChromaMaiusc: "Curva da Chroma",
     impacto: (p: React.ReactNode) => <>Esta ordem move o preço em {p}. É grande demais para a liquidez disponível: você compra a um preço pior e quem vender depois recebe menos.</>,
     semRota: "Não há rota para esse valor — ele pode ser pequeno demais para negociar.",
     compraFeita: "Compra feita", vendaFeita: "Venda feita", verNoExplorador: "ver transação ↗",
@@ -148,7 +148,7 @@ const TEXTOS = traducoes({
   zh: {
     usaSaldoMenos: (r: number) => `使用余额减去 ${r} SOL，保留网络手续费`,
     venderTodos: (s: string) => `卖出全部 ${s}`,
-    saldo: "余额", max: "最大", maxMaiusc: "最大", curvaDaChroma: "Chroma 曲线", curvaDaChromaMaiusc: "Chroma 曲线",
+    saldo: "余额", max: "最大", maxMaiusc: "最大", trocarUnidade: "在 SOL 和代币数量之间切换", curvaDaChroma: "Chroma 曲线", curvaDaChromaMaiusc: "Chroma 曲线",
     impacto: (p: React.ReactNode) => <>该订单会使价格变动 {p}。相对于现有流动性过大：你会以更差的价格买入，之后卖出的人获得更少。</>,
     semRota: "该金额没有可用路由——可能金额太小，无法交易。",
     compraFeita: "买入成功", vendaFeita: "卖出成功", verNoExplorador: "查看交易 ↗",
@@ -321,6 +321,26 @@ function SolanaSwap({
   const digitadoNum = Number(digitado) || 0;
 
   /*
+   * VENDA EM SOL (pedido do dono, 18/10/2026: "quero vender 0,20 SOL; em
+   * tokens eu não sei quanto é"). O campo pede SOL e a ordem continua em
+   * tokens: tokens = SOL ÷ preço da moeda em SOL, com a taxa somada, e nunca
+   * mais do que o saldo. O "Você recebe" logo abaixo é a cotação de verdade.
+   * Nos atalhos de % a quantidade EXATA de tokens vai pra ordem (o 100% não
+   * pode virar 99,9% por arredondamento) e o campo só mostra o SOL dela.
+   */
+  const [unidadeVenda, setUnidadeVenda] = useState<"sol" | "token">("sol");
+  const [tokensDoAtalho, setTokensDoAtalho] = useState<string | null>(null);
+  const [saldoParaVenda, setSaldoParaVenda] = useState<number | null>(null);
+  const precoDaMoedaEmSol = precoDoSol && precoDoSol > 0 && priceUsd > 0 ? priceUsd / precoDoSol : 0;
+  const vendaEmSol = !comprando && unidadeVenda === "sol" && precoDaMoedaEmSol > 0;
+  const fatorDaTaxa = 1 - taxaSolBps / 10_000;
+  function tokensParaReceber(sol: number): string {
+    let tokens = sol / precoDaMoedaEmSol / fatorDaTaxa;
+    if (saldoParaVenda !== null && tokens > saldoParaVenda) tokens = saldoParaVenda;
+    return tokens > 0 ? cortar(tokens, 6) : "";
+  }
+
+  /*
    * O valor que vai pra ordem, DERIVADO do campo — não é um segundo estado.
    *
    * Guardar os dois e sincronizar com efeito é como isso costuma ser feito, e
@@ -329,7 +349,11 @@ function SolanaSwap({
    * um valor diferente do que leu.
    */
   const amount =
-    digitadoNum > 0 ? String(emDolar && precoDoSol ? digitadoNum / precoDoSol : digitadoNum) : "";
+    digitadoNum <= 0
+      ? ""
+      : vendaEmSol
+        ? (tokensDoAtalho ?? tokensParaReceber(digitadoNum))
+        : String(emDolar && precoDoSol ? digitadoNum / precoDoSol : digitadoNum);
 
   const swap = useTradeSolana({
     naCurvaDaChroma,
@@ -341,6 +365,10 @@ function SolanaSwap({
     affiliate,
     affiliateRef,
   });
+
+  useEffect(() => {
+    if (!comprando) setSaldoParaVenda(swap.balance);
+  }, [comprando, swap.balance]);
 
   const [recibo, setRecibo] = useState<Recibo | null>(null);
   // SOL do negócio: o que entra (compra) ou o que sai estimado (venda) — base da taxa mostrada.
@@ -373,6 +401,13 @@ function SolanaSwap({
     if (s === side) return;
     setSide(s);
     setDigitado("");
+    setTokensDoAtalho(null);
+  }
+
+  function trocarUnidadeDaVenda() {
+    setUnidadeVenda((u) => (u === "sol" ? "token" : "sol"));
+    setDigitado("");
+    setTokensDoAtalho(null);
   }
 
   function atalhoEmDolar(usd: number) {
@@ -411,7 +446,14 @@ function SolanaSwap({
      * No 100% isso é o caso normal, não o raro: é exatamente quando o número
      * encosta no limite.
      */
-    setDigitado(parte > 0 ? cortar(parte, swap.tokenDecimals ?? 6) : "");
+    const exato = parte > 0 ? cortar(parte, swap.tokenDecimals ?? 6) : "";
+    if (vendaEmSol && exato) {
+      setTokensDoAtalho(exato);
+      setDigitado(arredondar(Number(exato) * precoDaMoedaEmSol * fatorDaTaxa, 4));
+      return;
+    }
+    setTokensDoAtalho(null);
+    setDigitado(exato);
   }
 
   const semValor = digitadoNum <= 0;
@@ -452,7 +494,10 @@ function SolanaSwap({
           <input
             inputMode="decimal"
             value={digitado}
-            onChange={(e) => setDigitado(saneia(e.target.value))}
+            onChange={(e) => {
+              setTokensDoAtalho(null);
+              setDigitado(saneia(e.target.value));
+            }}
             placeholder="0.0"
             className={cn("tnum min-w-0 flex-1 bg-transparent font-bold text-zinc-100 outline-none placeholder:text-zinc-700", compacto ? "text-xl" : "text-2xl")}
           />
@@ -460,8 +505,24 @@ function SolanaSwap({
           {compacto && emDolar && digitadoNum > 0 && (
             <span className="tnum shrink-0 text-[11px] text-zinc-500">≈ <Preco valor={Number(amount)} casas={4} /> SOL ·</span>
           )}
-          <span className="shrink-0 text-[13px] font-bold text-zinc-400">{comprando ? (emDolar ? "USD" : "SOL") : symbol}</span>
+          {comprando || precoDaMoedaEmSol <= 0 ? (
+            <span className="shrink-0 text-[13px] font-bold text-zinc-400">{comprando ? (emDolar ? "USD" : "SOL") : symbol}</span>
+          ) : (
+            <button
+              type="button"
+              onClick={trocarUnidadeDaVenda}
+              title={t.trocarUnidade}
+              className="fx-aperto shrink-0 rounded-full bg-white/[0.06] px-2.5 py-1 text-[12px] font-bold text-zinc-300 transition-colors hover:bg-white/[0.1]"
+            >
+              {vendaEmSol ? "SOL" : symbol} ⇄
+            </button>
+          )}
         </label>
+        {vendaEmSol && Number(amount) > 0 && (
+          <p className="tnum -mt-1.5 px-1 text-[11px] text-zinc-500">
+            ≈ <Preco valor={Number(amount)} casas={2} /> {symbol}
+          </p>
+        )}
         {!compacto && emDolar && digitadoNum > 0 && (
           <p className="tnum -mt-1.5 px-1 text-[11px] text-zinc-500">
             ≈ <Preco valor={Number(amount)} casas={4} /> SOL
