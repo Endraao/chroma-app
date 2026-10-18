@@ -20,7 +20,15 @@
 export const CONFIG_ANTIGA = "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw";
 
 /** Preenchida quando a config nova é criada na rede (ver /admin/curva-chroma). */
-export const CONFIG_NOVA = "Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs";
+export const CONFIG_NOVA = "9aB2qqbbdkB7H96XYbxqvPJ3miUEAmecLm1pHk8kp1aS";
+
+/**
+ * Config de 11/10/2026 (1% fixo, sem anti-sniper). Mesma divisão da atual;
+ * moedas lançadas nela continuam reconhecidas. A atual (9aB2…, 18/10/2026)
+ * só muda a taxa do começo: 10% caindo 0,3%/s até 1% em 30 s — experimento
+ * do dono pra cobrar dos bots que entram no primeiro segundo.
+ */
+export const CONFIG_1_PORCENTO = "Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs";
 
 /** Fatias da negociação (fração do VOLUME) numa moeda da curva. */
 export interface DivisaoDaCurva {

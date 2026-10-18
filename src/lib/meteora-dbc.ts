@@ -1,7 +1,7 @@
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import BN from "bn.js";
 
-import { CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
+import { CONFIG_1_PORCENTO, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
 
 /**
  * A "Curva da Chroma" na Solana: Meteora Dynamic Bonding Curve (DBC).
@@ -34,7 +34,7 @@ export const CURVA_CHROMA_DISPONIVEL = CONFIG_DA_CURVA.length > 30;
  * (saque do criador, bônus, resgate da plataforma); lançamento novo usa só a
  * atual. Trocar a config (ex.: mudar a taxa anti-sniper) = mover a atual pra cá.
  */
-const CONFIGS_ANTIGAS: string[] = [CONFIG_ANTIGA];
+const CONFIGS_ANTIGAS: string[] = [CONFIG_1_PORCENTO, CONFIG_ANTIGA];
 export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, ...CONFIGS_ANTIGAS])];
 
 type KitDbc = typeof import("@meteora-ag/dynamic-bonding-curve-sdk");
@@ -68,10 +68,12 @@ const SOL = new PublicKey("So11111111111111111111111111111111111111112");
  *
  *  - Começa em 30 SOL de valor de mercado e gradua em 420 SOL (parecido com a
  *    pump.fun), migrando sozinha pra uma pool DAMM v2 da Meteora.
- *  - Taxa: 1% fixo desde o primeiro segundo, sem anti-robô, igual à pump.fun.
- *    (A config anterior, BbbaZG…, caía de 25% a 1% em 2 minutos.) A
- *    PRIMEIRA compra — a do criador, na mesma transação do lançamento — paga
- *    a taxa mínima. É o "criador compra primeiro" feito pela própria curva.
+ *  - Taxa: anti-sniper LEVE — 10% no primeiro segundo, caindo em linha reta
+ *    até 1% em 30 s (pedido do dono, 18/10/2026: com 1% fixo os bots entram e
+ *    saem pagando só ~2%; com 25%, da config BbbaZG…, quase nenhum entrava —
+ *    só 1 vez, com 4 SOL). Experimento: comparar ~10 lançamentos com a Di9W
+ *    (1% fixo). A PRIMEIRA compra — a do criador, na mesma transação do
+ *    lançamento — paga a taxa mínima. É o "criador compra primeiro".
  *  - Da taxa de negociação, 20% vão pra Meteora; do resto, 38% são do criador
  *    (30,4% da taxa = 0,3% do volume, igual à pump.fun) e o resto da Chroma.
  *    (Na config antiga era metade/metade: 40% / 40% / 20%.) Indicação (referral) recebe 20% da taxa, pago pela curva.
@@ -92,11 +94,10 @@ export async function parametrosDaCurva() {
     },
     fee: {
       baseFeeParams: {
-        // 1% fixo desde o primeiro segundo, sem anti-sniper — igual à pump.fun
-        // (pedido do dono, 11/10/2026). O criador ainda compra primeiro, na
-        // mesma transação do lançamento.
+        // 10% → 1% em 30 s, caindo 0,3% por segundo (pedido do dono, 18/10/2026).
+        // Era 1% fixo (config Di9W…, 11/10/2026).
         baseFeeMode: sdk.BaseFeeMode.FeeSchedulerLinear,
-        feeSchedulerParam: { startingFeeBps: 100, endingFeeBps: 100, numberOfPeriod: 0, totalDuration: 0 },
+        feeSchedulerParam: { startingFeeBps: 1000, endingFeeBps: 100, numberOfPeriod: 30, totalDuration: 30 },
       },
       dynamicFeeEnabled: false,
       collectFeeMode: sdk.CollectFeeMode.QuoteToken,

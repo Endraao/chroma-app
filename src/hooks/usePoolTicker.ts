@@ -480,7 +480,7 @@ export function usePoolTicker({
 const PUMP = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
 const DBC = new PublicKey("dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN");
 const PUMP_AMM = new PublicKey("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA");
-const CONFIGS_DBC = ["Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs", "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw"];
+const CONFIGS_DBC = ["9aB2qqbbdkB7H96XYbxqvPJ3miUEAmecLm1pHk8kp1aS", "Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs", "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw"];
 
 type TipoDeCurva = "pump" | "dbc";
 
