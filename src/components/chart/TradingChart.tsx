@@ -301,6 +301,11 @@ export function TradingChart({
       /* navegador sem armazenamento: o desenho só vale nesta visita */
     }
   }, []);
+  /*
+   * Desenho selecionado (clicado). Delete/Backspace apaga ele, como no
+   * TradingView — a biblioteca seleciona mas não apaga sozinha (18/10/2026).
+   */
+  const selecionadoRef = useRef<string | null>(null);
   const ganchosDoDesenho = {
     onDrawEnd: () => {
       salvarDesenhos();
@@ -310,7 +315,33 @@ export function TradingChart({
       salvarDesenhos();
       return false;
     },
+    onSelected: (e: { overlay: { id: string } }) => {
+      selecionadoRef.current = e.overlay.id;
+      return false;
+    },
+    onDeselected: (e: { overlay: { id: string } }) => {
+      if (selecionadoRef.current === e.overlay.id) selecionadoRef.current = null;
+      return false;
+    },
   };
+
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const id = selecionadoRef.current;
+      if (!id) return;
+      // Apagando texto num campo (valor do swap, busca): não é com o gráfico.
+      const alvo = e.target as HTMLElement | null;
+      if (alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName))) return;
+      e.preventDefault();
+      chartRef.current?.removeOverlay(id);
+      desenhosRef.current = desenhosRef.current.filter((d) => d !== id);
+      selecionadoRef.current = null;
+      salvarDesenhos();
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [salvarDesenhos]);
 
   const [ferramenta, setFerramenta] = useState<string | null>(null);
   /*
