@@ -9,7 +9,9 @@ import { createHash } from "node:crypto";
  */
 export function chaveInterna(uso: "backup" | "migrar" | "mural" | "obsi-x"): string {
   if (uso === "backup" && process.env.CRON_SECRET) return process.env.CRON_SECRET;
-  const base = process.env.DATABASE_URL;
+  // CHAVE_INTERNA_BASE (19/10/2026): o banco trocou de endereço (Neon → VPS); a
+  // base antiga continua valendo pras chaves não mudarem (links e timers já usam).
+  const base = process.env.CHAVE_INTERNA_BASE || process.env.DATABASE_URL;
   if (!base) throw new Error("DATABASE_URL não configurada");
   return createHash("sha256").update(`${uso}:${base}`).digest("hex");
 }

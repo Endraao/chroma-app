@@ -1,4 +1,4 @@
-import { neon, Pool, type PoolClient } from "@neondatabase/serverless";
+import { Pool, type PoolClient } from "pg";
 
 /**
  * O banco do site.
@@ -43,26 +43,59 @@ import { neon, Pool, type PoolClient } from "@neondatabase/serverless";
 function urlDoBanco(): string {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error(
-      "DATABASE_URL não configurada. Na Vercel ela vem do Neon; localmente, do .env.local.",
-    );
+    throw new Error("DATABASE_URL não configurada (na VPS: Postgres local; localmente, do .env.local).");
   }
   return url;
 }
 
-/** Consulta simples, por HTTP. Use este na dúvida. */
-export const sql = neon(urlDoBanco());
+/*
+ * 19/10/2026: o banco saiu da Neon (o plano grátis estourou a cota e TODA
+ * consulta passou a dar 402 — o site ficou sem moedas, mural, contas) e foi
+ * pra um Postgres na própria VPS. O driver agora é o `pg` padrão, por TCP,
+ * com um pool por processo. A interface ficou igual à do driver da Neon —
+ * `sql\`...\`` e `sql.query(texto, valores)`, as duas devolvendo as linhas —
+ * pra nenhum outro arquivo mudar. Com uma URL da Neon (desenvolvimento) também
+ * funciona: o SSL liga sozinho.
+ */
+let pool: Pool | null = null;
+function oPool(): Pool {
+  if (!pool) {
+    const url = urlDoBanco();
+    pool = new Pool({
+      connectionString: url,
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      ssl: /neon\.tech|sslmode=require/.test(url) ? { rejectUnauthorized: false } : undefined,
+    });
+    pool.on("error", (e) => console.warn("[db] conexão do pool caiu:", e.message));
+  }
+  return pool;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mesmo tipo de retorno do driver da Neon: quem chama converte
+type Linhas = Promise<any[]>;
+interface Consulta {
+  (partes: TemplateStringsArray, ...valores: unknown[]): Linhas;
+  query(texto: string, valores?: unknown[]): Linhas;
+}
+
+/** Consulta simples. Use este na dúvida. */
+export const sql: Consulta = Object.assign(
+  (partes: TemplateStringsArray, ...valores: unknown[]): Linhas => {
+    const texto = partes.reduce((t, parte, i) => t + parte + (i < valores.length ? `$${i + 1}` : ""), "");
+    return oPool().query(texto, valores).then((r) => r.rows);
+  },
+  { query: (texto: string, valores: unknown[] = []): Linhas => oPool().query(texto, valores).then((r) => r.rows) },
+);
 
 /**
  * Executa um bloco dentro de uma transação de verdade.
  *
- * Abre conexão, roda, e fecha SEMPRE — inclusive quando o bloco lança. Sem o
- * `finally` uma exceção deixaria a conexão presa, e em serverless isso vira
- * esgotamento do limite do Neon depois de algumas falhas.
+ * Pega uma conexão do pool, roda, e devolve SEMPRE — inclusive quando o bloco
+ * lança. Sem o `finally` uma exceção deixaria a conexão presa e o pool secaria.
  */
 export async function comTransacao<T>(bloco: (c: PoolClient) => Promise<T>): Promise<T> {
-  const pool = new Pool({ connectionString: urlDoBanco() });
-  const cliente = await pool.connect();
+  const cliente = await oPool().connect();
   try {
     await cliente.query("BEGIN");
     const resultado = await bloco(cliente);
@@ -77,7 +110,6 @@ export async function comTransacao<T>(bloco: (c: PoolClient) => Promise<T>): Pro
     throw erro;
   } finally {
     cliente.release();
-    await pool.end();
   }
 }
 
