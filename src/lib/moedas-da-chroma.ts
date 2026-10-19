@@ -82,6 +82,7 @@ export const FORA_DA_VITRINE = new Set(
     "ACcX351Jn1mwcyEYQw4DcKkQJ3RYR7w57KWjWmoEEZew",
     "0x4e270310e2f217296e4df00017297a0141bd14ec",
     "0x8b152f9d792e46c096dbd7cc82c9116e0bee9b34",
+    "EeE3U6JGz5CerSuyL1B1MB6wtwgwr8VguAKLmkUDpump", // $OBSI (token oficial encerrado pelo dono, 19/10/2026)
     // MIAU (6kKvg3…V7ehK) voltou pra vitrine em 05/10/2026, a pedido do dono:
     // mostra que já tem moeda lançada na Curva da Chroma.
   ].map((a) => a.toLowerCase()),
