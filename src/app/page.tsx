@@ -15,7 +15,7 @@ import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
 import { FORA_DA_VITRINE, moedasDaChroma } from "@/lib/moedas-da-chroma";
 import { CHAIN_IDS, CHAINS } from "@/lib/web3";
-import { BannerPromocao } from "@/components/home/BannerPromocao";
+import { DestaqueTradeNoX } from "@/components/home/DestaqueTradeNoX";
 import { MuralDoObsi } from "@/components/home/MuralDoObsi";
 import type { ChainId, TokenSummary } from "@/lib/types";
 
@@ -133,6 +133,9 @@ const TEXTOS = traducoes({
  */
 type AbaDoMercado = SortKey | "chroma";
 
+/** A vitrine "Created on Chroma" recomeçou do zero aqui (19/10/2026, pedido do dono). */
+const VITRINE_DESDE = Date.parse("2026-10-19T21:00:00Z");
+
 const SORTS: {
   key: AbaDoMercado;
   rotulo: "abaChroma" | "abaEmAlta" | "abaRecentes" | "abaAltas" | "abaVolume" | "abaMcap";
@@ -174,7 +177,11 @@ export default async function HomePage({
   ]);
 
   // Todas as redes: o painel da Chroma não segue a rede escolhida.
-  const lancadasNaChroma = daCasa.filter((t) => !FORA_DA_VITRINE.has(t.address.toLowerCase()));
+  // Vitrine zerada em 19/10/2026 (pedido do dono): só entra moeda lançada depois
+  // disso. As antigas seguem abrindo pelo endereço e no perfil de quem criou.
+  const lancadasNaChroma = daCasa.filter(
+    (t) => t.createdAt >= VITRINE_DESDE && !FORA_DA_VITRINE.has(t.address.toLowerCase()),
+  );
   const daChromaNaRede = lancadasNaChroma.filter((t) => chain === "todas" || t.chain === chain);
 
   const { isDemo } = principal;
@@ -223,10 +230,9 @@ export default async function HomePage({
       />
 
 
-      {/* O "post" da promoção do criador (pedido do dono, 03/10/2026). */}
-      {/* Em tela larga a promoção mora dentro da abertura (CardPromocao). */}
+      {/* "Trade dentro do X" (19/10/2026). Em tela larga mora dentro da abertura. */}
       <div className="xl:hidden">
-        <BannerPromocao idioma={idioma} />
+        <DestaqueTradeNoX />
       </div>
 
       {/* Criadas na Chroma — ao vivo, das duas redes */}
@@ -239,7 +245,7 @@ export default async function HomePage({
         <div className="mb-4 flex flex-wrap items-center gap-y-2">
           {/* Categorias numa linha só: no celular deslizam pro lado em vez de quebrar. */}
           <div className="-mx-1 flex max-w-full gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]">
-            {SORTS.map((s) => (
+            {SORTS.filter((s) => s.key !== "chroma" || lancadasNaChroma.length > 0).map((s) => (
               <Link
                 key={s.key}
                 href={linkCom({ sort: s.key })}

@@ -31,11 +31,12 @@ import { imagemParaClonar, lerParaClonar } from "@/lib/clonar";
 import { CURVA_CHROMA_DISPONIVEL } from "@/lib/meteora-dbc";
 
 /**
- * Curva Clássica escondida durante a promoção do bônus do criador (decisão do
- * dono, 03/10/2026): uma opção só evita confusão e todo lançamento testa a
- * Curva da Chroma de verdade. Pra mostrar de novo, é só trocar pra true.
+ * Curva Clássica de volta e como PADRÃO (19/10/2026, pedido do dono): moeda da
+ * curva da Chroma aparece na pump.fun com selo da Meteora e "não verificada" e
+ * ninguém compra; a Clássica nasce nativa da pump.fun (a Chroma fica com 30% da
+ * taxa de criador). A promoção do bônus do criador acabou.
  */
-const MOSTRAR_CURVA_CLASSICA = false;
+const MOSTRAR_CURVA_CLASSICA = true;
 // Banner da moeda: nunca usado nem testado — escondido até ser (04/10/2026).
 const MOSTRAR_BANNER = false;
 
@@ -43,7 +44,7 @@ const TEXTO_CURVA = traducoes({
   en: {
     titulo: "Bonding curve",
     classica: "Classic",
-    chroma: "Chroma Curve · free launch · 30% of fees + cash bonus for you",
+    chroma: "Chroma Curve · free launch · 30% of fees",
     notaClassica: "The most traded curve on Solana. Graduates at ~85 SOL.",
     ganho: "Launching is free. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay 25%.",
     bonus: "Example: $100K volume → $500 to you · see the creator bonus →",
@@ -52,7 +53,7 @@ const TEXTO_CURVA = traducoes({
   pt: {
     titulo: "Curva de lançamento",
     classica: "Clássica",
-    chroma: "Curva da Chroma · lançamento grátis · 30% das taxas + bônus pra você",
+    chroma: "Curva da Chroma · lançamento grátis · 30% das taxas",
     notaClassica: "A curva mais negociada da Solana. Gradua com ~85 SOL.",
     ganho: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam 25%.",
     bonus: "Exemplo: $100 mil de volume → $500 pra você · veja o bônus do criador →",
@@ -61,7 +62,7 @@ const TEXTO_CURVA = traducoes({
   zh: {
     titulo: "联合曲线",
     classica: "经典",
-    chroma: "Chroma 曲线 · 免费发币 · 30% 手续费 + 现金奖金归你",
+    chroma: "Chroma 曲线 · 免费发币 · 30% 手续费",
     notaClassica: "Solana 上交易最活跃的曲线。约 85 SOL 时毕业。",
     ganho: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人支付 25%。",
     bonus: "示例：交易量 10 万美元 → 你获得 500 美元 · 查看创作者奖金 →",
@@ -275,9 +276,8 @@ export default function CreateTokenPage() {
 
   // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
   const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
-  // Padrão: a Curva da Chroma (decisão do dono, 02/10/2026) — a Chroma ganha em
-  // toda negociação e o criador leva ~30% da taxa. A Clássica segue como opção.
-  const [curva, setCurva] = useState<"pump" | "chroma">(CURVA_CHROMA_DISPONIVEL ? "chroma" : "pump");
+  // Padrão: a Clássica (pump.fun), 19/10/2026 — ver MOSTRAR_CURVA_CLASSICA.
+  const [curva, setCurva] = useState<"pump" | "chroma">("pump");
   // Robinhood: taxa extra do criador (0 a 10%), igual à da plataforma de lançamento.
   const [taxaDoCriador, setTaxaDoCriador] = useState("");
   const taxaDoCriadorNum = Math.max(0, Math.min(10, Number(taxaDoCriador.replace(",", ".")) || 0));
@@ -416,7 +416,7 @@ export default function CreateTokenPage() {
           </CardHeader>
           <CardBody className="space-y-2">
             <div className={cn("grid gap-2 rounded-xl border border-white/[0.06] p-1", MOSTRAR_CURVA_CLASSICA ? "grid-cols-2" : "grid-cols-1")}>
-              {(MOSTRAR_CURVA_CLASSICA ? (["chroma", "pump"] as const) : (["chroma"] as const)).map((op) => (
+              {(MOSTRAR_CURVA_CLASSICA ? (["pump", "chroma"] as const) : (["chroma"] as const)).map((op) => (
                 <button
                   key={op}
                   type="button"
@@ -432,14 +432,6 @@ export default function CreateTokenPage() {
             </div>
             <p className="text-[11.5px] leading-relaxed text-zinc-500">
               {curva === "pump" ? tc.notaClassica : tc.notaChroma}
-              {curva === "chroma" && (
-                <>
-                  {" "}
-                  <Link href="/creator-bonus" className="font-semibold text-marca hover:underline">
-                    {tc.bonus}
-                  </Link>
-                </>
-              )}
             </p>
           </CardBody>
         </Card>

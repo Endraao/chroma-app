@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { CristalHolografico } from "@/components/ui/CristalHolografico";
 import { textos, type Idioma } from "@/lib/idiomas";
 import { TokenOficial } from "@/components/home/TokenOficial";
-import { CardPromocao } from "@/components/home/BannerPromocao";
+import { DestaqueTradeNoX } from "@/components/home/DestaqueTradeNoX";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
 
 /**
@@ -152,9 +152,9 @@ export function FaixaDeAbertura({
           toda, com o produto abaixo da dobra. Ornamento cede espaço, nunca o
           contrário.
         */}
-        {/* A promoção do criador, como o banner da flap.sh, no lado direito (telas largas). */}
+        {/* "Trade dentro do X" no lado direito (telas largas) — 19/10/2026, no lugar da promoção do criador. */}
         <div className="hidden min-w-0 max-w-[600px] flex-1 xl:block">
-          <CardPromocao idioma={idioma} />
+          <DestaqueTradeNoX />
         </div>
 
         {/* Mesmo tamanho do cristal do Airdrop (150). Em tela larga o banner ocupa o lugar dele. */}

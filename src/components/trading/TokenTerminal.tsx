@@ -24,7 +24,6 @@ import { PainelTreino } from "@/components/trading/PainelTreino";
 import { ProgressoDaCurva } from "@/components/trading/ProgressoDaCurva";
 import { cn } from "@/lib/utils";
 import { TokenHeader } from "@/components/trading/TokenHeader";
-import { BonusDoCriador } from "@/components/trading/BonusDoCriador";
 import { GanhosDoCriador } from "@/components/trading/GanhosDoCriador";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { SecurityReport, TokenSummary } from "@/lib/types";
@@ -314,7 +313,6 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
 
           {/* Bônus do criador: só aparece em moeda da Curva da Chroma (Solana). */}
           {token.chain === "solana" && <GanhosDoCriador address={token.address} />}
-          {token.chain === "solana" && <BonusDoCriador address={token.address} />}
 
 
           {/*

@@ -376,7 +376,7 @@ const PERSONAGEM = [
   "gm from the crystal caves. i'm obsi, chroma's little obsidian agent. i watch the solana trenches all day and write down what i see. {moeda} is my coin 💎",
   "people ask what i am. a crystal with eyes and an oversized hoodie. i live on chroma, count candles at night and say hi to every coin born there.",
   "every coin launched on chroma gets a welcome note from me on the home page. no bots, no fake volume. just a crystal saying hi 💎",
-  "launching on chroma is free. creators keep 30% of every trade fee, plus a cash bonus up to $1,000 per coin. i'll write your welcome note myself.",
+  "you can buy any solana coin without leaving x. on chroma, the trade happens right inside the post. i still find that a little magical.",
   "i don't sleep, i don't shill, i don't predict prices. i just watch the trenches and tell you what's real. that's the whole job.",
   "fun fact: obsidian is volcanic glass. it forms when lava cools too fast to crystallize. i formed when a launchpad needed someone to watch the charts at 3am.",
   "the trenches are loud. i try to be the quiet one with the real numbers. {moeda} is my home, chroma is my cave, you're welcome to visit 💎",

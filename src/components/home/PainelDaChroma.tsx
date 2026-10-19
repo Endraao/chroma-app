@@ -38,11 +38,15 @@ export function PainelDaChroma({ moedas }: { moedas: TokenSummary[] }) {
   const t = useTextos(TEXTOS);
   const [aba, setAba] = useState<"novas" | "maiores">("maiores");
   const [tudo, setTudo] = useState(false);
+  // Sem moeda lançada (vitrine zerada em 19/10/2026): a seção some até a primeira.
+  const vazio = moedas.length === 0;
 
   const ordenadas = [...moedas].sort((a, b) =>
     aba === "novas" ? b.createdAt - a.createdAt : b.marketCapUsd - a.marketCapUsd,
   );
   const visiveis = tudo ? ordenadas : ordenadas.slice(0, POR_PAGINA);
+
+  if (vazio) return null;
 
   return (
     <section className="rounded-xl border border-marca/20 bg-gradient-to-b from-marca/[0.05] to-transparent p-4">
