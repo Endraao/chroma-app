@@ -13,7 +13,7 @@ import { traducoes } from "@/lib/idiomas";
  * memecoin aleatória só por testar. O botão do X leva pra um post de exemplo.
  */
 const MOEDA_DE_EXEMPLO = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"; // BONK
-const LINK_DO_X = "https://x.com/ChromaLaunch";
+const LINK_DO_X = "https://x.com/ChromaLaunch/status/2115664829210050633"; // post de exemplo (BONK), 29/10/2026
 
 const TEXTOS = traducoes({
   en: {
