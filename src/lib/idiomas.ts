@@ -49,6 +49,7 @@ export interface Textos {
   navAirdrop: string;
   navAfiliados: string;
   navRanking: string;
+  navPrivado: string;
   navDivulgar: string;
   navTaxas: string;
 
@@ -81,6 +82,7 @@ const en: Textos = {
   navAirdrop: "Rewards",
   navAfiliados: "Affiliates",
   navRanking: "Leaderboard",
+  navPrivado: "Private send",
   navDivulgar: "Share & earn",
   navTaxas: "Fees",
 
@@ -115,6 +117,7 @@ const pt: Textos = {
   navAirdrop: "Recompensas",
   navAfiliados: "Afiliados",
   navRanking: "Ranking",
+  navPrivado: "Envio privado",
   navDivulgar: "Divulgar",
   navTaxas: "Taxas",
 
@@ -149,6 +152,7 @@ const zh: Textos = {
   navAirdrop: "奖励",
   navAfiliados: "推广伙伴",
   navRanking: "排行榜",
+  navPrivado: "隐私转账",
   navDivulgar: "推广赚钱",
   navTaxas: "费用",
 

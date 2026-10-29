@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/", chave: "navExplorar" },
   { href: "/create", chave: "navCriar" },
+  { href: "/privado", chave: "navPrivado" },
   { href: "/divulgar", chave: "navDivulgar" },
   { href: "/affiliate", chave: "navAfiliados" },
   { href: "/ranking", chave: "navRanking" },

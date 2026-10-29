@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
@@ -38,6 +38,13 @@ const TEXTOS = traducoes({
     saida: "withdrawal receipt",
     semMensagem: "Your wallet can't sign messages. Use Phantom or Solflare.",
     naoAconteceu: "All good: nothing left your wallet. You can send again.",
+    ganhos: "Your earnings",
+    saldo: "Balance",
+    usarGanhos: "Use my earnings",
+    max: "Max",
+    tituloLivre: "🔒 Private send",
+    explicaLivre: "Send SOL from your wallet to any wallet without a trace: the SOL goes through Cloak's privacy pool, and nobody can link the sender to the receiver.",
+    destinoLivre: "To which wallet?",
   },
   pt: {
     abrir: "🔒 Sacar em privado",
@@ -61,6 +68,13 @@ const TEXTOS = traducoes({
     saida: "comprovante de saída",
     semMensagem: "Sua carteira não assina mensagens. Use Phantom ou Solflare.",
     naoAconteceu: "Tudo certo: nada saiu da sua carteira. Pode enviar de novo.",
+    ganhos: "Seus ganhos",
+    saldo: "Saldo",
+    usarGanhos: "Usar meus ganhos",
+    max: "Máx",
+    tituloLivre: "🔒 Envio privado",
+    explicaLivre: "Mande SOL da sua carteira pra qualquer carteira sem deixar rastro: o SOL passa pelo cofre de privacidade da Cloak, e ninguém consegue ligar quem enviou a quem recebeu.",
+    destinoLivre: "Pra qual carteira?",
   },
   zh: {
     abrir: "🔒 隐私提现",
@@ -84,10 +98,20 @@ const TEXTOS = traducoes({
     saida: "转出到你的钱包",
     semMensagem: "你的钱包不支持消息签名。请使用 Phantom 或 Solflare。",
     naoAconteceu: "存入未发生——你的钱包没有任何资金转出。现在可以重试。",
+    ganhos: "你的收益",
+    saldo: "余额",
+    usarGanhos: "使用我的收益",
+    max: "最大",
+    tituloLivre: "🔒 隐私转账",
+    explicaLivre: "把你钱包里的 SOL 无痕发送到任意钱包：SOL 经过 Cloak 的隐私池，没人能把发送方和接收方联系起来。",
+    destinoLivre: "发送到哪个钱包？",
   },
 });
 
 const sol = (l: bigint) => (Number(l) / 1e9).toFixed(4);
+
+// Fica na carteira no "Máx": taxas das transações e aluguel das contas da Cloak.
+const RESERVA_SOL = 0.01;
 
 // Pela ponte do site (/api/rpc/solana), que segura as rajadas da Cloak.
 const RPC_DA_PONTE = () => `${window.location.origin}/api/rpc/solana`;
@@ -108,14 +132,26 @@ function enderecoValido(s: string) {
 }
 
 /**
- * "Sacar em privado" (ver lib/saque-privado.ts). Fica dentro do card de ganhos
- * do criador, que só aparece pra carteira que criou a moeda: saca as taxas (se
- * houver) e manda o valor escolhido, passando pela Cloak, pra carteira de destino.
+ * "Sacar em privado" (ver lib/saque-privado.ts). No modo "criador" fica dentro do
+ * card de ganhos do criador: saca as taxas (se houver) e manda o valor escolhido,
+ * passando pela Cloak, pra carteira de destino. No modo "livre" (página /privado,
+ * 28/10/2026, pedido do dono) qualquer carteira conectada manda SOL do próprio saldo.
  */
-export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacarTaxas: () => Promise<void> }) {
+export function SaquePrivado({
+  taxasSol = 0,
+  sacarTaxas = async () => {},
+  modo = "criador",
+}: {
+  taxasSol?: number;
+  sacarTaxas?: () => Promise<void>;
+  modo?: "criador" | "livre";
+}) {
+  const livre = modo === "livre";
   const t = useTextos(TEXTOS);
+  const { connection } = useConnection();
   const { publicKey, signTransaction, signMessage } = useWallet();
-  const [aberto, setAberto] = useState(false);
+  const [saldo, setSaldo] = useState<number | null>(null);
+  const [aberto, setAberto] = useState(livre);
   const [destino, setDestino] = useState("");
   const [valor, setValor] = useState(() => Math.max(taxasSol, 0.02).toFixed(4));
   const [estado, setEstado] = useState<"" | "sacando" | EtapaDoSaque | "feito" | "falhou">("");
@@ -128,6 +164,11 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
     if (publicKey) setPendente(saquePendente(publicKey.toBase58()));
   }, [publicKey, estado]);
 
+  useEffect(() => {
+    if (!publicKey || !aberto) return;
+    connection.getBalance(publicKey).then((l) => setSaldo(l / 1e9)).catch(() => {});
+  }, [connection, publicKey, aberto, estado]);
+
   if (!publicKey || !signTransaction) return null;
 
   const lamports = paraLamports(valor);
@@ -135,6 +176,10 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
   const okValor = lamports !== null && lamports >= MINIMO_LAMPORTS;
   const okDestino = enderecoValido(destino);
   const ocupado = estado === "sacando" || estado === "deposito" || estado === "prova" || estado === "saque";
+  // As taxas a receber entram na carteira antes do envio, então somam no máximo.
+  const maximo = saldo === null ? 0 : Math.max(saldo + taxasSol - RESERVA_SOL, 0);
+  const atalho =
+    "rounded-md border border-violet-400/40 px-2 py-0.5 text-[11px] font-bold text-violet-200 hover:bg-violet-400/[0.12] disabled:opacity-40";
 
   const carteira = () => {
     if (!signMessage) throw new Error(t.semMensagem);
@@ -203,7 +248,7 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
   );
 
   return (
-    <div className="mt-3 border-t border-white/[0.06] pt-3">
+    <div className={livre ? "" : "mt-3 border-t border-white/[0.06] pt-3"}>
       {pendente && !ocupado && estado !== "feito" ? (
         <div className="space-y-2">
           <p className="text-[12px] text-warn">{t.pendente}</p>
@@ -221,10 +266,10 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
         </button>
       ) : (
         <div className="space-y-2.5">
-          <p className="text-[12px] font-bold text-violet-200">{t.abrir}</p>
-          <p className="text-[11.5px] leading-relaxed text-zinc-400">{t.explica}</p>
+          <p className={livre ? "text-[15px] font-black text-violet-200" : "text-[12px] font-bold text-violet-200"}>{livre ? t.tituloLivre : t.abrir}</p>
+          <p className="text-[11.5px] leading-relaxed text-zinc-400">{livre ? t.explicaLivre : t.explica}</p>
           <label className="block text-[11px] font-semibold text-zinc-400">
-            {t.destino}
+            {livre ? t.destinoLivre : t.destino}
             <input
               value={destino}
               onChange={(e) => setDestino(e.target.value)}
@@ -234,6 +279,26 @@ export function SaquePrivado({ taxasSol, sacarTaxas }: { taxasSol: number; sacar
             />
           </label>
           {destino && !okDestino && <p className="text-[11px] text-bear">{t.invalido}</p>}
+          <div className="tnum flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg bg-white/[0.03] px-3 py-2 text-[11.5px] text-zinc-400">
+            {!livre && (
+              <span>
+                {t.ganhos}: <b className="text-zinc-100">{taxasSol.toFixed(4)} SOL</b>
+              </span>
+            )}
+            <span>
+              {t.saldo}: <b className="text-zinc-100">{saldo === null ? "…" : `${saldo.toFixed(4)} SOL`}</b>
+            </span>
+            <span className="ml-auto flex gap-1.5">
+              {!livre && (
+                <button type="button" disabled={taxasSol <= 0 || ocupado} onClick={() => setValor(taxasSol.toFixed(4))} className={atalho}>
+                  {t.usarGanhos}
+                </button>
+              )}
+              <button type="button" disabled={maximo <= 0 || ocupado} onClick={() => setValor(String(Math.floor(maximo * 1e4) / 1e4))} className={atalho}>
+                {t.max}
+              </button>
+            </span>
+          </div>
           <label className="block text-[11px] font-semibold text-zinc-400">
             {t.valor}
             <input
