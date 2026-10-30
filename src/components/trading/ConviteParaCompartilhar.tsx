@@ -9,6 +9,7 @@ import { useChromaAccount } from "@/hooks/useChromaAccount";
 import { traducoes } from "@/lib/idiomas";
 import { useLinkDoX } from "@/hooks/useLinkDoX";
 import type { TokenSummary } from "@/lib/types";
+import { MARCA } from "@/lib/marca";
 
 /**
  * "POSTE E GANHE" — logo abaixo do comprar/vender (08/10/2026: "deveria ficar
@@ -54,7 +55,7 @@ export function ConviteParaCompartilhar({ token, compacto = false }: { token: To
   const account = useChromaAccount();
   const { publicKey } = useWallet();
   const { address: carteiraEvm } = useAccount();
-  const [origem, setOrigem] = useState("https://chromalaunch.fun");
+  const [origem, setOrigem] = useState(MARCA.site);
   const [copiado, setCopiado] = useState(false);
 
   useEffect(() => setOrigem(window.location.origin), []);

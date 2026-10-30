@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
+import { MARCA } from "@/lib/marca";
 
 /**
  * O destaque da primeira tela (pedido do dono, 19/10/2026; substitui a
@@ -13,7 +14,7 @@ import { traducoes } from "@/lib/idiomas";
  * memecoin aleatória só por testar. O botão do X leva pra um post de exemplo.
  */
 const MOEDA_DE_EXEMPLO = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"; // BONK
-const LINK_DO_X = "https://x.com/ChromaLaunch/status/2115664829210050633"; // post de exemplo (BONK), 29/10/2026
+const LINK_DO_X = MARCA.postDeExemplo; // na Chroma: post de exemplo (BONK), 29/10/2026
 
 const TEXTOS = traducoes({
   en: {
@@ -69,6 +70,7 @@ export function DestaqueTradeNoX() {
               >
                 {aberto ? t.fechar : `${t.experimentar} →`}
               </button>
+              {LINK_DO_X && (
               <a
                 href={LINK_DO_X}
                 target="_blank"
@@ -77,6 +79,7 @@ export function DestaqueTradeNoX() {
               >
                 {t.verNoX}
               </a>
+              )}
             </div>
           </div>
         </div>

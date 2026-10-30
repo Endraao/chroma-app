@@ -12,6 +12,7 @@ import { idiomaAtual } from "@/lib/idioma-servidor";
 import { IdiomaProvider } from "@/components/IdiomaProvider";
 import { RpcNotice } from "@/components/web3/RpcNotice";
 import { ContadorDeVisitas } from "@/components/ContadorDeVisitas";
+import { MARCA, comMarca, corEmRgb } from "@/lib/marca";
 
 import "./globals.css";
 
@@ -34,23 +35,23 @@ const display = Space_Grotesk({
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://chromalaunch.fun"),
+  metadataBase: new URL(MARCA.site),
   // O App Router serve src/app/icon.png e apple-icon.png como favicon sozinho;
   // estes aqui são para o card que aparece quando o link é compartilhado.
   // Card escuro próprio (1200x630, scripts/gerar-og.mjs): o logo tem fundo
   // transparente e WhatsApp/X pintavam de branco na pré-visualização.
   openGraph: {
-    title: "Chroma — Launchpad & Terminal Web3",
-    description: "Launch and trade meme coins on Solana and Robinhood Chain — live charts, contract audit and referral rewards.",
-    images: [{ url: "/og-2.png", width: 1200, height: 630, alt: "Chroma" }],
+    title: `${MARCA.nome} — Launchpad & Terminal Web3`,
+    description: comMarca("Launch and trade meme coins on Solana and Robinhood Chain — live charts, contract audit and referral rewards."),
+    images: [{ url: "/og-2.png", width: 1200, height: 630, alt: MARCA.nome }],
   },
-  title: "Chroma — Launchpad & Terminal Web3",
+  title: `${MARCA.nome} — Launchpad & Terminal Web3`,
   description:
     "Launch and trade meme coins on Solana and Robinhood Chain — live charts, contract audit and referral rewards.",
   twitter: {
     card: "summary_large_image",
-    site: "@ChromaLaunch",
-    creator: "@ChromaLaunch",
+    site: `@${MARCA.x}`,
+    creator: `@${MARCA.x}`,
     images: ["/og-2.png"],
   },
 };
@@ -81,6 +82,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `try{if(localStorage.getItem("chroma.tema")==="claro")document.documentElement.dataset.tema="claro"}catch(e){}`,
           }}
         />
+        {/* Cor de destaque do site de um cliente (na Chroma fica a do globals.css). */}
+        {MARCA.cor !== "#22d3ee" && (
+          <style>
+            {`:root{--marca:${corEmRgb(MARCA.cor)};--marca-forte:${corEmRgb(MARCA.corForte)};` +
+              `--espectro-forte:${MARCA.corForte};--espectro-medio:${MARCA.cor};` +
+              `--espectro-claro:color-mix(in srgb,${MARCA.cor} 55%,white)}`}
+          </style>
+        )}
         {/* Barrinha de carregamento no topo ao trocar de página, como na pump.fun */}
         <NextTopLoader color="#34d399" height={3} showSpinner={false} shadow="0 0 10px #34d399,0 0 5px #34d399" />
         <ContadorDeVisitas />

@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
 
 import { FormularioDeContato } from "@/components/ui/FormularioDeContato";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
+import { MARCA } from "@/lib/marca";
+import type { Metadata } from "next";
 
 const TEXTOS = traducoes({
   en: { titulo: "Contact & Support", intro: "Need help, found a problem or want to suggest something? Write below. The message goes straight to our team and the reply arrives at the email you provide." },
@@ -12,15 +13,15 @@ const TEXTOS = traducoes({
 
 const METADADOS = {
   "en": [
-    "Contact & Support — Chroma",
+    `Contact & Support — ${MARCA.nome}`,
     "Get help, report a problem or send a suggestion to the Chroma team."
   ],
   "pt": [
-    "Contato & Suporte — Chroma",
+    `Contato & Suporte — ${MARCA.nome}`,
     "Peça ajuda, relate um problema ou mande uma sugestão para a equipe da Chroma."
   ],
   "zh": [
-    "联系与支持 — Chroma",
+    `联系与支持 — ${MARCA.nome}`,
     "获取帮助、报告问题或向 Chroma 团队提出建议。"
   ]
 } as const;

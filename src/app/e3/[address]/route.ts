@@ -1,4 +1,5 @@
 import { getToken } from "@/lib/tokens";
+import { MARCA } from "@/lib/marca";
 
 /**
  * O LINK DO POST NO X (09/10/2026, funciona no PC E no Android) — copiado do
@@ -11,7 +12,7 @@ import { getToken } from "@/lib/tokens";
  */
 export const dynamic = "force-dynamic";
 
-const SITE = "https://chromalaunch.fun";
+const SITE = MARCA.site;
 const REF = /^[A-Za-z0-9_.-]{1,64}$/;
 
 const esc = (s: string) =>

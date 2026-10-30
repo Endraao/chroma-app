@@ -4,18 +4,19 @@ import Link from "next/link";
 import { Aviso, PaginaLegal } from "@/components/ui/PaginaLegal";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
+import { dicionarioComMarca, MARCA } from "@/lib/marca";
 
 const METADADOS = {
   "en": [
-    "Privacy Policy — Chroma",
+    `Privacy Policy — ${MARCA.nome}`,
     "What Chroma collects, why, who it shares it with and what your rights are."
   ],
   "pt": [
-    "Política de Privacidade — Chroma",
+    `Política de Privacidade — ${MARCA.nome}`,
     "O que a Chroma coleta, por quê, com quem compartilha e quais são os seus direitos."
   ],
   "zh": [
-    "隐私政策 — Chroma",
+    `隐私政策 — ${MARCA.nome}`,
     "Chroma 收集什么、为什么收集、与谁共享以及你的权利。"
   ]
 } as const;
@@ -48,7 +49,8 @@ const TEXTOS = traducoes({
   zh: {"titulo":"隐私政策","atualizado":"更新于 2026 年 9 月 28 日","resumo":"简而言之：我们只保存网站运行所需的最少数据。我们从不索要、也从不持有你的私钥或助记词。我们不出售任何人的数据。"},
 });
 
-const CORPO = { en: CorpoEn, pt: CorpoPt, zh: CorpoZh };
+// No site de um cliente o texto legal sai com o nome dele (src/lib/marca.ts).
+const CORPO = dicionarioComMarca({ en: CorpoEn, pt: CorpoPt, zh: CorpoZh });
 
 export default async function PrivacidadePage() {
   const idioma = await idiomaAtual();

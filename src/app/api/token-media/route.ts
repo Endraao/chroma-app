@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { salvarMetadados, salvarMidiaDaMoeda } from "@/lib/media-store";
 import { montarMetadados, recusarMetadados, type DadosDaMoeda } from "@/lib/token-metadata";
 import { ESPECS_DA_MOEDA } from "@/lib/token-media";
+import { MARCA } from "@/lib/marca";
 
 /**
  * POST /api/token-media — guarda a arte da moeda e publica os metadados.
@@ -55,7 +56,7 @@ function baseDoSite(request: Request): string {
   // lançada da versão local ficava sem foto em todo lugar. Os arquivos são os
   // mesmos que o site no ar serve.
   const origem = new URL(request.url).origin;
-  return /localhost|127\.0\.0\.1/.test(origem) ? "https://chromalaunch.fun" : origem;
+  return /localhost|127\.0\.0\.1/.test(origem) ? MARCA.site : origem;
 }
 
 export async function POST(request: Request) {

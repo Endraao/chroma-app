@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import sharp from "sharp";
 
 import { dinheiro, top5, type RedeDoTop } from "@/lib/top5";
+import { MARCA } from "@/lib/marca";
 
 /**
  * GET /top5/imagem?rede=robinhood|solana → a imagem do "Top 5 do dia" (PNG
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
                 border: i === 0 ? "2px solid rgba(34,211,238,0.5)" : "2px solid rgba(255,255,255,0.06)",
               }}
             >
-              <div style={{ width: 60, fontSize: 40, fontWeight: 900, color: i === 0 ? "#22d3ee" : "#71717a" }}>{`${i + 1}`}</div>
+              <div style={{ width: 60, fontSize: 40, fontWeight: 900, color: i === 0 ? MARCA.cor : "#71717a" }}>{`${i + 1}`}</div>
               {artes[i] ? (
                 <img src={artes[i]!} width={64} height={64} style={{ borderRadius: 14, marginRight: 24 }} />
               ) : (
@@ -83,8 +84,8 @@ export async function GET(request: Request) {
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "auto", fontSize: 26 }}>
-          <div style={{ fontWeight: 900, color: "#a78bfa" }}>CHROMA</div>
-          <div style={{ color: "#22d3ee", fontWeight: 700 }}>Live charts for every coin · chromalaunch.fun</div>
+          <div style={{ fontWeight: 900, color: "#a78bfa" }}>{MARCA.nome.toUpperCase()}</div>
+          <div style={{ color: MARCA.cor, fontWeight: 700 }}>{`Live charts for every coin · ${MARCA.dominio}`}</div>
         </div>
       </div>
     ),

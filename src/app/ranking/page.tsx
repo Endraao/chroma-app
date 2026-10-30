@@ -4,6 +4,7 @@ import Link from "next/link";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { rankingDeDivulgadores } from "@/lib/ranking-divulgadores";
 import { cn, formatUsd } from "@/lib/utils";
+import { MARCA } from "@/lib/marca";
 
 /**
  * Ranking público de divulgadores: quem mais gerou negócios pelo próprio link
@@ -43,7 +44,7 @@ const TEXTOS = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = TEXTOS[await idiomaAtual()];
-  return { title: `${t.titulo} — Chroma`, description: t.sub };
+  return { title: `${t.titulo} — ${MARCA.nome}`, description: t.sub };
 }
 
 export default async function Ranking({ searchParams }: { searchParams: Promise<{ p?: string }> }) {

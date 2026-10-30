@@ -5,18 +5,19 @@ import { PainelDeAirdrop } from "@/components/airdrop/PainelDeAirdrop";
 import { TEMPORADA_ATUAL } from "@/lib/airdrop-regras";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
+import { MARCA } from "@/lib/marca";
 
 const METADADOS = {
   "en": [
-    "Rewards — Chroma",
+    `Rewards — ${MARCA.nome}`,
     "The more you use Chroma, the more points you earn. No sign-up, counted by your address."
   ],
   "pt": [
-    "Recompensas — Chroma",
+    `Recompensas — ${MARCA.nome}`,
     "Quanto mais você usa a Chroma, mais pontos acumula. Sem inscrição, contado pelo seu endereço."
   ],
   "zh": [
-    "奖励 — Chroma",
+    `奖励 — ${MARCA.nome}`,
     "你在 Chroma 上用得越多，获得的积分就越多。无需注册，按地址统计。"
   ]
 } as const;

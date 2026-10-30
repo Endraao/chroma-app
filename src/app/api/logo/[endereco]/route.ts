@@ -3,6 +3,7 @@ import { createPublicClient, http, parseAbi, type Address } from "viem";
 import { cached } from "@/lib/cache";
 import { robinhoodChain } from "@/lib/web3";
 import { transporteRobinhood } from "@/lib/rpc-robinhood";
+import { MARCA } from "@/lib/marca";
 
 /**
  * GET /api/logo/0x… → a arte da moeda, lida do PRÓPRIO contrato.
@@ -95,7 +96,7 @@ async function fontes(endereco: string, ehEvm: boolean): Promise<{ urls: string[
 
 /** Link para a versão local do site vira o do site no ar (os arquivos são os mesmos). */
 function semLocalhost(url: string): string {
-  return url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?=\/api\/media\/)/, "https://chromalaunch.fun");
+  return url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(?=\/api\/media\/)/, MARCA.site);
 }
 
 function daHelius(mint: string): Promise<{ cdn: string; imagem: string; simbolo: string }> {

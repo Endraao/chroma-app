@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 
 import { CACHE_DA_CAPA, logoEmDataUri } from "@/lib/capa-do-post";
 import { getToken } from "@/lib/tokens";
+import { MARCA } from "@/lib/marca";
 
 /**
  * GET /api/logo/[endereco]/card → a CAPA do post do X (PNG 1200×1200).
@@ -55,8 +56,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ enderec
           </div>
         )}
         <div style={{ fontSize: 110, fontWeight: 900, marginTop: 50 }}>{`$${simbolo}`}</div>
-        <div style={{ fontSize: 56, fontWeight: 800, color: "#22d3ee", marginTop: 18 }}>Buy right in this post</div>
-        <div style={{ fontSize: 34, color: "#9aa4b2", marginTop: 60, letterSpacing: 4 }}>{`CHROMA · ${rede}`}</div>
+        <div style={{ fontSize: 56, fontWeight: 800, color: MARCA.cor, marginTop: 18 }}>Buy right in this post</div>
+        <div style={{ fontSize: 34, color: "#9aa4b2", marginTop: 60, letterSpacing: 4 }}>{`${MARCA.nome.toUpperCase()} · ${rede}`}</div>
       </div>
     ),
     {

@@ -1,4 +1,5 @@
-const SITE = "https://chromalaunch.fun";
+import { MARCA } from "@/lib/marca";
+const SITE = MARCA.site;
 
 /** Logo da moeda como data URI (só PNG/JPEG: o gerador de imagem não lê WebP). */
 export async function logoEmDataUri(endereco: string): Promise<string | null> {

@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
 import { ganhosDoDivulgador } from "@/lib/ranking-divulgadores";
+import { MARCA } from "@/lib/marca";
 
 /**
  * GET /ganhos/[id]/imagem → o card "quanto eu ganhei postando" (PNG 1200×630),
@@ -35,14 +36,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: 2 }}>CHROMA</div>
-          <div style={{ display: "flex", fontSize: 24, color: "#22d3ee", fontWeight: 700 }}>VERIFIED ON SOLANA</div>
+          <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: 2 }}>{MARCA.nome.toUpperCase()}</div>
+          <div style={{ display: "flex", fontSize: 24, color: MARCA.cor, fontWeight: 700 }}>VERIFIED ON SOLANA</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 34, color: "#9aa4b2" }}>{`${g?.nome ?? ""} earned`}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 24, marginTop: 6 }}>
-            <div style={{ fontSize: 132, fontWeight: 900, color: "#22d3ee", lineHeight: 1 }}>{`+${sol.toFixed(sol >= 1 ? 2 : 4)} SOL`}</div>
+            <div style={{ fontSize: 132, fontWeight: 900, color: MARCA.cor, lineHeight: 1 }}>{`+${sol.toFixed(sol >= 1 ? 2 : 4)} SOL`}</div>
             <div style={{ fontSize: 44, color: "#d4d4d8" }}>{`≈ $${usd.toFixed(2)}`}</div>
           </div>
           <div style={{ fontSize: 40, fontWeight: 800, marginTop: 18 }}>{`${periodo}, just by posting coins on X`}</div>
@@ -53,7 +54,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontSize: 30, color: "#d4d4d8" }}>No upfront payments. Earn per trade.</div>
-          <div style={{ fontSize: 34, fontWeight: 900, color: "#22d3ee" }}>chromalaunch.fun/divulgar</div>
+          <div style={{ fontSize: 34, fontWeight: 900, color: MARCA.cor }}>{`${MARCA.dominio}/divulgar`}</div>
         </div>
       </div>
     ),

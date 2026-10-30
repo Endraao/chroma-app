@@ -6,6 +6,7 @@ import { textos, type Idioma } from "@/lib/idiomas";
 import { TokenOficial } from "@/components/home/TokenOficial";
 import { DestaqueTradeNoX } from "@/components/home/DestaqueTradeNoX";
 import { CHAINS, CHAIN_IDS } from "@/lib/web3";
+import { MARCA } from "@/lib/marca";
 
 /**
  * A abertura da home.
@@ -106,7 +107,7 @@ export function FaixaDeAbertura({
           */}
           <h1 className="mt-2 select-none">
             <span className="holo-texto block text-[32px] font-black leading-[0.92] tracking-[-0.045em] sm:text-[40px] lg:text-[46px]">
-              CHROMA
+              {MARCA.nome.toUpperCase()}
             </span>
             <span className="mt-1 block text-[13px] font-bold uppercase tracking-[0.3em] text-zinc-400 sm:text-[16px] lg:text-[18px]">
               Launchpad

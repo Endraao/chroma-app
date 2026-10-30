@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { gravarNoCacheDoBanco, lerDoCacheDoBanco } from "@/lib/db";
 import { getToken } from "@/lib/tokens";
 import { formatPrice, formatUsd } from "@/lib/utils";
+import { MARCA } from "@/lib/marca";
 
 /**
  * BOT DE COMPRA NO TELEGRAM (pedido do dono, 07/10/2026) — o mesmo truque do
@@ -24,7 +25,7 @@ const TOKEN = process.env.TELEGRAM_COMPRA_TOKEN ?? "";
 const BOT = process.env.TELEGRAM_COMPRA_BOT ?? "";
 const APP = process.env.TELEGRAM_COMPRA_APP ?? "";
 const SEGREDO = process.env.TELEGRAM_COMPRA_SEGREDO ?? "";
-const SITE = "https://chromalaunch.fun";
+const SITE = MARCA.site;
 
 const SOLANA = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
 const EVM = /0x[0-9a-fA-F]{40}/;

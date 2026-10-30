@@ -15,18 +15,19 @@ import { cn, formatUsd } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
+import { MARCA } from "@/lib/marca";
 
 const METADADOS = {
   "en": [
-    "Fees and limits — Chroma",
+    `Fees and limits — ${MARCA.nome}`,
     "Every Chroma fee, network by network, nothing hidden in a tooltip."
   ],
   "pt": [
-    "Taxas e limites — Chroma",
+    `Taxas e limites — ${MARCA.nome}`,
     "Todas as taxas da Chroma, rede por rede, sem nada escondido em tooltip."
   ],
   "zh": [
-    "费用与限制 — Chroma",
+    `费用与限制 — ${MARCA.nome}`,
     "Chroma 的所有费用，按网络列出，没有隐藏在提示框里的内容。"
   ]
 } as const;

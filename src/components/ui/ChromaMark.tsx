@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { cn } from "@/lib/utils";
+import { MARCA } from "@/lib/marca";
 
 /**
  * O logo da Chroma: o cristal icosaédrico.
@@ -44,7 +45,7 @@ export function ChromaMark({
     >
       <Image
         src="/logo.png"
-        alt="Chroma"
+        alt={MARCA.nome}
         width={size * 2}
         height={size * 2}
         priority

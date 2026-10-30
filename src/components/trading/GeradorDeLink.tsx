@@ -13,6 +13,7 @@ import { traducoes } from "@/lib/idiomas";
 import type { ChainId } from "@/lib/types";
 import { useLinkDoX } from "@/hooks/useLinkDoX";
 import { cn, formatUsd } from "@/lib/utils";
+import { MARCA } from "@/lib/marca";
 
 /**
  * GERADOR DE LINK PRA QUALQUER MOEDA (pedido do dono, 07/10/2026).
@@ -109,7 +110,7 @@ export function GeradorDeLink() {
   const [moeda, setMoeda] = useState<Moeda | null>(null);
   const [estado, setEstado] = useState<"" | "buscando" | "nao-achou">("");
   const [copiado, setCopiado] = useState(false);
-  const [origem, setOrigem] = useState("https://chromalaunch.fun");
+  const [origem, setOrigem] = useState(MARCA.site);
 
   const endereco = extrairEndereco(texto);
   const { publicKey } = useWallet();

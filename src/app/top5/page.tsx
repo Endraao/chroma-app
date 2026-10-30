@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 
 import { CopiarTexto } from "@/app/top5/CopiarTexto";
 import { textoDoPost, top5, type RedeDoTop } from "@/lib/top5";
+import { MARCA } from "@/lib/marca";
 
 /**
  * /top5 — o post diário "Top 5 do dia" pronto: imagem pra baixar e texto pra
  * copiar (pedido do dono, 02/10/2026). Página fora do menu e fora do Google:
  * é ferramenta de quem posta pela Chroma.
  */
-export const metadata: Metadata = { title: "Top 5 — Chroma", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: `Top 5 — ${MARCA.nome}`, robots: { index: false, follow: false } };
 export const revalidate = 1800;
 
 export default async function Top5({ searchParams }: { searchParams: Promise<{ rede?: string }> }) {

@@ -5,6 +5,7 @@ import { idiomaAtual } from "@/lib/idioma-servidor";
 import { CA_DO_CHROMA } from "@/lib/token-oficial";
 import { lerDoCacheDoBanco } from "@/lib/db";
 import { traducoes } from "@/lib/idiomas";
+import { LINK_DO_TELEGRAM, LINK_DO_X, MARCA } from "@/lib/marca";
 
 /**
  * Docs e roadmap: o que a Chroma faz, como usar, contratos e o que vem depois.
@@ -24,9 +25,9 @@ const SOURCIFY = `https://repo.sourcify.dev/4663/${CONTRATO_LANCAMENTO}`;
 const EXPLORADOR = "https://robinhoodchain.blockscout.com/address/";
 
 const METADADOS = {
-  en: ["Docs & roadmap — Chroma", "How Chroma works, its contracts, fees and what comes next."],
-  pt: ["Docs e roadmap — Chroma", "Como a Chroma funciona, contratos, taxas e o que vem depois."],
-  zh: ["文档与路线图 — Chroma", "Chroma 的运作方式、合约、费用以及接下来的计划。"],
+  en: [`Docs & roadmap — ${MARCA.nome}`, "How Chroma works, its contracts, fees and what comes next."],
+  pt: [`Docs e roadmap — ${MARCA.nome}`, "Como a Chroma funciona, contratos, taxas e o que vem depois."],
+  zh: [`文档与路线图 — ${MARCA.nome}`, "Chroma 的运作方式、合约、费用以及接下来的计划。"],
 } as const;
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -311,8 +312,10 @@ export default async function DocsPage() {
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-[14px]">
           <Link href="/create" className="text-marca hover:underline">{t.criar}</Link>
           <Link href="/fees" className="text-marca hover:underline">{t.taxas}</Link>
-          <a href="https://x.com/ChromaLaunch" target="_blank" rel="noopener noreferrer" className="text-marca hover:underline">X @ChromaLaunch</a>
-          <a href="https://t.me/ChromaLaunch" target="_blank" rel="noopener noreferrer" className="text-marca hover:underline">Telegram</a>
+          <a href={LINK_DO_X} target="_blank" rel="noopener noreferrer" className="text-marca hover:underline">X @{MARCA.x}</a>
+          {LINK_DO_TELEGRAM && (
+            <a href={LINK_DO_TELEGRAM} target="_blank" rel="noopener noreferrer" className="text-marca hover:underline">Telegram</a>
+          )}
         </div>
       </section>
     </div>

@@ -18,6 +18,7 @@ import { CHAIN_IDS, CHAINS } from "@/lib/web3";
 import { DestaqueTradeNoX } from "@/components/home/DestaqueTradeNoX";
 import { MuralDoObsi } from "@/components/home/MuralDoObsi";
 import type { ChainId, TokenSummary } from "@/lib/types";
+import { EH_A_CHROMA, MARCA } from "@/lib/marca";
 
 export const dynamic = "force-dynamic";
 
@@ -239,7 +240,7 @@ export default async function HomePage({
       <PainelDaChroma moedas={lancadasNaChroma} />
 
       {/* O mascote comenta a Chroma de hora em hora (16/10/2026). */}
-      <MuralDoObsi />
+      {EH_A_CHROMA && <MuralDoObsi />}
 
       <section id="mercado" className="scroll-mt-20">
         <div className="mb-4 flex flex-wrap items-center gap-y-2">
@@ -265,7 +266,7 @@ export default async function HomePage({
         </div>
 
         {tokens.length === 0 && sort === "chroma" ? (
-          <VazioDaChroma rede={chain === "todas" ? "Chroma" : CHAINS[chain].label} t={t} />
+          <VazioDaChroma rede={chain === "todas" ? MARCA.nome : CHAINS[chain].label} t={t} />
         ) : tokens.length === 0 ? (
           <Vazio
             t={t}

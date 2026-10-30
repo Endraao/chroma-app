@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cached } from "@/lib/cache";
+import { MARCA } from "@/lib/marca";
 
 /**
  * O "Top 5 do dia" pro X, montado sozinho (pedido do dono, 02/10/2026).
@@ -91,8 +92,8 @@ export function textoDoPost(rede: RedeDoTop, lista: MoedaDoTop[]) {
   const nomeDaRede = rede === "robinhood" ? "Robinhood Chain" : "Solana";
   const linhas = lista.map((m, i) => `${i + 1}. $${m.simbolo}${m.x ? ` @${m.x}` : ""} — ${dinheiro(m.volumeUsd)}`);
   return {
-    post: `Top 5 on ${nomeDaRede} today 🔥 (24h volume)\n\n${linhas.join("\n")}\n\nLive charts for all of them on Chroma, link below 👇`,
-    resposta: `chromalaunch.fun/?chain=${rede}`,
+    post: `Top 5 on ${nomeDaRede} today 🔥 (24h volume)\n\n${linhas.join("\n")}\n\nLive charts for all of them on ${MARCA.nome}, link below 👇`,
+    resposta: `${MARCA.dominio}/?chain=${rede}`,
   };
 }
 

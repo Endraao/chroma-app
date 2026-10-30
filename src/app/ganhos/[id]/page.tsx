@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { ganhosDoDivulgador } from "@/lib/ranking-divulgadores";
+import { MARCA } from "@/lib/marca";
 
 /**
  * CARD "QUANTO EU GANHEI" (pedido do dono, 07/10/2026): quem ganha postando
@@ -10,7 +11,7 @@ import { ganhosDoDivulgador } from "@/lib/ranking-divulgadores";
  */
 export const dynamic = "force-dynamic";
 
-const SITE = "https://chromalaunch.fun";
+const SITE = MARCA.site;
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: titulo,
     description: "No upfront payments: on Chroma, promoters earn from every trade their posts bring — verified on-chain.",
     openGraph: { title: titulo, images: imagem },
-    twitter: { card: "summary_large_image", site: "@ChromaLaunch", title: titulo, images: [imagem] },
+    twitter: { card: "summary_large_image", site: `@${MARCA.x}`, title: titulo, images: [imagem] },
   };
 }
 

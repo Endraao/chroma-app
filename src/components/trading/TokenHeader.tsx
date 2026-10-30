@@ -17,6 +17,7 @@ import { cn, formatPct, formatPrice, formatUsd, shortenAddress, timeAgo } from "
 import type { StatsAoVivo } from "@/components/trading/TokenTerminal";
 import { useCurvaAtual } from "@/components/trading/CurvaProvider";
 import type { TokenSummary } from "@/lib/types";
+import { MARCA } from "@/lib/marca";
 
 /**
  * @param price preço ao vivo, vindo do gráfico (atualiza a cada segundo)
@@ -270,7 +271,7 @@ function pctDaCurva(p: number): string {
 
 /** Plataformas de origem com ícone oficial (public/plataformas). */
 const PLATAFORMAS: Record<string, { nome: string; icone: string }> = {
-  chroma: { nome: "Chroma", icone: "/logo.png" },
+  chroma: { nome: MARCA.nome, icone: "/logo.png" },
   pumpfun: { nome: "pump.fun", icone: "/plataformas/pumpfun.png" },
   pons: { nome: "Pons", icone: "/plataformas/pons.png" },
   stonkfun: { nome: "StonkFun", icone: "/plataformas/stonkfun.png" },

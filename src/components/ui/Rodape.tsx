@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { textos, type Idioma } from "@/lib/idiomas";
 import { TokenOficial } from "@/components/home/TokenOficial";
+import { LINK_DO_TELEGRAM, LINK_DO_X, MARCA } from "@/lib/marca";
 
 /**
  * O rodapé do site.
@@ -24,7 +25,7 @@ import { TokenOficial } from "@/components/home/TokenOficial";
  * por quem nunca vai abrir os termos — que é quase todo mundo.
  */
 /** Perfil oficial no X — o único canal social por enquanto (27/09/2026). */
-export const X_DA_CHROMA = "https://x.com/ChromaLaunch";
+export const X_DA_CHROMA = LINK_DO_X;
 
 export function Rodape({ idioma }: { idioma: Idioma }) {
   const t = textos(idioma);
@@ -38,7 +39,7 @@ export function Rodape({ idioma }: { idioma: Idioma }) {
             No rodapé ela ASSINA a página; competir com o aviso de risco logo
             abaixo seria inverter a importância dos dois.
           */}
-          <p className="holo-texto inline-block text-[12px] font-black tracking-tight">CHROMA</p>
+          <p className="holo-texto inline-block text-[12px] font-black tracking-tight">{MARCA.nome.toUpperCase()}</p>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-zinc-600">{t.rodapeAviso}</p>
           <TokenOficial compacto className="mt-3 w-fit max-w-full" />
         </div>
@@ -54,22 +55,24 @@ export function Rodape({ idioma }: { idioma: Idioma }) {
             href={X_DA_CHROMA}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Chroma no X"
+            aria-label={`${MARCA.nome} no X`}
             className="flex items-center gap-1.5 text-zinc-500 transition-colors hover:text-marca"
           >
             <svg viewBox="0 0 24 24" className="size-3.5 fill-current" aria-hidden>
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
-            @ChromaLaunch
+            @{MARCA.x}
           </a>
-          <a
-            href="https://t.me/ChromaLaunch"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-zinc-500 transition-colors hover:text-marca"
-          >
-            Telegram
-          </a>
+          {LINK_DO_TELEGRAM && (
+            <a
+              href={LINK_DO_TELEGRAM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-500 transition-colors hover:text-marca"
+            >
+              Telegram
+            </a>
+          )}
         </nav>
       </div>
     </footer>

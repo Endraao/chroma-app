@@ -2,6 +2,7 @@ import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, type Tra
 import BN from "bn.js";
 
 import { CONFIG_1_PORCENTO, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
+import { EH_A_CHROMA } from "@/lib/marca";
 
 /**
  * A "Curva da Chroma" na Solana: Meteora Dynamic Bonding Curve (DBC).
@@ -26,7 +27,11 @@ import { CONFIG_1_PORCENTO, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas
  * lib/curva-taxas.ts). A NOVA (11/10/2026: criador 0,30%, lançamento grátis)
  * vale pros lançamentos; a antiga (02/10/2026) segue reconhecida.
  */
-export const CONFIG_DA_CURVA = CONFIG_NOVA || process.env.NEXT_PUBLIC_CHROMA_DBC_CONFIG || CONFIG_ANTIGA;
+// No site de um cliente só vale a config DELE (a nossa paga as taxas pra carteira
+// da Chroma); sem ela a curva some da tela de criar e fica só a Clássica.
+export const CONFIG_DA_CURVA = EH_A_CHROMA
+  ? CONFIG_NOVA || process.env.NEXT_PUBLIC_CHROMA_DBC_CONFIG || CONFIG_ANTIGA
+  : process.env.NEXT_PUBLIC_CHROMA_DBC_CONFIG || "";
 export const CURVA_CHROMA_DISPONIVEL = CONFIG_DA_CURVA.length > 30;
 
 /**

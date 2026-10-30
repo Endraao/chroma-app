@@ -11,6 +11,7 @@ import { SeletorDeRede } from "@/components/ui/SeletorDeRede";
 import { BuscaDeMoedas } from "@/components/ui/BuscaDeMoedas";
 import { textos, type Idioma } from "@/lib/idiomas";
 import { cn } from "@/lib/utils";
+import { MARCA } from "@/lib/marca";
 
 /*
  * O rótulo é uma CHAVE do dicionário, não o texto. Ver `src/lib/idiomas.ts`:
@@ -71,7 +72,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
             nota de tamanho no componente `ChromaMark`.
           */}
           <span className="text-[24px] font-bold leading-none tracking-tight text-zinc-100 sm:text-[38px]">
-            Chroma
+            {MARCA.nome}
           </span>
         </Link>
 

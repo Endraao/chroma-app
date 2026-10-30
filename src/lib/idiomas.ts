@@ -16,6 +16,8 @@
  * `DICIONARIO`. Nada mais no site precisa mudar.
  */
 
+import { dicionarioComMarca } from "@/lib/marca";
+
 export const IDIOMAS = [
   { chave: "en", rotulo: "English", curto: "EN" },
   { chave: "pt", rotulo: "Português", curto: "PT" },
@@ -181,7 +183,7 @@ const zh: Textos = {
   rodapeDocs: "文档",
 };
 
-export const DICIONARIO: Record<Idioma, Textos> = { en, pt, zh };
+export const DICIONARIO: Record<Idioma, Textos> = dicionarioComMarca({ en, pt, zh });
 
 /**
  * Declara os textos de uma tela nos três idiomas.
@@ -191,7 +193,8 @@ export const DICIONARIO: Record<Idioma, Textos> = { en, pt, zh };
  * volta a aparecer meio traduzida.
  */
 export function traducoes<T>(d: { en: T; pt: NoInfer<T>; zh: NoInfer<T> }): Record<Idioma, T> {
-  return d;
+  // No site de um cliente, "Chroma" vira o nome dele (src/lib/marca.ts).
+  return dicionarioComMarca(d);
 }
 
 export function textos(idioma: Idioma): Textos {

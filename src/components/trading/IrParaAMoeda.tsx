@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { MARCA } from "@/lib/marca";
+
 /**
  * Quem abre o link do post fora do X vai direto pra página da moeda. É no
  * navegador, de propósito: o robô do X não roda script, então ele fica nesta
@@ -14,7 +16,7 @@ export function IrParaAMoeda({ destino }: { destino: string }) {
   return (
     <p className="p-8 text-center text-[14px] text-zinc-400">
       <a href={destino} className="font-bold text-marca">
-        chromalaunch.fun →
+        {MARCA.dominio} →
       </a>
     </p>
   );

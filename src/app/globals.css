@@ -7,6 +7,14 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   color-scheme: dark;
 
+  /* Cor de destaque. O site de um cliente troca no layout (src/lib/marca.ts). */
+  --marca: 34 211 238;
+  --marca-forte: 6 182 212;
+  /* O espectro da logo e dos títulos (azul forte → claro → branco). */
+  --espectro-forte: #0ea5e9;
+  --espectro-medio: #38bdf8;
+  --espectro-claro: #7dd3fc;
+
   /* Modo escuro (padrão) — valores RGB usados pelo tailwind.config.ts */
   --ink-950: 8 9 11;
   --ink-900: 13 14 18;
@@ -474,8 +482,8 @@ body::after {
    * tem presença sobre preto e ainda deixa espaço pras duas paradas seguintes
    * serem mais claras que ele.
    */
-  --azul-forte: #0ea5e9;
-  --azul-claro: #7dd3fc;
+  --azul-forte: var(--espectro-forte);
+  --azul-claro: var(--espectro-claro);
 }
 
 /*
@@ -551,10 +559,10 @@ body::after {
 @keyframes cor-da-marca {
   0%,
   100% {
-    color: #0ea5e9;
+    color: var(--espectro-forte);
   }
   33% {
-    color: #7dd3fc;
+    color: var(--espectro-claro);
   }
   66% {
     color: #ffffff;
@@ -1067,7 +1075,7 @@ body::after {
   position: relative;
   border-radius: 22px;
   padding: 1.5px;
-  background: conic-gradient(from var(--promo-angulo), #22d3ee, #a78bfa, #38bdf8, #06b6d4, #22d3ee);
+  background: conic-gradient(from var(--promo-angulo), rgb(var(--marca)), #a78bfa, var(--espectro-medio), rgb(var(--marca-forte)), rgb(var(--marca)));
   box-shadow:
     0 24px 60px -24px rgba(34, 211, 238, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.04);

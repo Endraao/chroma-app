@@ -1,3 +1,5 @@
+import { EH_A_CHROMA } from "@/lib/marca";
+
 /**
  * TABELA DE ENDEREÇOS DA CHROMA NA SOLANA.
  *
@@ -12,7 +14,7 @@
 export const ENDERECOS_DA_TABELA: string[] = [
   "ComputeBudget111111111111111111111111111111",
   "11111111111111111111111111111111",
-  "2jbvKgnx1uiH3TWttr5Y2qMmb6knBmSVpdW4BAmhWomY",
+  process.env.NEXT_PUBLIC_PLATFORM_FEE_WALLET_SOL || "2jbvKgnx1uiH3TWttr5Y2qMmb6knBmSVpdW4BAmhWomY",
   "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
   "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM",
   "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf",
@@ -27,5 +29,11 @@ export const ENDERECOS_DA_TABELA: string[] = [
   "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ"
 ];
 
-/** Endereço da tabela na rede (preenchido depois de criada). */
-export const TABELA_SOLANA: string | null = "A844pzPz6mnEKXKwWtFvne5dMJCK5sJogfVdarGwctXS";
+/**
+ * Endereço da tabela na rede (preenchido depois de criada). A da Chroma tem a
+ * carteira de taxas dela: o site de um cliente cria a própria e passa em
+ * NEXT_PUBLIC_TABELA_SOLANA (sem ela, lança em duas aprovações).
+ */
+export const TABELA_SOLANA: string | null = EH_A_CHROMA
+  ? "A844pzPz6mnEKXKwWtFvne5dMJCK5sJogfVdarGwctXS"
+  : process.env.NEXT_PUBLIC_TABELA_SOLANA || null;

@@ -4,6 +4,7 @@ import { TokenTerminal } from "@/components/trading/TokenTerminal";
 import { getToken } from "@/lib/tokens";
 import { CHAINS } from "@/lib/web3";
 import { idiomaAtual } from "@/lib/idioma-servidor";
+import { MARCA } from "@/lib/marca";
 
 interface Props {
   /** Promise desde o Next 16: a rota é resolvida junto com a renderização. */
@@ -23,15 +24,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const nome = `${token.name} ($${token.symbol})`;
   const textos = {
     en: {
-      titulo: `${nome} price, live chart & market cap — Chroma`,
+      titulo: `${nome} price, live chart & market cap — ${MARCA.nome}`,
       desc: `${nome} on ${rede}: live price chart, market cap, trades, holders and contract checks. Buy and sell $${token.symbol} on Chroma.`,
     },
     pt: {
-      titulo: `${nome}: preço, gráfico ao vivo e market cap — Chroma`,
+      titulo: `${nome}: preço, gráfico ao vivo e market cap — ${MARCA.nome}`,
       desc: `${nome} na ${rede}: gráfico de preço ao vivo, market cap, negociações, holders e checagem de contrato. Compre e venda $${token.symbol} na Chroma.`,
     },
     zh: {
-      titulo: `${nome} 价格、实时图表与市值 — Chroma`,
+      titulo: `${nome} 价格、实时图表与市值 — ${MARCA.nome}`,
       desc: `${rede} 上的 ${nome}：实时价格图表、市值、交易、持有人和合约检查。在 Chroma 上买卖 $${token.symbol}。`,
     },
   }[await idiomaAtual()];

@@ -1,3 +1,4 @@
+import { MARCA } from "@/lib/marca";
 import type { Metadata } from "next";
 
 import { IrParaAMoeda } from "@/components/trading/IrParaAMoeda";
@@ -13,7 +14,7 @@ import { getToken } from "@/lib/tokens";
  */
 export const dynamic = "force-dynamic";
 
-const SITE = "https://chromalaunch.fun";
+const SITE = MARCA.site;
 const REF = /^[A-Za-z0-9_.-]{1,64}$/;
 
 type Props = { params: Promise<{ address: string }>; searchParams: Promise<{ ref?: string }> };
@@ -35,7 +36,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     openGraph: { title: titulo, description: descricao, images: imagem, url: `${SITE}/e/${address}${sufixo}` },
     twitter: {
       card: "player",
-      site: "@ChromaLaunch",
+      site: `@${MARCA.x}`,
       title: titulo,
       description: descricao,
       images: [imagem],

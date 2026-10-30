@@ -4,18 +4,19 @@ import Link from "next/link";
 import { Aviso, PaginaLegal } from "@/components/ui/PaginaLegal";
 import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
+import { dicionarioComMarca, MARCA } from "@/lib/marca";
 
 const METADADOS = {
   "en": [
-    "Terms of Use — Chroma",
+    `Terms of Use — ${MARCA.nome}`,
     "Chroma's rules of use: risks, responsibilities and conduct."
   ],
   "pt": [
-    "Termos de Uso — Chroma",
+    `Termos de Uso — ${MARCA.nome}`,
     "As regras de uso da Chroma: riscos, responsabilidades e conduta."
   ],
   "zh": [
-    "使用条款 — Chroma",
+    `使用条款 — ${MARCA.nome}`,
     "Chroma 的使用规则：风险、责任与行为规范。"
   ]
 } as const;
@@ -46,7 +47,8 @@ const TEXTOS = traducoes({
   zh: {"titulo":"使用条款","atualizado":"更新于 2026 年 9 月 22 日","resumo":"简而言之：Chroma 是一个工具，而不是经纪商。我们永远不会持有你的私钥或资金。这里的任何代币都可能归零，包括因创建者诈骗而归零。只投入你能承受全部亏损的资金。"},
 });
 
-const CORPO = { en: CorpoEn, pt: CorpoPt, zh: CorpoZh };
+// No site de um cliente o texto legal sai com o nome dele (src/lib/marca.ts).
+const CORPO = dicionarioComMarca({ en: CorpoEn, pt: CorpoPt, zh: CorpoZh });
 
 export default async function TermosPage() {
   const idioma = await idiomaAtual();

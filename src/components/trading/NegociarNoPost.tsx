@@ -18,8 +18,9 @@ import { cn, formatPct, formatPrice, formatUsd } from "@/lib/utils";
 import { feeLabelFor } from "@/lib/fees";
 import { pctDaDivisao, type DivisaoDaCurva } from "@/lib/curva-taxas";
 import { PLATFORM_FEE_WALLET_EVM, PLATFORM_FEE_WALLET_SOL, robinhoodChain } from "@/lib/web3";
+import { LINK_DO_X, MARCA } from "@/lib/marca";
 
-const X_DA_CHROMA = "https://x.com/ChromaLaunch";
+const X_DA_CHROMA = LINK_DO_X;
 const BOTAO_DO_TOPO =
   "flex h-6 w-[148px] items-center justify-center gap-1.5 rounded-lg bg-ink-900 text-[12px] font-bold text-zinc-200 hover:bg-ink-800";
 const TAXA_DO_LINK_SOL = 0.005;
@@ -165,7 +166,7 @@ function Conteudo({ base }: { base: TokenSummary }) {
             <svg viewBox="0 0 24 24" aria-hidden className="size-3.5 fill-current">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
-            @ChromaLaunch
+            @{MARCA.x}
           </a>
         </div>
       </div>
@@ -384,9 +385,9 @@ function MeuLink({ token }: { token: TokenSummary }) {
   }
 
   const ref = apelido || carteira;
-  const link = `https://chromalaunch.fun/e3/${token.address}?ref=${encodeURIComponent(ref)}`;
+  const link = `${MARCA.site}/e3/${token.address}?ref=${encodeURIComponent(ref)}`;
   const curto = (s: string) => (s.length > 14 ? `${s.slice(0, 4)}…${s.slice(-4)}` : s);
-  const linkNaTela = `chromalaunch.fun/e3/${curto(token.address)}?ref=${curto(ref)}`;
+  const linkNaTela = `${MARCA.dominio}/e3/${curto(token.address)}?ref=${curto(ref)}`;
   const copiar = (texto = link, avisar = () => {
       setCopiado(true);
       setTimeout(() => setCopiado(false), 1500);

@@ -76,9 +76,10 @@ const config: Config = {
          * verde e o vermelho do mercado sem competir com eles, e já era da
          * paleta da marca.
          */
+        // Em variável (globals.css) pra o site de um cliente trocar a cor: src/lib/marca.ts.
         marca: {
-          DEFAULT: "#22d3ee",
-          forte: "#06b6d4",
+          DEFAULT: "rgb(var(--marca) / <alpha-value>)",
+          forte: "rgb(var(--marca-forte) / <alpha-value>)",
         },
         // Semântica de trading / segurança
         bull: "#00d18f",
@@ -114,14 +115,14 @@ const config: Config = {
          * ALTA do mercado, que é o único verde que deve significar algo aqui.
          */
         "chroma-gradient":
-          "linear-gradient(100deg, #0ea5e9 0%, #38bdf8 38%, #7dd3fc 70%, #ffffff 100%)",
+          "linear-gradient(100deg, var(--espectro-forte) 0%, var(--espectro-medio) 38%, var(--espectro-claro) 70%, #ffffff 100%)",
         /*
          * O mesmo espectro na vertical, pra faixa que desce ao lado de uma
          * lista ranqueada. Existe separado porque `rotate` num elemento de 1px
          * de largura muda a caixa do layout e desalinha tudo em volta.
          */
         "chroma-vertical":
-          "linear-gradient(180deg, #0ea5e9 0%, #38bdf8 38%, #7dd3fc 70%, #ffffff 100%)",
+          "linear-gradient(180deg, var(--espectro-forte) 0%, var(--espectro-medio) 38%, var(--espectro-claro) 70%, #ffffff 100%)",
         "grid-faint":
           "linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px)",
       },
