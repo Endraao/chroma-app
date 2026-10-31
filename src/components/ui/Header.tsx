@@ -21,14 +21,17 @@ import { MARCA } from "@/lib/marca";
  * O AIRDROP NÃO ESTÁ AQUI de propósito — ele é um botão, não um item de menu,
  * e vem depois da lista. Ver o comentário na renderização.
  */
+// `principal`: fica no topo mesmo em tela média (1280–1535 px, ex.: com a
+// extensão da carteira aberta do lado). Os outros só aparecem a partir de
+// 1536 px; antes disso moram no menu ☰ (31/10/2026: o topo ficava espremido).
 const NAV = [
-  { href: "/", chave: "navExplorar" },
-  { href: "/create", chave: "navCriar" },
-  { href: "/privado", chave: "navPrivado" },
-  { href: "/divulgar", chave: "navDivulgar" },
-  { href: "/affiliate", chave: "navAfiliados" },
-  { href: "/ranking", chave: "navRanking" },
-  { href: "/fees", chave: "navTaxas" },
+  { href: "/", chave: "navExplorar", principal: true },
+  { href: "/create", chave: "navCriar", principal: true },
+  { href: "/privado", chave: "navPrivado", principal: true },
+  { href: "/divulgar", chave: "navDivulgar", principal: false },
+  { href: "/affiliate", chave: "navAfiliados", principal: false },
+  { href: "/ranking", chave: "navRanking", principal: false },
+  { href: "/fees", chave: "navTaxas", principal: false },
 ] as const;
 
 export function Header({ idioma }: { idioma: Idioma }) {
@@ -86,6 +89,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
               href={item.href}
               className={cn(
                 "whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
+                !item.principal && "hidden 2xl:block",
                 pathname === item.href
                   ? "bg-white/[0.06] text-zinc-100"
                   : "text-zinc-500 hover:bg-white/5 hover:text-zinc-100",
@@ -175,7 +179,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
             este botão não havia como chegar em Criar token, Afiliados ou Taxas
             — as páginas existiam e eram inalcançáveis pelo telefone.
           */}
-          <div className="relative xl:hidden" ref={boxRef}>
+          <div className="relative 2xl:hidden" ref={boxRef}>
             <button
               onClick={() => setAberto((v) => !v)}
               aria-label="Abrir menu"

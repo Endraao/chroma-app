@@ -50,9 +50,15 @@ const PROGRAMAS: Record<string, TipoDeHolder> = {
   CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C: "pool",
   whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc: "pool",
 };
-/** Autoridades de pool que não têm conta própria (só existem como endereço). */
+/**
+ * Autoridades de pool que não têm conta própria (só existem como endereço).
+ * Sem elas a curva da Meteora (DBC) aparecia como baleia com 99% e o Top 10
+ * dava 100% (31/10/2026).
+ */
 const AUTORIDADES: Record<string, TipoDeHolder> = {
   "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1": "pool", // Raydium AMM v4
+  FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM: "curva", // Meteora DBC
+  HLnpSz9h2S4hiLQ43rnSD9XkcUThA7B8hQMKmDaiTLcC: "pool", // Meteora DAMM v2
 };
 
 /** Quem criou a moeda: o registro da Chroma ou, na pump.fun, o campo da curva. */
