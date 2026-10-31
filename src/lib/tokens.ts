@@ -456,6 +456,28 @@ async function comCurvaDaSolana(r: { token: TokenSummary; isDemo: boolean }) {
  * como "Token sem liquidez" até alguém recarregar (02/10/2026): nome, arte e
  * criador saem então do nosso cadastro.
  */
+/** Nome, símbolo e arte gravados na própria moeda (DAS da Helius), em até 2,5 s. */
+async function metadadosDaRede(mint: string): Promise<{ nome: string; simbolo: string; imagem: string | null } | null> {
+  const rpc = process.env.HELIUS_RPC || process.env.NEXT_PUBLIC_SOLANA_RPC;
+  if (!rpc?.startsWith("http")) return null;
+  try {
+    const r = await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getAsset", params: { id: mint } }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(2_500),
+    });
+    const a = ((await r.json()) as { result?: { content?: { metadata?: { name?: string; symbol?: string }; links?: { image?: string }; files?: { uri?: string }[] } } }).result;
+    const nome = a?.content?.metadata?.name?.trim();
+    const simbolo = a?.content?.metadata?.symbol?.trim();
+    if (!nome || !simbolo) return null;
+    return { nome, simbolo, imagem: a?.content?.links?.image ?? a?.content?.files?.[0]?.uri ?? null };
+  } catch {
+    return null;
+  }
+}
+
 async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc: string) {
   try {
     const [{ Connection }, { estadoNaCurvaDaChroma }, { precosNativos }] = await Promise.all([
@@ -473,6 +495,10 @@ async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc
     const cadastro = r.isDemo
       ? await import("@/lib/db").then((d) => d.buscarMoedaDaChroma(r.token.address)).catch(() => null)
       : null;
+    // Moeda de segundos atrás: o cadastro ainda pode não ter terminado e a
+    // página abria como "Token sem liquidez" com o símbolo tirado do endereço
+    // (31/10/2026). Nome, símbolo e arte vêm então da própria rede.
+    const daRede = r.isDemo && !cadastro ? await metadadosDaRede(r.token.address) : null;
     const nasceu = cadastro?.criadaEm ?? r.token.createdAt;
     const nova = nasceu > 0 && Date.now() - nasceu < 24 * 3600_000;
     // Preço de nascimento da curva: 30 SOL de valor de mercado / 1 bilhão.
@@ -489,7 +515,9 @@ async function comCurvaDaChroma(r: { token: TokenSummary; isDemo: boolean }, rpc
               description: cadastro.descricao ?? undefined,
               createdAt: cadastro.criadaEm,
             }
-          : {}),
+          : daRede
+            ? { name: daRede.nome, symbol: daRede.simbolo, imageUrl: daRede.imagem ?? r.token.imageUrl, createdAt: Date.now() }
+            : {}),
         creator: estado.criador,
         priceUsd: preco,
         change24h: nova ? (estado.precoSol / inicialEmSol - 1) * 100 : r.token.change24h,
