@@ -111,10 +111,38 @@ export async function negociosDaCurvaDaChroma(mint: string, pool: string, precoD
   if (!chave || precoDoSol <= 0) return null;
 
   return cached(`negocios-curva-chroma:${mint}`, 3_000, async () => {
-    const r = await fetch(`https://api.helius.xyz/v0/addresses/${pool}/transactions?api-key=${chave}&limit=50`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
-    });
+    /*
+     * Assinaturas pelo RPC + decodificação pela Helius (31/10/2026). A lista
+     * por endereço da Helius só mostrava o negócio uns bons segundos depois
+     * (índice atrasado) — moeda recém-criada abria sem transações até vários
+     * F5. O RPC já tem a assinatura no mesmo segundo, e decodificar por
+     * assinatura não depende do índice.
+     */
+    const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
+    const assinaturas = rpc?.startsWith("http")
+      ? await fetch(rpc, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getSignaturesForAddress", params: [pool, { limit: 50, commitment: "confirmed" }] }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(5_000),
+        })
+          .then((x) => x.json() as Promise<{ result?: { signature: string; err: unknown }[] }>)
+          .then((j) => (j.result ?? []).filter((s) => !s.err).map((s) => s.signature))
+          .catch(() => null)
+      : null;
+    const r = assinaturas?.length
+      ? await fetch(`https://api.helius.xyz/v0/transactions?api-key=${chave}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ transactions: assinaturas }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(8_000),
+        })
+      : await fetch(`https://api.helius.xyz/v0/addresses/${pool}/transactions?api-key=${chave}&limit=50`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(8_000),
+        });
     if (!r.ok) throw new Error(`helius ${r.status}`);
     const lista = (await r.json()) as TxDaHelius[];
 
@@ -122,7 +150,12 @@ export async function negociosDaCurvaDaChroma(mint: string, pool: string, precoD
     for (const tx of lista) {
       if (tx.transactionError) continue;
       const transf = tx.tokenTransfers ?? [];
-      const doToken = transf.filter((t) => t.mint === mint && (t.fromUserAccount === AUTORIDADE_DA_DBC || t.toUserAccount === AUTORIDADE_DA_DBC));
+      // Com remetente E destinatário: na transação de criação a cunhagem do
+      // bilhão de tokens (sem remetente) vinha primeiro e a compra do criador
+      // sumia da lista (31/10/2026).
+      const doToken = transf.filter(
+        (t) => t.mint === mint && t.fromUserAccount && t.toUserAccount && (t.fromUserAccount === AUTORIDADE_DA_DBC || t.toUserAccount === AUTORIDADE_DA_DBC),
+      );
       if (!doToken.length) continue; // saque de taxa, criação de conta etc.
       const compra = doToken[0].fromUserAccount === AUTORIDADE_DA_DBC;
       const carteira = compra ? doToken[0].toUserAccount : doToken[0].fromUserAccount;

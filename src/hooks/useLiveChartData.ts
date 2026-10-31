@@ -192,6 +192,8 @@ export function useLiveChartData({
   useEffect(() => {
     if (!address) return;
     let cancelled = false;
+    // Gráfico só com a vela do preço de agora (sem histórico ainda): recarrega rápido.
+    let semHistorico = false;
     setStatus("connecting");
 
     /*
@@ -236,6 +238,7 @@ export function useLiveChartData({
         setIntervaloDasVelas(interval);
         setCandles((prev) => (prev.length ? prev : [vela]));
         setProvisorio(true);
+        semHistorico = true;
         setStatus("live");
         return true;
       } catch {
@@ -267,13 +270,15 @@ export function useLiveChartData({
          */
         // 1s: nenhuma fonte grátis tem (na GeckoTerminal é só no plano pago);
         // as velas saem dos negócios da própria moeda, como na pump.fun.
-        let data = interval === "1s" ? await velasDeSegundo(address) : pool ? await velasDiretoDaGecko(chain, pool, address, interval) : null;
+        let data = interval === "1s" ? await velasDosNegocios(address, 1) : pool ? await velasDiretoDaGecko(chain, pool, address, interval) : null;
         if (!data?.length && interval !== "1s") {
           const res = await fetch(`/api/candles?address=${address}&interval=${interval}`, {
             cache: "no-store",
-          });
-          if (!res.ok) throw new Error(`api/candles respondeu ${res.status}`);
-          data = (await res.json()) as Candle[];
+          }).catch(() => null);
+          data = res?.ok ? ((await res.json()) as Candle[]) : null;
+          // Fonte recusou (429): monta com os negócios em vez de dar erro.
+          if (!data?.length) data = await velasDosNegocios(address, intervalSec);
+          if (!data?.length && !res?.ok) throw new Error(`api/candles respondeu ${res?.status ?? "sem resposta"}`);
         }
         if (adiantar !== null) window.clearTimeout(adiantar);
         if (cancelled) return;
@@ -316,7 +321,8 @@ export function useLiveChartData({
         }
 
         setStatus("live");
-        if (!isRefresh) setProvisorio(false);
+        setProvisorio(false);
+        semHistorico = false;
         /*
          * As velas chegam JUNTO com o intervalo a que pertencem. Antes, trocar
          * de 1m pra 15m fazia o gráfico redesenhar na hora com as velas de 1m
@@ -370,7 +376,16 @@ export function useLiveChartData({
     };
 
     void load();
-    const timer = window.setInterval(() => void load(true), CANDLE_REFRESH_MS);
+    /*
+     * Recarga: a cada 60 s normalmente; a cada 5 s no 1s e enquanto a moeda
+     * ainda não tem histórico (recém-criada) — antes ela ficava com a vela
+     * plana até alguém dar F5 (31/10/2026).
+     */
+    let voltas = 0;
+    const timer = window.setInterval(() => {
+      voltas++;
+      if (interval === "1s" || semHistorico || voltas % (CANDLE_REFRESH_MS / 5_000) === 0) void load(true);
+    }, 5_000);
 
     return () => {
       cancelled = true;
@@ -683,12 +698,15 @@ export function useLiveChartData({
 }
 
 /**
- * Velas de 1 segundo montadas com os últimos negócios da moeda (/api/negocios:
- * preço = dólares ÷ tokens de cada negócio). Pedido do dono, 31/10/2026: o
- * gráfico de 1m "anda devagar" perto do da pump.fun, que abre em segundos.
- * Moeda muito negociada só mostra os últimos minutos — pra mais, 1m.
+ * Velas montadas com os últimos negócios da moeda (/api/negocios: preço =
+ * dólares ÷ tokens de cada negócio), no tamanho pedido (31/10/2026).
+ *  - 1s: nenhuma fonte grátis tem; o gráfico de 1m "andava devagar" perto do
+ *    da pump.fun.
+ *  - Outros tempos: reserva quando a GeckoTerminal recusa por excesso de
+ *    pedidos (o 1h ficava 14 s esperando e dava erro).
+ * Moeda muito negociada só cobre os últimos negócios — o resto vem da fonte.
  */
-async function velasDeSegundo(address: string): Promise<Candle[] | null> {
+async function velasDosNegocios(address: string, segundos: number): Promise<Candle[] | null> {
   try {
     const res = await fetch(`/api/negocios?address=${address}`, { cache: "no-store" });
     if (!res.ok) return null;
@@ -697,7 +715,8 @@ async function velasDeSegundo(address: string): Promise<Candle[] | null> {
     for (const n of [...(negocios ?? [])].sort((a, b) => a.em - b.em)) {
       if (!(n.tokens > 0) || !(n.usd > 0)) continue;
       const preco = n.usd / n.tokens;
-      const time = Math.floor(n.em / 1000);
+      const s = Math.floor(n.em / 1000);
+      const time = s - (s % segundos);
       const v = porSegundo.get(time);
       porSegundo.set(
         time,

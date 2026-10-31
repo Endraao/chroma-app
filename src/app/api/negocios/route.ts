@@ -37,15 +37,28 @@ async function negociosNaCurvaDaSolana(address: string) {
  * Moeda na curva da Chroma: eventos do próprio contrato. Qualquer outra: a
  * GeckoTerminal (últimos ~300 negócios do par principal).
  */
-/** Moeda ainda na curva da Chroma: a pool (guardada 30 s, inclusive o "não é"). */
+/**
+ * Moeda ainda na curva da Chroma: a pool (guardada 30 s). O "não é" fica só
+ * 3 s (31/10/2026): a página da moeda nova abre no mesmo segundo do
+ * lançamento, a leitura ainda não via a curva e o "não é" ficava guardado —
+ * as transações só apareciam depois de vários F5.
+ */
+const naoEhDaCurva = new Map<string, number>();
 async function negociosNaCurvaDaChroma(address: string) {
   const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
   if (!rpc?.startsWith("http")) return null;
+  if ((naoEhDaCurva.get(address) ?? 0) > Date.now()) return null;
   try {
     const pool = await cached(`curva-chroma-pool:${address}`, 30_000, async () => {
       const [{ Connection }, { estadoNaCurvaDaChroma }] = await Promise.all([import("@solana/web3.js"), import("@/lib/meteora-dbc")]);
       const e = await estadoNaCurvaDaChroma(new Connection(rpc, { commitment: "confirmed", disableRetryOnRateLimit: true }), address);
-      return e && !e.completa ? e.pool : null;
+      const achada = e && !e.completa ? e.pool : null;
+      if (!achada) throw new Error("fora da curva"); // não guarda o "não é" por 30 s
+      return achada;
+    }).catch(() => {
+      naoEhDaCurva.set(address, Date.now() + 3_000);
+      if (naoEhDaCurva.size > 5000) naoEhDaCurva.clear();
+      return null;
     });
     if (!pool) return null;
     const sol = (await precosNativos().catch(() => null))?.solana ?? 0;
