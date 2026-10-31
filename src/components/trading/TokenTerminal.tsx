@@ -232,6 +232,7 @@ export function TokenTerminal({ token, isDemo = false }: { token: TokenSummary; 
             quoteAddress={token.quoteAddress}
             quotePriceUsd={token.quotePriceUsd}
             onTick={handleTick}
+            intervaloInicial={token.chain === "solana" && token.bondingProgress != null && token.bondingProgress < 100 ? "1s" : "1m"}
           />
         </div>
 

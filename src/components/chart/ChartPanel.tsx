@@ -163,7 +163,10 @@ export function ChartPanel({
   quoteAddress,
   quotePriceUsd,
   onTick,
+  intervaloInicial,
 }: {
+  /** Tempo gráfico ao abrir: moeda na curva abre em 1s, como na pump.fun. */
+  intervaloInicial?: Interval;
   address: string;
   symbol: string;
   chain: ChainId;
@@ -189,7 +192,7 @@ export function ChartPanel({
     provisorio,
     setInterval,
     lastCandle,
-  } = useLiveChartData({ address, pool, chain, quoteAddress, quotePriceUsd });
+  } = useLiveChartData({ address, pool, chain, quoteAddress, quotePriceUsd, interval: intervaloInicial });
 
   const [indicadores, setIndicadores] = useState<Indicador[]>(["VOL"]);
 

@@ -7,11 +7,12 @@ import { useEvmPoolTicker } from "@/hooks/useEvmPoolTicker";
 import type { Candle, ChainId } from "@/lib/types";
 import { CHAINS } from "@/lib/web3";
 
-export type Interval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
+export type Interval = "1s" | "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
 
-export const INTERVALS: Interval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
+export const INTERVALS: Interval[] = ["1s", "1m", "5m", "15m", "1h", "4h", "1d"];
 
 const INTERVAL_SECONDS: Record<Interval, number> = {
+  "1s": 1,
   "1m": 60,
   "5m": 300,
   "15m": 900,
@@ -264,8 +265,10 @@ export function useLiveChartData({
          * mesmo IP da Vercel, e o gráfico ficava minutos em "limitando as
          * consultas". Se falhar (ou for moeda da curva), cai no servidor.
          */
-        let data = pool ? await velasDiretoDaGecko(chain, pool, address, interval) : null;
-        if (!data?.length) {
+        // 1s: nenhuma fonte grátis tem (na GeckoTerminal é só no plano pago);
+        // as velas saem dos negócios da própria moeda, como na pump.fun.
+        let data = interval === "1s" ? await velasDeSegundo(address) : pool ? await velasDiretoDaGecko(chain, pool, address, interval) : null;
+        if (!data?.length && interval !== "1s") {
           const res = await fetch(`/api/candles?address=${address}&interval=${interval}`, {
             cache: "no-store",
           });
@@ -677,6 +680,36 @@ export function useLiveChartData({
     provisorio,
     setInterval,
   };
+}
+
+/**
+ * Velas de 1 segundo montadas com os últimos negócios da moeda (/api/negocios:
+ * preço = dólares ÷ tokens de cada negócio). Pedido do dono, 31/10/2026: o
+ * gráfico de 1m "anda devagar" perto do da pump.fun, que abre em segundos.
+ * Moeda muito negociada só mostra os últimos minutos — pra mais, 1m.
+ */
+async function velasDeSegundo(address: string): Promise<Candle[] | null> {
+  try {
+    const res = await fetch(`/api/negocios?address=${address}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const { negocios } = (await res.json()) as { negocios?: { tokens: number; usd: number; em: number }[] };
+    const porSegundo = new Map<number, Candle>();
+    for (const n of [...(negocios ?? [])].sort((a, b) => a.em - b.em)) {
+      if (!(n.tokens > 0) || !(n.usd > 0)) continue;
+      const preco = n.usd / n.tokens;
+      const time = Math.floor(n.em / 1000);
+      const v = porSegundo.get(time);
+      porSegundo.set(
+        time,
+        v
+          ? { ...v, high: Math.max(v.high, preco), low: Math.min(v.low, preco), close: preco, volume: v.volume + n.usd }
+          : { time, open: preco, high: preco, low: preco, close: preco, volume: n.usd },
+      );
+    }
+    return [...porSegundo.values()];
+  } catch {
+    return null;
+  }
 }
 
 const GECKO_TF: Record<string, { path: string; aggregate: number }> = {

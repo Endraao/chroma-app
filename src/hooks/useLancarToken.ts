@@ -114,27 +114,41 @@ const MENSAGENS = traducoes({
 });
 
 /**
- * Confirma sem mentir (09/10/2026): a espera por bloco às vezes estoura com a
- * transação JÁ aprovada — a tela dizia "nada foi cobrado, clique de novo" e
- * quem clicasse criaria OUTRA moeda. Se a espera estourar, consulta o status
- * na rede por até ~30 s antes de desistir. Devolve o erro da transação (null
- * = deu certo).
+ * Confirma rápido e sem mentir. Devolve o erro da transação (null = deu certo).
+ *
+ * - Pergunta o status a cada 0,4 s, sem WebSocket (31/10/2026): o
+ *   confirmTransaction esperava pelo WebSocket público da Solana e a moeda
+ *   levava ~30 s pra abrir; a rede confirma em ~1 s.
+ * - Com `bruta`, reenvia a transação a cada 2 s até confirmar (o que a
+ *   pump.fun faz): em rede cheia a primeira cópia às vezes se perde.
+ * - Só desiste quando o bloco da transação vence de verdade (09/10/2026: a
+ *   tela dizia "nada foi cobrado, clique de novo" com a moeda JÁ criada).
  */
 async function confirmarComFolga(
   connection: Connection,
   assinatura: string,
   bloco: { blockhash: string; lastValidBlockHeight: number },
+  bruta?: Uint8Array,
 ): Promise<unknown> {
-  try {
-    const r = await connection.confirmTransaction({ signature: assinatura, ...bloco }, "confirmed");
-    return r.value.err;
-  } catch (e) {
-    for (let i = 0; i < 20; i++) {
-      const { value } = await connection.getSignatureStatus(assinatura, { searchTransactionHistory: true }).catch(() => ({ value: null }));
-      if (value?.confirmationStatus) return value.err;
-      await new Promise((r) => setTimeout(r, 1500));
+  const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  for (let volta = 0; ; volta++) {
+    const { value } = await connection.getSignatureStatuses([assinatura]).catch(() => ({ value: [null] }));
+    const status = value[0];
+    if (status?.err) return status.err;
+    if (status?.confirmationStatus === "confirmed" || status?.confirmationStatus === "finalized") return null;
+    if (bruta && volta > 0 && volta % 5 === 0) {
+      void connection.sendRawTransaction(bruta, { skipPreflight: true, maxRetries: 0 }).catch(() => {});
     }
-    throw e;
+    // A cada ~4 s confere se o bloco venceu; vencido e sem status = não entrou.
+    if (volta > 0 && volta % 10 === 0) {
+      const altura = await connection.getBlockHeight("confirmed").catch(() => 0);
+      if (altura > bloco.lastValidBlockHeight) {
+        const final = await connection.getSignatureStatus(assinatura, { searchTransactionHistory: true }).catch(() => ({ value: null }));
+        if (final.value?.confirmationStatus) return final.value.err;
+        throw new Error("block height exceeded");
+      }
+    }
+    await esperar(400);
   }
 }
 
@@ -219,6 +233,10 @@ export function useLancarToken() {
               curva: dados.curva === "chroma" ? "chroma" : undefined,
             }),
           }).catch((erroDeCatalogo) => console.warn("[lancamento] fora do catálogo:", erroDeCatalogo));
+        // O cadastro dá nome e arte à página da moeda nova, mas não pode segurar
+        // a ida pra ela: espera no máximo 3 s e segue (ele termina sozinho).
+        const registrarSemTravar = (assinatura: string, assinaturaTaxa?: string) =>
+          Promise.race([registrar(assinatura, assinaturaTaxa), new Promise((ok) => setTimeout(ok, 3000))]);
 
         /*
          * UMA TRANSAÇÃO SÓ (com a tabela de endereços da Chroma na rede):
@@ -265,13 +283,14 @@ export function useLancarToken() {
           }
           const assinada = await signTransaction(tx);
           assinada.partialSign(mint);
-          const assinatura = await connection.sendRawTransaction(assinada.serialize());
+          const bruta = assinada.serialize();
+          const assinatura = await connection.sendRawTransaction(bruta);
           setEtapa("confirmando");
           const bloco = await connection.getLatestBlockhash();
-          const r = { value: { err: await confirmarComFolga(connection, assinatura, bloco) } };
+          const r = { value: { err: await confirmarComFolga(connection, assinatura, bloco, bruta) } };
           if (r.value.err) throw new Error(m.recusou);
           mintCriado = mint.publicKey.toBase58();
-          await registrar(assinatura);
+          await registrarSemTravar(assinatura);
           setEtapa("pronto");
           return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
         }
@@ -309,7 +328,7 @@ export function useLancarToken() {
               })
               .catch(() => {});
           }
-          await registrar(assinatura);
+          await registrarSemTravar(assinatura);
           setEtapa("pronto");
           return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
         }
@@ -403,7 +422,7 @@ export function useLancarToken() {
             }
           }
 
-          await registrar(assinatura, assinaturaTaxa);
+          await registrarSemTravar(assinatura, assinaturaTaxa);
           setEtapa("pronto");
           return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
         }
