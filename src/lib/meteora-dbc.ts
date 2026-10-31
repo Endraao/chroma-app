@@ -1,7 +1,7 @@
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import BN from "bn.js";
 
-import { CONFIG_1_PORCENTO, CONFIG_25, CONFIG_50, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
+import { CONFIG_1_PORCENTO, CONFIG_25, CONFIG_50, CONFIG_50C, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
 import { EH_A_CHROMA } from "@/lib/marca";
 
 /**
@@ -39,15 +39,23 @@ export const CURVA_CHROMA_DISPONIVEL = CONFIG_DA_CURVA.length > 30;
  * 25% → 1% em 30 s (CONFIG_25, só no site da Chroma). O criador escolhe na
  * tela de criar, dentro de "Lançar pela Meteora".
  */
-export type VarianteDaCurva = "10" | "25" | "50";
+export type VarianteDaCurva = "10" | "25" | "50" | "50c";
 const CONFIG_DA_CURVA_25 = EH_A_CHROMA ? CONFIG_25 : "";
 const CONFIG_DA_CURVA_50 = EH_A_CHROMA ? CONFIG_50 : "";
+const CONFIG_DA_CURVA_50C = EH_A_CHROMA ? CONFIG_50C : "";
 export const CURVA_25_DISPONIVEL = CONFIG_DA_CURVA_25.length > 30;
 export const CURVA_50_DISPONIVEL = CONFIG_DA_CURVA_50.length > 30;
+export const CURVA_50C_DISPONIVEL = CONFIG_DA_CURVA_50C.length > 30;
 /** As variantes que dá pra escolher na tela de criar (a de 10% sempre). */
-export const VARIANTES_DISPONIVEIS: VarianteDaCurva[] = ["10", ...(CURVA_25_DISPONIVEL ? (["25"] as const) : []), ...(CURVA_50_DISPONIVEL ? (["50"] as const) : [])];
+export const VARIANTES_DISPONIVEIS: VarianteDaCurva[] = ["10", ...(CURVA_25_DISPONIVEL ? (["25"] as const) : []), ...(CURVA_50_DISPONIVEL ? (["50"] as const) : []), ...(CURVA_50C_DISPONIVEL ? (["50c"] as const) : [])];
 const configDaVariante = (v: VarianteDaCurva) =>
-  v === "25" && CURVA_25_DISPONIVEL ? CONFIG_DA_CURVA_25 : v === "50" && CURVA_50_DISPONIVEL ? CONFIG_DA_CURVA_50 : CONFIG_DA_CURVA;
+  v === "25" && CURVA_25_DISPONIVEL
+    ? CONFIG_DA_CURVA_25
+    : v === "50" && CURVA_50_DISPONIVEL
+      ? CONFIG_DA_CURVA_50
+      : v === "50c" && CURVA_50C_DISPONIVEL
+        ? CONFIG_DA_CURVA_50C
+        : CONFIG_DA_CURVA;
 
 /**
  * Configs ANTERIORES da curva. Moeda lançada nelas continua sendo da Chroma
@@ -55,7 +63,7 @@ const configDaVariante = (v: VarianteDaCurva) =>
  * atual. Trocar a config (ex.: mudar a taxa anti-sniper) = mover a atual pra cá.
  */
 const CONFIGS_ANTIGAS: string[] = [CONFIG_1_PORCENTO, CONFIG_ANTIGA];
-export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, CONFIG_DA_CURVA_25, CONFIG_DA_CURVA_50, ...CONFIGS_ANTIGAS].filter(Boolean))];
+export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, CONFIG_DA_CURVA_25, CONFIG_DA_CURVA_50, CONFIG_DA_CURVA_50C, ...CONFIGS_ANTIGAS].filter(Boolean))];
 
 type KitDbc = typeof import("@meteora-ag/dynamic-bonding-curve-sdk");
 type ClienteDbc = InstanceType<KitDbc["DynamicBondingCurveClient"]>;
@@ -117,12 +125,17 @@ export async function parametrosDaCurva(variante: VarianteDaCurva = "10") {
         // 10% → 1% em 30 s, caindo 0,3% por segundo (pedido do dono, 18/10/2026).
         // Era 1% fixo (config Di9W…, 11/10/2026). Variante "25": 25% → 1% em
         // 30 s, caindo 0,8% por segundo (31/10/2026).
-        baseFeeMode: sdk.BaseFeeMode.FeeSchedulerLinear,
+        baseFeeMode: variante === "50c" ? sdk.BaseFeeMode.FeeSchedulerExponential : sdk.BaseFeeMode.FeeSchedulerLinear,
         // Variante "50": UM período de 120 s — 50% fixos por 2 min e 1% de uma
         // vez depois (31/10/2026: "não deixa caindo nesse tempo").
         feeSchedulerParam:
           variante === "50"
             ? { startingFeeBps: 5000, endingFeeBps: 100, numberOfPeriod: 1, totalDuration: 120 }
+            : variante === "50c"
+              ? // 50% caindo a cada segundo até 1% em 120 s, em curva exponencial
+                // igual à da lançadora AVL (que o sniper comprou): ~36% com 10 s,
+                // ~7% com 1 min. Ver baseFeeMode abaixo.
+                { startingFeeBps: 5000, endingFeeBps: 100, numberOfPeriod: 120, totalDuration: 120 }
             : { startingFeeBps: variante === "25" ? 2500 : 1000, endingFeeBps: 100, numberOfPeriod: 30, totalDuration: 30 },
       },
       dynamicFeeEnabled: false,

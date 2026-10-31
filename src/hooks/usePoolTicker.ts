@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Connection, PublicKey } from "@solana/web3.js";
 
 import { SOLANA_RPC, SOLANA_WS } from "@/lib/web3";
-import { CONFIG_25, CONFIG_50 } from "@/lib/curva-taxas";
+import { CONFIG_25, CONFIG_50, CONFIG_50C } from "@/lib/curva-taxas";
 
 /**
  * Preço ao vivo lido DIRETO DA POOL, por WebSocket.
@@ -481,7 +481,7 @@ export function usePoolTicker({
 const PUMP = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
 const DBC = new PublicKey("dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN");
 const PUMP_AMM = new PublicKey("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA");
-const CONFIGS_DBC = ["9aB2qqbbdkB7H96XYbxqvPJ3miUEAmecLm1pHk8kp1aS", "Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs", "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw", CONFIG_25, CONFIG_50].filter(Boolean);
+const CONFIGS_DBC = ["9aB2qqbbdkB7H96XYbxqvPJ3miUEAmecLm1pHk8kp1aS", "Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs", "BbbaZGSkhjFMfFQNfUrgbDFX9pWATSZvWoVF9jkaFQXw", CONFIG_25, CONFIG_50, CONFIG_50C].filter(Boolean);
 
 type TipoDeCurva = "pump" | "dbc";
 

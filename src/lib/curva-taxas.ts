@@ -48,6 +48,15 @@ export const CONFIG_25 = "CsLRkgyVB79KAsxjFLKqoJpc75uwdjd3dLcLAipuC6Em";
  */
 export const CONFIG_50 = "3LJNY5GBcCTMYyVNGMeTSVvDnRG5Nqu2rB3PqNL9mvQo";
 
+/**
+ * Quinta curva (31/10/2026): 50% caindo em curva exponencial até 1% em
+ * 2 min, igual à da lançadora AVL (~36% com 10 s, ~7% com 1 min). Motivo: o sniper 4QXV pulou a de 50% FIXOS — nas 303
+ * moedas dele, nenhuma cobrava mais de ~34% um minuto depois (quando ele
+ * vende). Pode ser criada com as taxas indo pra OUTRA carteira (a que
+ * criou), pra testar se ele bloqueou a 2jbv. Vazia até o dono criar.
+ */
+export const CONFIG_50C = "652YWvwWuZ9fPpupaGNu7ivNpxC113onQeHGzYZNg9Jb";
+
 /** Fatias da negociação (fração do VOLUME) numa moeda da curva. */
 export interface DivisaoDaCurva {
   criador: number;
