@@ -55,7 +55,15 @@ export const CONFIG_50 = "3LJNY5GBcCTMYyVNGMeTSVvDnRG5Nqu2rB3PqNL9mvQo";
  * vende). Pode ser criada com as taxas indo pra OUTRA carteira (a que
  * criou), pra testar se ele bloqueou a 2jbv. Vazia até o dono criar.
  */
-export const CONFIG_50C = "652YWvwWuZ9fPpupaGNu7ivNpxC113onQeHGzYZNg9Jb";
+export const CONFIG_50C = "";
+
+/**
+ * A primeira "50% caindo" (31/10/2026) foi criada com as taxas da parceira
+ * indo pra carteira de teste GgV79k…, não pra 2jbv. O dono quer TODA taxa na
+ * 2jbv, sempre: ela saiu da tela de criar e só continua reconhecida pras
+ * moedas que já nasceram nela (sacar = conectar a GgV79k).
+ */
+export const CONFIG_50C_CARTEIRA_TESTE = "652YWvwWuZ9fPpupaGNu7ivNpxC113onQeHGzYZNg9Jb";
 
 /** Fatias da negociação (fração do VOLUME) numa moeda da curva. */
 export interface DivisaoDaCurva {

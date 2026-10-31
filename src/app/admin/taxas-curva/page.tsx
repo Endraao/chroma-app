@@ -22,9 +22,10 @@ export default function ResgatarTaxasDaCurva() {
 
   async function resgatar() {
     if (!publicKey || !signAllTransactions) return setEstado("Conecte a carteira Solana no topo da página.");
-    if (publicKey.toBase58() !== plataforma) {
-      return setEstado(`Conecte a carteira da plataforma (${plataforma.slice(0, 6)}…${plataforma.slice(-4)}). A conectada não pode resgatar.`);
-    }
+    // Qualquer carteira dona de uma curva da Chroma resgata as taxas DELA (a
+    // curva 652YW… é da carteira de teste GgV79k…, 31/10/2026). Nas outras
+    // curvas a simulação recusa e elas ficam de fora.
+    const daPlataforma = publicKey.toBase58() === plataforma;
     try {
       setEstado("Procurando taxas nas moedas da curva…");
       const [curva, meteora] = await Promise.all([
@@ -47,7 +48,7 @@ export default function ResgatarTaxasDaCurva() {
         const r = await connection.confirmTransaction(assinatura, "confirmed");
         if (!r.value.err) ok++;
       }
-      setEstado(`Pronto: ${ok} de ${assinadas.length} resgate(s) confirmados. O SOL já está na carteira da plataforma.`);
+      setEstado(`Pronto: ${ok} de ${assinadas.length} resgate(s) confirmados. O SOL já está na ${daPlataforma ? "carteira da plataforma" : "carteira conectada"}.`);
     } catch (e) {
       setEstado(e instanceof Error ? e.message : String(e));
     }

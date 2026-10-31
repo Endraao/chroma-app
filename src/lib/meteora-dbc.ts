@@ -1,7 +1,7 @@
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import BN from "bn.js";
 
-import { CONFIG_1_PORCENTO, CONFIG_25, CONFIG_50, CONFIG_50C, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
+import { CONFIG_1_PORCENTO, CONFIG_25, CONFIG_50, CONFIG_50C, CONFIG_50C_CARTEIRA_TESTE, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
 import { EH_A_CHROMA } from "@/lib/marca";
 
 /**
@@ -62,7 +62,7 @@ const configDaVariante = (v: VarianteDaCurva) =>
  * (saque do criador, bônus, resgate da plataforma); lançamento novo usa só a
  * atual. Trocar a config (ex.: mudar a taxa anti-sniper) = mover a atual pra cá.
  */
-const CONFIGS_ANTIGAS: string[] = [CONFIG_1_PORCENTO, CONFIG_ANTIGA];
+const CONFIGS_ANTIGAS: string[] = [CONFIG_1_PORCENTO, CONFIG_ANTIGA, ...(EH_A_CHROMA ? [CONFIG_50C_CARTEIRA_TESTE] : [])];
 export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, CONFIG_DA_CURVA_25, CONFIG_DA_CURVA_50, CONFIG_DA_CURVA_50C, ...CONFIGS_ANTIGAS].filter(Boolean))];
 
 type KitDbc = typeof import("@meteora-ag/dynamic-bonding-curve-sdk");
