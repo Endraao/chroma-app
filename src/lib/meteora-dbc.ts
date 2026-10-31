@@ -1,7 +1,7 @@
 import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, Transaction, type TransactionInstruction } from "@solana/web3.js";
 import BN from "bn.js";
 
-import { CONFIG_1_PORCENTO, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
+import { CONFIG_1_PORCENTO, CONFIG_25, CONFIG_ANTIGA, CONFIG_NOVA } from "@/lib/curva-taxas";
 import { EH_A_CHROMA } from "@/lib/marca";
 
 /**
@@ -35,12 +35,22 @@ export const CONFIG_DA_CURVA = EH_A_CHROMA
 export const CURVA_CHROMA_DISPONIVEL = CONFIG_DA_CURVA.length > 30;
 
 /**
+ * Anti-sniper da curva: "10" = 10% → 1% em 30 s (CONFIG_DA_CURVA); "25" =
+ * 25% → 1% em 30 s (CONFIG_25, só no site da Chroma). O criador escolhe na
+ * tela de criar, dentro de "Lançar pela Meteora".
+ */
+export type VarianteDaCurva = "10" | "25";
+const CONFIG_DA_CURVA_25 = EH_A_CHROMA ? CONFIG_25 : "";
+export const CURVA_25_DISPONIVEL = CONFIG_DA_CURVA_25.length > 30;
+const configDaVariante = (v: VarianteDaCurva) => (v === "25" && CURVA_25_DISPONIVEL ? CONFIG_DA_CURVA_25 : CONFIG_DA_CURVA);
+
+/**
  * Configs ANTERIORES da curva. Moeda lançada nelas continua sendo da Chroma
  * (saque do criador, bônus, resgate da plataforma); lançamento novo usa só a
  * atual. Trocar a config (ex.: mudar a taxa anti-sniper) = mover a atual pra cá.
  */
 const CONFIGS_ANTIGAS: string[] = [CONFIG_1_PORCENTO, CONFIG_ANTIGA];
-export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, ...CONFIGS_ANTIGAS])];
+export const CONFIGS_DA_CURVA = [...new Set([CONFIG_DA_CURVA, CONFIG_DA_CURVA_25, ...CONFIGS_ANTIGAS].filter(Boolean))];
 
 type KitDbc = typeof import("@meteora-ag/dynamic-bonding-curve-sdk");
 type ClienteDbc = InstanceType<KitDbc["DynamicBondingCurveClient"]>;
@@ -86,7 +96,7 @@ const SOL = new PublicKey("So11111111111111111111111111111111111111112");
  *  - Depois de graduar, a liquidez fica travada pra sempre (metade criador,
  *    metade Chroma), e as duas partes seguem recebendo as taxas da pool.
  */
-export async function parametrosDaCurva() {
+export async function parametrosDaCurva(variante: VarianteDaCurva = "10") {
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   return sdk.buildCurveWithMarketCap({
     token: {
@@ -100,9 +110,10 @@ export async function parametrosDaCurva() {
     fee: {
       baseFeeParams: {
         // 10% → 1% em 30 s, caindo 0,3% por segundo (pedido do dono, 18/10/2026).
-        // Era 1% fixo (config Di9W…, 11/10/2026).
+        // Era 1% fixo (config Di9W…, 11/10/2026). Variante "25": 25% → 1% em
+        // 30 s, caindo 0,8% por segundo (31/10/2026).
         baseFeeMode: sdk.BaseFeeMode.FeeSchedulerLinear,
-        feeSchedulerParam: { startingFeeBps: 1000, endingFeeBps: 100, numberOfPeriod: 30, totalDuration: 30 },
+        feeSchedulerParam: { startingFeeBps: variante === "25" ? 2500 : 1000, endingFeeBps: 100, numberOfPeriod: 30, totalDuration: 30 },
       },
       dynamicFeeEnabled: false,
       collectFeeMode: sdk.CollectFeeMode.QuoteToken,
@@ -138,12 +149,12 @@ export async function parametrosDaCurva() {
 }
 
 /** Transação que cria a config da curva (uso único, assinada pela carteira da Chroma). */
-export async function transacaoDeCriarConfig(conexao: Connection, pagador: PublicKey, plataforma: PublicKey) {
+export async function transacaoDeCriarConfig(conexao: Connection, pagador: PublicKey, plataforma: PublicKey, variante: VarianteDaCurva = "10") {
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
   const config = Keypair.generate();
   const tx = await cliente.partner.createConfig({
-    ...(await parametrosDaCurva()),
+    ...(await parametrosDaCurva(variante)),
     config: config.publicKey,
     feeClaimer: plataforma,
     leftoverReceiver: plataforma,
@@ -171,8 +182,9 @@ export async function transacaoDeLancamentoNaCurva(params: {
   simbolo: string;
   uri: string;
   compraSol: number;
+  variante?: VarianteDaCurva;
 }): Promise<Transaction> {
-  const { conexao, criador, mint, nome, simbolo, uri, compraSol } = params;
+  const { conexao, criador, mint, nome, simbolo, uri, compraSol, variante = "10" } = params;
   if (!CURVA_CHROMA_DISPONIVEL) throw new Error("Curva da Chroma ainda não configurada.");
   const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
   const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
@@ -184,7 +196,7 @@ export async function transacaoDeLancamentoNaCurva(params: {
       uri,
       payer: criador,
       poolCreator: criador,
-      config: new PublicKey(CONFIG_DA_CURVA),
+      config: new PublicKey(configDaVariante(variante)),
       baseMint: mint.publicKey,
     },
     firstBuyParam:

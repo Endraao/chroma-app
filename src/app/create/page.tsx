@@ -28,7 +28,7 @@ import {
 } from "@/lib/fees";
 import { cn, formatUsd } from "@/lib/utils";
 import { imagemParaClonar, lerParaClonar } from "@/lib/clonar";
-import { CURVA_CHROMA_DISPONIVEL } from "@/lib/meteora-dbc";
+import { CURVA_25_DISPONIVEL, CURVA_CHROMA_DISPONIVEL, type VarianteDaCurva } from "@/lib/meteora-dbc";
 
 /**
  * Curva Clássica de volta e como PADRÃO (19/10/2026, pedido do dono): moeda da
@@ -44,29 +44,32 @@ const TEXTO_CURVA = traducoes({
   en: {
     titulo: "Bonding curve",
     classica: "Classic",
-    chroma: "Chroma Curve · free launch · 30% of fees",
+    chroma: "Launch on Meteora",
+    variante: (p: string) => `Anti-sniper ${p}%`,
     notaClassica: "The most traded curve on Solana. Graduates at ~85 SOL.",
-    ganho: "Launching is free. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay 25%.",
+    ganho: "Launching is free. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay more.",
     bonus: "Example: $100K volume → $500 to you · see the creator bonus →",
-    notaChroma: "Free to launch. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. Anti-sniper: bots that buy in the first second pay 10%, dropping to the normal 1% within 30 seconds — and your first buy goes in before anyone else, at 1%. Graduates to Meteora with locked liquidity.",
+    notaChroma: (p: string) => `Free to launch. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. Anti-sniper: bots that buy in the first second pay ${p}%, dropping to the normal 1% within 30 seconds — and your first buy goes in before anyone else, at 1%. Graduates to Meteora with locked liquidity.`,
   },
   pt: {
     titulo: "Curva de lançamento",
     classica: "Clássica",
-    chroma: "Curva da Chroma · lançamento grátis · 30% das taxas",
+    chroma: "Lançar pela Meteora",
+    variante: (p: string) => `Anti-robô ${p}%`,
     notaClassica: "A curva mais negociada da Solana. Gradua com ~85 SOL.",
-    ganho: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam 25%.",
+    ganho: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam mais.",
     bonus: "Exemplo: $100 mil de volume → $500 pra você · veja o bônus do criador →",
-    notaChroma: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Anti-robô: quem compra no primeiro segundo paga 10%, caindo até a taxa normal de 1% em 30 segundos — e a sua primeira compra entra antes de todo mundo, pagando 1%. Gradua pra Meteora com liquidez travada.",
+    notaChroma: (p: string) => `Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Anti-robô: quem compra no primeiro segundo paga ${p}%, caindo até a taxa normal de 1% em 30 segundos — e a sua primeira compra entra antes de todo mundo, pagando 1%. Gradua pra Meteora com liquidez travada.`,
   },
   zh: {
     titulo: "联合曲线",
     classica: "经典",
-    chroma: "Chroma 曲线 · 免费发币 · 30% 手续费",
+    chroma: "通过 Meteora 发币",
+    variante: (p: string) => `防狙击 ${p}%`,
     notaClassica: "Solana 上交易最活跃的曲线。约 85 SOL 时毕业。",
-    ganho: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人支付 25%。",
+    ganho: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人支付更多。",
     bonus: "示例：交易量 10 万美元 → 你获得 500 美元 · 查看创作者奖金 →",
-    notaChroma: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。防狙击：第一秒买入的机器人支付 10%，30 秒内降至正常的 1%——你的首次买入先于所有人成交，只付 1%。毕业后迁移至 Meteora，流动性锁定。",
+    notaChroma: (p: string) => `发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。防狙击：第一秒买入的机器人支付 ${p}%，30 秒内降至正常的 1%——你的首次买入先于所有人成交，只付 1%。毕业后迁移至 Meteora，流动性锁定。`,
   },
 });
 import type { ChainId } from "@/lib/types";
@@ -278,6 +281,8 @@ export default function CreateTokenPage() {
   const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
   // Padrão: a Clássica (pump.fun), 19/10/2026 — ver MOSTRAR_CURVA_CLASSICA.
   const [curva, setCurva] = useState<"pump" | "chroma">("pump");
+  // Dentro de "Lançar pela Meteora": anti-sniper de 10% ou de 25% (31/10/2026).
+  const [variante, setVariante] = useState<VarianteDaCurva>("10");
   // Robinhood: taxa extra do criador (0 a 10%), igual à da plataforma de lançamento.
   const [taxaDoCriador, setTaxaDoCriador] = useState("");
   const taxaDoCriadorNum = Math.max(0, Math.min(10, Number(taxaDoCriador.replace(",", ".")) || 0));
@@ -430,8 +435,26 @@ export default function CreateTokenPage() {
                 </button>
               ))}
             </div>
+            {/* As curvas da Meteora só aparecem depois de escolher "Lançar pela Meteora". */}
+            {curva === "chroma" && CURVA_25_DISPONIVEL && (
+              <div className="grid grid-cols-2 gap-2">
+                {(["10", "25"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setVariante(v)}
+                    className={cn(
+                      "rounded-lg border py-2 text-[12.5px] font-bold transition-colors",
+                      variante === v ? "border-marca/50 bg-marca/[0.08] text-marca" : "border-white/[0.06] text-zinc-500 hover:text-zinc-200",
+                    )}
+                  >
+                    {tc.variante(v)}
+                  </button>
+                ))}
+              </div>
+            )}
             <p className="text-[11.5px] leading-relaxed text-zinc-500">
-              {curva === "pump" ? tc.notaClassica : tc.notaChroma}
+              {curva === "pump" ? tc.notaClassica : tc.notaChroma(variante)}
             </p>
           </CardBody>
         </Card>
@@ -751,6 +774,7 @@ export default function CreateTokenPage() {
             compraInicial: form.initialBuy.trim() || undefined,
             recompensas: chain === "solana" && curva === "pump" ? recompensas : "criador",
             curva: chain === "solana" ? curva : undefined,
+            variante: chain === "solana" && curva === "chroma" && CURVA_25_DISPONIVEL ? variante : "10",
             taxaDoCriador: chain === "robinhood" ? taxaDoCriadorNum : 0,
             par: chain === "solana" && pair === "USDC" ? "USDC" : "SOL",
           });

@@ -30,6 +30,15 @@ export const CONFIG_NOVA = "9aB2qqbbdkB7H96XYbxqvPJ3miUEAmecLm1pHk8kp1aS";
  */
 export const CONFIG_1_PORCENTO = "Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs";
 
+/**
+ * Terceira curva (31/10/2026, pedido do dono): anti-sniper FORTE — 25% no
+ * primeiro segundo caindo em linha reta até 1% em 30 s (−0,8%/s). Mesma
+ * divisão da CONFIG_NOVA. Na tela de criar, ela e a de 10% ficam dentro de
+ * "Lançar pela Meteora". Criada pelo dono em /admin/curva-chroma (opção 25%)
+ * e conferida na rede; vazia = a opção de 25% some da tela.
+ */
+export const CONFIG_25 = "CsLRkgyVB79KAsxjFLKqoJpc75uwdjd3dLcLAipuC6Em";
+
 /** Fatias da negociação (fração do VOLUME) numa moeda da curva. */
 export interface DivisaoDaCurva {
   criador: number;

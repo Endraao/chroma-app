@@ -18,7 +18,7 @@ import { PLATFORM_FEE_WALLET_SOL } from "@/lib/web3";
 import { useIdioma } from "@/components/IdiomaProvider";
 import { anotarOperacao } from "@/lib/posicoes-locais";
 import { TABELA_SOLANA } from "@/lib/tabela-solana";
-import { CURVA_CHROMA_DISPONIVEL, transacaoDeLancamentoNaCurva } from "@/lib/meteora-dbc";
+import { CURVA_CHROMA_DISPONIVEL, transacaoDeLancamentoNaCurva, type VarianteDaCurva } from "@/lib/meteora-dbc";
 import { traducoes } from "@/lib/idiomas";
 
 /**
@@ -85,6 +85,8 @@ export interface DadosDoLancamento {
   taxaDoCriador?: number;
   /** Solana: em qual curva nasce — a da pump.fun (padrão) ou a Curva da Chroma (Meteora DBC) */
   curva?: "pump" | "chroma";
+  /** Curva da Chroma: anti-sniper de 10% ou de 25% (os dois caem até 1% em 30 s) */
+  variante?: VarianteDaCurva;
 }
 
 const MENSAGENS = traducoes({
@@ -249,6 +251,7 @@ export function useLancarToken() {
             simbolo: dados.simbolo,
             uri,
             compraSol,
+            variante: dados.variante,
           });
           const sim = await connection.simulateTransaction(tx);
           if (sim.value.err) {
