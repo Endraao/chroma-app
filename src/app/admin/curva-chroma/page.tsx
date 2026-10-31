@@ -17,8 +17,8 @@ export default function CriarCurvaChroma() {
   const { publicKey, signTransaction } = useWallet();
   const [estado, setEstado] = useState("");
   const [endereco, setEndereco] = useState<string | null>(null);
-  // Qual anti-sniper: 10% ou 25%, os dois caindo até 1% em 30 s.
-  const [variante, setVariante] = useState<VarianteDaCurva>("25");
+  // Qual anti-sniper: 10% ou 25% (caindo até 1% em 30 s) ou 50% fixos por 2 min.
+  const [variante, setVariante] = useState<VarianteDaCurva>("50");
 
   if (process.env.NODE_ENV === "production") return <p className="p-8 text-zinc-500">Indisponível.</p>;
   const plataforma = process.env.NEXT_PUBLIC_PLATFORM_FEE_WALLET_SOL ?? "";
@@ -51,15 +51,15 @@ export default function CriarCurvaChroma() {
       <p className="text-[13px] text-zinc-400">
         Custa uns 0,006 SOL, pagos pela carteira conectada. As taxas da Chroma vão para {plataforma.slice(0, 6)}…{plataforma.slice(-4)}.
       </p>
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/[0.06] p-1">
-        {(["10", "25"] as const).map((v) => (
+      <div className="grid grid-cols-3 gap-2 rounded-xl border border-white/[0.06] p-1">
+        {(["10", "25", "50"] as const).map((v) => (
           <button
             key={v}
             type="button"
             onClick={() => setVariante(v)}
             className={`rounded-lg py-2.5 text-[13px] font-bold ${variante === v ? "bg-ink-700 text-zinc-50" : "text-zinc-500 hover:text-zinc-200"}`}
           >
-            Anti-sniper {v}% → 1% em 30 s
+            {v === "50" ? "50% fixos 2 min → 1%" : `Anti-sniper ${v}% → 1% em 30 s`}
           </button>
         ))}
       </div>

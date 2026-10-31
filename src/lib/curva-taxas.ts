@@ -39,6 +39,15 @@ export const CONFIG_1_PORCENTO = "Di9WfmNMwTeM4ZYPFkdvGntu5swRKUathEKQPJ9UjfLs";
  */
 export const CONFIG_25 = "CsLRkgyVB79KAsxjFLKqoJpc75uwdjd3dLcLAipuC6Em";
 
+/**
+ * Quarta curva (31/10/2026, pedido do dono): 50% FIXOS nos primeiros 2
+ * minutos e depois 1% de uma vez (não vai caindo). Feita pro robô que compra
+ * no primeiro segundo e vende em ~1 min (ver memória do sniper 4QXV…): ele
+ * paga 50% na entrada e na saída. Mesma divisão da CONFIG_NOVA. Vazia até o
+ * dono criar na rede (/admin/curva-chroma, opção 50%) — criada e conferida em 31/10/2026.
+ */
+export const CONFIG_50 = "3LJNY5GBcCTMYyVNGMeTSVvDnRG5Nqu2rB3PqNL9mvQo";
+
 /** Fatias da negociação (fração do VOLUME) numa moeda da curva. */
 export interface DivisaoDaCurva {
   criador: number;
