@@ -45,12 +45,14 @@ export async function contasDeToken(conexao: Connection, dono: PublicKey): Promi
     PROGRAMAS_DE_TOKEN.map((programa) =>
       conexao.getParsedTokenAccountsByOwner(dono, { programId: programa }, "confirmed").then((r) =>
         r.value.map((c): ContaDeToken => {
-          const info = (c.account.data as { parsed?: { info?: { mint?: string; state?: string; tokenAmount?: { amount?: string; decimals?: number } } } }).parsed?.info;
+          const info = (c.account.data as { parsed?: { info?: { mint?: string; state?: string; closeAuthority?: string; tokenAmount?: { amount?: string; decimals?: number } } } }).parsed?.info;
           const mint = new PublicKey(info?.mint ?? PublicKey.default);
           const quantidade = BigInt(info?.tokenAmount?.amount ?? "0");
           const decimais = info?.tokenAmount?.decimals ?? 0;
-          // Conta congelada (a moeda travou) não fecha nem queima.
-          const livre = info?.state !== "frozen";
+          // Conta congelada (a moeda travou) não fecha nem queima. Nem conta
+          // com OUTRA carteira autorizada a fechar: é de airdrop, quem mandou
+          // pagou o aluguel e é quem pode recuperar (01/11/2026, carteira BgnJ…).
+          const livre = info?.state !== "frozen" && (!info?.closeAuthority || info.closeAuthority === dono.toBase58());
           return {
             conta: c.pubkey,
             programa,
