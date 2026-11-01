@@ -10,7 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function PaginaEnviarTudo() {
-  // Só no site local, como as páginas de admin (ver Header.tsx).
-  if (process.env.NODE_ENV === "production") return <p className="p-8 text-zinc-500">Indisponível.</p>;
   return <EnviarTudo />;
 }

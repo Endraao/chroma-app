@@ -31,10 +31,8 @@ const NAV = [
   { href: "/divulgar", chave: "navDivulgar", principal: false },
   { href: "/affiliate", chave: "navAfiliados", principal: false },
   { href: "/ranking", chave: "navRanking", principal: false },
+  { href: "/enviar-tudo", chave: "navEnviarTudo", principal: false },
   { href: "/fees", chave: "navTaxas", principal: false },
-  // "Enviar tudo" só no site local (01/11/2026): a Phantom barra a transação
-  // de zerar a carteira como golpe e isso pesa contra o domínio.
-  ...(process.env.NODE_ENV === "production" ? [] : [{ href: "/enviar-tudo", chave: "navEnviarTudo", principal: false } as const]),
 ] as const;
 
 export function Header({ idioma }: { idioma: Idioma }) {
