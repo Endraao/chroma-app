@@ -713,7 +713,10 @@ async function velasDosNegocios(address: string, segundos: number): Promise<Cand
     const { negocios } = (await res.json()) as { negocios?: { tokens: number; usd: number; em: number }[] };
     const porSegundo = new Map<number, Candle>();
     for (const n of [...(negocios ?? [])].sort((a, b) => a.em - b.em)) {
-      if (!(n.tokens > 0) || !(n.usd > 0)) continue;
+      // Migalha (< US$ 1, ex.: robô testando se dá pra vender) fica de fora:
+      // com a taxa anti-robô alta o "preço" dela saía o dobro do real e o
+      // gráfico ganhava uma vela até o céu (31/10/2026).
+      if (!(n.tokens > 0) || !(n.usd >= 1)) continue;
       const preco = n.usd / n.tokens;
       const s = Math.floor(n.em / 1000);
       const time = s - (s % segundos);
