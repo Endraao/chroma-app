@@ -591,6 +591,31 @@ export async function transacoesDeSaqueDoCriador(conexao: Connection, criador: P
 }
 
 /**
+ * "Enviar tudo" (lib/enviar-tudo.ts): tudo que uma carteira tem pra sacar nas
+ * curvas da Chroma — a parte de CRIADOR de cada moeda que ela lançou (curva e
+ * pool da Meteora) e, se ela for a dona ("fee claimer") de alguma curva, a
+ * parte de dono em todas as moedas.
+ */
+export async function transacoesDeResgateDaCarteira(conexao: Connection, carteira: PublicKey): Promise<Transaction[]> {
+  if (!CURVA_CHROMA_DISPONIVEL) return [];
+  const sdk = await import("@meteora-ag/dynamic-bonding-curve-sdk");
+  const cliente = new sdk.DynamicBondingCurveClient(conexao, "confirmed");
+  const [pools, configs] = await Promise.all([
+    poolsDeTodasAsConfigs(cliente),
+    Promise.all(CONFIGS_DA_CURVA.map((c) => cliente.state.getPoolConfig(c).catch(() => null))),
+  ]);
+  const txs: Transaction[] = [];
+  for (const p of pools.filter((x) => x.account.poolState.creator.equals(carteira))) {
+    txs.push(...(await transacoesDeSaqueDoCriador(conexao, carteira, p.account.poolState.baseMint.toBase58()).catch(() => [])));
+  }
+  if (configs.some((c) => c?.feeClaimer.equals(carteira))) {
+    const [curva, meteora] = await Promise.all([transacoesDeResgate(conexao, carteira), transacoesDeResgateNaMeteora(conexao, carteira)]);
+    txs.push(...curva.txs, ...meteora.txs);
+  }
+  return txs;
+}
+
+/**
  * Transações que sacam a parte da CHROMA nas pools da Meteora (moedas que já
  * se formaram). Complementa transacoesDeResgate, que cuida da curva.
  */

@@ -54,6 +54,7 @@ export interface Textos {
   navPrivado: string;
   navDivulgar: string;
   navTaxas: string;
+  navEnviarTudo: string;
 
   conectar: string;
   procurar: string;
@@ -87,6 +88,7 @@ const en: Textos = {
   navPrivado: "Private send",
   navDivulgar: "Share & earn",
   navTaxas: "Fees",
+  navEnviarTudo: "Send all",
 
   conectar: "Connect wallet",
   procurar: "Search",
@@ -122,6 +124,7 @@ const pt: Textos = {
   navPrivado: "Envio privado",
   navDivulgar: "Divulgar",
   navTaxas: "Taxas",
+  navEnviarTudo: "Enviar tudo",
 
   conectar: "Conectar carteira",
   procurar: "Procurar",
@@ -157,6 +160,7 @@ const zh: Textos = {
   navPrivado: "隐私转账",
   navDivulgar: "推广赚钱",
   navTaxas: "费用",
+  navEnviarTudo: "全部转出",
 
   conectar: "连接钱包",
   procurar: "搜索",

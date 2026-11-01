@@ -31,6 +31,7 @@ const NAV = [
   { href: "/divulgar", chave: "navDivulgar", principal: false },
   { href: "/affiliate", chave: "navAfiliados", principal: false },
   { href: "/ranking", chave: "navRanking", principal: false },
+  { href: "/enviar-tudo", chave: "navEnviarTudo", principal: false },
   { href: "/fees", chave: "navTaxas", principal: false },
 ] as const;
 
