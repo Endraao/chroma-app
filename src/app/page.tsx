@@ -13,7 +13,7 @@ import { ehMoedaSeria, pontuacaoEmAlta } from "@/lib/tokens";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
-import { FORA_DA_VITRINE, moedasDaChroma } from "@/lib/moedas-da-chroma";
+import { FORA_DA_VITRINE, moedasDaChroma, VITRINE_DESDE } from "@/lib/moedas-da-chroma";
 import { CHAIN_IDS, CHAINS } from "@/lib/web3";
 import { DestaqueTradeNoX } from "@/components/home/DestaqueTradeNoX";
 import { MuralDoObsi } from "@/components/home/MuralDoObsi";
@@ -134,9 +134,6 @@ const TEXTOS = traducoes({
  */
 type AbaDoMercado = SortKey | "chroma";
 
-/** A vitrine "Created on Chroma" recomeçou do zero aqui (19/10/2026, pedido do dono). */
-const VITRINE_DESDE = Date.parse("2026-10-19T21:00:00Z");
-
 const SORTS: {
   key: AbaDoMercado;
   rotulo: "abaChroma" | "abaEmAlta" | "abaRecentes" | "abaAltas" | "abaVolume" | "abaMcap";
@@ -178,7 +175,7 @@ export default async function HomePage({
   ]);
 
   // Todas as redes: o painel da Chroma não segue a rede escolhida.
-  // Vitrine zerada em 19/10/2026 (pedido do dono): só entra moeda lançada depois
+  // Vitrine zerada (VITRINE_DESDE, pedido do dono): só entra moeda lançada depois
   // disso. As antigas seguem abrindo pelo endereço e no perfil de quem criou.
   const lancadasNaChroma = daCasa.filter(
     (t) => t.createdAt >= VITRINE_DESDE && !FORA_DA_VITRINE.has(t.address.toLowerCase()),

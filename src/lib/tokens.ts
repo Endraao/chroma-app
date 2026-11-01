@@ -6,7 +6,7 @@ import { classificarPendentes, soNegociaveis } from "@/lib/negociaveis";
 import { unstable_cache } from "next/cache";
 
 import { corrigirCapitalizacao, fetchPoolFeed, fetchToken, fetchTokenList } from "./market";
-import { FORA_DA_VITRINE, moedasDaChroma } from "./moedas-da-chroma";
+import { FORA_DA_VITRINE, moedasDaChroma, VITRINE_DESDE } from "./moedas-da-chroma";
 import { getTokenMeta } from "./jupiter";
 import { cached } from "./cache";
 import { lerMoedaDaCurvaEvm, resumoDaMoedaEvm } from "./curva-evm";
@@ -282,7 +282,9 @@ async function montarUniverso(): Promise<TokenSummary[]> {
     if (!porChave.has(chave)) porChave.set(chave, t);
   }
   for (const t of daCasa) {
-    if (FORA_DA_VITRINE.has(t.address.toLowerCase())) continue;
+    // Lançada antes da vitrine zerar (VITRINE_DESDE): sai também das listas de mercado.
+    if (t.createdAt < VITRINE_DESDE) porChave.delete(`${t.chain}:${t.address.toLowerCase()}`);
+    if (FORA_DA_VITRINE.has(t.address.toLowerCase()) || t.createdAt < VITRINE_DESDE) continue;
     porChave.set(`${t.chain}:${t.address.toLowerCase()}`, t);
   }
 
