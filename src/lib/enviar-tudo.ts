@@ -104,7 +104,7 @@ async function transacoesDaPump(conexao: Connection, carteira: PublicKey): Promi
     }
   }
 
-  const { blockhash } = await conexao.getLatestBlockhash("confirmed");
+  const { blockhash } = await conexao.getLatestBlockhash("finalized");
   const txs: Transaction[] = [];
   for (const g of grupos.filter((x) => x.length)) {
     const tx = new Transaction().add(...g);
@@ -143,7 +143,9 @@ export async function transacoesDeEnviarTudo(
   for (let i = 0; i < alvo.length; i += FECHAR_POR_TX) lotes.push(alvo.slice(i, i + FECHAR_POR_TX));
   if (!lotes.length) lotes.push([]);
 
-  const [saldo, { blockhash }] = await Promise.all([conexao.getBalance(de, "confirmed"), conexao.getLatestBlockhash("confirmed")]);
+  // Blockhash "finalized": o "confirmed" às vezes ainda não existe no nó que
+  // faz a simulação do envio ("Blockhash not found", 01/11/2026).
+  const [saldo, { blockhash }] = await Promise.all([conexao.getBalance(de, "confirmed"), conexao.getLatestBlockhash("finalized")]);
   const montar = (lote: ContaDeToken[], ultima: boolean, lamports: number) => {
     const ixs: TransactionInstruction[] = [];
     for (const c of lote) {

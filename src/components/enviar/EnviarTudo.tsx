@@ -119,7 +119,7 @@ function Formulario() {
       const resgates = await transacoesDeResgateAntesDeEnviar(connection, publicKey);
       if (resgates.length) {
         setEstado(t.resgatando(resgates.length));
-        const { blockhash } = await connection.getLatestBlockhash("confirmed");
+        const { blockhash } = await connection.getLatestBlockhash("finalized");
         for (const tx of resgates) tx.recentBlockhash = blockhash;
         await assinarEEnviar(resgates);
       }
