@@ -38,7 +38,7 @@ const TEXTOS = traducoes({
     postar: "Post on X",
     semRef: "Connect your wallet to get paid for the trades your post brings.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
-    ranking: "See the top promoters →",
+    ranking: "See the top promoters ↓",
     meuCard: "My earnings card →",
     campanhas: "Campaigns with extra bonus →",
     mc: "MC",
@@ -57,7 +57,7 @@ const TEXTOS = traducoes({
     postar: "Postar no X",
     semRef: "Conecte sua carteira pra receber pelos negócios que o seu post trouxer.",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
-    ranking: "Ver o ranking de divulgadores →",
+    ranking: "Ver o ranking de divulgadores ↓",
     meuCard: "Meu card de ganhos →",
     campanhas: "Campanhas com bônus extra →",
     mc: "MC",
@@ -76,7 +76,7 @@ const TEXTOS = traducoes({
     postar: "发到 X",
     semRef: "连接钱包，帖子带来的交易才能给你分成。",
     tweet: (s: string) => `$${s} — buy it right here in this post 👇`,
-    ranking: "查看推广者排行榜 →",
+    ranking: "查看推广者排行榜 ↓",
     meuCard: "我的收益卡片 →",
     campanhas: "有额外奖励的活动 →",
     mc: "市值",
@@ -240,7 +240,7 @@ export function GeradorDeLink() {
       <SugestoesDoDia origem={origem} refId={account?.nickname ?? publicKey?.toBase58() ?? null} />
 
       <div className="flex flex-wrap gap-4">
-        <Link href="/ranking" className="text-[13px] font-bold text-marca hover:underline">
+        <Link href="#ranking" className="text-[13px] font-bold text-marca hover:underline">
           {t.ranking}
         </Link>
         <Link href="/campanhas" className="text-[13px] font-bold text-marca hover:underline">
