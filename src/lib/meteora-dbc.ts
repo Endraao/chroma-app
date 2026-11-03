@@ -46,8 +46,12 @@ const CONFIG_DA_CURVA_50C = EH_A_CHROMA ? CONFIG_50C : "";
 export const CURVA_25_DISPONIVEL = CONFIG_DA_CURVA_25.length > 30;
 export const CURVA_50_DISPONIVEL = CONFIG_DA_CURVA_50.length > 30;
 export const CURVA_50C_DISPONIVEL = CONFIG_DA_CURVA_50C.length > 30;
-/** As variantes que dá pra escolher na tela de criar (a de 10% sempre). */
-export const VARIANTES_DISPONIVEIS: VarianteDaCurva[] = ["10", ...(CURVA_25_DISPONIVEL ? (["25"] as const) : []), ...(CURVA_50_DISPONIVEL ? (["50"] as const) : []), ...(CURVA_50C_DISPONIVEL ? (["50c"] as const) : [])];
+/**
+ * As variantes que dá pra escolher na tela de criar (a de 10% sempre). A "50"
+ * (50% fixos) saiu da tela em 03/11/2026 a pedido do dono: o sniper não compra
+ * nela. Continua reconhecida (CONFIGS_DA_CURVA) pras moedas já lançadas.
+ */
+export const VARIANTES_DISPONIVEIS: VarianteDaCurva[] = ["10", ...(CURVA_25_DISPONIVEL ? (["25"] as const) : []), ...(CURVA_50C_DISPONIVEL ? (["50c"] as const) : [])];
 const configDaVariante = (v: VarianteDaCurva) =>
   v === "25" && CURVA_25_DISPONIVEL
     ? CONFIG_DA_CURVA_25

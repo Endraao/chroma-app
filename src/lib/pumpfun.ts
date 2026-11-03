@@ -156,10 +156,7 @@ export async function transacaoDeDivisao({
       authority: criador,
       mint,
       currentShareholders: [criador],
-      newShareholders: [
-        { address: criador, shareBps: 10_000 - PARTE_DA_CHROMA_BPS },
-        { address: carteiraDaChroma, shareBps: PARTE_DA_CHROMA_BPS },
-      ],
+      newShareholders: acionistas(criador, carteiraDaChroma),
       quoteMint: par === "USDC" ? USDC_MINT : NATIVE_MINT,
       quoteTokenProgram: TOKEN_PROGRAM_ID,
     }),
@@ -301,6 +298,21 @@ export async function transacoesDeLancamento({
 }
 
 /**
+ * Quem recebe a taxa de criador: normalmente criador + Chroma. Só no site
+ * local, `?taxaPara=<carteira>` na tela de criar manda 100% pra essa carteira
+ * (03/11/2026: robô do $DIVVY, que repassa aos holders).
+ */
+function acionistas(criador: PublicKey, carteiraDaChroma: PublicKey) {
+  const destino =
+    process.env.NODE_ENV !== "production" && typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("taxaPara") : null;
+  if (destino) return [{ address: new PublicKey(destino), shareBps: 10_000 }];
+  return [
+    { address: criador, shareBps: 10_000 - PARTE_DA_CHROMA_BPS },
+    { address: carteiraDaChroma, shareBps: PARTE_DA_CHROMA_BPS },
+  ];
+}
+
+/**
  * Transação 2 do lançamento com uma aprovação: taxa de lançamento (com memo
  * da moeda) + divisão da taxa de criador. Também é remontada sozinha se a
  * versão assinada junto com a criação falhar.
@@ -347,10 +359,7 @@ export async function transacaoDeTaxaEDivisao({
         authority: criador,
         mint,
         currentShareholders: [criador],
-        newShareholders: [
-          { address: criador, shareBps: 10_000 - PARTE_DA_CHROMA_BPS },
-          { address: carteiraDaChroma, shareBps: PARTE_DA_CHROMA_BPS },
-        ],
+        newShareholders: acionistas(criador, carteiraDaChroma),
         quoteMint: NATIVE_MINT,
         quoteTokenProgram: TOKEN_PROGRAM_ID,
       }),
