@@ -55,7 +55,9 @@ export const CONFIG_50 = "3LJNY5GBcCTMYyVNGMeTSVvDnRG5Nqu2rB3PqNL9mvQo";
  * vende). Pode ser criada com as taxas indo pra OUTRA carteira (a que
  * criou), pra testar se ele bloqueou a 2jbv. Vazia até o dono criar.
  */
-export const CONFIG_50C = "4bumm3gPq3zT4EpixcgVCXKky7WhTC2yhDadFWF4jA8W";
+export const CONFIG_50C = "DvXDdA9Go2R4GHYjpkjWLV2tssR43SS7CkuvjS9RWfaB";
+/** "50% caindo" anterior (02/11/2026, KAIRO e mais 1): segue reconhecida. */
+export const CONFIG_50C_4BUMM = "4bumm3gPq3zT4EpixcgVCXKky7WhTC2yhDadFWF4jA8W";
 
 /**
  * A primeira "50% caindo" (31/10/2026) foi criada com as taxas da parceira
