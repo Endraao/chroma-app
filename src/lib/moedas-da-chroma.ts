@@ -72,9 +72,10 @@ const TTL_CURVAS = 15_000;
 /**
  * A vitrine das moedas lançadas na Chroma recomeça do zero aqui: só aparece
  * moeda criada depois disso (zerada em 19/10/2026 e de novo em 31/10/2026, a
- * pedido do dono). As antigas seguem abrindo pelo endereço e no perfil de quem criou.
+ * pedido do dono; de novo em 03/11/2026, depois das moedas de teste do sniper).
+ * As antigas seguem abrindo pelo endereço e no perfil de quem criou.
  */
-export const VITRINE_DESDE = Date.parse("2026-11-01T02:30:00Z");
+export const VITRINE_DESDE = Date.parse("2026-11-03T15:15:00Z");
 
 export const FORA_DA_VITRINE = new Set(
   [
