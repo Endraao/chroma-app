@@ -54,19 +54,19 @@ export default function CriarCurvaChroma() {
         Custa uns 0,006 SOL, pagos pela carteira conectada. As taxas da Chroma vão sempre para {plataforma.slice(0, 6)}…{plataforma.slice(-4)}.
       </p>
       <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/[0.06] p-1">
-        {(["10", "25", "50", "50c"] as const).map((v) => (
+        {(["10", "25", "50", "50c", "25c"] as const).map((v) => (
           <button
             key={v}
             type="button"
             onClick={() => setVariante(v)}
             className={`rounded-lg py-2.5 text-[13px] font-bold ${variante === v ? "bg-ink-700 text-zinc-50" : "text-zinc-500 hover:text-zinc-200"}`}
           >
-            {v === "50" ? "50% fixos 2 min → 1%" : v === "50c" ? "50% caindo → 1% em 2 min" : `Anti-sniper ${v}% → 1% em 30 s`}
+            {v === "50" ? "50% fixos 2 min → 1%" : v.endsWith("c") ? `${parseInt(v)}% caindo → 1% em 2 min` : `Anti-sniper ${v}% → 1% em 30 s`}
           </button>
         ))}
       </div>
       <Button variant="chroma" size="lg" className="w-full" onClick={criar}>
-        Criar curva {variante === "50c" ? "50% caindo" : `de ${variante}%`}
+        Criar curva {variante.endsWith("c") ? `${parseInt(variante)}% caindo` : `de ${variante}%`}
       </Button>
       {estado && <p className="break-all text-[13px] text-zinc-300">{estado}</p>}
       {endereco && <p className="select-all break-all rounded-lg border border-marca/40 p-3 font-mono text-[13px] text-marca">{endereco}</p>}

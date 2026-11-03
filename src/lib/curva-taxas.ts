@@ -56,6 +56,9 @@ export const CONFIG_50 = "3LJNY5GBcCTMYyVNGMeTSVvDnRG5Nqu2rB3PqNL9mvQo";
  * criou), pra testar se ele bloqueou a 2jbv. Vazia até o dono criar.
  */
 export const CONFIG_50C = "DvXDdA9Go2R4GHYjpkjWLV2tssR43SS7CkuvjS9RWfaB";
+
+/** "25% caindo" (03/11/2026): mesmo estilo da 50C, começando em 25%. Vazia até o dono criar. */
+export const CONFIG_25C = "HswKuRsRpBTTDTK5RcDV1ViNHq9p73EZ5dXLGK3ZvthB";
 /** "50% caindo" anterior (02/11/2026, KAIRO e mais 1): segue reconhecida. */
 export const CONFIG_50C_4BUMM = "4bumm3gPq3zT4EpixcgVCXKky7WhTC2yhDadFWF4jA8W";
 
