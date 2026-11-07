@@ -136,7 +136,7 @@ export async function GET(request: Request) {
     quantidade <= 0 || (valorUsd < 0.01 && (preco > 0 || quantidade < 1));
   // Moeda sem preço com site no nome é propaganda mandada de graça para a carteira.
   const propaganda = (n: (typeof naCarteira)[number]) =>
-    n.token.priceUsd <= 0 && /https?:|www.|.(io|com|net|org|xyz|fun|app)/i.test(`${n.token.name} ${n.token.symbol}`);
+    n.token.priceUsd <= 0 && /https?:|www\.|\.(io|com|net|org|xyz|fun|app)\b/i.test(`${n.token.name} ${n.token.symbol}`);
   const limpa = naCarteira.filter((n) => !poeira(n.valorUsd, n.token.priceUsd, n.quantidade) && !propaganda(n));
   const nativosLimpos = nativos.filter((n) => n.valorUsd >= 0.01 || n.quantidade >= 0.001);
 
