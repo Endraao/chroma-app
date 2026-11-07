@@ -44,10 +44,10 @@ const TEXTOS = traducoes({
     solLancarNota: "Launching is free. You only pay the Solana network costs (~0.015 SOL to create the coin's accounts). Your coin is born ready to trade, with its own page and live chart on Chroma.",
     rhCriadorNota: "The creator receives 0.70% of every trade of their coin, plus their own creator tax (0–10%) if they set one at launch.",
     rhTradeNota: "Charged on buys and sells made through Chroma, on any Robinhood Chain coin — including the ones launched here.",
-    curvaChroma: "Chroma Curve", curvaChromaNota: "Trading fee of coins launched on the Chroma Curve, on any app. Split: 30% creator · 50% Chroma · 20% Meteora. Anti-sniper: 10% in the first second, dropping to 1% within 30 seconds; the creator's first buy goes in before anyone else, at 1%.",
+    curvaChroma: "Chroma Curve", curvaChromaNota: "Coins launched on the Chroma Curve may charge an anti-sniper fee of up to 50% in the first 2 minutes, dropping to the normal 1%. The fee in force is shown before you confirm.",
     solTrade: "Trade through Chroma", solTradeNota: "Charged on buys and sells made through Chroma, on any Solana coin (the referrer's 0.30% included). On Chroma Curve coins Chroma charges nothing on top: you pay only the curve's 1% — plus 0.30% to the referrer, only if you came through someone's link. Hold 10M of the official Chroma token in your wallet and it drops to 0.60% 💎",
     solDivisao: "Creator fee",
-    solDivisaoNota: "On the Chroma Curve the creator earns 30% of the trading fee (0.3% of every trade) of their coin, on any app, forever — plus the cash bonus.",
+    solDivisaoNota: "On pump.fun the creator gets 70% of the creator fee from every trade of their coin, on any app, and Chroma keeps 30%.",
     titulo: "Fees and limits", intro1: "Each network has its own table. Everything you pay on Chroma is on this page.", intro2: "No hidden fees: nothing appears for the first time when you confirm a trade.",
     qualquerRede: "On every network",
     divisao: "Referrer's share", divisaoNota: "Lands in the referrer's wallet in the same swap transaction. On regular coins it comes out of the platform's cut, not the trader's pocket — without a referral, it stays with the platform. On Solana Chroma Curve coins it is the only fee the site adds, and it is charged only when you came through someone's link.",
@@ -77,10 +77,10 @@ const TEXTOS = traducoes({
     solLancarNota: "Lançar é grátis. Você paga só os custos da rede Solana (~0,015 SOL pra criar as contas da moeda). A sua moeda já nasce pronta para negociar, com página própria e gráfico ao vivo na Chroma.",
     rhCriadorNota: "O criador recebe 0,70% de cada negociação da sua moeda, mais a própria taxa do criador (0–10%), se definir uma no lançamento.",
     rhTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Robinhood Chain — inclusive as lançadas aqui.",
-    curvaChroma: "Curva da Chroma", curvaChromaNota: "Taxa de negociação das moedas lançadas na Curva da Chroma, em qualquer app. Divisão: 30% criador · 50% Chroma · 20% Meteora. Anti-robô: 10% no primeiro segundo, caindo até 1% em 30 segundos; a primeira compra do criador entra antes de todo mundo, pagando 1%.",
+    curvaChroma: "Curva da Chroma", curvaChromaNota: "Moedas lançadas na Curva da Chroma podem cobrar taxa anti-sniper de até 50% nos primeiros 2 minutos, caindo até a taxa normal de 1%. A taxa em vigor aparece antes de você confirmar.",
     solTrade: "Operar pela Chroma", solTradeNota: "Cobrada nas compras e vendas feitas pela Chroma, em qualquer moeda da Solana (já inclui os 0,30% de quem indicou). Nas moedas da Curva da Chroma a Chroma não cobra nada a mais: você paga só o 1% da curva — e 0,30% pra quem indicou, só se você veio pelo link de alguém. Com 10 milhões do token oficial da Chroma na carteira, cai pra 0,60% 💎",
     solDivisao: "Taxa de criador",
-    solDivisaoNota: "Na Curva da Chroma o criador ganha 30% da taxa (0,3% de cada negócio) da sua moeda, em qualquer app, pra sempre — e ainda tem o bônus em dinheiro.",
+    solDivisaoNota: "Na pump.fun o criador recebe 70% da taxa de criador de cada negócio da sua moeda, em qualquer app, e a Chroma fica com 30%.",
     titulo: "Taxas e limites", intro1: "Cada rede tem a sua própria tabela. Tudo o que você paga na Chroma está nesta página.", intro2: "Sem taxa escondida: nada aparece pela primeira vez na hora de confirmar.",
     qualquerRede: "Vale em qualquer rede",
     divisao: "Divisão com quem indicou", divisaoNota: "Cai na carteira de quem indicou na mesma transação do swap. Nas moedas comuns sai da parte da plataforma, não do bolso do trader — sem indicação, fica com a plataforma. Nas moedas da Curva da Chroma na Solana é a única taxa que o site soma, e só é cobrada quando você veio pelo link de alguém.",
@@ -110,10 +110,10 @@ const TEXTOS = traducoes({
     solLancarNota: "发币免费。你只需支付 Solana 网络成本（创建代币账户约 0.015 SOL）。你的代币一经创建即可交易，在 Chroma 上拥有独立页面和实时图表。",
     rhCriadorNota: "创作者可获得其代币每笔交易的 0.70%，如在发行时设置了创作者税（0–10%），还可获得该税。",
     rhTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Robinhood Chain 代币 —— 包括在这里发行的代币。",
-    curvaChroma: "Chroma 曲线", curvaChromaNota: "在 Chroma 曲线上发行的代币在任何应用中的交易费。分成：创作者 30% · Chroma 50% · Meteora 20%。防狙击：第一秒 10%，30 秒内降至 1%；创作者的首次买入先于所有人成交，只付 1%。",
+    curvaChroma: "Chroma 曲线", curvaChromaNota: "在 Chroma 曲线上发行的代币可能在前 2 分钟收取最高 50% 的防狙击费，之后降至正常的 1%。确认前会显示当前费用。",
     solTrade: "通过 Chroma 交易", solTradeNota: "对通过 Chroma 进行的买卖收取，适用于任何 Solana 代币（含推荐人的 0.30%）。在 Chroma 曲线上的代币，Chroma 不额外收费：你只需支付曲线的 1%——仅当你通过他人的链接进入时，另付 0.30% 给推荐人。钱包持有 1000 万枚 Chroma 官方代币，费率降至 0.60% 💎",
     solDivisao: "创作者费用",
-    solDivisaoNota: "在 Chroma 曲线上，创作者永久获得其代币在任何应用中每笔交易 30% 的交易费（每笔交易的 0.3%），另有现金奖金。",
+    solDivisaoNota: "在 pump.fun 上，创作者获得其代币每笔交易 70% 的创作者费用（适用于任何应用），Chroma 保留 30%。",
     titulo: "费用与限制", intro1: "每条链都有自己的费率表。你在 Chroma 上支付的所有费用都在此页面。", intro2: "没有隐藏费用：确认交易时不会出现任何新的费用。",
     qualquerRede: "所有网络通用",
     divisao: "推荐人分成", divisaoNota: "在同一笔兑换交易中进入推荐人的钱包。在普通代币上，它来自平台的份额，而不是交易者的口袋——没有推荐时归平台所有。在 Solana 的 Chroma 曲线代币上，这是网站唯一额外收取的费用，且仅在你通过他人链接进入时收取。",
@@ -237,7 +237,7 @@ function ChainFeeSection({ chain, t }: { chain: ChainId; t: T }) {
           <FeeCard
             icon="users"
             label={t.solDivisao}
-            value={rh ? "0.70%+" : "30%"}
+            value={rh ? "0.70%+" : "70%"}
             note={rh ? t.rhCriadorNota : t.solDivisaoNota}
           />
           {!rh && <FeeCard icon="percent" label={t.curvaChroma} value="1%" note={t.curvaChromaNota} />}

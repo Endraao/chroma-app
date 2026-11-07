@@ -26,7 +26,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const sufixo = ref && REF.test(ref) ? `?ref=${encodeURIComponent(ref)}` : "";
   const player = `${SITE}/p/${address}${sufixo}`;
   const titulo = `$${token.symbol} — buy right in this post on Chroma`;
-  const descricao = `Trade ${token.name} without leaving X. Free to launch on Chroma; creators earn 30% of every trade fee.`;
+  const descricao = `Trade ${token.name} without leaving X. Free to launch on Chroma; creators get 70% of the creator fee.`;
   // Pelo NOSSO /api/logo: o IPFS público (ipfs.io) dá 429 pro robô do X (18/10/2026).
   const imagem = token.imageUrl ? `${SITE}/api/logo/${address}` : `${SITE}/logo.png`;
   return {
