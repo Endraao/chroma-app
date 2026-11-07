@@ -6,11 +6,9 @@ import { traducoes } from "@/lib/idiomas";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { RequireChainWallet } from "@/components/web3/RequireChainWallet";
-import { Badge } from "@/components/ui/Badge";
-import { MediaDropzone, MediaSpecList, type MediaSpec, type SelectedMedia } from "@/components/ui/MediaDropzone";
+import { MediaDropzone, type MediaSpec, type SelectedMedia } from "@/components/ui/MediaDropzone";
 import { useRouter } from "next/navigation";
 
 import { useChromaAccount } from "@/hooks/useChromaAccount";
@@ -19,7 +17,7 @@ import { chainIcon } from "@/lib/chain-icons";
 import { PARTE_DA_CHROMA_BPS } from "@/lib/pumpfun";
 import { useLancarTokenEvm } from "@/hooks/useLancarTokenEvm";
 import { usePrecoNativo } from "@/hooks/usePrecoNativo";
-import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede } from "@/lib/web3";
+import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede, EVENTO_DA_REDE, lerRedeEscolhida } from "@/lib/web3";
 import { DEFAULT_PAIR, LIQUIDITY_PAIRS } from "@/lib/pairs";
 import { SeletorDePar } from "@/components/create/SeletorDePar";
 import {
@@ -37,14 +35,12 @@ import { CURVA_CHROMA_DISPONIVEL, VARIANTES_DISPONIVEIS, type VarianteDaCurva } 
  * taxa de criador). A promoção do bônus do criador acabou.
  */
 const MOSTRAR_CURVA_CLASSICA = true;
-// Banner da moeda: nunca usado nem testado — escondido até ser (04/10/2026).
-const MOSTRAR_BANNER = false;
 
 const TEXTO_CURVA = traducoes({
   en: {
     titulo: "Bonding curve",
-    classica: "Classic",
-    chroma: "Launch on Meteora",
+    classica: "Pump.fun",
+    chroma: "Meteora",
     variante: (p: string) => (p === "50" ? "50% · 2 min" : p.endsWith("c") ? `${parseInt(p)}% → 1% · 2 min` : `Anti-sniper ${p}%`),
     notaClassica: "The most traded curve on Solana. Graduates at ~85 SOL.",
     ganho: "Launching is free. You earn 30% of the trading fee on every trade of your coin (0.3% of each trade), on any app, forever. You approve a single transaction: the coin, its pool and your initial buy — your first buy pays the minimum fee, snipers pay more.",
@@ -53,8 +49,8 @@ const TEXTO_CURVA = traducoes({
   },
   pt: {
     titulo: "Curva de lançamento",
-    classica: "Clássica",
-    chroma: "Lançar pela Meteora",
+    classica: "Pump.fun",
+    chroma: "Meteora",
     variante: (p: string) => (p === "50" ? "50% · 2 min" : p.endsWith("c") ? `${parseInt(p)}% → 1% · 2 min` : `Anti-robô ${p}%`),
     notaClassica: "A curva mais negociada da Solana. Gradua com ~85 SOL.",
     ganho: "Lançar é grátis. Você ganha 30% da taxa de toda negociação da sua moeda (0,3% de cada negócio), em qualquer app, pra sempre. Você aprova uma transação só: a moeda, a pool e a sua compra inicial — sua primeira compra paga a taxa mínima, robôs pagam mais.",
@@ -63,8 +59,8 @@ const TEXTO_CURVA = traducoes({
   },
   zh: {
     titulo: "联合曲线",
-    classica: "经典",
-    chroma: "通过 Meteora 发币",
+    classica: "Pump.fun",
+    chroma: "Meteora",
     variante: (p: string) => (p === "50" ? "50% · 2 分钟" : p.endsWith("c") ? `${parseInt(p)}% → 1% · 2 分钟` : `防狙击 ${p}%`),
     notaClassica: "Solana 上交易最活跃的曲线。约 85 SOL 时毕业。",
     ganho: "发币免费。你的代币在任何应用上的每笔交易，你都永久获得 30% 的交易费（每笔交易的 0.3%）。你只需确认一笔交易：代币、资金池和你的首次买入——你的首次买入只付最低费用，狙击机器人支付更多。",
@@ -85,17 +81,32 @@ const COIN_MEDIA: MediaSpec = {
   minDimension: 200,
 };
 
-/**
- * Atalhos comuns; o slider cobre o resto até o teto de 10%.
- * Valores fixos, não derivados do padrão — senão mudar o padrão pra 0
- * duplicaria o primeiro botão.
- */
-
-const BANNER_MEDIA: MediaSpec = {
-  maxSizeMb: 4.5,
-  accept: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-  aspectRatio: { value: 3, tolerance: 0.35, label: "3:1" },
-};
+const TEXTO_TELA = traducoes({
+  en: {
+    titulo: "Launch your coin", subtitulo: "It starts trading as soon as it is created, with its own page and a live chart.",
+    revisao: "Review", suaMoeda: "Your coin", passoMoeda: "Your coin", passoMoedaSub: "This is how it shows up everywhere. It can't be changed later.",
+    passoCurva: "Bonding curve", passoCurvaSub: "Where your coin starts trading.", passoTaxas: "Who gets the fees?", passoTaxasSub: "Your share of the trading fees.",
+    passoCompra: "First buy (optional)", passoCompraSub: "Buy your own coin in the launch transaction.",
+    rede: "Network", curva: "Curve", antiSniper: "Anti-sniper", taxasPara: "Fees go to", voce: "You", detentores: "Holders",
+    primeiraCompra: "First buy", custo: "Launch cost", gratis: "Free",
+  },
+  pt: {
+    titulo: "Lance sua moeda", subtitulo: "Ela começa a ser negociada assim que for criada, com página própria e gráfico ao vivo.",
+    revisao: "Resumo", suaMoeda: "Sua moeda", passoMoeda: "Sua moeda", passoMoedaSub: "É assim que ela aparece em todo lugar. Não dá para mudar depois.",
+    passoCurva: "Curva de lançamento", passoCurvaSub: "Onde a sua moeda começa a ser negociada.", passoTaxas: "Quem recebe as taxas?", passoTaxasSub: "Sua parte das taxas de negociação.",
+    passoCompra: "Primeira compra (opcional)", passoCompraSub: "Compre sua própria moeda na transação de lançamento.",
+    rede: "Rede", curva: "Curva", antiSniper: "Anti-sniper", taxasPara: "Taxas vão para", voce: "Você", detentores: "Detentores",
+    primeiraCompra: "Primeira compra", custo: "Custo do lançamento", gratis: "Grátis",
+  },
+  zh: {
+    titulo: "发行你的代币", subtitulo: "创建后即可交易，拥有专属页面和实时图表。",
+    revisao: "概览", suaMoeda: "你的代币", passoMoeda: "你的代币", passoMoedaSub: "这是它在各处的显示方式，之后无法更改。",
+    passoCurva: "联合曲线", passoCurvaSub: "你的代币从这里开始交易。", passoTaxas: "谁获得手续费？", passoTaxasSub: "你的交易手续费分成。",
+    passoCompra: "首次买入（可选）", passoCompraSub: "在发行交易中买入你自己的代币。",
+    rede: "网络", curva: "曲线", antiSniper: "防狙击", taxasPara: "手续费归", voce: "你", detentores: "持有者",
+    primeiraCompra: "首次买入", custo: "发行费用", gratis: "免费",
+  },
+});
 
 const TEXTOS = traducoes({
   en: {
@@ -122,7 +133,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "As a holder you also get your share of the rewards for as long as you hold the coin — just like everyone else.",
     recSoSolana: "Sending rewards to holders is available for Solana launches. On Robinhood Chain, rewards go to the creator.",
     ganhoTitulo: "What you earn as the creator",
-    ganhoPump: (_p: number) => `You keep 100% of the creator fee from every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.`,
+    ganhoPump: (p: number) => `You get ${100 - p}% of the creator fee from every trade of your coin, and Chroma keeps ${p}%. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
     ganhoEvm: "You receive 0.70% of every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.",
     taxaCriadorTitulo: "Creator tax (optional)", taxaCriadorNota: (total: string) => `Extra fee on every trade, paid entirely to you (0–10%). With the value you choose, traders pay ${total}% in total.`,
@@ -163,7 +174,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "Como detentor, você também recebe a sua parte das recompensas enquanto segurar a moeda — igual a todo mundo.",
     recSoSolana: "Enviar as recompensas aos detentores está disponível nos lançamentos da Solana. Na Robinhood Chain, as recompensas vão para o criador.",
     ganhoTitulo: "O que você ganha como criador",
-    ganhoPump: (_p: number) => `Você fica com 100% da taxa de criador de cada operação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.`,
+    ganhoPump: (p: number) => `Você recebe ${100 - p}% da taxa de criador de cada operação da sua moeda, e a Chroma fica com ${p}%. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
     ganhoEvm: "Você recebe 0,70% de cada negociação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.",
     taxaCriadorTitulo: "Taxa do criador (opcional)", taxaCriadorNota: (total: string) => `Taxa extra em cada negociação, paga toda para você (de 0 a 10%). Com o valor escolhido, quem negocia paga ${total}% no total.`,
@@ -204,7 +215,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "作为持有人，只要你持有该代币，也能和其他人一样获得你的那份奖励。",
     recSoSolana: "将奖励发送给持有人仅适用于 Solana 发行。在 Robinhood Chain 上，奖励归创作者所有。",
     ganhoTitulo: "作为创建者你能获得什么",
-    ganhoPump: (_p: number) => `你保留代币每笔交易 100% 的创作者费用。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。`,
+    ganhoPump: (p: number) => `你获得代币每笔交易 ${100 - p}% 的创作者费用，Chroma 保留 ${p}%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
     ganhoEvm: "你的代币每笔交易你都能获得 0.70%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。",
     taxaCriadorTitulo: "创作者税（可选）", taxaCriadorNota: (total: string) => `每笔交易的额外费用，全部归你（0–10%）。按你选择的数值，交易者总共支付 ${total}%。`,
@@ -227,6 +238,7 @@ const TEXTOS = traducoes({
 export default function CreateTokenPage() {
   const t = useTextos(TEXTOS);
   const tc = useTextos(TEXTO_CURVA);
+  const tt = useTextos(TEXTO_TELA);
   const account = useChromaAccount();
   const router = useRouter();
 
@@ -249,8 +261,7 @@ export default function CreateTokenPage() {
   const lancamentoSolana = useLancarToken();
   const lancamentoEvm = useLancarTokenEvm();
 
-  // Abre na Solana: é onde vive a Curva da Chroma e a promoção do criador
-  // (feedback de um testador, 05/10/2026: "abre na Robinhood, rede errada").
+  // A rede vem do seletor do topo: Solana, a não ser que a pessoa tenha escolhido outra.
   const [chain, setChain] = useState<ChainId>("solana");
 
   /*
@@ -274,13 +285,13 @@ export default function CreateTokenPage() {
 
   const [pair, setPair] = useState(DEFAULT_PAIR.solana);
   const [media, setMedia] = useState<SelectedMedia | null>(null);
-  const [banner, setBanner] = useState<SelectedMedia | null>(null);
-  const [showBanner, setShowBanner] = useState(false);
 
   // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
   const [recompensas, setRecompensas] = useState<"criador" | "detentores">("criador");
   // Padrão: a Clássica (pump.fun), 19/10/2026 — ver MOSTRAR_CURVA_CLASSICA.
   const [curva, setCurva] = useState<"pump" | "chroma">("pump");
+  // A Meteora é só da equipe: aparece com /create?meteora=1.
+  const [mostrarMeteora, setMostrarMeteora] = useState(false);
   // Dentro de "Lançar pela Meteora": anti-sniper de 10% ou de 25% (31/10/2026).
   const [variante, setVariante] = useState<VarianteDaCurva>("10");
   // Robinhood: taxa extra do criador (0 a 10%), igual à da plataforma de lançamento.
@@ -336,6 +347,18 @@ export default function CreateTokenPage() {
     setPair(DEFAULT_PAIR[next]); // o par da rede anterior não existe na nova
   }
 
+  useEffect(() => {
+    const busca = new URLSearchParams(window.location.search);
+    setMostrarMeteora(busca.get("meteora") === "1");
+    const daUrl = busca.get("chain") as ChainId | null;
+    const inicial = daUrl && CHAIN_IDS.includes(daUrl) ? daUrl : lerRedeEscolhida();
+    setChain(inicial);
+    setPair(DEFAULT_PAIR[inicial]);
+    const mudou = (e: Event) => selectChain((e as CustomEvent<ChainId>).detail);
+    window.addEventListener(EVENTO_DA_REDE, mudou);
+    return () => window.removeEventListener(EVENTO_DA_REDE, mudou);
+  }, []);
+
   function set(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -346,491 +369,278 @@ export default function CreateTokenPage() {
     form.symbol.trim().length >= 2 &&
     Boolean(media);
 
+  async function lancarAgora() {
+    if (!media) return;
+
+    const resultado = await lancamento.lancar({
+      nome: form.name.trim(),
+      simbolo: form.symbol.trim(),
+      descricao: form.description.trim() || undefined,
+      site: form.website.trim() || undefined,
+      twitter: form.twitter.trim() || undefined,
+      telegram: form.telegram.trim() || undefined,
+      arte: media.file,
+      banner: null,
+      compraInicial: form.initialBuy.trim() || undefined,
+      recompensas: chain === "solana" && curva === "pump" ? recompensas : "criador",
+      curva: chain === "solana" ? curva : undefined,
+      variante: chain === "solana" && curva === "chroma" && VARIANTES_DISPONIVEIS.includes(variante) ? variante : "10",
+      taxaDoCriador: chain === "robinhood" ? taxaDoCriadorNum : 0,
+      par: chain === "solana" && pair === "USDC" ? "USDC" : "SOL",
+    });
+
+    // Vai direto para a página da moeda. Se faltou a compra inicial, o criador
+    // conclui lá com um clique (ConcluirLancamento).
+    if (!resultado) return;
+    if ("avisoDeCompra" in resultado && resultado.avisoDeCompra) {
+      router.push(`/token/${resultado.moeda}`);
+      return;
+    }
+    router.push(`/token/${"mint" in resultado ? resultado.mint : resultado.moeda}`);
+  }
+
+  const naCurvaDaChroma = chain === "solana" && curva === "chroma" && CURVA_CHROMA_DISPONIVEL;
+  const paraDetentores = chain === "solana" && !naCurvaDaChroma && recompensas === "detentores";
+  let numero = 1;
+
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pt-4">
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-zinc-50">{t.titulo}</h1>
-        <p className="mt-1 text-[13px] text-zinc-500">
-          {t.subtitulo}
-        </p>
-      </div>
+    <div className="mx-auto max-w-[1120px] pt-2">
+      <h1 className="text-[32px] font-bold tracking-tight text-zinc-50">{tt.titulo}</h1>
+      <p className="mt-1 text-[15px] text-zinc-400">{tt.subtitulo}</p>
 
-      {/*
-        A REDE QUE NÃO LANÇA AVISA ANTES DO FORMULÁRIO.
-        ------------------------------------------------------------------
-        Antes isso só aparecia no texto do botão, lá embaixo — depois de a
-        pessoa escolher a rede, preencher nome, símbolo, enviar imagem e
-        rolar a página inteira. Descobrir no fim que aquela rede não lança é
-        trabalho jogado fora.
-
-        O aviso leva junto o botão que resolve, em vez de só informar.
-      */}
       {!podeLancarNaRede(chain) && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/30 bg-warn/[0.07] p-3">
-          <p className="text-[12px] leading-relaxed text-warn">
-            {t.naoLanca(meta.label, CHAINS[REDE_PADRAO].label)}
-          </p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/30 bg-warn/[0.07] p-3">
+          <p className="text-[13px] leading-relaxed text-warn">{t.naoLanca(meta.label, CHAINS[REDE_PADRAO].label)}</p>
           <Button variant="outline" size="sm" onClick={() => selectChain(REDE_PADRAO)}>
             {t.trocarPara(CHAINS[REDE_PADRAO].label)}
           </Button>
         </div>
       )}
 
-      {/* Rede */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.rede}</CardTitle>
-        </CardHeader>
-        <CardBody className="grid grid-cols-2 gap-2">
-          {CHAIN_IDS.map((id) => (
-            <button
-              key={id}
-              onClick={() => selectChain(id)}
-              className={cn(
-                "rounded-xl border px-3 py-3 text-left transition-all",
-                chain === id
-                  ? "border-marca/50 bg-marca/10"
-                  : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.14]",
-              )}
-            >
-              <div className={cn("flex items-center gap-2 text-sm font-bold", chain === id ? "text-marca" : "text-zinc-300")}>
-                <img src={chainIcon(id)} alt="" width={18} height={18} className="size-[18px] rounded-full" />
-                {CHAINS[id].label}
-              </div>
-              <div className="text-[11px] text-zinc-600">{t.gasEm(CHAINS[id].nativeSymbol)}</div>
-            </button>
-          ))}
-        </CardBody>
-      </Card>
-
-      {/* Quanto custa lançar, antes de qualquer campo. */}
-      <p className="px-1 text-[12px] leading-relaxed text-zinc-300">
-        {chain === "solana" ? t.custoGratis : t.custo(`${CHAIN_FEES.robinhood.launchFee} ETH`)}
-      </p>
-
-      {/*
-        Em qual curva a moeda nasce, na Solana. A Curva da Chroma (Meteora DBC)
-        dá ao criador ~30% da taxa de TODA negociação, em qualquer site, e
-        cobra 10% no primeiro segundo caindo até 1% em 30 s (anti-robô leve, 18/10/2026; ver lib/curva-taxas.ts).
-        Ao usuário nunca se fala o nome de quem opera a curva clássica.
-      */}
-      {chain === "solana" && CURVA_CHROMA_DISPONIVEL && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{tc.titulo}</CardTitle>
-          </CardHeader>
-          <CardBody className="space-y-2">
-            <div className={cn("grid gap-2 rounded-xl border border-white/[0.06] p-1", MOSTRAR_CURVA_CLASSICA ? "grid-cols-2" : "grid-cols-1")}>
-              {(MOSTRAR_CURVA_CLASSICA ? (["pump", "chroma"] as const) : (["chroma"] as const)).map((op) => (
-                <button
-                  key={op}
-                  type="button"
-                  onClick={() => setCurva(op)}
-                  className={cn(
-                    "rounded-lg py-2.5 text-[13px] font-bold transition-colors",
-                    curva === op ? "bg-ink-700 text-zinc-50" : "text-zinc-500 hover:text-zinc-200",
-                  )}
-                >
-                  {op === "pump" ? tc.classica : tc.chroma}
-                </button>
-              ))}
+      <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-4">
+          <Passo numero={numero++} titulo={tt.passoMoeda} resumo={tt.passoMoedaSub}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field
+                label={t.simbolo}
+                placeholder={t.simboloEx}
+                value={form.symbol}
+                maxLength={10}
+                onChange={(v) => set("symbol", cortarEmBytes(v.toUpperCase(), 10))}
+              />
+              <Field label={t.nome} placeholder={t.nomeEx} value={form.name} onChange={(v) => set("name", cortarEmBytes(v, 32))} />
             </div>
-            {/* As curvas da Meteora só aparecem depois de escolher "Lançar pela Meteora". */}
-            {curva === "chroma" && VARIANTES_DISPONIVEIS.length > 1 && (
-              <div className={cn("grid gap-2", VARIANTES_DISPONIVEIS.length > 3 ? "grid-cols-2" : VARIANTES_DISPONIVEIS.length > 2 ? "grid-cols-3" : "grid-cols-2")}>
-                {VARIANTES_DISPONIVEIS.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setVariante(v)}
-                    className={cn(
-                      "rounded-lg border py-2 text-[12.5px] font-bold transition-colors",
-                      variante === v ? "border-marca/50 bg-marca/[0.08] text-marca" : "border-white/[0.06] text-zinc-500 hover:text-zinc-200",
-                    )}
-                  >
-                    {tc.variante(v)}
-                  </button>
+            <MediaDropzone spec={COIN_MEDIA} value={media} onChange={setMedia} title={t.selecione} subtitle={t.arraste} />
+            <Field label={t.descricao} placeholder={t.descricaoEx} value={form.description} multiline onChange={(v) => set("description", v)} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label={t.site} placeholder="https://" value={form.website} onChange={(v) => set("website", v)} />
+              <Field label="X" placeholder="https://x.com/..." value={form.twitter} onChange={(v) => set("twitter", v)} />
+              <Field label="Telegram" placeholder="https://t.me/..." value={form.telegram} onChange={(v) => set("telegram", v)} />
+            </div>
+          </Passo>
+
+          {chain === "solana" && CURVA_CHROMA_DISPONIVEL && mostrarMeteora && (
+            <Passo numero={numero++} titulo={tt.passoCurva} resumo={tt.passoCurvaSub}>
+              <div className={cn("grid gap-2", MOSTRAR_CURVA_CLASSICA ? "grid-cols-2" : "grid-cols-1")}>
+                {(MOSTRAR_CURVA_CLASSICA ? (["pump", "chroma"] as const) : (["chroma"] as const)).map((op) => (
+                  <Opcao key={op} ativa={curva === op} onClick={() => setCurva(op)}>
+                    {op === "pump" ? tc.classica : tc.chroma}
+                  </Opcao>
+                ))}
+              </div>
+              {curva === "chroma" && VARIANTES_DISPONIVEIS.length > 1 && (
+                <div className="grid grid-cols-2 gap-2">
+                  {VARIANTES_DISPONIVEIS.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setVariante(v)}
+                      className={cn(
+                        "rounded-xl border py-2 text-[13px] font-semibold transition-colors",
+                        variante === v ? "border-marca/50 bg-marca/[0.08] text-marca" : "border-white/[0.08] text-zinc-400 hover:text-zinc-100",
+                      )}
+                    >
+                      {tc.variante(v)}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-[13px] leading-relaxed text-zinc-400">{curva === "pump" ? tc.notaClassica : tc.notaChroma(variante)}</p>
+            </Passo>
+          )}
+
+          <Passo numero={numero++} titulo={t.par} resumo={t.parSub}>
+            <SeletorDePar chain={chain} pares={pairs} valor={pair} onChange={setPair} />
+          </Passo>
+
+          <Passo numero={numero++} titulo={tt.passoTaxas} resumo={tt.passoTaxasSub}>
+            {!naCurvaDaChroma && chain === "solana" && (
+              <div className="grid grid-cols-2 gap-2">
+                {(["criador", "detentores"] as const).map((op) => (
+                  <Opcao key={op} ativa={recompensas === op} onClick={() => setRecompensas(op)}>
+                    {op === "criador" ? tt.voce : tt.detentores}
+                  </Opcao>
                 ))}
               </div>
             )}
-            <p className="text-[11.5px] leading-relaxed text-zinc-500">
-              {curva === "pump" ? tc.notaClassica : tc.notaChroma(variante)}
+            <p className="text-[13px] leading-relaxed text-zinc-400">
+              {chain !== "solana" ? t.ganhoEvm : naCurvaDaChroma ? tc.ganho : recompensas === "detentores" ? t.ganhoDetentores : t.ganhoPump(PARTE_DA_CHROMA_BPS / 100)}
             </p>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Par de liquidez */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.par}</CardTitle>
-          <span className="text-[11px] text-zinc-600">{t.parSub}</span>
-        </CardHeader>
-        <CardBody className="space-y-2">
-          {/*
-            Lista suspensa com busca, e não mais uma pilha de cartões.
-
-            Com três opções a pilha era o formato certo: tudo à vista, sem
-            clique. Com setenta ativos tokenizados na Robinhood, a mesma pilha
-            vira uma página de rolagem antes do formulário e empurra o resto
-            pra fora da tela.
-          */}
-          <SeletorDePar chain={chain} pares={pairs} valor={pair} onChange={setPair} />
-
-        </CardBody>
-      </Card>
-
-      {/* Aviso de imutabilidade — logo acima da mídia, que é o que não dá pra trocar depois */}
-      <p className="px-1 text-[11px] leading-relaxed text-zinc-200">
-        {t.imutavel(<strong>{t.agora}</strong>)}
-      </p>
-
-      {/* Mídia da moeda */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.midia}</CardTitle>
-          <Badge tone="danger">{t.obrigatorio}</Badge>
-        </CardHeader>
-        <CardBody className="space-y-4">
-          <MediaDropzone
-            spec={COIN_MEDIA}
-            value={media}
-            onChange={setMedia}
-            title={t.selecione}
-            subtitle={t.arraste}
-          />
-          <p className="text-[11.5px] font-semibold text-warn">⚠ {t.imagemFixa}</p>
-
-          <MediaSpecList
-            columns={[
-              {
-                icon: "file",
-                title: t.tamanho,
-                items: [t.img15, t.video30],
-              },
-              {
-                icon: "image",
-                title: t.resolucao,
-                items: [t.img1000, t.video1080],
-              },
-            ]}
-          />
-        </CardBody>
-      </Card>
-
-      {/* Banner: escondido (04/10/2026) — nunca foi usado nem testado. */}
-      {MOSTRAR_BANNER && (<Card>
-        <button
-          onClick={() => setShowBanner((v) => !v)}
-          className="flex w-full items-center gap-2 px-4 py-3 text-left"
-        >
-          <svg viewBox="0 0 24 24" className="size-4 text-zinc-500" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <path d="m21 15-5-5L5 21" />
-          </svg>
-          <span className="text-[13px] font-semibold text-marca">{t.addBanner}</span>
-          <span className="text-[12px] text-zinc-600">({t.opcional})</span>
-          <span className={cn("ml-auto text-zinc-600 transition-transform", showBanner && "rotate-180")}>⌄</span>
-        </button>
-
-        {showBanner && (
-          <CardBody className="space-y-4 border-t border-white/[0.06]">
-            <div>
-              <div className="text-[13px] font-bold text-zinc-200">{t.carregarBanner}</div>
-              <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
-                {t.bannerTexto}
-              </p>
-            </div>
-
-            <MediaDropzone
-              spec={BANNER_MEDIA}
-              value={banner}
-              onChange={setBanner}
-              title={t.carregarArquivo}
-            />
-
-            <MediaSpecList
-              columns={[
-                {
-                  icon: "file",
-                  title: t.tamanho,
-                  items: [t.bannerTamanho],
-                },
-                {
-                  icon: "image",
-                  title: t.resolucao,
-                  items: [t.bannerResolucao],
-                },
-              ]}
-            />
-          </CardBody>
-        )}
-      </Card>)}
-
-      {/* Identidade */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.identidade}</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-3">
-          <Field
-            label={t.nome}
-            placeholder={t.nomeEx}
-            value={form.name}
-            onChange={(v) => set("name", cortarEmBytes(v, 32))}
-          />
-          <Field
-            label={t.simbolo}
-            placeholder={t.simboloEx}
-            value={form.symbol}
-            maxLength={10}
-            onChange={(v) => set("symbol", cortarEmBytes(v.toUpperCase(), 10))}
-          />
-          <Field
-            label={t.descricao}
-            placeholder={t.descricaoEx}
-            value={form.description}
-            multiline
-            onChange={(v) => set("description", v)}
-          />
-        </CardBody>
-      </Card>
-
-      {/* Redes sociais */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.redesSociais}</CardTitle>
-          <span className="text-[11px] text-zinc-600">{t.opcionalFixo}</span>
-        </CardHeader>
-        <CardBody className="space-y-3">
-          <Field label={t.site} placeholder="https://" value={form.website} onChange={(v) => set("website", v)} />
-          <Field label="X (Twitter)" placeholder="https://x.com/..." value={form.twitter} onChange={(v) => set("twitter", v)} />
-          <Field label="Telegram" placeholder="https://t.me/..." value={form.telegram} onChange={(v) => set("telegram", v)} />
-        </CardBody>
-      </Card>
-
-      {/*
-        O QUE O CRIADOR RECEBE, DE VERDADE (28/09/2026).
-        Aqui havia um controle de "taxa de criador" (0–10%) e uma opção de
-        dividir recompensas com detentores. Nenhum dos dois era enviado ao
-        contrato: o criador recebe a fatia fixa das faixas, e é isso que a
-        tela diz agora.
-      */}
-      {/* Recompensas do criador: pro criador ou pros detentores (só na curva Clássica;
-          na Curva da Chroma a parte do criador vai sempre pra ele). */}
-      {!(chain === "solana" && curva === "chroma" && CURVA_CHROMA_DISPONIVEL) && (
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.recompensasTitulo}</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-2">
-          <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/[0.06] p-1">
-            {(["criador", "detentores"] as const).map((op) => {
-              const bloqueada = op === "detentores" && chain !== "solana";
-              return (
-                <button
-                  key={op}
-                  type="button"
-                  disabled={bloqueada}
-                  onClick={() => setRecompensas(op)}
-                  className={cn(
-                    "rounded-lg py-2.5 text-[13px] font-bold transition-colors",
-                    (chain === "solana" ? recompensas : "criador") === op
-                      ? "bg-ink-700 text-zinc-50"
-                      : "text-zinc-500 hover:text-zinc-200",
-                    bloqueada && "cursor-not-allowed opacity-40 hover:text-zinc-500",
-                  )}
-                >
-                  {op === "criador" ? t.recCriador : t.recDetentores}
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-[11.5px] leading-relaxed text-zinc-500">
-            {chain !== "solana"
-              ? t.recSoSolana
-              : recompensas === "criador"
-                ? t.recCriadorNota
-                : t.recDetentoresNota}
-          </p>
-        </CardBody>
-      </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.ganhoTitulo}</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <p className="text-[12px] leading-relaxed text-zinc-400">
-            {chain === "solana" ? (
-              curva === "chroma" && CURVA_CHROMA_DISPONIVEL ? (
-                tc.ganho
-              ) : recompensas === "detentores" ? (
-                t.ganhoDetentores
-              ) : (
-                t.ganhoPump(PARTE_DA_CHROMA_BPS / 100)
-              )
-            ) : (
-              // Robinhood (curva da Pons, conferido na rede em 30/09/2026): 1% por
-              // negociação, 70% disso vai pro criador = 0,70% de cada operação.
-              t.ganhoEvm
-            )}
-          </p>
-          {chain === "robinhood" && (
-            <div className="mt-3 space-y-1.5">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{t.taxaCriadorTitulo}</label>
-              <div className="flex items-center gap-2 rounded-lg border border-ink-600 bg-ink-950/60 px-3 py-2 focus-within:border-marca/50">
-                <input
-                  inputMode="decimal"
-                  value={taxaDoCriador}
-                  onChange={(e) => setTaxaDoCriador(e.target.value.replace(/[^0-9.,]/g, "").slice(0, 5))}
-                  placeholder="0"
-                  className="tnum min-w-0 flex-1 bg-transparent text-[15px] font-bold text-zinc-100 outline-none placeholder:text-zinc-700"
-                />
-                <span className="text-[13px] font-bold text-zinc-500">%</span>
+            {chain === "robinhood" && (
+              <div className="space-y-1.5">
+                <label className="block text-[13px] font-medium text-zinc-300">{t.taxaCriadorTitulo}</label>
+                <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/30 px-3 py-2.5 focus-within:border-marca/50">
+                  <input
+                    inputMode="decimal"
+                    value={taxaDoCriador}
+                    onChange={(e) => setTaxaDoCriador(e.target.value.replace(/[^0-9.,]/g, "").slice(0, 5))}
+                    placeholder="0"
+                    className="tnum min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-zinc-100 outline-none placeholder:text-zinc-600"
+                  />
+                  <span className="text-[13px] font-semibold text-zinc-500">%</span>
+                </div>
+                <p className="text-[12px] leading-relaxed text-zinc-500">
+                  {t.taxaCriadorNota((1 + taxaDoCriadorNum).toLocaleString(undefined, { maximumFractionDigits: 2 }))}
+                </p>
               </div>
-              <p className="text-[11px] leading-relaxed text-zinc-500">
-                {t.taxaCriadorNota((1 + taxaDoCriadorNum).toLocaleString(undefined, { maximumFractionDigits: 2 }))}
+            )}
+          </Passo>
+
+          <Passo numero={numero++} titulo={tt.passoCompra} resumo={tt.passoCompraSub}>
+            <Field
+              label={t.quanto(meta.nativeSymbol)}
+              placeholder="0.5"
+              value={form.initialBuy}
+              onChange={(v) => set("initialBuy", v.replace(/[^0-9.]/g, ""))}
+            />
+            {compraInicial > 0 && (
+              <p className="tnum text-[13px] text-zinc-400">{compraEmDolar !== null ? <>≈ {formatUsd(compraEmDolar)}</> : t.semDolar}</p>
+            )}
+            {chain === "solana" && curva === "chroma" && (
+              <p className="rounded-xl border border-marca/25 bg-marca/[0.06] px-3 py-2 text-[13px] leading-relaxed text-zinc-300">
+                {t.totalNaCarteira((0.016 + (compraInicial > 0 ? compraInicial : 0)).toFixed(3))}
               </p>
+            )}
+            <p className="text-[12px] leading-relaxed text-zinc-500">{t.naoCustodia}</p>
+          </Passo>
+        </div>
+
+        <aside className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#0d1c33] to-[#0a1220] p-5 lg:sticky lg:top-20">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-zinc-400">{tt.revisao}</p>
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/[0.08] p-3">
+            <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-white/5 text-[18px] font-bold text-marca">
+              {media?.kind === "image" ? <img src={media.previewUrl} alt="" className="size-full object-cover" /> : "?"}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[17px] font-bold text-zinc-50">${form.symbol.trim() || "TICKER"}</p>
+              <p className="truncate text-[14px] text-zinc-400">{form.name.trim() || tt.suaMoeda}</p>
+            </div>
+          </div>
+
+          <dl className="mt-3 space-y-2.5 text-[14px]">
+            <Linha nome={tt.rede}>
+              <span className="flex items-center gap-1.5">
+                <img src={chainIcon(chain)} alt="" width={16} height={16} className="size-4 rounded-full" />
+                {meta.label}
+              </span>
+            </Linha>
+            {chain === "solana" && <Linha nome={tt.curva}>{curva === "pump" ? tc.classica : tc.chroma}</Linha>}
+            {naCurvaDaChroma && <Linha nome={tt.antiSniper}>{tc.variante(variante)}</Linha>}
+            <Linha nome={tt.taxasPara}>{paraDetentores ? tt.detentores : chain === "solana" && !naCurvaDaChroma ? `${tt.voce} ${100 - PARTE_DA_CHROMA_BPS / 100}%` : tt.voce}</Linha>
+            <Linha nome={tt.primeiraCompra}>{compraInicial > 0 ? `${compraInicial} ${meta.nativeSymbol}` : "—"}</Linha>
+            <Linha nome={tt.custo}>
+              <span className={launchFee > 0 ? undefined : "text-bull"}>{launchFee > 0 ? `${launchFee} ${meta.nativeSymbol}` : tt.gratis}</span>
+            </Linha>
+          </dl>
+
+          {criadaSemCompra && (
+            <div className="mt-3 rounded-xl border border-warn/30 bg-warn/[0.07] px-3 py-2 text-[12px] leading-relaxed text-warn">
+              {criadaSemCompra.aviso}{" "}
+              <Link href={`/token/${criadaSemCompra.moeda}`} className="font-bold underline">
+                {t.abrirMoeda}
+              </Link>
             </div>
           )}
-        </CardBody>
-      </Card>
+          {lancamento.erro && (
+            <div className="mt-3 rounded-xl border border-bear/30 bg-bear/[0.07] px-3 py-2 text-[12px] leading-relaxed text-bear">{lancamento.erro}</div>
+          )}
 
-      {/* Compra inicial */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.compraInicial}</CardTitle>
-          <span className="text-[11px] text-zinc-600">{t.opcional}</span>
-        </CardHeader>
-        <CardBody className="space-y-3">
-          <Field
-            label={t.quanto(meta.nativeSymbol)}
-            placeholder="0.5"
-            value={form.initialBuy}
-            onChange={(v) => set("initialBuy", v.replace(/[^0-9.]/g, ""))}
-          />
-          {compraInicial > 0 && (
-            <p className="tnum -mt-1 text-[12px] text-zinc-400">
-              {compraEmDolar !== null ? <>≈ {formatUsd(compraEmDolar)}</> : t.semDolar}
-            </p>
-          )}
-          {/* Quanto precisa ter na carteira, antes do clique (Curva da Chroma). */}
-          {chain === "solana" && curva === "chroma" && (
-            <p className="rounded-lg border border-marca/25 bg-marca/[0.06] px-3 py-2 text-[12px] leading-relaxed text-zinc-300">
-              {t.totalNaCarteira((0.016 + (compraInicial > 0 ? compraInicial : 0)).toFixed(3))}
-            </p>
-          )}
-          <p className="text-[11px] leading-relaxed text-zinc-500">
-            {t.naoCustodia}
+          <div className="mt-4">
+            <RequireChainWallet chain={chain}>
+              <Button
+                variant="chroma"
+                size="lg"
+                className="w-full"
+                disabled={!ready || lancamento.ocupado || !redeDisponivel || !lancamento.carteiraConectada}
+                onClick={lancarAgora}
+              >
+                {lancamento.ocupado
+                  ? t.etapas[lancamento.etapa]
+                  : !redeDisponivel
+                    ? t.emBreve(meta.label)
+                    : !account.isSignedIn
+                      ? t.facaLogin
+                      : !lancamento.carteiraConectada
+                        ? t.conecteCarteira(meta.label)
+                        : !media
+                          ? t.envieImagem
+                          : !ready
+                            ? t.preenchaNome
+                            : t.criar}
+              </Button>
+            </RequireChainWallet>
+          </div>
+
+          <p className="mt-3 text-center text-[12px] leading-relaxed text-zinc-500">
+            {launchFee > 0 ? t.taxaLancamento(launchFee, meta.nativeSymbol, meta.label) : t.semTaxa(meta.label)}{" "}
+            <Link href="/fees" className="text-marca hover:underline">
+              {t.verTaxas}
+            </Link>
           </p>
-        </CardBody>
-      </Card>
-
-      {criadaSemCompra && (
-        <div className="rounded-xl border border-warn/30 bg-warn/[0.07] px-4 py-3 text-[12px] leading-relaxed text-warn">
-          {criadaSemCompra.aviso}{" "}
-          <Link href={`/token/${criadaSemCompra.moeda}`} className="font-bold underline">
-            {t.abrirMoeda}
-          </Link>
-        </div>
-      )}
-
-      {lancamento.erro && (
-        <div className="rounded-xl border border-bear/30 bg-bear/[0.07] px-4 py-3 text-[12px] leading-relaxed text-bear">
-          {lancamento.erro}
-        </div>
-      )}
-
-      {/*
-        Carteira da rede escolhida não conectada nesta aba (mesmo que já
-        vinculada à conta): em vez de um botão travado, o botão de conectar.
-      */}
-      <RequireChainWallet chain={chain}>
-      <Button
-        variant="chroma"
-        size="lg"
-        className="w-full"
-        disabled={
-          !ready ||
-          lancamento.ocupado ||
-          !redeDisponivel ||
-          !lancamento.carteiraConectada
-        }
-        onClick={async () => {
-          if (!media) return;
-
-          const resultado = await lancamento.lancar({
-            nome: form.name.trim(),
-            simbolo: form.symbol.trim(),
-            descricao: form.description.trim() || undefined,
-            site: form.website.trim() || undefined,
-            twitter: form.twitter.trim() || undefined,
-            telegram: form.telegram.trim() || undefined,
-            arte: media.file,
-            banner: banner?.file ?? null,
-            compraInicial: form.initialBuy.trim() || undefined,
-            recompensas: chain === "solana" && curva === "pump" ? recompensas : "criador",
-            curva: chain === "solana" ? curva : undefined,
-            variante: chain === "solana" && curva === "chroma" && VARIANTES_DISPONIVEIS.includes(variante) ? variante : "10",
-            taxaDoCriador: chain === "robinhood" ? taxaDoCriadorNum : 0,
-            par: chain === "solana" && pair === "USDC" ? "USDC" : "SOL",
-          });
-
-          /*
-           * Vai direto pra página da moeda. A pessoa acabou de criar algo e
-           * quer VER — deixá-la no formulário preenchido, sem saber se deu
-           * certo, é o pior desfecho possível.
-           */
-          /*
-           * Cada rede nomeia a moeda de um jeito: na Solana o endereço se
-           * chama `mint`, na EVM é o endereço do contrato do token. A tela
-           * precisa do endereço, não do nome que cada rede dá a ele.
-           */
-          if (!resultado) return;
-          if ("avisoDeCompra" in resultado && resultado.avisoDeCompra) {
-            // Sem mensagem de erro: vai para a moeda, onde o criador conclui
-            // a última etapa com um clique (ConcluirLancamento).
-            router.push(`/token/${resultado.moeda}`);
-            return;
-          }
-          router.push(`/token/${"mint" in resultado ? resultado.mint : resultado.moeda}`);
-        }}
-      >
-        {lancamento.ocupado
-          ? t.etapas[lancamento.etapa]
-          : !redeDisponivel
-            ? t.emBreve(meta.label)
-            : !account.isSignedIn
-              ? t.facaLogin
-              : !lancamento.carteiraConectada
-                ? t.conecteCarteira(meta.label)
-                : !media
-                  ? t.envieImagem
-                  : !ready
-                    ? t.preenchaNome
-                    : t.criar}
-      </Button>
-      </RequireChainWallet>
-
-      <p className="pb-4 text-center text-[11px] leading-relaxed text-zinc-600">
-        {launchFee > 0 ? (
-          <>{t.taxaLancamento(launchFee, meta.nativeSymbol, meta.label)}</>
-        ) : (
-          <>{t.semTaxa(meta.label)}</>
-        )}{" "}
-        {t.semLimite}{" "}
-        <Link href="/fees" className="text-marca hover:text-chroma-cyan">
-          {t.verTaxas}
-        </Link>
-      </p>
+        </aside>
+      </div>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
+function Passo({ numero, titulo, resumo, children }: { numero: number; titulo: string; resumo: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0d1c33] to-[#0a1220] p-5">
+      <div className="flex gap-3">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full border border-white/20 text-[13px] text-zinc-300">{numero}</span>
+        <div className="min-w-0">
+          <h2 className="text-[17px] font-bold text-zinc-50">{titulo}</h2>
+          <p className="text-[13px] text-zinc-400">{resumo}</p>
+        </div>
+      </div>
+      <div className="mt-4 space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function Opcao({ ativa, onClick, children }: { ativa: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-xl py-3 text-[14px] font-bold transition-colors",
+        ativa ? "bg-marca text-black" : "border border-white/[0.08] bg-black/30 text-zinc-300 hover:text-white",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Linha({ nome, children }: { nome: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-zinc-400">{nome}</dt>
+      <dd className="min-w-0 truncate font-semibold text-zinc-100">{children}</dd>
+    </div>
+  );
+}
 
 /**
  * Corta o texto no limite de BYTES do contrato, não de letras.
@@ -866,11 +676,11 @@ function Field({
   maxLength?: number;
 }) {
   const className =
-    "w-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-700 focus:border-marca/40";
+    "w-full rounded-xl border border-white/[0.08] bg-black/30 px-3 py-2.5 text-[15px] text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-marca/50";
 
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{label}</span>
+      <span className="mb-1.5 block text-[13px] font-medium text-zinc-300">{label}</span>
       {multiline ? (
         <textarea
           rows={3}

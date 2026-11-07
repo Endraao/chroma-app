@@ -7,32 +7,32 @@ import { traducoes, type Idioma } from "@/lib/idiomas";
 const TEXTOS = traducoes({
   en: {
     titulo: "Launch your coin on Solana.",
-    resumo: "Free to launch, with anti-sniper protection built in.",
+    resumo: "Free to launch on pump.fun. You only pay the network cost.",
     botao: "Launch a coin",
     passos: [
       ["Create", "Name, ticker and image."],
-      ["Protect", "Pick a 25% or 50% anti-sniper fee."],
-      ["Share", "The fee drops to 1% in 2 minutes."],
+      ["Launch", "Live on pump.fun in one transaction."],
+      ["Earn", "You get 70% of the creator fee."],
     ],
   },
   pt: {
     titulo: "Lance sua moeda na Solana.",
-    resumo: "Lançamento grátis, com proteção contra snipers.",
+    resumo: "Lançamento grátis na pump.fun. Você só paga o custo da rede.",
     botao: "Lançar moeda",
     passos: [
       ["Crie", "Nome, símbolo e imagem."],
-      ["Proteja", "Escolha a taxa anti-sniper de 25% ou 50%."],
-      ["Divulgue", "A taxa cai até 1% em 2 minutos."],
+      ["Lance", "No ar na pump.fun em uma transação."],
+      ["Ganhe", "Você recebe 70% da taxa de criador."],
     ],
   },
   zh: {
     titulo: "在 Solana 发行你的代币。",
-    resumo: "免费发行，内置防狙击保护。",
+    resumo: "在 pump.fun 免费发行，只需支付网络费用。",
     botao: "发行代币",
     passos: [
       ["创建", "名称、代号和图片。"],
-      ["保护", "选择 25% 或 50% 防狙击费。"],
-      ["分享", "费用在 2 分钟内降至 1%。"],
+      ["发行", "一笔交易即可在 pump.fun 上线。"],
+      ["赚取", "你获得 70% 的创作者费用。"],
     ],
   },
 });
@@ -45,7 +45,7 @@ export function FaixaDeAbertura({ idioma }: { idioma: Idioma }) {
     <section className="rounded-3xl border border-marca/20 bg-gradient-to-br from-[#0d2138] via-[#0b1626] to-[#0a101c] p-5 sm:p-7">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between lg:gap-10">
         <div className="min-w-0">
-          <h1 className="text-[28px] font-bold leading-tight tracking-tight text-zinc-50 sm:text-[34px]">{t.titulo}</h1>
+          <h1 className="text-[30px] font-bold leading-tight tracking-tight text-zinc-50 sm:text-[42px]">{t.titulo}</h1>
           <p className="mt-1.5 text-[15px] text-zinc-400">{t.resumo}</p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link href="/create">
@@ -58,7 +58,7 @@ export function FaixaDeAbertura({ idioma }: { idioma: Idioma }) {
         </div>
 
         {/* No celular os passos saem: as moedas têm que aparecer logo na primeira tela. */}
-        <ol className="hidden shrink-0 gap-2 sm:grid sm:grid-cols-3 lg:w-[560px]">
+        <ol className="hidden shrink-0 gap-3 sm:grid sm:grid-cols-3 lg:w-[660px]">
           {t.passos.map(([titulo, texto], i) => (
             <li key={titulo} className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3.5">
               <span className="grid size-6 place-items-center rounded-full bg-marca/15 text-[12px] font-bold text-marca">{i + 1}</span>

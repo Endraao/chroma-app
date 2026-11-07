@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import { NumeroVivo, useTokenVivo } from "@/components/home/AoVivo";
+import { NumeroVivo, useHistoricoVivo, useSerieDoGrafico, useTokenVivo } from "@/components/home/AoVivo";
+import { Sparkline } from "@/components/ui/Sparkline";
 import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
-import { cn, formatPct, formatUsd, miniatura, timeAgo } from "@/lib/utils";
+import { cn, formatPct, formatUsd, miniatura } from "@/lib/utils";
 
 const TEXTOS = traducoes({
   en: { nova: "NEW", curva: "CURVE", emAlta: "HOT" },
@@ -27,6 +28,9 @@ const ALTA_MAXIMA = 5_000_000;
 export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSummary; destaque?: boolean }) {
   const t = useTextos(TEXTOS);
   const token = useTokenVivo(base);
+  const vivos = useHistoricoVivo(base);
+  const serie = useSerieDoGrafico(base);
+  const serieSobe = serie ? serie[serie.length - 1] >= serie[0] : true;
   const naCurva = token.bondingProgress !== null;
   const [agora] = useState(() => Date.now());
   const nova = agora - token.createdAt < NOVA_POR_MS;
@@ -40,45 +44,58 @@ export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSum
     <Link
       href={`/token/${token.address}`}
       className={cn(
-        "group relative flex h-[172px] min-w-0 overflow-hidden rounded-2xl border bg-gradient-to-br from-[#0d1c33] to-[#0a1220] p-5 transition-all duration-200 hover:-translate-y-0.5",
+        "group relative flex h-[232px] min-w-0 overflow-hidden rounded-2xl border bg-gradient-to-br from-[#0d1c33] to-[#0a1220] p-5 transition-all duration-200 hover:-translate-y-0.5",
         destaque ? "border-marca/40 hover:border-marca/70" : "border-white/[0.08] hover:border-marca/40",
       )}
     >
-      {/* A arte grande, apagada, entrando pela direita. */}
-      <div className="pointer-events-none absolute -right-9 top-1/2 size-[186px] -translate-y-1/2 overflow-hidden rounded-full opacity-35 transition-opacity duration-200 [mask-image:linear-gradient(to_left,black_45%,transparent)] group-hover:opacity-55">
-        <ImagemDaMoeda token={token} />
+      {/* A arte no canto, com anéis em volta. */}
+      <div className="pointer-events-none absolute -bottom-12 -right-10 grid size-[230px] origin-bottom-right place-items-center rounded-full border border-white/[0.07] max-sm:scale-[0.72]">
+        <div className="grid size-[190px] place-items-center rounded-full border border-white/[0.09]">
+          <div className="size-[144px] overflow-hidden rounded-full bg-ink-800 opacity-90 transition-opacity duration-200 group-hover:opacity-100">
+            <ImagemDaMoeda token={token} />
+          </div>
+        </div>
       </div>
 
       <div className="relative z-[1] flex min-w-0 flex-1 flex-col">
         <div className="size-11 shrink-0 overflow-hidden rounded-full bg-ink-800 ring-1 ring-white/10">
           <ImagemDaMoeda token={token} px={88} />
         </div>
-        <p className="mt-auto max-w-[70%] truncate text-[14px] font-semibold text-zinc-300">${token.symbol}</p>
+        <p className="mt-4 max-w-[60%] truncate text-[14px] font-bold text-marca">${token.symbol}</p>
+        <p className="max-w-[60%] truncate text-[14px] text-zinc-400">{token.name}</p>
         <NumeroVivo
           valor={token.marketCapUsd}
           formatar={formatUsd}
-          className="tnum block text-[28px] font-bold leading-tight tracking-tight text-zinc-50"
+          className="tnum mt-1 block text-[30px] font-bold leading-tight tracking-tight text-zinc-50"
         />
-        <div className="tnum mt-1 flex items-center gap-2 text-[13px] text-zinc-400">
-          {temPct && (
-            <span className={pct >= 0 ? "font-semibold text-bull" : "font-semibold text-bear"}>
-              {pct >= 0 ? "▲" : "▼"} <NumeroVivo valor={Math.abs(pct)} formatar={(n) => formatPct(n).replace(/^[+-]/, "")} />
+        <div className="tnum mt-auto flex max-w-[62%] items-center gap-3 border-t border-white/[0.07] pt-2.5 text-[13px] text-zinc-400">
+          {token.volume24hUsd > 0 && (
+            <span className="shrink-0">
+              Vol <NumeroVivo valor={token.volume24hUsd} formatar={formatUsd} className="text-zinc-300" />
             </span>
           )}
-          <span className="truncate">{timeAgo(token.createdAt)}</span>
+          {temPct && (
+            <span className={cn("shrink-0 font-semibold", pct >= 0 ? "text-bull" : "text-bear")}>
+              {pct >= 0 ? "+" : "-"}
+              <NumeroVivo valor={Math.abs(pct)} formatar={(n) => formatPct(n).replace(/^[+-]/, "")} />
+            </span>
+          )}
+          <div className="hidden min-w-0 flex-1 xl:block">
+            <Sparkline serie={serie} changes={base.priceChanges} vivos={vivos} up={serie ? serieSobe : pct >= 0} altura={24} />
+          </div>
         </div>
       </div>
 
       {emAlta ? (
-        <span className="absolute right-3.5 top-3.5 z-[1] rounded-full bg-orange-500/90 px-2.5 py-0.5 text-[11px] font-bold text-black">
+        <span className="absolute right-4 top-4 z-[1] rounded-full bg-orange-500/90 px-2.5 py-0.5 text-[11px] font-bold text-black">
           🔥 {t.emAlta}
         </span>
       ) : nova ? (
-        <span className="absolute right-3.5 top-3.5 z-[1] rounded-full border border-bull/40 bg-black/50 px-2.5 py-0.5 text-[11px] font-semibold text-bull">
+        <span className="absolute right-4 top-4 z-[1] rounded-full border border-bull/40 bg-black/50 px-2.5 py-0.5 text-[11px] font-semibold text-bull">
           {t.nova}
         </span>
       ) : naCurva ? (
-        <span className="absolute right-3.5 top-3.5 z-[1] rounded-full border border-marca/40 bg-black/50 px-2.5 py-0.5 text-[11px] font-semibold text-marca">
+        <span className="absolute right-4 top-4 z-[1] rounded-full border border-marca/40 bg-black/50 px-2.5 py-0.5 text-[11px] font-semibold text-marca">
           {t.curva} {Math.round(token.bondingProgress ?? 0)}%
         </span>
       ) : null}

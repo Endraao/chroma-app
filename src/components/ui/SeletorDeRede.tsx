@@ -4,7 +4,7 @@ import { useTextos } from "@/components/IdiomaProvider";
 import { traducoes } from "@/lib/idiomas";
 
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -12,7 +12,7 @@ import { useAccount } from "wagmi";
 import { useChromaAccount } from "@/hooks/useChromaAccount";
 
 import { chainIcon } from "@/lib/chain-icons";
-import { CHAINS, CHAIN_IDS, REDE_PADRAO } from "@/lib/web3";
+import { CHAINS, CHAIN_IDS, EVENTO_DA_REDE, REDE_PADRAO, guardarRedeEscolhida, lerRedeEscolhida } from "@/lib/web3";
 import { cn } from "@/lib/utils";
 import type { ChainId } from "@/lib/types";
 
@@ -67,8 +67,21 @@ export function SeletorDeRede() {
    * (`src/app/page.tsx`), senão o cabeçalho diz uma rede e a lista mostra
    * outra.
    */
+  const pathname = usePathname();
   const daUrl = parametros.get("chain") as ChainId | null;
-  const atual: ChainId = daUrl && CHAIN_IDS.includes(daUrl) ? daUrl : REDE_PADRAO;
+  const redeDaUrl: ChainId | null = daUrl && CHAIN_IDS.includes(daUrl) ? daUrl : null;
+  const [guardada, setGuardada] = useState<ChainId>(REDE_PADRAO);
+  // Na home vale a URL. Nas outras páginas, a última rede escolhida.
+  const atual: ChainId = redeDaUrl ?? (pathname === "/" ? REDE_PADRAO : guardada);
+
+  useEffect(() => {
+    if (pathname === "/") {
+      guardarRedeEscolhida(redeDaUrl ?? REDE_PADRAO);
+      setGuardada(redeDaUrl ?? REDE_PADRAO);
+    } else {
+      setGuardada(lerRedeEscolhida());
+    }
+  }, [pathname, redeDaUrl]);
 
   const [aberto, setAberto] = useState(false);
   const caixaRef = useRef<HTMLDivElement>(null);
@@ -109,6 +122,14 @@ export function SeletorDeRede() {
    * perder o "mais negociados" que a pessoa selecionou.
    */
   function escolher(chain: ChainId) {
+    guardarRedeEscolhida(chain);
+    setGuardada(chain);
+    // Na tela de lançar, a rede muda ali mesmo: a pessoa não perde o que preencheu.
+    if (pathname === "/create") {
+      window.dispatchEvent(new CustomEvent(EVENTO_DA_REDE, { detail: chain }));
+      setAberto(false);
+      return;
+    }
     const q = new URLSearchParams();
     const sort = parametros.get("sort");
     if (sort && sort !== "new") q.set("sort", sort);

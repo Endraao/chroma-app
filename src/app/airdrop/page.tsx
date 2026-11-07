@@ -31,9 +31,10 @@ const TEXTOS = traducoes({
   en: {
     temporada: (n: number) => `Season ${n} in progress`, use: "Use Chroma.", acumule: "Earn points.",
     intro: "Everything you do on Chroma earns points, tied to your address.",
+    taxas: "Part of the fees Chroma earns goes to users, according to their points.",
     oQueE: "What this is, and what it isn't",
     reais: "Points are real and verifiable.", reaisTexto: "Each one comes from a fact checked on the blockchain and is recorded with the transaction that created it.",
-    nenhum: "No token has been created or promised.", nenhumTexto: "There is no date, no set amount, and nothing here is an offer, a guarantee of reward or a promise of future value.",
+    nenhum: "No token has been created or promised.", nenhumTexto: "The percentage, the amount and the date of each distribution have not been set. Points don't guarantee a specific payout, and nothing here is an offer or a promise of future value.",
     regras: "Rules may change.", regrasTexto: "If abuse shows up — wash volume between wallets of the same person, coins created in bulk with no real use — the points involved may be reviewed or removed.",
     naoGaste: "Don't spend what you can't afford to lose.", naoGasteTexto: "Trading coins costs network fees and carries the risk of total loss. Earning points does not make up for losses. Read the",
     termos: "Terms of Use", encontrou: "Found a bug or a security issue?", avise: "Let our team know",
@@ -41,9 +42,10 @@ const TEXTOS = traducoes({
   pt: {
     temporada: (n: number) => `Temporada ${n} em andamento`, use: "Use a Chroma.", acumule: "Acumule pontos.",
     intro: "Tudo o que você faz na Chroma gera pontos, ligados ao seu endereço.",
+    taxas: "Parte das taxas que a Chroma ganha é direcionada aos usuários, conforme a pontuação de cada um.",
     oQueE: "O que isto é, e o que não é",
     reais: "Os pontos são reais e verificáveis.", reaisTexto: "Cada um nasce de um fato conferido na blockchain e fica registrado com a transação que o gerou.",
-    nenhum: "Nenhum token foi criado ou prometido.", nenhumTexto: "Não existe data, não existe quantidade definida, e nada aqui é oferta, garantia de recompensa ou promessa de valor futuro.",
+    nenhum: "Nenhum token foi criado ou prometido.", nenhumTexto: "A porcentagem, o valor e a data de cada distribuição ainda não foram definidos. Os pontos não garantem um pagamento específico, e nada aqui é oferta ou promessa de valor futuro.",
     regras: "As regras podem mudar.", regrasTexto: "Se aparecer abuso — volume lavado entre carteiras da mesma pessoa, moeda criada em série sem uso real — os pontos envolvidos podem ser revistos ou removidos.",
     naoGaste: "Não gaste o que você não pode perder.", naoGasteTexto: "Negociar moedas custa taxa de rede e envolve risco de perda total. Acumular pontos não compensa prejuízo. Leia os",
     termos: "Termos de Uso", encontrou: "Encontrou um erro ou uma falha de segurança?", avise: "Avise a nossa equipe",
@@ -51,9 +53,10 @@ const TEXTOS = traducoes({
   zh: {
     temporada: (n: number) => `第 ${n} 赛季进行中`, use: "使用 Chroma。", acumule: "赚取积分。",
     intro: "你在 Chroma 上做的每件事都会获得积分，并与你的地址绑定。",
+    taxas: "Chroma 赚取的部分手续费将根据积分分配给用户。",
     oQueE: "这是什么，不是什么",
     reais: "积分真实且可验证。", reaisTexto: "每一分都来自区块链上核实的事实，并与产生它的交易一起记录。",
-    nenhum: "没有创建或承诺任何代币。", nenhumTexto: "没有日期，没有确定数量，这里的任何内容都不是要约、奖励保证或未来价值的承诺。",
+    nenhum: "没有创建或承诺任何代币。", nenhumTexto: "每次分配的比例、金额和日期尚未确定。积分不保证特定的支付，这里的任何内容都不是要约或未来价值的承诺。",
     regras: "规则可能变更。", regrasTexto: "如果出现滥用 —— 同一人多个钱包之间刷量、批量创建无实际用途的代币 —— 相关积分可能被复核或移除。",
     naoGaste: "不要投入你亏不起的钱。", naoGasteTexto: "交易代币需支付网络费用，并有全部亏损的风险。积分无法弥补亏损。请阅读",
     termos: "使用条款", encontrou: "发现错误或安全问题？", avise: "告诉我们的团队",
@@ -101,6 +104,10 @@ export default async function AirdropPage() {
 
         <p className="mx-auto mt-4 max-w-[520px] text-[14px] leading-relaxed text-zinc-400">
           {t.intro}
+        </p>
+
+        <p className="mx-auto mt-4 max-w-[560px] rounded-xl border border-marca/30 bg-marca/[0.07] px-4 py-3 text-[15px] font-semibold leading-relaxed text-zinc-100">
+          {t.taxas}
         </p>
 
         <div className="aresta mx-auto mt-9 max-w-[420px]" />

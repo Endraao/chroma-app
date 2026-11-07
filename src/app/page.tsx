@@ -196,7 +196,7 @@ export default async function HomePage({
   const t = TEXTOS[idioma];
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-6 pt-1">
+    <div className="space-y-6 pt-1">
       <AtualizacaoAutomatica segundos={60} />
 
       {isDemo && (

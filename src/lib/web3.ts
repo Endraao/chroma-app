@@ -153,6 +153,27 @@ export const CHAIN_IDS = Object.keys(CHAINS) as ChainId[];
 // Solana desde 05/10/2026: é onde vivem a Curva da Chroma e a promoção do criador.
 export const REDE_PADRAO: ChainId = "solana";
 
+/** A rede escolhida no topo fica guardada, para a tela de lançar seguir a mesma. */
+const CHAVE_DA_REDE = "chroma:rede";
+export const EVENTO_DA_REDE = "chroma:rede-mudou";
+
+export function lerRedeEscolhida(): ChainId {
+  try {
+    const salva = window.localStorage.getItem(CHAVE_DA_REDE) as ChainId | null;
+    return salva && CHAIN_IDS.includes(salva) ? salva : REDE_PADRAO;
+  } catch {
+    return REDE_PADRAO;
+  }
+}
+
+export function guardarRedeEscolhida(rede: ChainId) {
+  try {
+    window.localStorage.setItem(CHAVE_DA_REDE, rede);
+  } catch {
+    /* sem storage, a escolha vale só na página atual */
+  }
+}
+
 /**
  * Dá pra LANÇAR moeda pela Chroma nesta rede?
  *
