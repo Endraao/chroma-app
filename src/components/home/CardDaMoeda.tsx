@@ -3,10 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import { NumeroVivo, useHistoricoVivo, useSerieDoGrafico, useTokenVivo } from "@/components/home/AoVivo";
-import { Sparkline } from "@/components/ui/Sparkline";
+import { NumeroVivo, useTokenVivo } from "@/components/home/AoVivo";
 import { useTextos } from "@/components/IdiomaProvider";
-import { chainIcon } from "@/lib/chain-icons";
 import { traducoes } from "@/lib/idiomas";
 import type { TokenSummary } from "@/lib/types";
 import { cn, formatPct, formatUsd, miniatura, timeAgo } from "@/lib/utils";
@@ -23,17 +21,12 @@ const NOVA_POR_MS = 15 * 60_000;
 const ALTA_MAXIMA = 5_000_000;
 
 /**
- * Card da vitrine, numa CAIXA própria (pedido do dono, 06/10/2026: "as
- * moedas tão tudo muito junto, falta separação tipo a stonk"). Arte grande
- * primeiro; valor de mercado e variação AO VIVO (ver AoVivo.tsx), rolando e
- * acendendo verde/vermelho quando mudam.
+ * Card da vitrine: nome e valor à esquerda, arte grande e apagada à direita.
+ * Valor de mercado e variação são AO VIVO (ver AoVivo.tsx).
  */
 export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSummary; destaque?: boolean }) {
   const t = useTextos(TEXTOS);
   const token = useTokenVivo(base);
-  const vivos = useHistoricoVivo(base);
-  const serie = useSerieDoGrafico(base);
-  const serieSobe = serie ? serie[serie.length - 1] >= serie[0] : true;
   const naCurva = token.bondingProgress !== null;
   const [agora] = useState(() => Date.now());
   const nova = agora - token.createdAt < NOVA_POR_MS;
@@ -47,68 +40,48 @@ export function CardDaMoeda({ token: base, destaque = false }: { token: TokenSum
     <Link
       href={`/token/${token.address}`}
       className={cn(
-        "group flex min-w-0 flex-col rounded-2xl border bg-ink-900/70 p-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-ink-900",
-        // Chroma = azul da marca; "em alta" = verde (subindo).
-        destaque ? "border-marca/35 hover:border-marca/70" : emAlta ? "border-bull/35 hover:border-bull/70" : "border-white/[0.07] hover:border-white/20",
+        "group relative flex h-[172px] min-w-0 overflow-hidden rounded-2xl border bg-gradient-to-br from-[#0d1c33] to-[#0a1220] p-5 transition-all duration-200 hover:-translate-y-0.5",
+        destaque ? "border-marca/40 hover:border-marca/70" : "border-white/[0.08] hover:border-marca/40",
       )}
     >
-      <div className="relative aspect-square overflow-hidden rounded-xl bg-ink-800">
+      {/* A arte grande, apagada, entrando pela direita. */}
+      <div className="pointer-events-none absolute -right-9 top-1/2 size-[186px] -translate-y-1/2 overflow-hidden rounded-full opacity-35 transition-opacity duration-200 [mask-image:linear-gradient(to_left,black_45%,transparent)] group-hover:opacity-55">
         <ImagemDaMoeda token={token} />
-        <img
-          src={chainIcon(token.chain)}
-          alt={token.chain}
-          width={20}
-          height={20}
-          className="absolute left-2 top-2 size-5 rounded-full ring-2 ring-black/60"
-        />
-        {emAlta ? (
-          <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-orange-500/90 px-2 py-0.5 text-[10px] font-black text-black shadow-[0_0_12px_rgba(249,115,22,0.6)]">
-            🔥 {t.emAlta}
-          </span>
-        ) : nova ? (
-          <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-bull">
-            <span className="size-1.5 animate-pulse rounded-full bg-bull" />
-            {t.nova}
-          </span>
-        ) : naCurva ? (
-          <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold text-marca">
-            {t.curva} {Math.round(token.bondingProgress ?? 0)}%
-          </span>
-        ) : null}
-        {/* Gráfico por cima da arte, no canto (estilo pump.fun). Sem histórico real, as variações. */}
-        <div className="pointer-events-none absolute bottom-1.5 right-1.5 w-[58%]">
-          <Sparkline serie={serie} changes={base.priceChanges} vivos={vivos} up={serie ? serieSobe : pct >= 0} sobreposto altura={34} />
-        </div>
-        {temPct && (
-          <span
-            className={cn(
-              "tnum absolute bottom-2 left-2 rounded-md px-2 py-0.5 text-[13px] font-black shadow-lg",
-              pct >= 0 ? "bg-bull text-black" : "bg-bear text-white",
-            )}
-          >
-            {pct >= 0 ? "▲" : "▼"}{" "}
-            <NumeroVivo valor={Math.abs(pct)} formatar={(n) => formatPct(n).replace(/^[+-]/, "")} />
-          </span>
-        )}
       </div>
 
-      <div className="mt-2.5 min-w-0 px-0.5">
-        <p className="truncate text-[11.5px] font-bold uppercase tracking-wide text-sky-300/90">${token.symbol}</p>
-        <p className="truncate text-[13px] text-zinc-400">{token.name}</p>
+      <div className="relative z-[1] flex min-w-0 flex-1 flex-col">
+        <div className="size-11 shrink-0 overflow-hidden rounded-full bg-ink-800 ring-1 ring-white/10">
+          <ImagemDaMoeda token={token} px={88} />
+        </div>
+        <p className="mt-auto max-w-[70%] truncate text-[14px] font-semibold text-zinc-300">${token.symbol}</p>
         <NumeroVivo
           valor={token.marketCapUsd}
           formatar={formatUsd}
-          className="tnum mt-1 block text-[20px] font-black leading-tight tracking-tight text-zinc-50"
+          className="tnum block text-[28px] font-bold leading-tight tracking-tight text-zinc-50"
         />
-        <div className="tnum mt-1.5 flex items-center gap-2 border-t border-white/[0.06] pt-1.5 text-[11px] text-zinc-500">
-          {token.volume24hUsd > 0 && (
-            <span className="truncate">
-              Vol <NumeroVivo valor={token.volume24hUsd} formatar={formatUsd} className="text-zinc-300" />
+        <div className="tnum mt-1 flex items-center gap-2 text-[13px] text-zinc-400">
+          {temPct && (
+            <span className={pct >= 0 ? "font-semibold text-bull" : "font-semibold text-bear"}>
+              {pct >= 0 ? "▲" : "▼"} <NumeroVivo valor={Math.abs(pct)} formatar={(n) => formatPct(n).replace(/^[+-]/, "")} />
             </span>
           )}
-          <span className="ml-auto shrink-0 text-bull">{timeAgo(token.createdAt)}</span>
+          <span className="truncate">{timeAgo(token.createdAt)}</span>
         </div>
       </div>
+
+      {emAlta ? (
+        <span className="absolute right-3.5 top-3.5 z-[1] rounded-full bg-orange-500/90 px-2.5 py-0.5 text-[11px] font-bold text-black">
+          🔥 {t.emAlta}
+        </span>
+      ) : nova ? (
+        <span className="absolute right-3.5 top-3.5 z-[1] rounded-full border border-bull/40 bg-black/50 px-2.5 py-0.5 text-[11px] font-semibold text-bull">
+          {t.nova}
+        </span>
+      ) : naCurva ? (
+        <span className="absolute right-3.5 top-3.5 z-[1] rounded-full border border-marca/40 bg-black/50 px-2.5 py-0.5 text-[11px] font-semibold text-marca">
+          {t.curva} {Math.round(token.bondingProgress ?? 0)}%
+        </span>
+      ) : null}
     </Link>
   );
 }

@@ -27,7 +27,7 @@ import { MARCA } from "@/lib/marca";
 const NAV = [
   { href: "/", chave: "navExplorar", principal: true },
   { href: "/create", chave: "navCriar", principal: true },
-  { href: "/privado", chave: "navPrivado", principal: true },
+  { href: "/privado", chave: "navPrivado", principal: false },
   { href: "/divulgar", chave: "navDivulgar", principal: false },
   { href: "/affiliate", chave: "navAfiliados", principal: false },
   { href: "/enviar-tudo", chave: "navEnviarTudo", principal: false },
@@ -74,7 +74,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
             O valor foi medido contra o cristal de 38px, não chutado — ver a
             nota de tamanho no componente `ChromaMark`.
           */}
-          <span className="text-[24px] font-bold leading-none tracking-tight text-zinc-100 sm:text-[38px]">
+          <span className="text-[24px] font-bold leading-none tracking-tight text-zinc-100 sm:text-[28px]">
             {MARCA.nome}
           </span>
         </Link>
@@ -89,7 +89,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
               href={item.href}
               className={cn(
                 "whitespace-nowrap rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors",
-                !item.principal && "hidden 2xl:block",
+                !item.principal && "hidden",
                 pathname === item.href
                   ? "bg-white/[0.06] text-zinc-100"
                   : "text-zinc-500 hover:bg-white/5 hover:text-zinc-100",
@@ -179,7 +179,7 @@ export function Header({ idioma }: { idioma: Idioma }) {
             este botão não havia como chegar em Criar token, Afiliados ou Taxas
             — as páginas existiam e eram inalcançáveis pelo telefone.
           */}
-          <div className="relative 2xl:hidden" ref={boxRef}>
+          <div className="relative" ref={boxRef}>
             <button
               onClick={() => setAberto((v) => !v)}
               aria-label="Abrir menu"
@@ -209,6 +209,12 @@ export function Header({ idioma }: { idioma: Idioma }) {
                     {t[item.chave]}
                   </Link>
                 ))}
+                <Link
+                  href="/airdrop"
+                  className="block rounded-lg px-3 py-2.5 text-[14px] font-semibold text-marca transition-colors hover:bg-marca/10"
+                >
+                  {t.navAirdrop}
+                </Link>
               </div>
             )}
           </div>

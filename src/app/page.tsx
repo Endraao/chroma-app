@@ -4,21 +4,15 @@ import { idiomaAtual } from "@/lib/idioma-servidor";
 import { traducoes } from "@/lib/idiomas";
 import { CardDaMoeda } from "@/components/home/CardDaMoeda";
 import { FaixaDeAbertura } from "@/components/home/FaixaDeAbertura";
-import { formatUsd } from "@/lib/utils";
 import { PainelDaChroma } from "@/components/home/PainelDaChroma";
-import { SubindoAgora } from "@/components/home/SubindoAgora";
 import { AoVivoProvider } from "@/components/home/AoVivo";
-import { ListaEmAlta } from "@/components/home/ListaEmAlta";
-import { ehMoedaSeria, pontuacaoEmAlta } from "@/lib/tokens";
 import { ChainTabs } from "@/components/ui/ChainTabs";
 import { listTokens, type SortKey } from "@/lib/tokens";
 import { AtualizacaoAutomatica } from "@/components/home/AtualizacaoAutomatica";
 import { FORA_DA_VITRINE, moedasDaChroma, VITRINE_DESDE } from "@/lib/moedas-da-chroma";
 import { CHAIN_IDS, CHAINS } from "@/lib/web3";
-import { DestaqueTradeNoX } from "@/components/home/DestaqueTradeNoX";
-import { MuralDoObsi } from "@/components/home/MuralDoObsi";
 import type { ChainId, TokenSummary } from "@/lib/types";
-import { EH_A_CHROMA, MARCA } from "@/lib/marca";
+import { MARCA } from "@/lib/marca";
 
 export const dynamic = "force-dynamic";
 
@@ -140,9 +134,7 @@ const SORTS: {
 }[] = [
   { key: "hot", rotulo: "abaEmAlta" },
   { key: "new", rotulo: "abaRecentes" },
-  { key: "gainers", rotulo: "abaAltas" },
   { key: "volume", rotulo: "abaVolume" },
-  { key: "marketCap", rotulo: "abaMcap" },
 ];
 
 /**
@@ -161,30 +153,23 @@ export default async function HomePage({
   const filtros = await searchParams;
   const sort = (filtros.sort as AbaDoMercado) || "hot";
   const ordem: SortKey = sort === "chroma" ? "new" : sort;
-  const chain: ChainId | "todas" =
-    filtros.chain === "todas"
-      ? "todas"
-      : CHAIN_IDS.includes(filtros.chain as ChainId)
-        ? (filtros.chain as ChainId)
-        : "todas"; // Sem rede na URL = todas as redes (pedido do dono, 04/10/2026).
+  // Sem rede na URL = Solana. A Robinhood só aparece se a pessoa escolher a rede.
+  const chain: ChainId = CHAIN_IDS.includes(filtros.chain as ChainId) ? (filtros.chain as ChainId) : "solana";
   const busca = (filtros.q ?? "").trim().toLowerCase();
 
   const [principal, daCasa] = await Promise.all([
-    listTokens(ordem, chain === "todas" ? null : chain),
+    listTokens(ordem, chain),
     moedasDaChroma().catch(() => [] as TokenSummary[]),
   ]);
 
-  // Todas as redes: o painel da Chroma não segue a rede escolhida.
   // Vitrine zerada (VITRINE_DESDE, pedido do dono): só entra moeda lançada depois
   // disso. As antigas seguem abrindo pelo endereço e no perfil de quem criou.
   const lancadasNaChroma = daCasa.filter(
     (t) => t.createdAt >= VITRINE_DESDE && !FORA_DA_VITRINE.has(t.address.toLowerCase()),
   );
-  const daChromaNaRede = lancadasNaChroma.filter((t) => chain === "todas" || t.chain === chain);
+  const daChromaNaRede = lancadasNaChroma.filter((t) => t.chain === chain);
 
   const { isDemo } = principal;
-  // A coluna "Em alta" só com moeda séria (critério da fomo): ver ehMoedaSeria.
-  const emAlta = principal.tokens.filter(ehMoedaSeria).sort((a, b) => pontuacaoEmAlta(b) - pontuacaoEmAlta(a)).slice(0, 40);
   const todasAsMoedas = sort === "chroma" ? daChromaNaRede : principal.tokens;
   // Busca do cabeçalho: nome, símbolo ou começo do endereço.
   const tokens = busca
@@ -196,7 +181,7 @@ export default async function HomePage({
       )
     : todasAsMoedas;
 
-  const linkCom = (params: { sort?: AbaDoMercado; chain?: ChainId | "todas" | null }) => {
+  const linkCom = (params: { sort?: AbaDoMercado; chain?: ChainId | null }) => {
     const proximoSort = params.sort ?? sort;
     const proximaChain = params.chain === undefined ? chain : params.chain;
     const q = new URLSearchParams();
@@ -211,79 +196,53 @@ export default async function HomePage({
   const t = TEXTOS[idioma];
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="mx-auto max-w-[1180px] space-y-6 pt-1">
       <AtualizacaoAutomatica segundos={60} />
 
       {isDemo && (
-        <div className="rounded border border-warn/30 bg-warn/[0.06] px-3 py-2 text-[12px] text-warn">
+        <div className="rounded-xl border border-warn/30 bg-warn/[0.06] px-3 py-2 text-[12px] text-warn">
           {t.semDados}
         </div>
       )}
 
-      {/* A faixa da marca, compacta: não empurra as moedas pra baixo da dobra. */}
-      <FaixaDeAbertura
-        idioma={idioma}
-        quantidadeDeTokens={String(principal.tokens.length + lancadasNaChroma.length)}
-        volumeTotal={formatUsd(principal.tokens.reduce((acc, t) => acc + t.volume24hUsd, 0))}
-      />
+      <FaixaDeAbertura idioma={idioma} />
 
-
-      {/* "Trade dentro do X" (19/10/2026). Em tela larga mora dentro da abertura. */}
-      <div className="xl:hidden">
-        <DestaqueTradeNoX />
-      </div>
-
-      {/* Criadas na Chroma — ao vivo, das duas redes */}
-      <PainelDaChroma moedas={lancadasNaChroma} />
-
-      {/* O mascote comenta a Chroma de hora em hora (16/10/2026). */}
-      {EH_A_CHROMA && <MuralDoObsi />}
+      {sort !== "chroma" && daChromaNaRede.length > 0 && <PainelDaChroma moedas={daChromaNaRede} />}
 
       <section id="mercado" className="scroll-mt-20">
-        <div className="mb-4 flex flex-wrap items-center gap-y-2">
-          {/* Categorias numa linha só: no celular deslizam pro lado em vez de quebrar. */}
-          <div className="-mx-1 flex max-w-full gap-1.5 overflow-x-auto px-1 [scrollbar-width:none]">
-            {SORTS.filter((s) => s.key !== "chroma" || lancadasNaChroma.length > 0).map((s) => (
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto px-1 [scrollbar-width:none]">
+            {SORTS.filter((s) => s.key !== "chroma" || daChromaNaRede.length > 0).map((s) => (
               <Link
                 key={s.key}
                 href={linkCom({ sort: s.key })}
                 className={
                   sort === s.key
-                    ? "shrink-0 whitespace-nowrap rounded-md bg-marca px-3 py-1.5 text-[13px] font-bold text-black"
-                    : "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium text-zinc-400 transition-colors hover:bg-ink-800 hover:text-zinc-100"
+                    ? "shrink-0 whitespace-nowrap rounded-full bg-marca px-4 py-1.5 text-[14px] font-semibold text-black"
+                    : "shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] font-medium text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100"
                 }
               >
                 {t[s.rotulo]}
               </Link>
             ))}
           </div>
-          <div className="w-full sm:ml-auto sm:w-auto">
+          {/* No computador a rede fica no cabeçalho; aqui só no celular. */}
+          <div className="w-full sm:hidden">
             <ChainTabs ativa={chain} sort={sort} />
           </div>
         </div>
 
         {tokens.length === 0 && sort === "chroma" ? (
-          <VazioDaChroma rede={chain === "todas" ? MARCA.nome : CHAINS[chain].label} t={t} />
+          <VazioDaChroma rede={CHAINS[chain].label} t={t} />
         ) : tokens.length === 0 ? (
           <Vazio
             t={t}
-            href={linkCom({ chain: "todas" })}
-            outraRede={t.todasAsRedes}
+            href={linkCom({ chain: chain === "solana" ? "robinhood" : "solana" })}
+            outraRede={CHAINS[chain === "solana" ? "robinhood" : "solana"].label}
           />
         ) : (
-          <AoVivoProvider tokens={[...emAlta.slice(0, 30), ...tokens.slice(0, 60)]} doGrafico={[...emAlta, ...tokens]}>
-            {/* No celular a faixa corre em cima; no computador a lista fica fixa na esquerda (estilo fomo). */}
-            <div className="lg:hidden">
-              <SubindoAgora tokens={tokens} />
-            </div>
-            <div className="lg:grid lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-5">
-              <aside className="hidden lg:block">
-                <div className="sticky top-20 space-y-4">
-                  <ListaEmAlta tokens={emAlta} />
-                </div>
-              </aside>
-              <Grade tokens={tokens} destaque={sort === "chroma"} />
-            </div>
+          <AoVivoProvider tokens={tokens.slice(0, 60)} doGrafico={tokens}>
+            <Grade tokens={tokens} destaque={sort === "chroma"} />
           </AoVivoProvider>
         )}
       </section>
@@ -293,7 +252,7 @@ export default async function HomePage({
 
 function Grade({ tokens, destaque = false }: { tokens: TokenSummary[]; destaque?: boolean }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {tokens.map((token) => (
         <CardDaMoeda key={token.address} token={token} destaque={destaque} />
       ))}

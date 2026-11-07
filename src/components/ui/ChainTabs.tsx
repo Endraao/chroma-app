@@ -34,14 +34,14 @@ import type { ChainId } from "@/lib/types";
  * componente utilizável em qualquer página que liste moedas.
  */
 const TEXTOS = traducoes({
-  en: { conectada: "wallet connected on this network", todas: "All" },
-  pt: { conectada: "carteira conectada nesta rede", todas: "Todas" },
-  zh: { conectada: "该网络已连接钱包", todas: "全部" },
+  en: { conectada: "wallet connected on this network" },
+  pt: { conectada: "carteira conectada nesta rede" },
+  zh: { conectada: "该网络已连接钱包" },
 });
 
-export function ChainTabs({ ativa, sort }: { ativa: ChainId | "todas"; sort: string }) {
+export function ChainTabs({ ativa, sort }: { ativa: ChainId; sort: string }) {
   const t = useTextos(TEXTOS);
-  const hrefDe = (chain: ChainId | "todas") => {
+  const hrefDe = (chain: ChainId) => {
     const q = new URLSearchParams();
     if (sort && sort !== "new") q.set("sort", sort);
     // Sempre na URL: a rede padrão mudou pra Robinhood, e "/" sem rede
@@ -61,16 +61,6 @@ export function ChainTabs({ ativa, sort }: { ativa: ChainId | "todas"; sort: str
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-1.5">
-      {/*
-        A aba "Todas" saiu junto com a opção do cabeçalho.
-
-        Não é só limpeza: se ela ficasse, o seletor do topo diria "Solana"
-        enquanto a lista mostraria as duas redes misturadas. Os dois controles
-        mexem no MESMO `?chain=`, então precisam oferecer as mesmas escolhas.
-      */}
-      <Aba href={hrefDe("todas")} selecionada={ativa === "todas"}>
-        {t.todas}
-      </Aba>
       {CHAIN_IDS.map((chain) => (
         <Aba key={chain} href={hrefDe(chain)} selecionada={ativa === chain}>
           <img

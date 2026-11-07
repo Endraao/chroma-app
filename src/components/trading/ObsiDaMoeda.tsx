@@ -112,7 +112,8 @@ function lerAMoeda(token: TokenSummary, report: SecurityReport, f: Frases): { fr
   }
 
   // Concentração (na curva o maior "holder" é a própria curva: vale o maior detentor de verdade)
-  const top10 = report.holderConcentration.top10Pct;
+  // Mesma fonte do topo da página (Jupiter, sem cofres de pool), para os dois números baterem.
+  const top10 = token.top10Pct ?? report.holderConcentration.top10Pct;
   const dev = report.holderConcentration.creatorPct;
   if (!naCurva && !report.confiavel && top10 > 0) {
     const p = top10.toFixed(0);
