@@ -361,7 +361,7 @@ const universoEmCache = unstable_cache(montarUniverso, ["universo-v6"], {
 });
 
 /** Sem nenhuma versão boa ainda, a home cai no exemplo em vez de quebrar. */
-async function universo(): Promise<TokenSummary[]> {
+export async function universo(): Promise<TokenSummary[]> {
   try {
     return await universoEmCache();
   } catch (erro) {

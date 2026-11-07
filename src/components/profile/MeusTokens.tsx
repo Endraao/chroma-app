@@ -113,7 +113,7 @@ export function MeusTokens({ chaves }: { chaves: string[] }) {
                       <span className="block text-[11.5px] text-zinc-500">${token.symbol}</span>
                     </span>
                     <span className="tnum shrink-0 text-right">
-                      <span className="block text-[13.5px] font-bold text-zinc-100">{formatUsd(valorUsd)}</span>
+                      <span className="block text-[13.5px] font-bold text-zinc-100">{valorUsd > 0 ? formatUsd(valorUsd) : "—"}</span>
                       <span className="block text-[11px] text-zinc-500">
                         {quantidade.toLocaleString(undefined, { notation: quantidade >= 1e6 ? "compact" : "standard", maximumFractionDigits: quantidade < 1 ? 4 : 2 })} {token.symbol}
                       </span>

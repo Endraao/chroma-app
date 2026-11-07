@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { saldosNaCarteiraEvm } from "@/lib/curva-evm";
+import { posicoesNaRobinhood } from "@/lib/carteira-evm";
 import { moedasDaChroma } from "@/lib/moedas-da-chroma";
 import type { TokenSummary } from "@/lib/types";
 import { valorDaCarteira } from "@/lib/carteira";
@@ -22,13 +22,18 @@ async function saldoEth(dono: string): Promise<bigint> {
 async function infoDaJupiter(mints: string[]): Promise<Map<string, { name: string; symbol: string; icon?: string }>> {
   const mapa = new Map<string, { name: string; symbol: string; icon?: string }>();
   for (let i = 0; i < mints.length; i += 50) {
-    try {
-      const r = await fetch(`https://lite-api.jup.ag/tokens/v2/search?query=${mints.slice(i, i + 50).join(",")}`, {
-        next: { revalidate: 300 },
-      });
-      for (const t of (await r.json()) as { id: string; name: string; symbol: string; icon?: string }[]) mapa.set(t.id, t);
-    } catch {
-      /* sem nome: mostra o começo do endereço */
+    for (const espera of [0, 800]) {
+      if (espera) await new Promise((ok) => setTimeout(ok, espera));
+      try {
+        const r = await fetch(`https://lite-api.jup.ag/tokens/v2/search?query=${mints.slice(i, i + 50).join(",")}`, {
+          next: { revalidate: 300 },
+        });
+        if (!r.ok) continue;
+        for (const t of (await r.json()) as { id: string; name: string; symbol: string; icon?: string }[]) mapa.set(t.id, t);
+        break;
+      } catch {
+        /* sem nome: mostra o começo do endereço */
+      }
     }
   }
   return mapa;
@@ -39,14 +44,11 @@ async function infoDaJupiter(mints: string[]): Promise<Map<string, { name: strin
  *
  * As moedas da Chroma que dizem respeito a estas carteiras:
  *   - `criadas`: lançadas por qualquer uma delas (criador lido da rede);
- *   - `naCarteira`: moedas da Chroma que elas carregam, com quantidade.
+ *   - `naCarteira`: as moedas que elas carregam, com quantidade. Na Solana,
+ *     todas; na Robinhood, as que o site conhece (ver lib/carteira-evm.ts).
  *
  * Endereço é público — qualquer explorador mostra o mesmo. Nada privado sai
  * daqui; é o perfil juntando num lugar o que já está na rede.
- *
- * "Na carteira" cobre só as moedas da CHROMA, e só na Robinhood: listar tudo
- * o que uma carteira carrega exige indexador, e a curva da Solana ainda não
- * está publicada.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -71,18 +73,10 @@ export async function GET(request: Request) {
   const criadas = todas.filter((t) => minhas.has(t.creator.toLowerCase()));
 
   const evm = carteiras.filter((c) => c.startsWith("0x"));
-  const daRobinhood = todas.filter((t) => t.chain === "robinhood");
 
   const naCarteira: { token: TokenSummary; quantidade: number; valorUsd: number }[] = [];
   for (const carteira of evm) {
-    const saldos = await saldosNaCarteiraEvm(
-      carteira,
-      daRobinhood.map((t) => t.address),
-    );
-    for (const token of daRobinhood) {
-      const quantidade = saldos.get(token.address.toLowerCase());
-      if (quantidade) naCarteira.push({ token, quantidade, valorUsd: quantidade * token.priceUsd });
-    }
+    naCarteira.push(...(await posicoesNaRobinhood(carteira).catch(() => [])));
   }
   /*
    * Solana: TODAS as moedas da carteira (as mesmas que o menu da conta soma
@@ -107,13 +101,14 @@ export async function GET(request: Request) {
     const info = await infoDaJupiter(valor.posicoes.map((p) => p.mint));
     for (const p of valor.posicoes) {
       const i = info.get(p.mint);
+      const daCasa = todas.find((t) => t.address === p.mint);
       naCarteira.push({
         token: {
           address: p.mint,
           chain: "solana",
-          name: i?.name ?? p.mint.slice(0, 6),
-          symbol: i?.symbol ?? "?",
-          imageUrl: i?.icon ?? `/api/logo/${p.mint}`,
+          name: i?.name ?? daCasa?.name ?? p.mint.slice(0, 6),
+          symbol: i?.symbol ?? daCasa?.symbol ?? p.mint.slice(0, 4),
+          imageUrl: i?.icon ?? daCasa?.imageUrl ?? `/api/logo/${p.mint}`,
           priceUsd: p.precoUsd,
           change24h: 0,
           marketCapUsd: 0,
@@ -139,7 +134,10 @@ export async function GET(request: Request) {
    */
   const poeira = (valorUsd: number, preco: number, quantidade: number) =>
     quantidade <= 0 || (valorUsd < 0.01 && (preco > 0 || quantidade < 1));
-  const limpa = naCarteira.filter((n) => !poeira(n.valorUsd, n.token.priceUsd, n.quantidade));
+  // Moeda sem preço com site no nome é propaganda mandada de graça para a carteira.
+  const propaganda = (n: (typeof naCarteira)[number]) =>
+    n.token.priceUsd <= 0 && /https?:|www.|.(io|com|net|org|xyz|fun|app)/i.test(`${n.token.name} ${n.token.symbol}`);
+  const limpa = naCarteira.filter((n) => !poeira(n.valorUsd, n.token.priceUsd, n.quantidade) && !propaganda(n));
   const nativosLimpos = nativos.filter((n) => n.valorUsd >= 0.01 || n.quantidade >= 0.001);
 
   return NextResponse.json({ criadas, naCarteira: limpa, nativos: nativosLimpos });

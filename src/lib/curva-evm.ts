@@ -306,38 +306,6 @@ export async function velasDaCurvaEvm(moeda: string, segundos: number): Promise<
 }
 
 /**
- * Quanto a carteira tem de cada moeda, em unidades inteiras (18 casas → número).
- *
- * Uma leitura por moeda, em paralelo. A lista é o catálogo da Chroma (dezenas,
- * não milhares), então dispensa multicall — que nem está declarado na config
- * desta rede.
- */
-export async function saldosNaCarteiraEvm(
-  carteira: string,
-  moedas: string[],
-): Promise<Map<string, number>> {
-  const saldos = new Map<string, number>();
-  if (!/^0x[0-9a-fA-F]{40}$/.test(carteira)) return saldos;
-
-  await Promise.all(
-    moedas.map(async (moeda) => {
-      try {
-        const bruto = await cliente.readContract({
-          address: moeda as Address,
-          abi: erc20Abi,
-          functionName: "balanceOf",
-          args: [carteira as Address],
-        });
-        if (bruto > 0n) saldos.set(moeda.toLowerCase(), Number(bruto) / ESCALA);
-      } catch {
-        /* moeda ilegível agora: fica fora da lista, não derruba as outras */
-      }
-    }),
-  );
-  return saldos;
-}
-
-/**
  * Os negócios da curva no formato da tabela de traders (o mesmo da
  * GeckoTerminal), pra que traders, PnL e "meus swaps" funcionem igual nas
  * moedas da curva. Dólar ao preço do ETH de agora — ver `velasDaCurvaEvm`.

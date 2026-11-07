@@ -675,14 +675,20 @@ async function fatorDoPar(d: Buffer): Promise<number> {
   const chave = par.toBase58();
   const guardado = fatores.get(chave);
   if (guardado && guardado.ate > Date.now()) return guardado.valor;
-  const r = await fetch(`https://lite-api.jup.ag/price/v3?ids=${chave},${NATIVE_MINT.toBase58()}`);
-  const precos = (await r.json()) as Record<string, { usdPrice?: number; decimals?: number } | undefined>;
-  const doPar = precos[chave];
-  const doSol = precos[NATIVE_MINT.toBase58()]?.usdPrice;
-  if (!doPar?.usdPrice || !doSol || doPar.decimals == null) throw new Error("sem preço do par");
-  const valor = doPar.usdPrice / doSol / 10 ** doPar.decimals;
-  fatores.set(chave, { valor, ate: Date.now() + validadeDoFator });
-  return valor;
+  try {
+    const r = await fetch(`https://lite-api.jup.ag/price/v3?ids=${chave},${NATIVE_MINT.toBase58()}`);
+    const precos = (await r.json()) as Record<string, { usdPrice?: number; decimals?: number } | undefined>;
+    const doPar = precos[chave];
+    const doSol = precos[NATIVE_MINT.toBase58()]?.usdPrice;
+    if (!doPar?.usdPrice || !doSol || doPar.decimals == null) throw new Error("sem preço do par");
+    const valor = doPar.usdPrice / doSol / 10 ** doPar.decimals;
+    fatores.set(chave, { valor, ate: Date.now() + validadeDoFator });
+    return valor;
+  } catch (e) {
+    // A API de preço às vezes falha: vale o último preço lido, e a curva não some da tela.
+    if (guardado) return guardado.valor;
+    throw e;
+  }
 }
 
 /**

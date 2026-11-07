@@ -26,9 +26,6 @@ import { usePrecoDoSol } from "@/hooks/usePrecoDoSol";
  * Robinhood — que virou a rede principal — simplesmente não existir. O total
  * em dólar soma as duas; o menu mostra cada uma na sua linha, na sua moeda.
  *
- * As moedas lançadas na Robinhood ainda não entram (ver `/api/carteira`): o
- * que aparece lá é o ETH.
- *
  * ---------------------------------------------------------------------------
  * A CONTA É FEITA NO SERVIDOR
  * ---------------------------------------------------------------------------

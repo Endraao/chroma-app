@@ -6,8 +6,7 @@ import { formatEther, hexToBigInt, isAddress, type Hex } from "viem";
 import { valorDaCarteira } from "@/lib/carteira";
 import { precosNativos } from "@/lib/precos-nativos";
 import { robinhoodChain } from "@/lib/web3";
-import { saldosNaCarteiraEvm } from "@/lib/curva-evm";
-import { moedasDaChroma } from "@/lib/moedas-da-chroma";
+import { posicoesNaRobinhood } from "@/lib/carteira-evm";
 import { URL_DO_NO_ROBINHOOD, fetchDaRobinhood } from "@/lib/rpc-robinhood";
 
 /** Saldo nativo na Robinhood Chain, pelo mesmo nó que a ponte `/api/rpc/robinhood` usa. */
@@ -49,34 +48,20 @@ export async function GET(request: Request) {
   }
 
   /*
-   * Carteira EVM: o ETH mais as moedas da CHROMA que ela carrega.
-   *
-   * Moedas de fora ficam de fora do número: listar tudo o que a carteira
-   * carrega exige indexador, e o Blockscout da rede está atrás da Cloudflare.
-   * As da Chroma dá pra consultar uma a uma, porque o catálogo é nosso.
+   * Carteira EVM: o ETH mais as moedas que o site conhece (ver lib/carteira-evm.ts).
    */
   if (isAddress(dono)) {
     try {
-      const [wei, precos, daChroma] = await Promise.all([
+      const [wei, precos, posicoes] = await Promise.all([
         saldoEth(dono),
         precosNativos(),
-        moedasDaChroma().catch(() => []),
+        posicoesNaRobinhood(dono).catch(() => []),
       ]);
       const eth = Number(formatEther(wei));
       const preco = precos.robinhood;
-
-      /* Moedas da Chroma na carteira entram no total (as de fora ainda não). */
-      const daRobinhood = daChroma.filter((t) => t.chain === "robinhood");
-      const saldos = await saldosNaCarteiraEvm(dono, daRobinhood.map((t) => t.address));
-      let tokensUsd = 0;
-      let moedas = 0;
-      for (const t of daRobinhood) {
-        const q = saldos.get(t.address.toLowerCase());
-        if (q) {
-          tokensUsd += q * t.priceUsd;
-          moedas++;
-        }
-      }
+      const comValor = posicoes.filter((p) => p.valorUsd > 0);
+      const tokensUsd = comValor.reduce((soma, p) => soma + p.valorUsd, 0);
+      const moedas = comValor.length;
 
       return NextResponse.json({
         eth,
