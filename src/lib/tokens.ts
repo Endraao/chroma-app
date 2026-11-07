@@ -647,6 +647,18 @@ async function getTokenBase(address: string): Promise<{ token: TokenSummary; isD
   const fallback = FALLBACK.find((t) => t.address.toLowerCase() === address.toLowerCase());
   if (fallback) return { token: fallback, isDemo: true };
 
+  // Lançada aqui e ainda fora dos sites de mercado: nome e arte vêm do cadastro, e o preço, da curva.
+  const cadastrada = await import("@/lib/db").then((d) => d.buscarMoedaDaChroma(address)).catch(() => null);
+  if (cadastrada?.rede === "solana") {
+    const [{ daCurvaClassica, semMercado }, { precosNativos }] = await Promise.all([
+      import("@/lib/moedas-da-chroma"),
+      import("@/lib/precos-nativos"),
+    ]);
+    const sol = (await precosNativos().catch(() => null))?.solana ?? null;
+    const lida = await daCurvaClassica(cadastrada, sol);
+    return { token: lida ?? semMercado(cadastrada), isDemo: !lida };
+  }
+
   /*
    * Endereço válido mas sem par listado: é o caso de um token recém-criado,
    * que é exatamente o público do launchpad. A página abre, o gráfico entra

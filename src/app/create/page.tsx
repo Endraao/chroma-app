@@ -20,6 +20,8 @@ import { usePrecoNativo } from "@/hooks/usePrecoNativo";
 import { CHAINS, CHAIN_IDS, REDE_PADRAO, podeLancarNaRede, EVENTO_DA_REDE, lerRedeEscolhida } from "@/lib/web3";
 import { DEFAULT_PAIR, LIQUIDITY_PAIRS } from "@/lib/pairs";
 import { SeletorDePar } from "@/components/create/SeletorDePar";
+import { EscolhaDePar } from "@/components/create/EscolhaDePar";
+import { PARES_DA_PUMP } from "@/lib/pares-pump";
 import {
   CHAIN_FEES,
   feeLabelFor,
@@ -86,25 +88,25 @@ const TEXTO_TELA = traducoes({
     titulo: "Launch your coin", subtitulo: "It starts trading as soon as it is created, with its own page and a live chart.",
     revisao: "Review", suaMoeda: "Your coin", passoMoeda: "Your coin", passoMoedaSub: "This is how it shows up everywhere. It can't be changed later.",
     passoCurva: "Bonding curve", passoCurvaSub: "Where your coin starts trading.", passoTaxas: "Who gets the fees?", passoTaxasSub: "Your share of the trading fees.",
-    passoCompra: "First buy (optional)", passoCompraSub: "Buy your own coin in the launch transaction.",
+    passoCompra: "First buy (optional)", passoCompraSub: "Buy your own coin in the launch transaction.", passoCompraSol: "Buy your own coin at launch, before anyone else. You always pay in SOL.",
     rede: "Network", curva: "Curve", antiSniper: "Anti-sniper", taxasPara: "Fees go to", voce: "You", detentores: "Holders",
-    primeiraCompra: "First buy", custo: "Launch cost", gratis: "Free",
+    primeiraCompra: "First buy", custo: "Launch cost", gratis: "Free", pareadaCom: "Paired with", passoPar: "Pick your pair", passoParSub: "Your coin trades against this asset, and creator fees are paid in it.",
   },
   pt: {
     titulo: "Lance sua moeda", subtitulo: "Ela começa a ser negociada assim que for criada, com página própria e gráfico ao vivo.",
     revisao: "Resumo", suaMoeda: "Sua moeda", passoMoeda: "Sua moeda", passoMoedaSub: "É assim que ela aparece em todo lugar. Não dá para mudar depois.",
     passoCurva: "Curva de lançamento", passoCurvaSub: "Onde a sua moeda começa a ser negociada.", passoTaxas: "Quem recebe as taxas?", passoTaxasSub: "Sua parte das taxas de negociação.",
-    passoCompra: "Primeira compra (opcional)", passoCompraSub: "Compre sua própria moeda na transação de lançamento.",
+    passoCompra: "Primeira compra (opcional)", passoCompraSub: "Compre sua própria moeda na transação de lançamento.", passoCompraSol: "Compre sua própria moeda no lançamento, antes de todo mundo. Você sempre paga em SOL.",
     rede: "Rede", curva: "Curva", antiSniper: "Anti-sniper", taxasPara: "Taxas vão para", voce: "Você", detentores: "Detentores",
-    primeiraCompra: "Primeira compra", custo: "Custo do lançamento", gratis: "Grátis",
+    primeiraCompra: "Primeira compra", custo: "Custo do lançamento", gratis: "Grátis", pareadaCom: "Pareada com", passoPar: "Escolha o par", passoParSub: "Sua moeda é negociada contra este ativo, e a taxa de criador é paga nele.",
   },
   zh: {
     titulo: "发行你的代币", subtitulo: "创建后即可交易，拥有专属页面和实时图表。",
     revisao: "概览", suaMoeda: "你的代币", passoMoeda: "你的代币", passoMoedaSub: "这是它在各处的显示方式，之后无法更改。",
     passoCurva: "联合曲线", passoCurvaSub: "你的代币从这里开始交易。", passoTaxas: "谁获得手续费？", passoTaxasSub: "你的交易手续费分成。",
-    passoCompra: "首次买入（可选）", passoCompraSub: "在发行交易中买入你自己的代币。",
+    passoCompra: "首次买入（可选）", passoCompraSub: "在发行交易中买入你自己的代币。", passoCompraSol: "在发行时抢先买入你自己的代币，始终使用 SOL 支付。",
     rede: "网络", curva: "曲线", antiSniper: "防狙击", taxasPara: "手续费归", voce: "你", detentores: "持有者",
-    primeiraCompra: "首次买入", custo: "发行费用", gratis: "免费",
+    primeiraCompra: "首次买入", custo: "发行费用", gratis: "免费", pareadaCom: "配对资产", passoPar: "选择配对资产", passoParSub: "你的代币以该资产计价，创作者费用也以它支付。",
   },
 });
 
@@ -133,7 +135,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "As a holder you also get your share of the rewards for as long as you hold the coin — just like everyone else.",
     recSoSolana: "Sending rewards to holders is available for Solana launches. On Robinhood Chain, rewards go to the creator.",
     ganhoTitulo: "What you earn as the creator",
-    ganhoPump: (p: number) => `You get ${100 - p}% of the creator fee from every trade of your coin, and Chroma keeps ${p}%. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.`,
+    ganhoPump: (_p: number) => `You keep 100% of the creator fee from every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.`,
     ganhoTexto: (base: string, topo: string) => `You receive ${base} of every trade of your coin, rising up to ${topo} as it gains volume — paid in the same transaction, at no extra cost to buyers.`,
     ganhoEvm: "You receive 0.70% of every trade of your coin. You approve a single transaction: creating the coin together with your initial buy — so you buy before anyone else.",
     taxaCriadorTitulo: "Creator tax (optional)", taxaCriadorNota: (total: string) => `Extra fee on every trade, paid entirely to you (0–10%). With the value you choose, traders pay ${total}% in total.`,
@@ -148,7 +150,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Launch fee: ${fee} ${s}, paid on submission. Plus the ${rede} network fee.`,
     semTaxa: (rede: string) => `Launching has no Chroma fee — only the ${rede} network fee, paid from your wallet.`,
     semLimite: "There is no limit on how many tokens you can launch.", verTaxas: "see all fees",
-    etapas: { parado: "", "publicando-arte": "Publishing the art…", "aprovar-unica": "Approve the launch in your wallet…", "aprovar-tudo": "Step 1 of 2 — approve creating the coin and your buy…", finalizando: "Step 2 of 2 — approve the fees in your wallet…", "aguardando-assinatura": "Step 1 of 2 — approve creating the coin in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", dividindo: "Step 2 of 2 — approve the initial buy and fee split in your wallet…", pronto: "Done!" } as Record<string, string>,
+    etapas: { parado: "", trocando: "Step 1 of 2: approve the swap from SOL to the pair…", "publicando-arte": "Publishing the art…", "aprovar-unica": "Approve the launch in your wallet…", "aprovar-tudo": "Step 1 of 2 — approve creating the coin and your buy…", finalizando: "Step 2 of 2 — approve the fees in your wallet…", "aguardando-assinatura": "Step 1 of 2 — approve creating the coin in your wallet…", confirmando: "Confirming on the network…", comprando: "Coin created. Approve the initial buy…", dividindo: "Step 2 of 2 — approve the initial buy and fee split in your wallet…", pronto: "Done!" } as Record<string, string>,
   },
   pt: {
     titulo: "Criar token", subtitulo: "Criação e negociação no mesmo lugar: assim que a moeda é criada, ela já fica disponível para compra e venda, com página própria e gráfico ao vivo.",
@@ -174,7 +176,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "Como detentor, você também recebe a sua parte das recompensas enquanto segurar a moeda — igual a todo mundo.",
     recSoSolana: "Enviar as recompensas aos detentores está disponível nos lançamentos da Solana. Na Robinhood Chain, as recompensas vão para o criador.",
     ganhoTitulo: "O que você ganha como criador",
-    ganhoPump: (p: number) => `Você recebe ${100 - p}% da taxa de criador de cada operação da sua moeda, e a Chroma fica com ${p}%. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.`,
+    ganhoPump: (_p: number) => `Você fica com 100% da taxa de criador de cada operação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.`,
     ganhoTexto: (base: string, topo: string) => `Você recebe ${base} de cada operação da sua moeda, subindo até ${topo} conforme ela ganha volume — pago na mesma transação, sem cobrar nada a mais de quem compra.`,
     ganhoEvm: "Você recebe 0,70% de cada negociação da sua moeda. Você aprova uma única transação: a criação da moeda junto com a sua compra inicial — assim você compra antes de todo mundo.",
     taxaCriadorTitulo: "Taxa do criador (opcional)", taxaCriadorNota: (total: string) => `Taxa extra em cada negociação, paga toda para você (de 0 a 10%). Com o valor escolhido, quem negocia paga ${total}% no total.`,
@@ -189,7 +191,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `Taxa de lançamento: ${fee} ${s}, paga no envio. Mais a taxa de rede da ${rede}.`,
     semTaxa: (rede: string) => `Lançar não tem taxa da Chroma — só a taxa de rede da ${rede}, paga da sua carteira.`,
     semLimite: "Não há limite de quantos tokens você pode lançar.", verTaxas: "ver todas as taxas",
-    etapas: { parado: "", "publicando-arte": "Publicando a arte…", "aprovar-unica": "Aprove o lançamento na sua carteira…", "aprovar-tudo": "Etapa 1 de 2 — aprove a criação e a sua compra…", finalizando: "Etapa 2 de 2 — aprove as taxas na carteira…", "aguardando-assinatura": "Etapa 1 de 2 — aprove a criação da moeda na carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", dividindo: "Etapa 2 de 2 — aprove na carteira a compra inicial e a divisão das taxas…", pronto: "Pronto!" } as Record<string, string>,
+    etapas: { parado: "", trocando: "Etapa 1 de 2: aprove a troca de SOL pelo par…", "publicando-arte": "Publicando a arte…", "aprovar-unica": "Aprove o lançamento na sua carteira…", "aprovar-tudo": "Etapa 1 de 2 — aprove a criação e a sua compra…", finalizando: "Etapa 2 de 2 — aprove as taxas na carteira…", "aguardando-assinatura": "Etapa 1 de 2 — aprove a criação da moeda na carteira…", confirmando: "Confirmando na rede…", comprando: "Moeda criada. Aprove a compra inicial…", dividindo: "Etapa 2 de 2 — aprove na carteira a compra inicial e a divisão das taxas…", pronto: "Pronto!" } as Record<string, string>,
   },
   zh: {
     titulo: "创建代币", subtitulo: "发行与交易一站完成：代币创建后立即可以买卖，拥有独立页面和实时图表。",
@@ -215,7 +217,7 @@ const TEXTOS = traducoes({
     ganhoDetentores: "作为持有人，只要你持有该代币，也能和其他人一样获得你的那份奖励。",
     recSoSolana: "将奖励发送给持有人仅适用于 Solana 发行。在 Robinhood Chain 上，奖励归创作者所有。",
     ganhoTitulo: "作为创建者你能获得什么",
-    ganhoPump: (p: number) => `你获得代币每笔交易 ${100 - p}% 的创作者费用，Chroma 保留 ${p}%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。`,
+    ganhoPump: (_p: number) => `你保留代币每笔交易 100% 的创作者费用。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。`,
     ganhoTexto: (base: string, topo: string) => `你的代币每笔交易你都能获得 ${base}，随交易量增长最高到 ${topo} —— 在同一笔交易中支付，买家无需额外付费。`,
     ganhoEvm: "你的代币每笔交易你都能获得 0.70%。你只需确认一笔交易：创建代币并同时完成首次买入——让你比任何人都先买入。",
     taxaCriadorTitulo: "创作者税（可选）", taxaCriadorNota: (total: string) => `每笔交易的额外费用，全部归你（0–10%）。按你选择的数值，交易者总共支付 ${total}%。`,
@@ -230,7 +232,7 @@ const TEXTOS = traducoes({
     taxaLancamento: (fee: number, s: string, rede: string) => `发行费：${fee} ${s}，提交时支付。另加 ${rede} 网络手续费。`,
     semTaxa: (rede: string) => `发行不收 Chroma 费用 —— 只需从钱包支付 ${rede} 网络手续费。`,
     semLimite: "发行代币数量不限。", verTaxas: "查看全部费用",
-    etapas: { parado: "", "publicando-arte": "正在上传图片…", "aprovar-unica": "请在钱包中确认发行…", "aprovar-tudo": "第 1 步，共 2 步 —— 确认创建代币和你的买入…", finalizando: "第 2 步，共 2 步 —— 在钱包中确认费用…", "aguardando-assinatura": "第 1 步，共 2 步 —— 请在钱包中确认创建代币…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", dividindo: "第 2 步，共 2 步 —— 请在钱包中确认首次买入和费用分配…", pronto: "完成！" } as Record<string, string>,
+    etapas: { parado: "", trocando: "第 1 步，共 2 步：确认将 SOL 兑换为配对资产…", "publicando-arte": "正在上传图片…", "aprovar-unica": "请在钱包中确认发行…", "aprovar-tudo": "第 1 步，共 2 步 —— 确认创建代币和你的买入…", finalizando: "第 2 步，共 2 步 —— 在钱包中确认费用…", "aguardando-assinatura": "第 1 步，共 2 步 —— 请在钱包中确认创建代币…", confirmando: "网络确认中…", comprando: "代币已创建，请确认首次买入…", dividindo: "第 2 步，共 2 步 —— 请在钱包中确认首次买入和费用分配…", pronto: "完成！" } as Record<string, string>,
   },
 });
 
@@ -284,6 +286,7 @@ export default function CreateTokenPage() {
   const redeDisponivel = podeLancarNaRede(chain) && (chain === "solana" || lancamentoEvm.disponivel);
 
   const [pair, setPair] = useState(DEFAULT_PAIR.solana);
+  const [parSolana, setParSolana] = useState(PARES_DA_PUMP[0]);
   const [media, setMedia] = useState<SelectedMedia | null>(null);
 
   // Pra quem vão as recompensas de criador (taxa de criador de cada operação).
@@ -386,7 +389,7 @@ export default function CreateTokenPage() {
       curva: chain === "solana" ? curva : undefined,
       variante: chain === "solana" && curva === "chroma" && VARIANTES_DISPONIVEIS.includes(variante) ? variante : "10",
       taxaDoCriador: chain === "robinhood" ? taxaDoCriadorNum : 0,
-      par: chain === "solana" && pair === "USDC" ? "USDC" : "SOL",
+      par: chain === "solana" ? parSolana.par : "SOL",
     });
 
     // Vai direto para a página da moeda. Se faltou a compra inicial, o criador
@@ -469,8 +472,15 @@ export default function CreateTokenPage() {
             </Passo>
           )}
 
-          <Passo numero={numero++} titulo={t.par} resumo={t.parSub}>
-            <SeletorDePar chain={chain} pares={pairs} valor={pair} onChange={setPair} />
+          <Passo numero={numero++} titulo={tt.passoPar} resumo={tt.passoParSub}>
+            {chain === "solana" ? (
+              <EscolhaDePar
+                valor={parSolana}
+                onChange={setParSolana}
+              />
+            ) : (
+              <SeletorDePar chain={chain} pares={pairs} valor={pair} onChange={setPair} />
+            )}
           </Passo>
 
           <Passo numero={numero++} titulo={tt.passoTaxas} resumo={tt.passoTaxasSub}>
@@ -506,7 +516,7 @@ export default function CreateTokenPage() {
             )}
           </Passo>
 
-          <Passo numero={numero++} titulo={tt.passoCompra} resumo={tt.passoCompraSub}>
+          <Passo numero={numero++} titulo={tt.passoCompra} resumo={chain === "solana" ? tt.passoCompraSol : tt.passoCompraSub}>
             <Field
               label={t.quanto(meta.nativeSymbol)}
               placeholder="0.5"
@@ -546,7 +556,8 @@ export default function CreateTokenPage() {
             </Linha>
             {chain === "solana" && <Linha nome={tt.curva}>{curva === "pump" ? tc.classica : tc.chroma}</Linha>}
             {naCurvaDaChroma && <Linha nome={tt.antiSniper}>{tc.variante(variante)}</Linha>}
-            <Linha nome={tt.taxasPara}>{paraDetentores ? tt.detentores : chain === "solana" && !naCurvaDaChroma ? `${tt.voce} ${100 - PARTE_DA_CHROMA_BPS / 100}%` : tt.voce}</Linha>
+            <Linha nome={tt.taxasPara}>{paraDetentores ? tt.detentores : chain === "solana" && !naCurvaDaChroma ? `${tt.voce} 100%` : tt.voce}</Linha>
+            {chain === "solana" && <Linha nome={tt.pareadaCom}>{parSolana.simbolo}</Linha>}
             <Linha nome={tt.primeiraCompra}>{compraInicial > 0 ? `${compraInicial} ${meta.nativeSymbol}` : "—"}</Linha>
             <Linha nome={tt.custo}>
               <span className={launchFee > 0 ? undefined : "text-bull"}>{launchFee > 0 ? `${launchFee} ${meta.nativeSymbol}` : tt.gratis}</span>

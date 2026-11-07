@@ -527,10 +527,15 @@ async function acharCurva(
  * "completa" em 48. Chroma Curve (Meteora DBC): mint em 136, SOL guardado em
  * 240, raiz do preço (u128, Q64) em 280 — offsets conferidos contra o SDK.
  */
+const WSOL_BYTES = new PublicKey("So11111111111111111111111111111111111111112").toBytes();
+const parEhSol = (par: Uint8Array) => par.every((b) => b === 0) || par.every((b, i) => b === WSOL_BYTES[i]);
+
 function lerCurva(tipo: TipoDeCurva, dados: Uint8Array): { precoSol: number; solGuardado: number } | null {
   const d = new DataView(dados.buffer, dados.byteOffset, dados.byteLength);
   if (tipo === "pump") {
     if (dados.length < 49 || dados[48] !== 0) return null;
+    // Curva pareada com outro ativo: o valor aqui não é SOL. O preço vem da API.
+    if (dados.length >= 115 && !parEhSol(dados.subarray(83, 115))) return null;
     const token = Number(d.getBigUint64(8, true)) / 1e6;
     const sol = Number(d.getBigUint64(16, true)) / 1e9;
     if (!(token > 0)) return null;

@@ -9,6 +9,8 @@ import {
   esperarCurva,
   transacaoDeCriacao,
   transacaoDeDivisao,
+  transacaoUnicaPareada,
+  transacaoDeTrocaParaOPar,
   transacaoDeTaxaEDivisao,
   transacoesDeLancamento,
   transacaoUnicaDeLancamento,
@@ -36,6 +38,7 @@ import { traducoes } from "@/lib/idiomas";
  */
 
 export type EtapaDoLancamento =
+  | "trocando"
   | "parado"
   | "publicando-arte"
   | "aprovar-unica"
@@ -49,6 +52,7 @@ export type EtapaDoLancamento =
 
 /** O que a tela mostra em cada etapa. */
 export const TEXTO_DA_ETAPA: Record<EtapaDoLancamento, string> = {
+  trocando: "Etapa 1 de 2: aprove a troca de SOL pelo par…",
   parado: "",
   "publicando-arte": "Publicando a arte…",
   "aprovar-unica": "Aprove o lançamento na sua carteira…",
@@ -79,8 +83,8 @@ export interface DadosDoLancamento {
   compraInicial?: string;
   /** pra quem vão as recompensas de criador (só Solana por enquanto) */
   recompensas?: "criador" | "detentores";
-  /** par de liquidez na Solana: SOL ou USDC */
-  par?: "SOL" | "USDC";
+  /** par na Solana: "SOL" ou o endereço da moeda (ver PARES_DA_PUMP) */
+  par?: string;
   /** Robinhood: taxa extra do criador em cada negociação, em % (0 a 10), paga toda a ele */
   taxaDoCriador?: number;
   /** Solana: em qual curva nasce — a da pump.fun (padrão) ou a Curva da Chroma (Meteora DBC) */
@@ -95,21 +99,27 @@ const MENSAGENS = traducoes({
     compraInvalida: "The initial buy amount is not a valid number.", imagem: "Could not upload the image.",
     recusou: "the network rejected the transaction", semSaldo: (precisa: string, tem: string) => `Not enough SOL: launching with this initial buy needs about ${precisa} SOL and your wallet has ${tem} SOL. Add SOL or lower the initial buy.`, demorou: "The coin was created, but the network is slow to show it. Open its page in a minute.",
     semDivisao: "Your coin was created. Finish the last step on its page.",
-    expirou: "The approval took too long and the network turned it down. Nothing was charged — just click again.",
+    semUnica: "This wallet can't sign this launch. Try another wallet.",
+    trocaFalhou: "The swap to the pair didn't go through. Nothing was created. Try again.",
+    expirou: "The network didn't confirm in time. Check your wallet before trying again: the transaction may have gone through.",
   },
   pt: {
     conecte: "Conecte uma carteira Solana antes.", semCarteira: "O lançamento na Solana ainda não está configurado.",
     compraInvalida: "O valor da compra inicial não é um número válido.", imagem: "Não foi possível enviar a imagem.",
     recusou: "a rede recusou a transação", semSaldo: (precisa: string, tem: string) => `Saldo insuficiente: lançar com essa compra inicial precisa de uns ${precisa} SOL e sua carteira tem ${tem} SOL. Coloque mais SOL ou diminua a compra inicial.`, demorou: "A moeda foi criada, mas a rede está demorando para mostrá-la. Abra a página dela em um minuto.",
     semDivisao: "Sua moeda foi criada. Conclua a última etapa na página dela.",
-    expirou: "A aprovação demorou demais e a rede recusou. Nada foi cobrado — é só clicar de novo.",
+    semUnica: "Esta carteira não consegue assinar este lançamento. Tente outra carteira.",
+    trocaFalhou: "A troca pelo par não foi concluída. Nada foi criado. Tente de novo.",
+    expirou: "A rede não confirmou a tempo. Confira sua carteira antes de tentar de novo: a transação pode ter sido feita.",
   },
   zh: {
     conecte: "请先连接 Solana 钱包。", semCarteira: "Solana 发行尚未配置。",
     compraInvalida: "首次买入金额不是有效数字。", imagem: "无法上传图片。",
     recusou: "网络拒绝了该交易", semSaldo: (precisa: string, tem: string) => `SOL 不足：使用此首次买入发币大约需要 ${precisa} SOL，你的钱包有 ${tem} SOL。请充值 SOL 或降低首次买入。`, demorou: "代币已创建，但网络显示较慢。请一分钟后打开其页面。",
     semDivisao: "你的代币已创建。请在代币页面完成最后一步。",
-    expirou: "确认耗时过长，网络已拒绝。未产生任何费用——再点一次即可。",
+    semUnica: "此钱包无法签署此次发行，请换一个钱包。",
+    trocaFalhou: "兑换配对资产未完成，未创建任何内容。请重试。",
+    expirou: "网络未能及时确认。重试前请检查钱包：交易可能已经完成。",
   },
 });
 
@@ -143,12 +153,39 @@ async function confirmarComFolga(
     if (volta > 0 && volta % 10 === 0) {
       const altura = await connection.getBlockHeight("confirmed").catch(() => 0);
       if (altura > bloco.lastValidBlockHeight) {
+        for (let tentativa = 0; tentativa < 5; tentativa++) {
+          const nova = await connection
+            .getSignatureStatus(assinatura, { searchTransactionHistory: true })
+            .catch(() => null);
+          if (nova?.value?.confirmationStatus) return nova.value.err;
+          await esperar(1500);
+        }
         const final = await connection.getSignatureStatus(assinatura, { searchTransactionHistory: true }).catch(() => ({ value: null }));
         if (final.value?.confirmationStatus) return final.value.err;
         throw new Error("block height exceeded");
       }
     }
     await esperar(400);
+  }
+}
+
+/** Confirma a criação. Se a confirmação falhar mas a moeda existir, ela foi criada. */
+async function confirmarCriacao(
+  connection: Connection,
+  mint: PublicKey,
+  assinatura: string,
+  bloco: { blockhash: string; lastValidBlockHeight: number },
+  bruta?: Uint8Array,
+): Promise<unknown> {
+  try {
+    return await confirmarComFolga(connection, assinatura, bloco, bruta);
+  } catch (erro) {
+    for (let tentativa = 0; tentativa < 5; tentativa++) {
+      const conta = await connection.getAccountInfo(mint, "confirmed").catch(() => null);
+      if (conta) return null;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    throw erro;
   }
 }
 
@@ -239,6 +276,61 @@ export function useLancarToken() {
           Promise.race([registrar(assinatura, assinaturaTaxa), new Promise((ok) => setTimeout(ok, 3000))]);
 
         /*
+         * PAR DIFERENTE DE SOL: criação e compra numa transação só, com a mesma tabela
+         * do lançamento em SOL. Com primeira compra, a troca de SOL pelo par vem antes:
+         * ela não cabe junto, e a moeda ainda não existe para um sniper entrar.
+         */
+        if ((dados.par ?? "SOL") !== "SOL" && dados.curva !== "chroma") {
+          if (!signTransaction || !TABELA_SOLANA) throw new Error(m.semUnica);
+          const precisa = 0.02 + compraSol;
+          const tem = (await connection.getBalance(publicKey)) / 1e9;
+          if (tem < precisa) throw new Error(m.semSaldo(precisa.toFixed(3), tem.toFixed(3)));
+          let compraNoPar: string | null = null;
+          if (compraSol > 0) {
+            setEtapa("trocando");
+            const { tx: troca, minimo } = await transacaoDeTrocaParaOPar({
+              conn: connection,
+              criador: publicKey,
+              compraSol,
+              par: dados.par as string,
+              tabela: new PublicKey(TABELA_SOLANA),
+            });
+            const trocada = await signTransaction(troca);
+            const brutaDaTroca = trocada.serialize();
+            const assinaturaDaTroca = await connection.sendRawTransaction(brutaDaTroca, { maxRetries: 3 });
+            const blocoDaTroca = await connection.getLatestBlockhash();
+            if (await confirmarComFolga(connection, assinaturaDaTroca, blocoDaTroca, brutaDaTroca)) throw new Error(m.trocaFalhou);
+            compraNoPar = minimo;
+          }
+          setEtapa("aprovar-unica");
+          const mint = Keypair.generate();
+          const tx = await transacaoUnicaPareada({
+            conn: connection,
+            criador: publicKey,
+            mint: mint.publicKey,
+            nome: dados.nome,
+            simbolo: dados.simbolo,
+            uri,
+            compraNoPar,
+            par: dados.par as string,
+            paraDetentores: dados.recompensas === "detentores",
+            tabela: new PublicKey(TABELA_SOLANA),
+          });
+          const assinada = await signTransaction(tx);
+          assinada.sign([mint]);
+          const bruta = assinada.serialize();
+          const assinatura = await connection.sendRawTransaction(bruta, { maxRetries: 3 });
+          setEtapa("confirmando");
+          const bloco = await connection.getLatestBlockhash();
+          const erroDaRede = await confirmarCriacao(connection, mint.publicKey, assinatura, bloco, bruta);
+          if (erroDaRede) throw new Error(m.recusou);
+          mintCriado = mint.publicKey.toBase58();
+          await registrarSemTravar(assinatura);
+          setEtapa("pronto");
+          return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
+        }
+
+        /*
          * UMA TRANSAÇÃO SÓ (com a tabela de endereços da Chroma na rede):
          * taxa + criação + compra do criador, atômicas. Ver
          * `transacaoUnicaDeLancamento`.
@@ -287,7 +379,7 @@ export function useLancarToken() {
           const assinatura = await connection.sendRawTransaction(bruta);
           setEtapa("confirmando");
           const bloco = await connection.getLatestBlockhash();
-          const r = { value: { err: await confirmarComFolga(connection, assinatura, bloco, bruta) } };
+          const r = { value: { err: await confirmarCriacao(connection, mint.publicKey, assinatura, bloco, bruta) } };
           if (r.value.err) throw new Error(m.recusou);
           mintCriado = mint.publicKey.toBase58();
           await registrarSemTravar(assinatura);
@@ -295,7 +387,7 @@ export function useLancarToken() {
           return { moeda: mintCriado, mint: mintCriado, assinatura, avisoDeCompra: null };
         }
 
-        if (dados.par !== "USDC" && TABELA_SOLANA) {
+        if ((dados.par ?? "SOL") === "SOL" && TABELA_SOLANA) {
           setEtapa("aprovar-unica");
           const mint = Keypair.generate();
           const tx = await transacaoUnicaDeLancamento({
@@ -315,7 +407,7 @@ export function useLancarToken() {
           const assinatura = await sendTransaction(tx, connection);
           setEtapa("confirmando");
           const bloco = await connection.getLatestBlockhash();
-          const r = { value: { err: await confirmarComFolga(connection, assinatura, bloco) } };
+          const r = { value: { err: await confirmarCriacao(connection, mint.publicKey, assinatura, bloco) } };
           if (r.value.err) throw new Error(m.recusou);
           mintCriado = mint.publicKey.toBase58();
           if (compraSol > 0) {
@@ -336,7 +428,7 @@ export function useLancarToken() {
         /*
          * Sem a tabela: duas aprovações em sequência (ver abaixo).
          */
-        if (dados.par !== "USDC") {
+        if ((dados.par ?? "SOL") === "SOL") {
           setEtapa("aprovar-tudo");
           const mint = Keypair.generate();
           const { criacao, divisao } = await transacoesDeLancamento({
@@ -442,12 +534,22 @@ export function useLancarToken() {
           paraDetentores: dados.recompensas === "detentores",
           par: dados.par,
         });
-        txA.sign([mint]);
-        const assinatura = await sendTransaction(txA, connection);
+        // A carteira assina primeiro, e o site envia e reenvia até a rede responder.
+        let assinatura: string;
+        let bruta: Uint8Array | undefined;
+        if (signTransaction) {
+          const assinada = await signTransaction(txA);
+          assinada.sign([mint]);
+          bruta = assinada.serialize();
+          assinatura = await connection.sendRawTransaction(bruta, { maxRetries: 3 });
+        } else {
+          txA.sign([mint]);
+          assinatura = await sendTransaction(txA, connection);
+        }
 
         setEtapa("confirmando");
         const bloco = await connection.getLatestBlockhash();
-        const resultado = { value: { err: await confirmarComFolga(connection, assinatura, bloco) } };
+        const resultado = { value: { err: await confirmarCriacao(connection, mint.publicKey, assinatura, bloco, bruta) } };
         if (resultado.value.err) throw new Error(m.recusou);
         mintCriado = mint.publicKey.toBase58();
 
@@ -516,10 +618,11 @@ export function useLancarToken() {
       } catch (e) {
         setEtapa("parado");
         const mensagem = e instanceof Error ? e.message : String(e);
+        console.warn("[lancamento] falhou:", e);
         setErro(
           /reject|denied|User rejected/i.test(mensagem)
             ? null
-            : /blockhash|expired|block height exceeded/i.test(mensagem)
+            : /block height exceeded|has expired/i.test(mensagem)
               ? m.expirou
               : mensagem,
         );

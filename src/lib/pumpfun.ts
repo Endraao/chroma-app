@@ -8,7 +8,14 @@ import {
   type Connection,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { NATIVE_MINT, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {
+  NATIVE_MINT,
+  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  createAssociatedTokenAccountIdempotentInstruction,
+  getAssociatedTokenAddressSync,
+  getMint,
+} from "@solana/spl-token";
 
 /**
  * Lançamento na Solana pela própria pump.fun.
@@ -45,7 +52,18 @@ import { NATIVE_MINT, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/sp
 
 /** Pares aceitos no lançamento: a pump.fun cota a moeda em SOL ou em USDC. */
 export const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-export type ParDaPump = "SOL" | "USDC";
+/** "SOL" ou o endereço da moeda de cotação, da lista de PARES_DA_PUMP. */
+export type ParDaPump = string;
+
+/** Moeda de cotação e o programa de token dela: USDC é SPL, ações são Token-2022. */
+async function cotacaoDoPar(conn: Connection, par: ParDaPump) {
+  if (par === "SOL") return { quoteMint: NATIVE_MINT, quoteTokenProgram: TOKEN_PROGRAM_ID, casas: 9 };
+  const { OnlinePumpSdk } = await sdk();
+  const quoteMint = new PublicKey(par);
+  const quoteTokenProgram = await new OnlinePumpSdk(conn).fetchQuoteTokenProgram(quoteMint);
+  const casas = (await getMint(conn, quoteMint, "confirmed", quoteTokenProgram)).decimals;
+  return { quoteMint, quoteTokenProgram, casas };
+}
 
 /** A parte da taxa de criador que vai para a Chroma, em bps (3000 = 30%). */
 export const PARTE_DA_CHROMA_BPS = 3000;
@@ -59,7 +77,8 @@ async function sdk() {
 }
 
 async function montar(conn: Connection, pagador: PublicKey, ixs: TransactionInstruction[]) {
-  const { blockhash } = await conn.getLatestBlockhash("confirmed");
+  // "finalized": o "confirmed" às vezes ainda não existe no nó que recebe da carteira.
+  const { blockhash } = await conn.getLatestBlockhash("finalized");
   return new VersionedTransaction(
     new TransactionMessage({ payerKey: pagador, recentBlockhash: blockhash, instructions: ixs }).compileToV0Message(),
   );
@@ -91,9 +110,10 @@ export async function transacaoDeCriacao({
   par?: ParDaPump;
 }) {
   const { PUMP_SDK } = await sdk();
+  const cotacao = await cotacaoDoPar(conn, par);
   const ixs: TransactionInstruction[] = [
-    // Cotação em token (USDC) gasta bem mais processamento que em SOL.
-    ComputeBudgetProgram.setComputeUnitLimit({ units: par === "USDC" ? 500_000 : 250_000 }),
+    // Cotação em token gasta bem mais processamento que em SOL.
+    ComputeBudgetProgram.setComputeUnitLimit({ units: par === "SOL" ? 250_000 : 500_000 }),
     ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
   ];
   if (taxaSol > 0) {
@@ -118,7 +138,7 @@ export async function transacaoDeCriacao({
       // Nesse modo a divisão com a Chroma não existe (o criador vira a conta
       // de recompensas e não pode ser alterado).
       ...(paraDetentores ? { holderReward: true } : {}),
-      ...(par === "USDC" ? { quoteMint: USDC_MINT, quoteTokenProgram: TOKEN_PROGRAM_ID } : {}),
+      ...(par === "SOL" ? {} : { quoteMint: cotacao.quoteMint, quoteTokenProgram: cotacao.quoteTokenProgram }),
     }),
   );
   return montar(conn, criador, ixs);
@@ -136,41 +156,44 @@ export async function transacaoDeDivisao({
   carteiraDaChroma,
   compraSol,
   paraDetentores = false,
-  par = "SOL",
+  par,
 }: {
   conn: Connection;
   criador: PublicKey;
   mint: PublicKey;
   carteiraDaChroma: PublicKey;
-  /** compra inicial, na moeda do par (SOL ou USDC) */
+  /** compra inicial em SOL; em par de token ela vai em transacaoUnicaPareada */
   compraSol: number;
   paraDetentores?: boolean;
   par?: ParDaPump;
 }) {
   const { PUMP_SDK, OnlinePumpSdk, feeSharingConfigPda, getBuyTokenAmountFromSolAmount } = await sdk();
   const BN = (await import("bn.js")).default;
+  const cotacao = par ? await cotacaoDoPar(conn, par) : await cotacaoDaCurva(conn, mint);
 
   const ixs: TransactionInstruction[] = paraDetentores ? [] : [
+    ...(cotacao.quoteMint.equals(NATIVE_MINT) ? [] : [ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 })]),
+    ...(await contasDaDivisao(criador, carteiraDaChroma, mint, cotacao.quoteMint, cotacao.quoteTokenProgram)),
+    ...(await receberTaxaParada(conn, criador, mint, cotacao.quoteMint, cotacao.quoteTokenProgram)),
     await PUMP_SDK.createFeeSharingConfig({ creator: criador, mint, pool: null }),
     await PUMP_SDK.updateFeeSharesV2({
       authority: criador,
       mint,
       currentShareholders: [criador],
       newShareholders: acionistas(criador, carteiraDaChroma),
-      quoteMint: par === "USDC" ? USDC_MINT : NATIVE_MINT,
-      quoteTokenProgram: TOKEN_PROGRAM_ID,
+      quoteMint: cotacao.quoteMint,
+      quoteTokenProgram: cotacao.quoteTokenProgram,
     }),
   ];
 
   if (compraSol > 0) {
     const online = new OnlinePumpSdk(conn);
     const [global, feeConfig] = await Promise.all([online.fetchGlobal(), online.fetchFeeConfig()]);
-    const estado = await online.fetchBuyState(mint, criador, TOKEN_2022_PROGRAM_ID, par === "USDC" ? USDC_MINT : undefined);
+    const estado = await online.fetchBuyState(mint, criador, TOKEN_2022_PROGRAM_ID, cotacao.quoteMint);
     // Depois da divisão, a taxa de criador vai para a conta de divisão, não
     // mais para o criador: a compra precisa apontar para ela.
     if (!paraDetentores) estado.bondingCurve = { ...estado.bondingCurve, creator: feeSharingConfigPda(mint) };
-    // SOL tem 9 casas; USDC, 6.
-    const solAmount = new BN(Math.round(compraSol * (par === "USDC" ? 1e6 : LAMPORTS_PER_SOL)));
+    const solAmount = new BN(Math.round(compraSol * 10 ** cotacao.casas));
     const amount = getBuyTokenAmountFromSolAmount({
       global,
       feeConfig,
@@ -191,12 +214,211 @@ export async function transacaoDeDivisao({
       tokenProgram: TOKEN_2022_PROGRAM_ID,
     };
     ixs.push(
-      ...(par === "USDC"
-        ? await PUMP_SDK.buyV2Instructions({ ...base, quoteAmount: solAmount, quoteTokenProgram: TOKEN_PROGRAM_ID })
-        : await PUMP_SDK.buyInstructions({ ...base, solAmount })),
+      ...(cotacao.quoteMint.equals(NATIVE_MINT)
+        ? await PUMP_SDK.buyInstructions({ ...base, solAmount })
+        : await PUMP_SDK.buyV2Instructions({ ...base, quoteAmount: solAmount, quoteTokenProgram: cotacao.quoteTokenProgram })),
     );
   }
   return montar(conn, criador, ixs);
+}
+
+/** O par de uma moeda já criada, lido da curva. Sem curva ainda, vale SOL. */
+async function cotacaoDaCurva(conn: Connection, mint: PublicKey) {
+  const { PUMP_SDK, bondingCurvePda } = await sdk();
+  const conta = await conn.getAccountInfo(bondingCurvePda(mint), "confirmed");
+  const curva = conta ? PUMP_SDK.decodeBondingCurveNullable(conta) : null;
+  const moeda = curva?.quoteMint;
+  if (!moeda || moeda.equals(PublicKey.default) || moeda.equals(NATIVE_MINT)) return cotacaoDoPar(conn, "SOL");
+  return cotacaoDoPar(conn, moeda.toBase58());
+}
+
+/**
+ * Taxa de criador parada na curva bloqueia a divisão (erro 6095). Basta alguém ter
+ * comprado a moeda para isso acontecer, então ela é recebida antes de dividir.
+ */
+async function receberTaxaParada(
+  conn: Connection,
+  pagador: PublicKey,
+  mint: PublicKey,
+  quoteMint: PublicKey,
+  quoteTokenProgram: PublicKey,
+): Promise<TransactionInstruction[]> {
+  const { PUMP_SDK, bondingCurvePda } = await sdk();
+  const conta = await conn.getAccountInfo(bondingCurvePda(mint), "confirmed");
+  const curva = conta ? PUMP_SDK.decodeBondingCurveNullable(conta) : null;
+  if (!curva || curva.creatorFee.isZero()) return [];
+  return [await PUMP_SDK.sweepCreatorFeeInstruction({ payer: pagador, mint, creator: curva.creator, quoteMint, quoteTokenProgram })];
+}
+
+/**
+ * Par em token: a divisão paga em contas dessa moeda, e o programa não as cria.
+ * Sem a do cofre da divisão, ela falha com InvalidAccountData. Em SOL não há nada a criar.
+ */
+async function contasDaDivisao(
+  criador: PublicKey,
+  carteiraDaChroma: PublicKey,
+  mint: PublicKey,
+  quoteMint: PublicKey,
+  quoteTokenProgram: PublicKey,
+): Promise<TransactionInstruction[]> {
+  if (quoteMint.equals(NATIVE_MINT)) return [];
+  const { creatorVaultPda, feeSharingConfigPda } = await sdk();
+  return [criador, carteiraDaChroma, creatorVaultPda(feeSharingConfigPda(mint))].map((dono) =>
+    createAssociatedTokenAccountIdempotentInstruction(
+      criador,
+      getAssociatedTokenAddressSync(quoteMint, dono, true, quoteTokenProgram),
+      dono,
+      quoteMint,
+      quoteTokenProgram,
+    ),
+  );
+}
+
+const JUPITER = "https://lite-api.jup.ag/swap/v1";
+const LIMITE_DA_TRANSACAO = 1232;
+
+type InstrucaoDaJupiter = {
+  programId: string;
+  accounts: { pubkey: string; isSigner: boolean; isWritable: boolean }[];
+  data: string;
+};
+
+const instrucaoDaJupiter = (i: InstrucaoDaJupiter) =>
+  new TransactionInstruction({
+    programId: new PublicKey(i.programId),
+    keys: i.accounts.map((a) => ({ pubkey: new PublicKey(a.pubkey), isSigner: a.isSigner, isWritable: a.isWritable })),
+    data: Buffer.from(i.data, "base64"),
+  });
+
+/**
+ * Primeira compra em par de token: troca SOL pelo par ANTES de a moeda existir.
+ * Não cabe na transação de criação (~1.400 bytes), e aqui não há o que um sniper
+ * possa fazer. Devolve o mínimo garantido, que é o valor usado na compra.
+ */
+export async function transacaoDeTrocaParaOPar({
+  conn,
+  criador,
+  compraSol,
+  par,
+  tabela,
+}: {
+  conn: Connection;
+  criador: PublicKey;
+  compraSol: number;
+  par: ParDaPump;
+  tabela: PublicKey;
+}): Promise<{ tx: VersionedTransaction; minimo: string }> {
+  const lamports = Math.round(compraSol * LAMPORTS_PER_SOL);
+  const cotado = await (
+    await fetch(`${JUPITER}/quote?inputMint=${NATIVE_MINT.toBase58()}&outputMint=${par}&amount=${lamports}&slippageBps=200`)
+  ).json();
+  if (!cotado?.outAmount) throw new Error("no-route");
+  const troca = await (
+    await fetch(`${JUPITER}/swap-instructions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ quoteResponse: cotado, userPublicKey: criador.toBase58(), wrapAndUnwrapSol: true }),
+    })
+  ).json();
+  if (!troca?.swapInstruction) throw new Error("no-route");
+  const tabelas = [];
+  for (const t of [tabela.toBase58(), ...(troca.addressLookupTableAddresses ?? [])]) {
+    const conta = (await conn.getAddressLookupTable(new PublicKey(t))).value;
+    if (conta) tabelas.push(conta);
+  }
+  const { blockhash } = await conn.getLatestBlockhash("finalized");
+  const tx = new VersionedTransaction(
+    new TransactionMessage({
+      payerKey: criador,
+      recentBlockhash: blockhash,
+      instructions: [
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 800_000 }),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
+        ...(troca.setupInstructions ?? []).map(instrucaoDaJupiter),
+        instrucaoDaJupiter(troca.swapInstruction),
+        ...(troca.cleanupInstruction ? [instrucaoDaJupiter(troca.cleanupInstruction)] : []),
+      ],
+    }).compileToV0Message(tabelas),
+  );
+  return { tx, minimo: String(cotado.otherAmountThreshold) };
+}
+
+/**
+ * Lançamento pareado com outro ativo: cria a moeda e compra na MESMA transação,
+ * como no lançamento em SOL. Ou as duas acontecem, ou nada, e ninguém entra no
+ * meio. Cabe graças à tabela de endereços (lib/tabela-solana.ts).
+ */
+export async function transacaoUnicaPareada({
+  conn,
+  criador,
+  mint,
+  nome,
+  simbolo,
+  uri,
+  compraNoPar,
+  par,
+  paraDetentores = false,
+  tabela,
+}: {
+  conn: Connection;
+  criador: PublicKey;
+  mint: PublicKey;
+  nome: string;
+  simbolo: string;
+  uri: string;
+  /** quanto do par comprar, na menor unidade; null sem primeira compra */
+  compraNoPar: string | null;
+  par: ParDaPump;
+  paraDetentores?: boolean;
+  tabela: PublicKey;
+}): Promise<VersionedTransaction> {
+  const { PUMP_SDK, OnlinePumpSdk, getBuyTokenAmountFromSolAmount } = await sdk();
+  const BN = (await import("bn.js")).default;
+  const { quoteMint, quoteTokenProgram } = await cotacaoDoPar(conn, par);
+  const conta = await conn.getAddressLookupTable(tabela);
+  if (!conta.value) throw new Error("tabela de endereços não encontrada");
+  const tabelas = [conta.value];
+  const comum = {
+    mint,
+    name: nome,
+    symbol: simbolo,
+    uri,
+    creator: criador,
+    user: criador,
+    mayhemMode: false,
+    quoteMint,
+    quoteTokenProgram,
+    ...(paraDetentores ? { holderReward: true } : {}),
+  };
+
+  const ixs: TransactionInstruction[] = [
+    ComputeBudgetProgram.setComputeUnitLimit({ units: 500_000 }),
+    ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
+  ];
+  if (compraNoPar) {
+    const online = new OnlinePumpSdk(conn);
+    const global = await online.fetchGlobal();
+    const feeConfig = await online.fetchFeeConfig();
+    const quoteControl = await online.fetchQuoteControl();
+    const quoteAmount = new BN(compraNoPar);
+    const amount = getBuyTokenAmountFromSolAmount({
+      global,
+      feeConfig,
+      mintSupply: null,
+      bondingCurve: null,
+      amount: quoteAmount,
+      quoteMint,
+      quoteControl,
+    });
+    ixs.push(...(await PUMP_SDK.createV2AndBuyV2Instructions({ ...comum, global, amount, quoteAmount, slippage: 2 })));
+  } else {
+    ixs.push(await PUMP_SDK.createV2Instruction(comum));
+  }
+
+  const { blockhash } = await conn.getLatestBlockhash("finalized");
+  return new VersionedTransaction(
+    new TransactionMessage({ payerKey: criador, recentBlockhash: blockhash, instructions: ixs }).compileToV0Message(tabelas),
+  );
 }
 
 /** Espera a curva da moeda existir (a A confirmou, mas o RPC pode atrasar). */
@@ -333,6 +555,7 @@ export async function transacaoDeTaxaEDivisao({
   paraDetentores?: boolean;
 }): Promise<VersionedTransaction> {
   const { PUMP_SDK } = await sdk();
+  const cotacao = await cotacaoDaCurva(conn, mint);
   const ixsDaDivisao: TransactionInstruction[] = [
     ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRECO_POR_CU }),
   ];
@@ -354,14 +577,16 @@ export async function transacaoDeTaxaEDivisao({
   }
   if (!paraDetentores) {
     ixsDaDivisao.push(
+      ...(await contasDaDivisao(criador, carteiraDaChroma, mint, cotacao.quoteMint, cotacao.quoteTokenProgram)),
+      ...(await receberTaxaParada(conn, criador, mint, cotacao.quoteMint, cotacao.quoteTokenProgram)),
       await PUMP_SDK.createFeeSharingConfig({ creator: criador, mint, pool: null }),
       await PUMP_SDK.updateFeeSharesV2({
         authority: criador,
         mint,
         currentShareholders: [criador],
         newShareholders: acionistas(criador, carteiraDaChroma),
-        quoteMint: NATIVE_MINT,
-        quoteTokenProgram: TOKEN_PROGRAM_ID,
+        quoteMint: cotacao.quoteMint,
+        quoteTokenProgram: cotacao.quoteTokenProgram,
       }),
     );
   }
@@ -435,11 +660,37 @@ export async function instrucoesNaCurva({
   });
 }
 
+const OFFSET_DO_PAR = 83;
+const validadeDoFator = 60_000;
+const fatores = new Map<string, { valor: number; ate: number }>();
+
+/**
+ * Quanto vale, em SOL, 1 unidade mínima da moeda de cotação da curva. Em SOL é
+ * fixo. Em par de token (SPCX, NVDAx...), vem do preço de mercado do par.
+ */
+async function fatorDoPar(d: Buffer): Promise<number> {
+  if (d.length < OFFSET_DO_PAR + 32) return 1 / LAMPORTS_PER_SOL;
+  const par = new PublicKey(d.subarray(OFFSET_DO_PAR, OFFSET_DO_PAR + 32));
+  if (par.equals(PublicKey.default) || par.equals(NATIVE_MINT)) return 1 / LAMPORTS_PER_SOL;
+  const chave = par.toBase58();
+  const guardado = fatores.get(chave);
+  if (guardado && guardado.ate > Date.now()) return guardado.valor;
+  const r = await fetch(`https://lite-api.jup.ag/price/v3?ids=${chave},${NATIVE_MINT.toBase58()}`);
+  const precos = (await r.json()) as Record<string, { usdPrice?: number; decimals?: number } | undefined>;
+  const doPar = precos[chave];
+  const doSol = precos[NATIVE_MINT.toBase58()]?.usdPrice;
+  if (!doPar?.usdPrice || !doSol || doPar.decimals == null) throw new Error("sem preço do par");
+  const valor = doPar.usdPrice / doSol / 10 ** doPar.decimals;
+  fatores.set(chave, { valor, ate: Date.now() + validadeDoFator });
+  return valor;
+}
+
 /**
  * Preço de uma moeda na curva de lançamento, em SOL por token, lido direto da
  * conta da curva. Só muda quando alguém negocia — é o que faz o gráfico ficar
  * parado sem negócio (a cotação da Jupiter oscila sozinha em moeda rasa).
- * `null` quando não há curva, ela terminou ou não é cotada em SOL.
+ * Em par de token, convertido para SOL pelo preço do par.
+ * `null` quando não há curva ou ela terminou.
  */
 export async function precoNaCurvaEmSol(conn: Connection, mint: PublicKey): Promise<number | null> {
   // Lido dos bytes da conta, sem o SDK: no servidor ele falha ao carregar por
@@ -451,7 +702,7 @@ export async function precoNaCurvaEmSol(conn: Connection, mint: PublicKey): Prom
   const d = conta.data;
   if (d[48] !== 0) return null; // curva completa: a moeda já migrou
   const token = Number(d.readBigUInt64LE(8)) / 1e6;
-  const sol = Number(d.readBigUInt64LE(16)) / LAMPORTS_PER_SOL;
+  const sol = Number(d.readBigUInt64LE(16)) * (await fatorDoPar(d));
   return token > 0 ? sol / token : null;
 }
 
@@ -561,7 +812,8 @@ export async function estadoDaCurvaPump(
   const tokenVirtual = d.readBigUInt64LE(8);
   const solVirtual = d.readBigUInt64LE(16);
   const tokenReal = d.readBigUInt64LE(24);
-  const solReal = Number(d.readBigUInt64LE(32)) / LAMPORTS_PER_SOL;
+  const fator = await fatorDoPar(d);
+  const solReal = Number(d.readBigUInt64LE(32)) * fator;
   const emissao = d.readBigUInt64LE(40);
   const completa = d[48] !== 0;
   const vendidos = TOKENS_A_VENDA_INICIAL > tokenReal ? TOKENS_A_VENDA_INICIAL - tokenReal : 0n;
@@ -578,8 +830,8 @@ export async function estadoDaCurvaPump(
   let mcNaFormaturaSol = 0;
   if (tokenNoFim > 0n) {
     const solVirtualNoFim = (tokenVirtual * solVirtual) / tokenNoFim;
-    solNaFormatura = solReal + Number(solVirtualNoFim - solVirtual) / LAMPORTS_PER_SOL;
-    mcNaFormaturaSol = ((Number(solVirtualNoFim) / Number(tokenNoFim)) * Number(emissao)) / LAMPORTS_PER_SOL;
+    solNaFormatura = solReal + Number(solVirtualNoFim - solVirtual) * fator;
+    mcNaFormaturaSol = (Number(solVirtualNoFim) / Number(tokenNoFim)) * Number(emissao) * fator;
   }
   return { progresso, solReal, completa, solNaFormatura, mcNaFormaturaSol };
 }

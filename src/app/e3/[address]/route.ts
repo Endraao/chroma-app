@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ address:
   const { token } = await getToken(address);
 
   const titulo = esc(`$${token.symbol} — buy right in this post on Chroma`);
-  const descricao = esc(`Trade ${token.name} without leaving X. Free to launch on Chroma; creators get 70% of the creator fee.`);
+  const descricao = esc(`Trade ${token.name} without leaving X. Free to launch on Chroma; creators keep 100% of the creator fee.`);
   // Capa = a imagem da própria moeda (pedido do dono, 09/10/2026), igual ao /e.
   // Servida pelo NOSSO /api/logo (18/10/2026): a imagem direto do IPFS
   // (ipfs.io) demora demais pro robô do X, e o cartão do $OBSI saiu sem logo.

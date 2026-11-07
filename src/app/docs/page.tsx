@@ -64,7 +64,7 @@ const TEXTOS = traducoes({
         titulo: "Creators",
         itens: [
           "Robinhood Chain: creators earn 0.70% of every trade of their coin, plus their own creator tax.",
-          "Solana (pump.fun): launching is free. Creators get 70% of the creator fee from every trade, and Chroma keeps 30%.",
+          "Solana (pump.fun): launching is free. Creators keep 100% of the creator fee from every trade.",
         ],
       },
       {
@@ -139,7 +139,7 @@ const TEXTOS = traducoes({
         titulo: "Criadores",
         itens: [
           "Robinhood Chain: o criador ganha 0,70% de cada negociação da moeda, mais a própria taxa do criador.",
-          "Solana (pump.fun): lançar é grátis. O criador recebe 70% da taxa de criador de cada negócio, e a Chroma fica com 30%.",
+          "Solana (pump.fun): lançar é grátis. O criador fica com 100% da taxa de criador de cada negócio.",
         ],
       },
       {
@@ -214,7 +214,7 @@ const TEXTOS = traducoes({
         titulo: "创作者",
         itens: [
           "Robinhood Chain：创作者获得其代币每笔交易的 0.70%，外加自己设置的创作者税。",
-          "Solana（pump.fun）：发币免费。创作者获得每笔交易 70% 的创作者费用，Chroma 保留 30%。",
+          "Solana（pump.fun）：发币免费。创作者保留每笔交易 100% 的创作者费用。",
         ],
       },
       {

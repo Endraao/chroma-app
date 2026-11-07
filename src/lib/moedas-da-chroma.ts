@@ -328,7 +328,7 @@ async function montar(
  * ou nenhuma negociação): lida direto da curva. Sem isto o cartão saía com
  * tudo zerado e o selo "Solana" em vez de "Curva" (02/10/2026).
  */
-async function daCurvaClassica(m: MoedaRegistrada, precoDoSol: number | null): Promise<TokenSummary | null> {
+export async function daCurvaClassica(m: MoedaRegistrada, precoDoSol: number | null): Promise<TokenSummary | null> {
   const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC;
   if (m.rede !== "solana" || !precoDoSol || !rpc?.startsWith("http")) return null;
   try {
@@ -354,7 +354,7 @@ async function daCurvaClassica(m: MoedaRegistrada, precoDoSol: number | null): P
   }
 }
 
-function semMercado(m: MoedaRegistrada): TokenSummary {
+export function semMercado(m: MoedaRegistrada): TokenSummary {
   return {
     address: m.endereco,
     chain: m.rede === "robinhood" ? "robinhood" : "solana",

@@ -12,7 +12,7 @@ const TEXTOS = traducoes({
     passos: [
       ["Create", "Name, ticker and image."],
       ["Launch", "Live on pump.fun in one transaction."],
-      ["Earn", "You get 70% of the creator fee."],
+      ["Earn", "You keep 100% of the creator fee."],
     ],
   },
   pt: {
@@ -22,7 +22,7 @@ const TEXTOS = traducoes({
     passos: [
       ["Crie", "Nome, símbolo e imagem."],
       ["Lance", "No ar na pump.fun em uma transação."],
-      ["Ganhe", "Você recebe 70% da taxa de criador."],
+      ["Ganhe", "Você fica com 100% da taxa de criador."],
     ],
   },
   zh: {
@@ -32,7 +32,7 @@ const TEXTOS = traducoes({
     passos: [
       ["创建", "名称、代号和图片。"],
       ["发行", "一笔交易即可在 pump.fun 上线。"],
-      ["赚取", "你获得 70% 的创作者费用。"],
+      ["赚取", "你保留 100% 的创作者费用。"],
     ],
   },
 });
