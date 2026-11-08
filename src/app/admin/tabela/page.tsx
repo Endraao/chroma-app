@@ -12,6 +12,9 @@ import { ENDERECOS_DA_TABELA, ENDERECOS_DOS_PARES, TABELA_SOLANA } from "@/lib/t
  * Chroma na Solana (lançamento em uma transação só — ver lib/tabela-solana.ts).
  * Em produção a página não faz nada.
  */
+/** Tabela criada por engano em 07/11/2026; o depósito volta para a carteira dona. */
+const TABELA_EXTRA = "3SeAYuqS2PkvmHaGUoZjKfGyTL8UYVFvWtZ9jmiFWC34";
+
 export default function CriarTabela() {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
@@ -83,12 +86,50 @@ export default function CriarTabela() {
     }
   }
 
+  /**
+   * Devolve o depósito da tabela criada por engano (07/11/2026). Primeiro desativa;
+   * depois de ~513 blocos (uns 4 minutos), o mesmo botão fecha e o SOL volta.
+   */
+  async function recuperarTabelaExtra() {
+    if (!publicKey) return setEstado("Conecte a carteira dona da tabela.");
+    try {
+      const tabela = new PublicKey(TABELA_EXTRA);
+      if (TABELA_SOLANA && tabela.equals(new PublicKey(TABELA_SOLANA))) throw new Error("essa é a tabela em uso");
+      const conta = (await connection.getAddressLookupTable(tabela)).value;
+      if (!conta) return setEstado("A tabela extra já foi fechada. O SOL já voltou.");
+      const ativa = conta.state.deactivationSlot === BigInt("18446744073709551615");
+      let instrucao;
+      if (ativa) {
+        instrucao = AddressLookupTableProgram.deactivateLookupTable({ lookupTable: tabela, authority: publicKey });
+      } else {
+        const slot = await connection.getSlot("finalized");
+        const faltam = Number(conta.state.deactivationSlot) + 513 - slot;
+        if (faltam > 0) return setEstado(`Desativada. Espere uns ${Math.ceil((faltam * 0.4) / 60)} min e clique de novo.`);
+        instrucao = AddressLookupTableProgram.closeLookupTable({ lookupTable: tabela, authority: publicKey, recipient: publicKey });
+      }
+      setEstado(ativa ? "Aprove na carteira (1 de 2: desativar)…" : "Aprove na carteira (2 de 2: fechar e receber o SOL)…");
+      const { blockhash } = await connection.getLatestBlockhash("finalized");
+      const tx = new VersionedTransaction(
+        new TransactionMessage({ payerKey: publicKey, recentBlockhash: blockhash, instructions: [instrucao] }).compileToV0Message(),
+      );
+      const assinatura = await sendTransaction(tx, connection);
+      setEstado("Confirmando…");
+      await connection.confirmTransaction(assinatura, "confirmed");
+      setEstado(ativa ? "Desativada. Espere uns 4 min e clique de novo para receber o SOL." : "Pronto! O SOL da tabela voltou para a sua carteira.");
+    } catch (e) {
+      setEstado(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <main className="mx-auto max-w-lg space-y-4 p-8">
       <h1 className="text-xl font-bold text-zinc-100">Adicionar pares na tabela</h1>
       <p className="text-[13px] text-zinc-400">Acrescenta na tabela da Chroma os endereços dos pares. Use a carteira dona da tabela.</p>
       <Button variant="chroma" size="lg" className="w-full" onClick={adicionarPares}>
         Adicionar pares na tabela
+      </Button>
+      <Button variant="outline" size="lg" className="w-full" onClick={recuperarTabelaExtra}>
+        Recuperar SOL da tabela extra
       </Button>
       {!TABELA_SOLANA && (
         <Button variant="outline" size="lg" className="w-full" onClick={criar}>

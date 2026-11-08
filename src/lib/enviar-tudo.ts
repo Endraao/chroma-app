@@ -9,7 +9,8 @@ import { transacoesDeResgateDaCarteira } from "@/lib/meteora-dbc";
  * sozinho tudo que ficou pra trás:
  *  1. taxas de criador e de dono de curva na Curva da Chroma e na pool da
  *     Meteora (moedas formadas) — ver transacoesDeResgateDaCarteira;
- *  2. taxas de criador na pump.fun (cofre de criador da curva e da PumpSwap, e
+ *  2. taxas de criador na pump.fun (cofre de criador da curva e da PumpSwap, em
+ *     SOL e em cada par, e
  *     as moedas com divisão de taxa, que precisam ser "distribuídas");
  *  3. o "aluguel" (~0,002 SOL) de cada conta de token vazia, como o Sol
  *     Incinerator: a conta é fechada e o SOL vai direto pro destino. Contas
@@ -88,8 +89,20 @@ async function transacoesDaPump(conexao: Connection, carteira: PublicKey): Promi
   const online = new OnlinePumpSdk(conexao);
   const grupos: TransactionInstruction[][] = [];
 
-  const cofre = await online.getCreatorVaultBalanceBothPrograms(carteira).catch(() => null);
-  if (cofre && cofre.gtn(0)) grupos.push(await online.collectCoinCreatorFeeAllQuotesInstructions(carteira, carteira).catch(() => []));
+  /*
+   * Um cofre por moeda de cotação: SOL e cada par (SPCX, NVDAx...). Antes só o
+   * de SOL era olhado, e a taxa de moeda pareada ficava esquecida (08/11/2026).
+   * Uma transação por moeda de cotação, para caber no limite de tamanho.
+   */
+  const cofres = await online.getCreatorVaultQuoteBalances(carteira).catch(() => []);
+  for (const c of cofres) {
+    if (!c.total.gtn(0)) continue;
+    const ehSol = c.mint.equals(NATIVE_MINT) || c.mint.equals(PublicKey.default);
+    const ixs = ehSol
+      ? await online.collectCoinCreatorFeeInstructions(carteira, carteira).catch(() => [])
+      : await online.collectCoinCreatorFeeV2Instructions(carteira, c.mint, c.quoteTokenProgram, carteira).catch(() => []);
+    grupos.push(ixs);
+  }
 
   // SharingConfig: discriminador(8) + bump(1) + versão(1) + status(1) + mint(32) → admin no byte 43.
   const divisoes = await conexao
