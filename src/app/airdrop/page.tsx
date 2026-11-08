@@ -31,7 +31,7 @@ const TEXTOS = traducoes({
   en: {
     temporada: (n: number) => `Season ${n} in progress`, use: "Use Chroma.", acumule: "Earn points.",
     intro: "Everything you do on Chroma earns points, tied to your address.",
-    taxas: "Part of the fees Chroma earns goes to users, according to their points.",
+    taxas: "Coming soon: part of the fees Chroma earns will go to users, according to their points.",
     oQueE: "What this is, and what it isn't",
     reais: "Points are real and verifiable.", reaisTexto: "Each one comes from a fact checked on the blockchain and is recorded with the transaction that created it.",
     nenhum: "No token has been created or promised.", nenhumTexto: "The percentage, the amount and the date of each distribution have not been set. Points don't guarantee a specific payout, and nothing here is an offer or a promise of future value.",
@@ -42,7 +42,7 @@ const TEXTOS = traducoes({
   pt: {
     temporada: (n: number) => `Temporada ${n} em andamento`, use: "Use a Chroma.", acumule: "Acumule pontos.",
     intro: "Tudo o que você faz na Chroma gera pontos, ligados ao seu endereço.",
-    taxas: "Parte das taxas que a Chroma ganha é direcionada aos usuários, conforme a pontuação de cada um.",
+    taxas: "Em breve: parte das taxas que a Chroma ganha vai para os usuários, conforme a pontuação de cada um.",
     oQueE: "O que isto é, e o que não é",
     reais: "Os pontos são reais e verificáveis.", reaisTexto: "Cada um nasce de um fato conferido na blockchain e fica registrado com a transação que o gerou.",
     nenhum: "Nenhum token foi criado ou prometido.", nenhumTexto: "A porcentagem, o valor e a data de cada distribuição ainda não foram definidos. Os pontos não garantem um pagamento específico, e nada aqui é oferta ou promessa de valor futuro.",
@@ -53,7 +53,7 @@ const TEXTOS = traducoes({
   zh: {
     temporada: (n: number) => `第 ${n} 赛季进行中`, use: "使用 Chroma。", acumule: "赚取积分。",
     intro: "你在 Chroma 上做的每件事都会获得积分，并与你的地址绑定。",
-    taxas: "Chroma 赚取的部分手续费将根据积分分配给用户。",
+    taxas: "即将推出：Chroma 赚取的部分手续费将根据积分分配给用户。",
     oQueE: "这是什么，不是什么",
     reais: "积分真实且可验证。", reaisTexto: "每一分都来自区块链上核实的事实，并与产生它的交易一起记录。",
     nenhum: "没有创建或承诺任何代币。", nenhumTexto: "每次分配的比例、金额和日期尚未确定。积分不保证特定的支付，这里的任何内容都不是要约或未来价值的承诺。",
