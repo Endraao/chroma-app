@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { Transaction } from "@solana/web3.js";
 
 import { Button } from "@/components/ui/Button";
 import { transacoesDeResgate, transacoesDeResgateNaMeteora } from "@/lib/meteora-dbc";
@@ -54,6 +55,48 @@ export default function ResgatarTaxasDaCurva() {
     }
   }
 
+  /**
+   * Assina o resgate já montado fora do navegador (public/resgate-pronto.json):
+   * os servidores grátis recusam a busca das moedas pelo navegador (09/11/2026).
+   */
+  async function assinarPronto() {
+    if (!publicKey || !signAllTransactions) return setEstado("Conecte a carteira Solana no topo da página.");
+    try {
+      const r = await fetch("/resgate-pronto.json", { cache: "no-store" });
+      if (!r.ok) return setEstado("Nenhum resgate montado.");
+      const pronto = (await r.json()) as { carteira: string; sol: number; txs: string[] };
+      if (pronto.carteira !== publicKey.toBase58()) return setEstado(`Conecte a carteira ${pronto.carteira.slice(0, 4)}…`);
+      const { blockhash } = await connection.getLatestBlockhash("finalized");
+      const txs = pronto.txs.map((b) => {
+        const tx = Transaction.from(Uint8Array.from(atob(b), (c) => c.charCodeAt(0)));
+        tx.recentBlockhash = blockhash;
+        return tx;
+      });
+      setEstado(`${txs.length} resgate(s), ${pronto.sol.toFixed(4)} SOL. Aprove na carteira…`);
+      const assinadas = await signAllTransactions(txs);
+      // Manda todas antes de esperar: esperar uma por uma deixava o blockhash
+      // vencer e as últimas não saíam (09/11/2026, só 2 de 6 passaram).
+      const assinaturas: string[] = [];
+      const erros: string[] = [];
+      for (const tx of assinadas) {
+        try {
+          assinaturas.push(await connection.sendRawTransaction(tx.serialize(), { preflightCommitment: "confirmed", maxRetries: 5 }));
+        } catch (e) {
+          erros.push(e instanceof Error ? e.message.slice(0, 120) : String(e));
+        }
+      }
+      let ok = 0;
+      for (const assinatura of assinaturas) {
+        const c = await connection.confirmTransaction(assinatura, "confirmed").catch(() => null);
+        if (c && !c.value.err) ok++;
+        setEstado(`Confirmando… ${ok} de ${assinadas.length}.`);
+      }
+      setEstado(`Pronto: ${ok} de ${assinadas.length} resgate(s) confirmados.${erros.length ? " Erro: " + erros[0] : ""}`);
+    } catch (e) {
+      setEstado(e instanceof Error ? e.message : String(e));
+    }
+  }
+
   return (
     <main className="mx-auto max-w-lg space-y-4 p-8">
       <h1 className="text-xl font-bold text-zinc-100">Resgatar taxas da Curva da Chroma</h1>
@@ -63,6 +106,9 @@ export default function ResgatarTaxasDaCurva() {
       </p>
       <Button variant="chroma" size="lg" className="w-full" onClick={resgatar}>
         Resgatar tudo
+      </Button>
+      <Button variant="outline" size="lg" className="w-full" onClick={assinarPronto}>
+        Assinar resgate já montado
       </Button>
       {estado && <p className="break-all text-[13px] text-zinc-300">{estado}</p>}
     </main>
