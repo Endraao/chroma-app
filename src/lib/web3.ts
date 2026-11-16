@@ -15,19 +15,16 @@ import type { ChainId } from "./types";
  */
 export const SOLANA_RPC = process.env.NEXT_PUBLIC_SOLANA_RPC || clusterApiUrl("mainnet-beta");
 /**
- * WebSocket (confirmação de transação). O plano do RPC Fast aceita só UMA
- * assinatura ao mesmo tempo pro site inteiro (07/10/2026): a dos visitantes era
- * recusada e a confirmação podia travar. Com RPC Fast — no WebSocket ou no
- * HTTPS, de onde o web3.js deriva o WebSocket — vai o público da Solana.
+ * WebSocket (confirmação de transação e gráfico ao vivo). Antes o plano do
+ * RPC Fast aceitava só UMA assinatura pro site inteiro e o WS ia pro público
+ * da Solana. Desde 16/11/2026 o plano Stream aceita 500 assinaturas de
+ * navegador, então o WS sai do mesmo RPC (https → wss, mesma chave).
+ * NEXT_PUBLIC_SOLANA_WS, se existir, manda.
  */
 const WS_CONFIGURADO = process.env.NEXT_PUBLIC_SOLANA_WS || "";
-const RPC_FAST = (url: string) => url.includes("rpcfast.com");
 export const SOLANA_WS =
-  WS_CONFIGURADO && !RPC_FAST(WS_CONFIGURADO)
-    ? WS_CONFIGURADO
-    : RPC_FAST(WS_CONFIGURADO) || RPC_FAST(SOLANA_RPC)
-      ? "wss://api.mainnet-beta.solana.com"
-      : undefined;
+  WS_CONFIGURADO ||
+  (SOLANA_RPC.startsWith("https://") ? "wss://" + SOLANA_RPC.slice("https://".length) : undefined);
 
 /** Carteira da plataforma que recebe a parte fixa da taxa (Solana). */
 export const PLATFORM_FEE_WALLET_SOL = process.env.NEXT_PUBLIC_PLATFORM_FEE_WALLET_SOL || "";
