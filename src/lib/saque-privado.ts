@@ -42,13 +42,24 @@ export function taxaDaCloak(lamports: bigint): bigint {
   return 5_000_000n + (lamports * 3n) / 1000n;
 }
 
+/**
+ * Taxa da plataforma (Chroma) no envio privado: 1% do valor, numa transferência
+ * normal pra uma carteira só da taxa — separada do cofre. O endereço é público
+ * (só recebe); quem gasta a taxa é o dono, com o segredo guardado fora do site.
+ */
+export const CLOAKER_FEE_WALLET =
+  process.env.NEXT_PUBLIC_CLOAKER_FEE_WALLET || "6aGAEmbmCt3frdzpPb11jKeyTUb6RWaB9ojsthBcNPHb";
+export function taxaPlataforma(lamports: bigint): bigint {
+  return (lamports * 1n) / 100n;
+}
+
 export interface CarteiraParaSaque {
   publicKey: PublicKey;
   signTransaction: NonNullable<LegacyWalletAdapter["signTransaction"]>;
   signMessage: (mensagem: Uint8Array) => Promise<Uint8Array>;
 }
 
-export type EtapaDoSaque = "deposito" | "prova" | "saque";
+export type EtapaDoSaque = "taxa" | "deposito" | "prova" | "saque";
 
 const CHAVE = "chroma.saque-privado.pendente";
 
@@ -57,6 +68,9 @@ interface Pendente {
   destino: string;
   carteira: string;
   deposito?: string;
+  // Depósito feito DE PROPÓSITO pra sacar depois (não é um envio que deu erro no
+  // meio). Muda só o texto que a tela mostra.
+  intencional?: boolean;
 }
 
 const paraBase64 = (b: Uint8Array) => btoa(String.fromCharCode(...b));
@@ -78,11 +92,21 @@ function gravarPendente(p: Pendente | null) {
   else window.localStorage.removeItem(CHAVE);
 }
 
-/** Tem um saque privado que começou e não terminou nesta carteira? */
-export function saquePendente(carteira: string): { destino: string } | null {
+/** Tem um saque privado guardado (ou que ficou no meio) nesta carteira? */
+export function saquePendente(carteira: string): { destino: string; intencional: boolean } | null {
   if (typeof window === "undefined") return null;
   const p = lerPendente(carteira);
-  return p ? { destino: p.destino } : null;
+  return p ? { destino: p.destino, intencional: !!p.intencional } : null;
+}
+
+/**
+ * O segredo do depósito guardado (base64), pra você salvar como backup.
+ * ATENÇÃO: isto É o dinheiro. Quem tiver este segredo saca os fundos. Trate
+ * como senha: guarde num lugar seguro e não mande pra ninguém.
+ */
+export function exportarNotaPendente(carteira: string): string | null {
+  const p = lerPendente(carteira);
+  return p ? p.nota : null;
 }
 
 async function kit(rpcUrl: string, carteira: CarteiraParaSaque) {
@@ -131,27 +155,45 @@ async function sacarNota(k: Kit, notas: Nota[], destino: string, extra: Record<s
 }
 
 /**
- * Manda `lamports` da carteira do criador pra `destino` passando pelo cofre
- * da Cloak. Devolve as assinaturas do depósito e do saque (provas na rede).
+ * Cobra a taxa da plataforma (1%): uma transferência normal e visível da
+ * carteira pra CLOAKER_FEE_WALLET, ANTES do depósito. É separada do cofre de
+ * propósito — não entra no envio privado. Devolve a assinatura.
  */
-export async function enviarEmPrivado(params: {
-  rpcUrl: string;
-  carteira: CarteiraParaSaque;
-  destino: string;
-  lamports: bigint;
-  aoMudar: (e: EtapaDoSaque, pct?: number) => void;
-}): Promise<{ deposito: string; saque: string }> {
-  const { rpcUrl, carteira, destino, lamports, aoMudar } = params;
-  if (lamports < MINIMO_LAMPORTS) throw new Error("mínimo");
-  const dono = carteira.publicKey.toBase58();
-  // Um saque por vez: se um ficou no meio, ele tem de terminar primeiro.
-  if (lerPendente(dono)) throw new Error("pendente");
-  const k = await kit(rpcUrl, carteira);
+async function cobrarTaxa(
+  rpcUrl: string,
+  carteira: CarteiraParaSaque,
+  taxa: bigint,
+  aoMudar: (e: EtapaDoSaque, pct?: number) => void,
+): Promise<string> {
+  const { Connection, PublicKey: PK, SystemProgram, Transaction } = await import("@solana/web3.js");
+  const conn = new Connection(rpcUrl, "confirmed");
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
+  const tx = new Transaction({ feePayer: carteira.publicKey, blockhash, lastValidBlockHeight }).add(
+    SystemProgram.transfer({ fromPubkey: carteira.publicKey, toPubkey: new PK(CLOAKER_FEE_WALLET), lamports: taxa }),
+  );
+  aoMudar("taxa");
+  const assinada = await carteira.signTransaction(tx);
+  const sig = await conn.sendRawTransaction(assinada.serialize());
+  await conn.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, "confirmed");
+  return sig;
+}
 
+/**
+ * Só o DEPÓSITO: põe `lamports` no cofre da Cloak e guarda a nota (o segredo).
+ * Devolve as notas (com posição na árvore), a árvore e a assinatura do depósito.
+ */
+async function depositar(
+  k: Kit,
+  lamports: bigint,
+  destino: string,
+  dono: string,
+  intencional: boolean,
+  aoMudar: (e: EtapaDoSaque, pct?: number) => void,
+): Promise<{ notas: Nota[]; deposito: string; merkleTree: unknown }> {
   const chave = await k.sdk.generateUtxoKeypair();
   const nota = await k.sdk.createUtxo(lamports, chave, k.sdk.NATIVE_SOL_MINT);
   // Guarda a nota ANTES de depositar: é a única cópia do segredo dela.
-  gravarPendente({ nota: paraBase64(k.sdk.serializeUtxo(nota)), destino, carteira: dono });
+  gravarPendente({ nota: paraBase64(k.sdk.serializeUtxo(nota)), destino, carteira: dono, intencional });
 
   aoMudar("deposito");
   let depositado: Awaited<ReturnType<typeof k.sdk.transact>>;
@@ -187,11 +229,70 @@ export async function enviarEmPrivado(params: {
     n.index = depositado.commitmentIndices[i >= 0 ? i : 0];
   }
   // Agora com a posição na árvore: é essa versão que o saque usa.
-  gravarPendente({ nota: paraBase64(k.sdk.serializeUtxo(notas[0])), destino, carteira: dono, deposito: depositado.signature });
+  gravarPendente({ nota: paraBase64(k.sdk.serializeUtxo(notas[0])), destino, carteira: dono, deposito: depositado.signature, intencional });
+  return { notas, deposito: depositado.signature, merkleTree: depositado.merkleTree };
+}
 
-  const saque = await sacarNota(k, notas, destino, { cachedMerkleTree: depositado.merkleTree }, aoMudar);
+/** O que sobra pro cofre (e pro destino) depois da taxa de 1% da plataforma. */
+export function valorNoCofre(lamports: bigint): bigint {
+  return lamports - taxaPlataforma(lamports);
+}
+
+/**
+ * Manda `lamports` da carteira pra `destino` DE UMA VEZ: cobra 1%, deposita o
+ * resto no cofre e saca na hora. Menos privado que depositar e sacar depois
+ * (ver `depositarParaDepois`), porque a entrada e a saída saem juntas.
+ */
+export async function enviarEmPrivado(params: {
+  rpcUrl: string;
+  carteira: CarteiraParaSaque;
+  destino: string;
+  lamports: bigint;
+  aoMudar: (e: EtapaDoSaque, pct?: number) => void;
+}): Promise<{ deposito: string; saque: string }> {
+  const { rpcUrl, carteira, destino, lamports, aoMudar } = params;
+  const noCofre = valorNoCofre(lamports);
+  if (noCofre < MINIMO_LAMPORTS) throw new Error("mínimo");
+  const dono = carteira.publicKey.toBase58();
+  // Um saque por vez: se um ficou no meio, ele tem de terminar primeiro.
+  if (lerPendente(dono)) throw new Error("pendente");
+
+  const taxa = taxaPlataforma(lamports);
+  if (taxa > 0n) await cobrarTaxa(rpcUrl, carteira, taxa, aoMudar);
+
+  const k = await kit(rpcUrl, carteira);
+  const { notas, deposito, merkleTree } = await depositar(k, noCofre, destino, dono, false, aoMudar);
+  const saque = await sacarNota(k, notas, destino, { cachedMerkleTree: merkleTree }, aoMudar);
   gravarPendente(null);
-  return { deposito: depositado.signature, saque: saque.signature };
+  return { deposito, saque: saque.signature };
+}
+
+/**
+ * Só DEPOSITA (cobra 1% e põe o resto no cofre) e PARA. O saque fica guardado
+ * pra você terminar quando quiser — no outro dia, 3 dias depois… Quanto mais
+ * tempo passa, e mais gente usa o cofre nesse meio, mais difícil ligar a
+ * entrada à saída. Terminar com `retomarSaquePrivado`; o segredo fica salvo
+ * neste navegador (faça backup com `exportarNotaPendente`).
+ */
+export async function depositarParaDepois(params: {
+  rpcUrl: string;
+  carteira: CarteiraParaSaque;
+  destino: string;
+  lamports: bigint;
+  aoMudar: (e: EtapaDoSaque, pct?: number) => void;
+}): Promise<{ deposito: string }> {
+  const { rpcUrl, carteira, destino, lamports, aoMudar } = params;
+  const noCofre = valorNoCofre(lamports);
+  if (noCofre < MINIMO_LAMPORTS) throw new Error("mínimo");
+  const dono = carteira.publicKey.toBase58();
+  if (lerPendente(dono)) throw new Error("pendente");
+
+  const taxa = taxaPlataforma(lamports);
+  if (taxa > 0n) await cobrarTaxa(rpcUrl, carteira, taxa, aoMudar);
+
+  const k = await kit(rpcUrl, carteira);
+  const { deposito } = await depositar(k, noCofre, destino, dono, true, aoMudar);
+  return { deposito };
 }
 
 /** Termina um saque privado que ficou no meio (a nota está salva neste navegador). */
@@ -237,4 +338,38 @@ export async function retomarSaquePrivado(params: {
     }
     throw e;
   }
+}
+
+/**
+ * RESGATE DE EMERGÊNCIA: saca com o segredo de um backup (o .txt que você
+ * baixou), em qualquer navegador, mesmo que este não tenha o depósito guardado.
+ * É o que salva o dinheiro se você limpou o navegador ou trocou de PC.
+ */
+export async function sacarComBackup(params: {
+  rpcUrl: string;
+  carteira: CarteiraParaSaque;
+  segredo: string; // base64 do exportarNotaPendente / do .txt
+  destino: string;
+  aoMudar: (e: EtapaDoSaque, pct?: number) => void;
+}): Promise<{ saque: string }> {
+  const k = await kit(params.rpcUrl, params.carteira);
+  const nota = await k.sdk.deserializeUtxo(deBase64(params.segredo.trim()));
+  nota.commitment = await k.sdk.computeUtxoCommitment(nota);
+  // O backup é a nota do depósito; procura a posição dela na árvore da Cloak.
+  if (nota.index === undefined) {
+    const lista = await k.sdk.fetchCommitments(k.opcoes.relayUrl, { mint: k.sdk.NATIVE_SOL_MINT, sync: true });
+    const achada = lista.find((c) => {
+      try {
+        return BigInt(c.commitment.startsWith("0x") || /^[0-9]+$/.test(c.commitment) ? c.commitment : `0x${c.commitment}`) === nota.commitment;
+      } catch {
+        return false;
+      }
+    });
+    if (!achada) throw new Error("DEPOSITO_NAO_ACONTECEU");
+    nota.index = achada.index;
+  }
+  const saque = await sacarNota(k, [nota], params.destino, {}, params.aoMudar);
+  // Se este navegador tinha o mesmo depósito guardado, já foi resolvido.
+  if (saquePendente(params.carteira.publicKey.toBase58())) gravarPendente(null);
+  return { saque: saque.signature };
 }
